@@ -32,12 +32,21 @@ let pool: pg.Pool | null = null;
 export function getPool(): pg.Pool {
   if (pool) return pool;
 
-  const connectionString = process.env.NEON_DATABASE_URL;
-  if (!connectionString) throw new Error("NEON_DATABASE_URL is not set");
+  const rawConnectionString = process.env.NEON_DATABASE_URL;
+  if (!rawConnectionString) throw new Error("NEON_DATABASE_URL is not set");
+
+  // We configure TLS explicitly via the `ssl` object below (full cert
+  // validation). A `sslmode=...` query param in the URL is redundant and, as of
+  // node-postgres v8.16+, emits a noisy "SECURITY WARNING: ... aliases for
+  // verify-full" deprecation notice (surfaced as ERROR in CloudWatch). Strip it
+  // so our explicit `ssl` config is the single source of truth and the warning
+  // goes away. Behaviour is unchanged: rejectUnauthorized:true === verify-full.
+  const connectionString = stripSslMode(rawConnectionString);
 
   pool = new Pool({
     connectionString,
-    // Neon requires TLS. The pooled endpoint presents a valid cert.
+    // Neon requires TLS. The pooled endpoint presents a publicly-trusted cert,
+    // so full verification (rejectUnauthorized: true) works without a custom CA.
     ssl: { rejectUnauthorized: true },
     // Keep this tiny: one Lambda process == a couple of connections at most.
     max: Number(process.env.PG_POOL_MAX ?? 2),
@@ -55,6 +64,22 @@ export function getPool(): pg.Pool {
   });
 
   return pool;
+}
+
+/**
+ * Remove the `sslmode` query parameter from a Postgres connection string.
+ * TLS is configured explicitly via the `ssl` Pool option, so this param is
+ * redundant; dropping it silences node-postgres's `sslmode` deprecation warning.
+ * Falls back to a regex strip if the string isn't a parseable URL.
+ */
+function stripSslMode(connectionString: string): string {
+  try {
+    const url = new URL(connectionString);
+    url.searchParams.delete("sslmode");
+    return url.toString();
+  } catch {
+    return connectionString.replace(/([?&])sslmode=[^&]*(&|$)/i, (_m, pre, post) => (post === "&" ? pre : ""));
+  }
 }
 
 /**
