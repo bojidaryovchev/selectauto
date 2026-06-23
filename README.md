@@ -51,34 +51,46 @@ EventBridge Scheduler + Secrets Manager + CloudWatch**.
 
 ## Architecture
 
+```mermaid
+flowchart TD
+    EB["EventBridge Scheduler"]
+    Backend["App backend<br/>(detail refresh)"]
+    Manual["Manual start"]
+
+    EB -- "rate(1 hour)" --> Combined["combinedHourlySync SM"]
+    EB -- "rate(1 day)" --> RefLambda["syncReferenceData<br/>(Lambda)"]
+    Manual --> Backfill["fullInventoryBackfill SM<br/>(mode=full)"]
+
+    Combined -- "startExecution.sync" --> Cars["hourlyCarsSync SM<br/>(incremental, 75m)"]
+    Combined -- "then" --> Archived["archivedLotsSync SM<br/>(incremental, 75m)"]
+
+    Cars -.->|shared paginated loop| Loop
+    Archived -.->|shared paginated loop| Loop
+    Backfill -.->|shared paginated loop| Loop["Paginated loop<br/>(see below)"]
+
+    Backend -- "enqueue" --> Q["SQS FIFO<br/>(content dedup)"]
+    Q --> Worker["refreshListingDetail worker<br/>(reservedConcurrency=1, ~1 req/sec)"]
+
+    Loop -- "x-api-key, 1 req/sec" --> API["AuctionsAPI"]
+    RefLambda -- "x-api-key, 1 req/sec" --> API
+    Worker -- "x-api-key, 1 req/sec" --> API
+
+    Loop -- "pooled TLS" --> Neon["Neon Postgres"]
+    RefLambda --> Neon
+    Worker --> Neon
+
+    %% No VPC: Lambdas reach AuctionsAPI and Neon over public egress.
 ```
-                         EventBridge Scheduler
-                          │                  │
-            rate(1 hour)  │                  │  rate(1 day)
-                          ▼                  ▼
-         ┌────────────────────────┐   ┌───────────────────┐
-         │ combinedHourlySync SM  │   │ syncReferenceData │  (Lambda, manual/daily)
-         │  cars → archived-lots  │   └───────────────────┘
-         └────────────────────────┘
-                          │ startExecution.sync
-            ┌─────────────┴──────────────┐
-            ▼                            ▼
-   hourlyCarsSync SM            archivedLotsSync SM       fullInventoryBackfill SM
-   (mode=incremental,75m)       (mode=incremental,75m)    (mode=full, manual)
-            │                            │                         │
-            └──────── shared paginated loop shape ────────────────┘
-                                  │
-   Init → SyncPage → HasNext? ─no→ Finalize → Succeed
-            ▲            │yes        (SyncPage = fetch + upsert in ONE Lambda;
-            └─ Increment ← Wait 1s    page data never crosses SFN state)
-                         │ (any task error)
-                         └→ MarkSyncFailed → Fail
 
-   App backend ──enqueue──▶ SQS FIFO ──▶ refreshListingDetail worker (1 req/sec,
-   (detail refresh)         (dedup)        reservedConcurrency=1) ──▶ Neon
+### Paginated loop (shared by backfill, hourly cars, archived lots)
 
-   Lambdas ── x-api-key ──▶ AuctionsAPI        Lambdas ── pooled TLS ──▶ Neon Postgres
-   (no VPC; public egress)                     (no VPC; public egress)
+```mermaid
+flowchart LR
+    Init["InitSyncRun"] --> Sync["SyncPage<br/>(fetch + upsert in ONE Lambda;<br/>page data never crosses SFN state)"]
+    Sync --> Has{"HasNextPage?"}
+    Has -- "no" --> Final["FinalizeSyncRun"] --> Done(["Succeed"])
+    Has -- "yes" --> Wait["Wait 1s<br/>(rate limit)"] --> Inc["IncrementPage"] --> Sync
+    Sync -. "any task error" .-> Fail["MarkSyncFailed"] --> Failed(["Fail"])
 ```
 
 ### Ingestion flows
