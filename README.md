@@ -27,16 +27,17 @@ EventBridge Scheduler + Secrets Manager + CloudWatch**.
 │   │   ├── db.ts                # Neon pool + idempotent upserts
 │   │   ├── normalize.ts         # Raw API -> DB row shapes (keeps raw_json)
 │   │   ├── pagination.ts        # Loop stop-conditions
+│   │   ├── detailRefresh.ts     # Shared fetch+upsert for one listing
 │   │   └── syncRun.ts           # sync_runs lifecycle + resume helpers
 │   ├── syncCarsPage/handler.ts          # fetch + upsert one /cars page (merged)
 │   ├── syncArchivedLotsPage/handler.ts  # fetch + archive one /archived-lots page (merged)
 │   ├── syncReferenceData/handler.ts
-│   ├── refreshListingDetail/handler.ts
+│   ├── refreshListingDetail/handler.ts  # SQS FIFO drain worker (1 req/sec)
 │   ├── syncRunLifecycle/handler.ts   # create / finalize / fail (3 exports)
 │   └── build.mjs                # esbuild bundler -> functions/dist/<name>.js
 │
 ├── infra/                       # Pulumi program
-│   ├── src/{index,config,iam,secrets,lambdas,step-functions,schedules}.ts
+│   ├── src/{index,config,iam,secrets,lambdas,queues,step-functions,schedules}.ts
 │   ├── Pulumi.yaml
 │   ├── Pulumi.dev.yaml.example
 │   ├── bootstrap-pulumi-backend.ps1  # one-time: S3 state bucket
@@ -73,6 +74,9 @@ EventBridge Scheduler + Secrets Manager + CloudWatch**.
                          │ (any task error)
                          └→ MarkSyncFailed → Fail
 
+   App backend ──enqueue──▶ SQS FIFO ──▶ refreshListingDetail worker (1 req/sec,
+   (detail refresh)         (dedup)        reservedConcurrency=1) ──▶ Neon
+
    Lambdas ── x-api-key ──▶ AuctionsAPI        Lambdas ── pooled TLS ──▶ Neon Postgres
    (no VPC; public egress)                     (no VPC; public egress)
 ```
@@ -85,7 +89,7 @@ EventBridge Scheduler + Secrets Manager + CloudWatch**.
 | 2. Hourly active cars | EventBridge `rate(1 hour)` | `/cars?minutes=75&per_page=1000` | `hourlyCarsSync` (via combined) |
 | 3. Hourly archived lots | After cars | `/archived-lots?minutes=75&per_page=1000` | `archivedLotsSync` (via combined) |
 | 4. Reference data | Manual + daily | `/manufacturers/cars`, `/models/{id}/cars`, `/generations/{id}/cars` | `syncReferenceData` Lambda |
-| 5. Detail refresh | Internal (app/manual) | `/search-lot/{lot}/{domain}` or `/search-vin/{vin}` | `refreshListingDetail` Lambda |
+| 5. Detail refresh | Internal, via SQS FIFO queue | `/search-lot/{lot}/{domain}` or `/search-vin/{vin}` | `refreshListingDetail` worker |
 
 ---
 
@@ -205,6 +209,14 @@ npm run deploy             # = build Lambda bundles, then `pulumi up` in infra/
 `functions/dist/<name>.js`, with `pg` bundled in) **before** `pulumi up`. Always
 build before deploying; `npm run preview` does the same for a dry run.
 
+> **Module systems differ by package (don't "fix" this):** the `functions/` and
+> `db/` packages are **ESM** (NodeNext) — internal imports use explicit `.js`
+> extensions, and esbuild bundles them. The **`infra/` Pulumi program is
+> CommonJS** (`module: CommonJS`) because Pulumi runs it via its bundled ts-node
+> in CJS mode — so its internal imports are **extensionless** (`./config`, not
+> `./config.js`). Adding `.js` to infra imports breaks `pulumi up` with
+> `Cannot find module './config.js'`.
+
 ---
 
 ## Operating the flows
@@ -236,23 +248,43 @@ Runs daily via EventBridge (non-forced: it **skips** if manufacturers already
 exist). Force a full refresh by invoking the Lambda with `{ "force": true }`:
 
 ```powershell
+# PowerShell mangles inline JSON quotes for native CLIs — pass via a file.
+'{"force":true}' | Out-File -Encoding ascii payload.json
 aws lambda invoke --function-name auctions-ingestion-dev-syncReferenceData `
-  --payload '{"force":true}' --cli-binary-format raw-in-base64-out out.json
+  --payload file://payload.json --cli-binary-format raw-in-base64-out out.json
+Remove-Item payload.json
 ```
 
-### Detail refresh (internal)
+### Detail refresh (internal, queued)
 
-Invoke `refreshListingDetail` directly (e.g. from your backend when a detail page
-is stale). Not exposed publicly.
+On-demand refresh of a SINGLE listing (by lot+domain or VIN). Your app backend
+uses this when a detail page is stale/missing, or to pull `prices` history.
+
+**It is NOT invoked directly** — that would let N concurrent users make N
+concurrent AuctionsAPI calls and breach the 1 req/sec limit. Instead the backend
+**enqueues** a request to the detail-refresh **SQS FIFO queue**, and a single
+worker (`reservedConcurrency = 1`) drains it serially at ~1 req/sec. Duplicate
+requests for the same listing within ~5 min are deduplicated by the queue.
+
+Get the queue URL from outputs: `pulumi stack output detailRefreshQueueUrl`.
 
 ```powershell
-# by lot+domain
-aws lambda invoke --function-name auctions-ingestion-dev-refreshListingDetail `
-  --payload '{"lot":"45289258","domain":"iaai_com"}' --cli-binary-format raw-in-base64-out out.json
+$q = pulumi stack output detailRefreshQueueUrl   # run in infra/
+
+# by lot+domain (FIFO requires --message-group-id; dedup is content-based)
+aws sqs send-message --queue-url $q `
+  --message-group-id auctionsapi `
+  --message-body '{"lot":"45289258","domain":"iaai_com"}'
+
 # by VIN
-aws lambda invoke --function-name auctions-ingestion-dev-refreshListingDetail `
-  --payload '{"vin":"WBA3B5G55FNS17722"}' --cli-binary-format raw-in-base64-out out.json
+aws sqs send-message --queue-url $q `
+  --message-group-id auctionsapi `
+  --message-body '{"vin":"WBA3B5G55FNS17722"}'
 ```
+
+From the backend, enqueue with the AWS SDK (`SQS.sendMessage`) to the same URL.
+Tune throughput vs. the bulk sync via the worker's `DETAIL_REFRESH_PACE_MS`
+env var. Failed messages retry up to 5×, then land in the `-detail-refresh-dlq`.
 
 ---
 
@@ -321,11 +353,33 @@ data, and the visual graph shows per-state timing in the console.
 ## Resume / checkpointing
 
 v1 is intentionally simple: every paginated step writes `last_page_processed`,
-`pages_processed`, and `records_processed` to the run's `sync_runs` row. To
-resume a failed backfill, read its `last_page_processed` and start a new
-execution at `page = that + 1` (see `start-backfill.ps1 -StartPage`).
+`pages_processed`, and `records_processed` to the run's `sync_runs` row **after
+each page commits**. So `last_page_processed` is always the last page that fully
+landed in Neon; the page that failed did not advance it.
+
+To resume a failed backfill, find the checkpoint and start one past it:
+
+```sql
+SELECT id, status, last_page_processed, records_processed, error_message
+FROM sync_runs WHERE flow_type = 'full_backfill' ORDER BY id DESC LIMIT 1;
+```
+
+```powershell
+./scripts/start-backfill.ps1 -StartPage <last_page_processed + 1>
+```
+
+Because every upsert is idempotent (`ON CONFLICT`), re-running a page that
+already committed is harmless — so starting a page or two early to be safe is
+fine; the overlap just updates rows.
+
 `functions/shared/syncRun.ts#findResumePoint` returns the latest unfinished run
 for a flow, which a future version can use to auto-resume.
+
+**Note on retries vs. failures.** The Step Functions Retry policy only retries
+*transient* errors (429, 5xx, Lambda infra). Non-transient failures — e.g. a
+Postgres `project size limit exceeded` when Neon storage is full — are NOT
+retried; the run is marked `failed` (see `error_message`) and you resume after
+fixing the cause (e.g. upgrading the Neon plan).
 
 ---
 
@@ -352,6 +406,18 @@ A single sequential loop with a `Wait` between fetches is the only way to honor
 that across a distributed system; parallel fetches would blow the limit and get
 429-throttled. The combined hourly machine also runs cars then archived lots in
 series for the same reason.
+
+**Detail refresh goes through an SQS FIFO queue, not a direct invoke.** The
+1 req/sec limit is a *global* budget. If the backend invoked the detail Lambda
+directly, N concurrent users opening detail pages would make N concurrent
+AuctionsAPI calls and breach it (and starve the bulk sync with 429s). Funnelling
+through a FIFO queue + a single-concurrency worker makes detail refreshes
+strictly serialized and paced, and content-based dedup collapses repeat requests
+for the same listing. Users get an eventual (seconds-later) refresh instead of a
+synchronous one — the right trade for a freshness fallback. (Strict option for
+later: route the bulk flows through the *same* queue so there is literally one
+pipe to AuctionsAPI; today they share the budget loosely and may briefly overlap
+during a backfill — tune `DETAIL_REFRESH_PACE_MS` to yield.)
 
 **EventBridge for recurring flows.** Schedules are declarative, cheap, and
 decoupled from the workflow logic — change `rate(1 hour)` in config without
@@ -393,4 +459,3 @@ this into its own Step Functions loop (same pattern as the page loops).
   chat/CI logs): set a new value with `pulumi config set --secret ...` and
   `pulumi up`.
 - Never expose the API key to the frontend.
-```

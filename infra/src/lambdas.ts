@@ -46,6 +46,10 @@ interface MakeFnOpts {
   exportName?: string;
   timeoutSeconds?: number;
   memoryMb?: number;
+  /** Cap concurrent executions (e.g. 1 for the serialized detail drain worker). */
+  reservedConcurrency?: number;
+  /** Extra env vars merged on top of the common set. */
+  extraEnv?: Record<string, pulumi.Input<string>>;
 }
 
 export function createLambdas(
@@ -53,7 +57,7 @@ export function createLambdas(
   role: pulumi.Input<string>,
   secretEnv: { auctionsApiKey: pulumi.Output<string>; neonDatabaseUrl: pulumi.Output<string> },
 ): LambdaSet {
-  const commonEnvVars: pulumi.Input<Record<string, pulumi.Input<string>>> = {
+  const commonEnvVars: Record<string, pulumi.Input<string>> = {
     AUCTIONS_API_BASE_URL: config.auctionsApiBaseUrl,
     // Secret values injected from Pulumi config secrets. They are marked secret
     // so they never print in plaintext. See secrets.ts for the rotation note.
@@ -91,7 +95,10 @@ export function createLambdas(
         }),
         timeout: opts.timeoutSeconds ?? 60,
         memorySize: opts.memoryMb ?? 256,
-        environment: { variables: commonEnvVars },
+        ...(opts.reservedConcurrency !== undefined ? { reservedConcurrentExecutions: opts.reservedConcurrency } : {}),
+        environment: {
+          variables: opts.extraEnv ? { ...commonEnvVars, ...opts.extraEnv } : commonEnvVars,
+        },
         // Native nodejs20.x JSON logging: the runtime emits each line as a JSON
         // envelope (timestamp, level, requestId) and our structured payloads
         // slot in. Query in CloudWatch Logs Insights by field. applicationLogLevel
@@ -130,10 +137,15 @@ export function createLambdas(
       timeoutSeconds: 900,
       memoryMb: 512,
     }),
+    // Detail-refresh SQS drain worker. reservedConcurrency=1 guarantees only one
+    // copy ever runs, so no number of enqueued user requests can exceed the
+    // AuctionsAPI 1 req/sec budget. Paced internally via DETAIL_REFRESH_PACE_MS.
     refreshListingDetail: makeFn({
       name: "refreshListingDetail",
       bundleFile: "refreshListingDetail.js",
       timeoutSeconds: 30,
+      reservedConcurrency: 1,
+      extraEnv: { DETAIL_REFRESH_PACE_MS: "1000" },
     }),
     // sync-run lifecycle: three handlers exported from one bundle.
     createSyncRun: makeFn({

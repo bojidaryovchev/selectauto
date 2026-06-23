@@ -14,6 +14,7 @@ import * as pulumi from "@pulumi/pulumi";
 import { config, namePrefix } from "./config";
 import { createLambdaRole, createSchedulerRole, createStepFunctionsRole } from "./iam";
 import { allLambdaArns, createLambdas } from "./lambdas";
+import { createQueues } from "./queues";
 import { createSchedules } from "./schedules";
 import { createSecrets, secretArns } from "./secrets";
 import { createStateMachines } from "./step-functions";
@@ -21,14 +22,27 @@ import { createStateMachines } from "./step-functions";
 // 1. Secrets Manager secrets (AUCTIONS_API_KEY, NEON_DATABASE_URL).
 const secrets = createSecrets();
 
-// 2. Lambda execution role (logs + read those secrets).
-const { lambdaRole } = createLambdaRole(secretArns(secrets));
+// 2. SQS FIFO queue for detail-refresh requests (rate-limit chokepoint).
+const queues = createQueues();
 
-// 3. Lambdas. Secret VALUES are injected as env vars (from Pulumi config
+// 3. Lambda execution role (logs + read secrets + consume the detail queue).
+const { lambdaRole } = createLambdaRole(secretArns(secrets), [queues.detailRefreshQueue.arn]);
+
+// 4. Lambdas. Secret VALUES are injected as env vars (from Pulumi config
 //    secrets) so handlers don't need a runtime Secrets Manager call.
 const lambdas = createLambdas(lambdaRole.arn, {
   auctionsApiKey: config.auctionsApiKey,
   neonDatabaseUrl: config.neonDatabaseUrl,
+});
+
+// The detail-refresh worker is driven by the SQS FIFO queue. batchSize 1 +
+// ReportBatchItemFailures: each message succeeds/fails independently, and the
+// worker's reservedConcurrency=1 keeps the whole thing serialized at ~1 req/sec.
+new aws.lambda.EventSourceMapping("detail-refresh-esm", {
+  eventSourceArn: queues.detailRefreshQueue.arn,
+  functionName: lambdas.refreshListingDetail.arn,
+  batchSize: 1,
+  functionResponseTypes: ["ReportBatchItemFailures"],
 });
 
 // 4. Step Functions role (invoke our Lambdas + manage cross-machine executions).
@@ -111,3 +125,9 @@ export const secretNames = {
   auctionsApiKey: secrets.auctionsApiKeySecret.name,
   neonDatabaseUrl: secrets.neonDatabaseUrlSecret.name,
 };
+
+// Detail-refresh queue. The app backend enqueues "refresh this listing" requests
+// to detailRefreshQueueUrl (FIFO: include MessageGroupId, e.g. "auctionsapi").
+export const detailRefreshQueueUrl = queues.detailRefreshQueue.url;
+export const detailRefreshQueueArn = queues.detailRefreshQueue.arn;
+export const detailRefreshDlqUrl = queues.detailRefreshDlq.url;

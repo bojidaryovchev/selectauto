@@ -22,8 +22,12 @@ export interface IamRoles {
 /**
  * Create the Lambda execution role with logs + secrets access.
  * @param secretArns ARNs of the Secrets Manager secrets the Lambdas may read.
+ * @param queueArns ARNs of SQS queues the Lambdas consume (detail-refresh worker).
  */
-export function createLambdaRole(secretArns: pulumi.Output<string>[]): IamRoles {
+export function createLambdaRole(
+  secretArns: pulumi.Output<string>[],
+  queueArns: pulumi.Output<string>[] = [],
+): IamRoles {
   const lambdaRole = new aws.iam.Role("ingestion-lambda-role", {
     name: `${namePrefix}-lambda-role`,
     assumeRolePolicy: JSON.stringify({
@@ -69,6 +73,29 @@ export function createLambdaRole(secretArns: pulumi.Output<string>[]): IamRoles 
       ],
     }),
   });
+
+  // SQS consume permissions for the detail-refresh drain worker (the event
+  // source mapping needs these to receive/delete messages and read attributes).
+  if (queueArns.length > 0) {
+    new aws.iam.RolePolicy("ingestion-lambda-sqs", {
+      role: lambdaRole.id,
+      policy: pulumi.jsonStringify({
+        Version: "2012-10-17",
+        Statement: [
+          {
+            Effect: "Allow",
+            Action: [
+              "sqs:ReceiveMessage",
+              "sqs:DeleteMessage",
+              "sqs:GetQueueAttributes",
+              "sqs:ChangeMessageVisibility",
+            ],
+            Resource: queueArns,
+          },
+        ],
+      }),
+    });
+  }
 
   return { lambdaRole };
 }
