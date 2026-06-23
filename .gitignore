@@ -1,0 +1,23 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.*
+
+# build output
+dist/
+*.tsbuildinfo
+
+# env
+.env
+.env.*
+!.env.example
+
+# pulumi: ignore all stack configs EXCEPT the committed dev/prod + example
+**/Pulumi.*.yaml
+!**/Pulumi.dev.yaml
+!**/Pulumi.prod.yaml
+!**/Pulumi.dev.yaml.example
+
+# logs / os
+*.log
+.DS_Store

@@ -1,0 +1,7 @@
+name: auctions-ingestion-infra
+runtime:
+  name: nodejs
+  options:
+    # Entry point — Pulumi runs this via its bundled ts-node (CommonJS).
+    main: src/index.ts
+description: AWS infrastructure for AuctionsAPI vehicle ingestion (Lambda + Step Functions + EventBridge + Neon)

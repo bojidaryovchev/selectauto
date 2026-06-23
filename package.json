@@ -1,0 +1,26 @@
+{
+  "name": "auctions-ingestion",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AuctionsAPI -> Neon Postgres ingestion system (AWS Lambda + Step Functions + EventBridge, Pulumi).",
+  "scripts": {
+    "build:functions": "npm --prefix functions run build",
+    "migrate": "npm --prefix db run migrate",
+    "deploy": "npm run build:functions && npm --prefix infra run up",
+    "preview": "npm run build:functions && npm --prefix infra run preview",
+    "type-check": "npm --prefix functions run type-check && npm --prefix infra run type-check && npm --prefix db run type-check",
+    "lint": "eslint .",
+    "format": "prettier --write \"**/*.{ts,mjs,json}\"",
+    "check": "npm run type-check && npm run lint"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.36.0",
+    "eslint": "9.36.0",
+    "globals": "15.14.0",
+    "prettier": "3.4.2",
+    "prettier-plugin-organize-imports": "4.1.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.44.0"
+  },
+  "workspaces": ["db", "functions", "infra"]
+}

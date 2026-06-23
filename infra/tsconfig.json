@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    // Pulumi's nodejs runtime executes this program via its bundled ts-node in
+    // CommonJS mode. CommonJS + classic node resolution lets `./config` resolve
+    // to config.ts directly (NodeNext would force explicit .js extensions that
+    // CommonJS then can't find on disk). Keep this CommonJS for the infra only.
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "./dist"
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

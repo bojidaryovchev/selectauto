@@ -1,0 +1,52 @@
+{
+  "_comment": "A real single record from GET /api/cars, provided by the project owner. Used as the authoritative source for field mapping in functions/shared/normalize.ts. The pagination WRAPPER around this record (meta/last_page/data) was not captured; the client handles both metadata-based and empty-array-stop pagination. Note: this is ONE record; the live endpoint returns many such records (per_page=1000).",
+  "id": 267,
+  "year": 2015,
+  "title": "2015 BMW 328I xDrive",
+  "vin": "WBA3B5G55FNS17722",
+  "manufacturer": { "id": 16, "name": "BMW" },
+  "model": { "id": 93, "name": "3er", "manufacturer_id": 16 },
+  "generation": { "id": 413, "name": "VI (F3x)", "manufacturer_id": 16, "model_id": 93 },
+  "body_type": { "name": "sedan", "id": 1 },
+  "color": { "name": "blue", "id": 11 },
+  "engine": { "id": 7124, "name": "2.0l i-4 di, dohc, vvt, turbo, 240hp" },
+  "transmission": { "name": "automatic", "id": 1 },
+  "drive_wheel": { "name": "all", "id": 3 },
+  "vehicle_type": { "name": "automobile", "id": 1 },
+  "fuel": { "name": "gasoline", "id": 4 },
+  "cylinders": 4,
+  "lots": [
+    {
+      "id": 20421492,
+      "lot": "45289258",
+      "domain": { "name": "iaai_com", "id": 1 },
+      "external_id": "45787095~US",
+      "odometer": { "km": 392064, "mi": 243617, "status": { "name": "actual", "id": 1 } },
+      "estimate_repair_price": 9554,
+      "actual_cash_value": 8776,
+      "sale_date": null,
+      "bid": null,
+      "buy_now": 0,
+      "final_bid": null,
+      "status": { "name": "sale", "id": 3 },
+      "seller": { "id": 7, "name": "Progressive", "is_insurance": true },
+      "seller_type": { "name": "insurance", "id": 1 },
+      "title": { "id": 51, "name": "Non-Repairable" },
+      "damage": { "main": { "id": 45, "name": "Rear" }, "second": { "id": 51, "name": "Left Side" } },
+      "condition": { "name": "run_and_drives", "id": 0 },
+      "images": {
+        "downloaded": [
+          "https://i.auctionsapi.com/iaai/bmw/3er/2015/45289258/WBA3B5G55FNS17722-1.webp"
+        ]
+      },
+      "location": {
+        "country": { "iso": "us", "name": "USA" },
+        "state": { "id": 33, "code": "ma", "name": "massachusetts" },
+        "city": { "id": 3, "name": "templeton" }
+      },
+      "created_at": "2026-06-04T09:01:27.000000Z",
+      "updated_at": "2026-06-20T23:20:51.000000Z",
+      "auction_type": { "name": "live", "id": 4 }
+    }
+  ]
+}

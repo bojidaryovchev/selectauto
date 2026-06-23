@@ -1,0 +1,23 @@
+# Example dev stack config. Copy to Pulumi.dev.yaml, then set secret values with
+# `pulumi config set --secret ...` (do NOT commit real secrets).
+#
+# Secret config values below are placeholders. The real AUCTIONS_API_KEY and
+# NEON_DATABASE_URL should be set as Pulumi secrets and are pushed into AWS
+# Secrets Manager by the stack. See README.
+config:
+  aws:region: eu-central-1
+  auctions-ingestion-infra:projectName: auctions-ingestion
+  auctions-ingestion-infra:environment: dev
+  auctions-ingestion-infra:auctionsApiBaseUrl: https://auctionsapi.com/api
+  auctions-ingestion-infra:hourlySyncScheduleExpression: rate(1 hour)
+  auctions-ingestion-infra:dailyReferenceSyncScheduleExpression: rate(1 day)
+  auctions-ingestion-infra:logRetentionDays: "14"
+  auctions-ingestion-infra:perPage: "1000"
+  auctions-ingestion-infra:incrementalMinutes: "75"
+  # Secrets — set these with the CLI, they will appear here encrypted:
+  #   pulumi config set --secret auctions-ingestion-infra:auctionsApiKey  <key>
+  #   pulumi config set --secret auctions-ingestion-infra:neonDatabaseUrl <pooled-connection-string>
+  # auctions-ingestion-infra:auctionsApiKey:
+  #   secure: v1:...
+  # auctions-ingestion-infra:neonDatabaseUrl:
+  #   secure: v1:...

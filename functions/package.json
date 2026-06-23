@@ -1,0 +1,21 @@
+{
+  "name": "@auctions-ingestion/functions",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "build": "node build.mjs",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
+  },
+  "dependencies": {
+    "pg": "8.13.1"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "8.10.147",
+    "@types/node": "25.2.3",
+    "@types/pg": "8.11.10",
+    "esbuild": "0.24.2",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,6 @@
+node_modules/
+**/dist/**
+package-lock.json
+# Markdown is hand-formatted (tables, ASCII diagrams, single-line log examples);
+# Prettier's markdown reflow would mangle them.
+*.md

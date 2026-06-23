@@ -1,0 +1,20 @@
+{
+  "name": "@auctions-ingestion/infra",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.ts",
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "up": "pulumi up",
+    "preview": "pulumi preview",
+    "destroy": "pulumi destroy"
+  },
+  "dependencies": {
+    "@pulumi/aws": "7.19.0",
+    "@pulumi/pulumi": "3.220.0"
+  },
+  "devDependencies": {
+    "@types/node": "25.2.3",
+    "typescript": "5.9.3"
+  }
+}
