@@ -34,6 +34,7 @@ export interface StateMachines {
   hourlyCarsSync: aws.sfn.StateMachine;
   archivedLotsSync: aws.sfn.StateMachine;
   combinedHourlySync: aws.sfn.StateMachine;
+  referenceSync: aws.sfn.StateMachine;
 }
 
 /**
@@ -217,6 +218,61 @@ function sfnLogGroup(name: string): aws.cloudwatch.LogGroup {
   });
 }
 
+/**
+ * ASL for the timeout-proof reference sync: loop over manufacturers, ONE per
+ * SyncManufacturer step, with a 1s Wait between (rate limit). Resumable via
+ * sync_runs. Distinct from the page loop — it iterates an in-state array index
+ * (`$.index` over `$.manufacturerIds`), not API pages.
+ */
+function buildReferenceDefinition(args: {
+  initFnArn: pulumi.Input<string>;
+  manufacturerFnArn: pulumi.Input<string>;
+  finalizeFnArn: pulumi.Input<string>;
+  failFnArn: pulumi.Input<string>;
+}): pulumi.Output<string> {
+  return pulumi
+    .all([args.initFnArn, args.manufacturerFnArn, args.finalizeFnArn, args.failFnArn])
+    .apply(([initArn, mfgArn, finalizeArn, failArn]) =>
+      JSON.stringify({
+        Comment: "Reference data sync — one manufacturer per step (timeout-proof).",
+        StartAt: "ReferenceInit",
+        States: {
+          // Upsert all manufacturers, build the work-list, create the run row.
+          ReferenceInit: {
+            ...lambdaTask({ fnArn: initArn, resultPath: "$.init", catchTo: "MarkSyncFailed" }),
+            OutputPath: "$.init.value",
+            Next: "HasMore",
+          },
+          HasMore: {
+            Type: "Choice",
+            Choices: [{ Variable: "$.hasMore", BooleanEquals: true, Next: "SyncManufacturer" }],
+            Default: "ReferenceFinalize",
+          },
+          // Process manufacturerIds[index]'s models + generations; index++.
+          SyncManufacturer: {
+            ...lambdaTask({ fnArn: mfgArn, resultPath: "$.step", catchTo: "MarkSyncFailed" }),
+            OutputPath: "$.step.value",
+            Next: "WaitOneSecond",
+          },
+          // Rate limit between manufacturers (their internal calls are paced too).
+          WaitOneSecond: { Type: "Wait", Seconds: 1, Next: "HasMore" },
+          ReferenceFinalize: {
+            ...lambdaTask({ fnArn: finalizeArn, resultPath: "$.finalize" }),
+            OutputPath: "$.finalize.value",
+            Next: "Succeed",
+          },
+          Succeed: { Type: "Succeed" },
+          MarkSyncFailed: {
+            ...lambdaTask({ fnArn: failArn, resultPath: "$.failResult" }),
+            Catch: [{ ErrorEquals: ["States.ALL"], ResultPath: "$.failError", Next: "Fail" }],
+            Next: "Fail",
+          },
+          Fail: { Type: "Fail", Error: "ReferenceSyncFailed", Cause: "See sync_runs.error_message" },
+        },
+      }),
+    );
+}
+
 export function createStateMachines(lambdas: LambdaSet, sfnRoleArn: pulumi.Input<string>): StateMachines {
   const common = {
     createFnArn: lambdas.createSyncRun.arn,
@@ -328,5 +384,21 @@ export function createStateMachines(lambdas: LambdaSet, sfnRoleArn: pulumi.Input
     tags,
   });
 
-  return { fullInventoryBackfill, hourlyCarsSync, archivedLotsSync, combinedHourlySync };
+  // --- Flow 4 (timeout-proof): reference sync loop, one manufacturer per step ---
+  const referenceLog = sfnLogGroup("reference-sync");
+  const referenceSync = new aws.sfn.StateMachine("reference-sync", {
+    name: `${namePrefix}-reference-sync`,
+    roleArn: sfnRoleArn,
+    type: "STANDARD",
+    definition: buildReferenceDefinition({
+      initFnArn: lambdas.referenceInit.arn,
+      manufacturerFnArn: lambdas.referenceManufacturer.arn,
+      finalizeFnArn: lambdas.referenceFinalize.arn,
+      failFnArn: lambdas.markSyncFailed.arn,
+    }),
+    ...mkLogging(referenceLog),
+    tags,
+  });
+
+  return { fullInventoryBackfill, hourlyCarsSync, archivedLotsSync, combinedHourlySync, referenceSync };
 }

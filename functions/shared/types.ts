@@ -252,3 +252,34 @@ export interface ReferenceSyncInput {
   /** Optionally limit how many manufacturers to expand into models/generations. */
   maxManufacturers?: number;
 }
+
+/* ---------------------------------------------------------------------------
+ * Timeout-proof reference sync (Step Functions loop, one manufacturer / step).
+ * The full catalog (~424 manufacturers, ~5.5k models) at 1 req/sec far exceeds a
+ * single Lambda's 15-min limit, so we loop over manufacturers in the state
+ * machine and process ONE per invocation.
+ * ------------------------------------------------------------------------ */
+
+/** State threaded through the reference-sync state machine. */
+export interface ReferenceSyncState {
+  flowType: "reference";
+  syncRunId: number;
+  /** External manufacturer ids still to process (the work queue). */
+  manufacturerIds: number[];
+  /** Index of the NEXT manufacturer to process in manufacturerIds. */
+  index: number;
+  /** Running totals for observability. */
+  manufacturersDone: number;
+  modelsDone: number;
+  generationsDone: number;
+}
+
+/** Init step output: the full state above, ready to loop. */
+export interface ReferenceInitOutput extends ReferenceSyncState {
+  hasMore: boolean;
+}
+
+/** Per-manufacturer step output: advanced index + updated counters. */
+export interface ReferenceStepOutput extends ReferenceSyncState {
+  hasMore: boolean;
+}

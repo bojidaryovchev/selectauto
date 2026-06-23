@@ -25,7 +25,8 @@ export interface Schedules {
 export function createSchedules(args: {
   schedulerRoleArn: pulumi.Input<string>;
   combinedHourlySyncArn: pulumi.Input<string>;
-  syncReferenceDataArn: pulumi.Input<string>;
+  /** The timeout-proof reference-sync STATE MACHINE arn (not the legacy Lambda). */
+  referenceSyncArn: pulumi.Input<string>;
 }): Schedules {
   // --- 1. Hourly combined sync ---
   const hourlyCombinedSync = new aws.scheduler.Schedule("hourly-combined-sync", {
@@ -40,16 +41,18 @@ export function createSchedules(args: {
     },
   });
 
-  // --- 2. Daily reference sync (optional) ---
-  // Non-forced: the handler skips work if reference data already exists.
+  // --- 2. Daily reference sync (timeout-proof state machine) ---
+  // Starts the reference-sync loop. ReferenceInit re-upserts manufacturers each
+  // run (cheap, idempotent) and the loop refreshes models/generations. Skips
+  // empty manufacturers by default (includeEmpty defaults false).
   const dailyReferenceSync = new aws.scheduler.Schedule("daily-reference-sync", {
     name: `${namePrefix}-daily-reference-sync`,
     scheduleExpression: config.dailyReferenceSyncScheduleExpression, // e.g. rate(1 day)
     flexibleTimeWindow: { mode: "OFF" },
     target: {
-      arn: args.syncReferenceDataArn,
+      arn: args.referenceSyncArn,
       roleArn: args.schedulerRoleArn,
-      input: JSON.stringify({ force: false }),
+      input: JSON.stringify({ includeEmpty: false }),
     },
   });
 

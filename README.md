@@ -101,7 +101,7 @@ flowchart LR
 | 1. Full inventory backfill | Manual | `/cars` (no minutes, per_page=1000) | `fullInventoryBackfill` |
 | 2. Hourly active cars | EventBridge `rate(1 hour)` | `/cars?minutes=75&per_page=1000` | `hourlyCarsSync` (via combined) |
 | 3. Hourly archived lots | After cars | `/archived-lots?minutes=75&per_page=1000` | `archivedLotsSync` (via combined) |
-| 4. Reference data | Manual + daily | `/manufacturers/cars`, `/models/{id}/cars`, `/generations/{id}/cars` | `syncReferenceData` Lambda |
+| 4. Reference data | Manual + daily | `/manufacturers/cars`, `/models/{id}/cars`, `/generations/{id}/cars` | `referenceSync` SM (loop) / `syncReferenceData` Lambda (tests) |
 | 5. Detail refresh | Internal, via SQS FIFO queue | `/search-lot/{lot}/{domain}` or `/search-vin/{vin}` | `refreshListingDetail` worker |
 
 ---
@@ -267,16 +267,26 @@ windows reprocessing the same records is harmless.
 
 ### Reference data
 
-Runs daily via EventBridge (non-forced: it **skips** if manufacturers already
-exist). Force a full refresh by invoking the Lambda with `{ "force": true }`:
+The daily EventBridge schedule starts the **`referenceSync` state machine** (the
+timeout-proof loop). To run the full catalog manually, or after a partial run:
 
 ```powershell
-# PowerShell mangles inline JSON quotes for native CLIs — pass via a file.
-'{"force":true}' | Out-File -Encoding ascii payload.json
+# Get the state machine ARN (run in infra/):
+$arn = pulumi stack output stateMachineArns | ConvertFrom-Json | Select -Expand referenceSync
+'{"includeEmpty":false}' | Out-File -Encoding ascii ref.json
+aws stepfunctions start-execution --state-machine-arn $arn --input file://ref.json
+Remove-Item ref.json
+```
+
+**For a quick test on a few brands**, use the legacy single Lambda with a bound:
+```powershell
+'{"force":true,"maxManufacturers":5}' | Out-File -Encoding ascii payload.json
 aws lambda invoke --function-name auctions-ingestion-dev-syncReferenceData `
   --payload file://payload.json --cli-binary-format raw-in-base64-out out.json
 Remove-Item payload.json
 ```
+
+See [Reference-sync scaling](#reference-sync-scaling) for the difference.
 
 ### Detail refresh (internal, queued)
 
@@ -512,12 +522,29 @@ Lambda.
 
 ---
 
-## Reference-sync scaling (known limitation)
+## Reference-sync scaling
 
-`syncReferenceData` walks manufacturers → models → generations at 1 req/sec in a
-single Lambda. For the full catalog that can exceed the 15-min limit. v1 supports
-`{ "maxManufacturers": N }` to bound one invocation; a future version should move
-this into its own Step Functions loop (same pattern as the page loops).
+The full catalog (~424 manufacturers, ~5.5k models at 1 req/sec ≈ 1 hour) exceeds
+a single Lambda's 15-min limit, so there are **two** ways to sync reference data:
+
+- **`referenceSync` state machine (use this for the full catalog).** A Step
+  Functions loop that processes **one manufacturer per invocation** (its models +
+  generations) with a 1s `Wait` between — so no single Lambda runs long. It's
+  resumable via `sync_runs`, and **skips manufacturers with `cars_qty = 0` by
+  default** (~3/4 of the catalog has no cars), roughly halving the work. This is
+  what the daily schedule triggers. Start it manually:
+  ```powershell
+  $arn = pulumi stack output stateMachineArns | ConvertFrom-Json | Select -Expand referenceSync   # in infra/
+  '{"includeEmpty":false}' | Out-File -Encoding ascii ref.json
+  aws stepfunctions start-execution --state-machine-arn $arn --input file://ref.json
+  Remove-Item ref.json
+  ```
+  Pass `{"includeEmpty":true}` to also expand zero-car manufacturers.
+
+- **`syncReferenceData` Lambda (quick tests only).** Does the whole walk in one
+  invocation; bound it with `{ "maxManufacturers": N }` so it finishes fast. Good
+  for verifying mappings on a few brands; not for the full catalog (it'll time
+  out). See "Operating the flows → Reference data".
 
 ---
 

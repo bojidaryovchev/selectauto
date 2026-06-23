@@ -79,17 +79,13 @@ new aws.iam.RolePolicy("ingestion-sfn-nested-exec", {
 // 5. State machines (backfill, hourly cars, archived lots, combined).
 const stateMachines = createStateMachines(lambdas, sfnRole.arn);
 
-// 6. EventBridge Scheduler role + schedules.
-const schedulerRole = createSchedulerRole(
-  // Scheduler starts the combined machine...
-  [stateMachines.combinedHourlySync.arn],
-  // ...and invokes the reference-sync Lambda.
-  [lambdas.syncReferenceData.arn],
-);
+// 6. EventBridge Scheduler role + schedules. Both schedules start a state
+//    machine (hourly combined, daily reference loop) — no Lambda targets.
+const schedulerRole = createSchedulerRole([stateMachines.combinedHourlySync.arn, stateMachines.referenceSync.arn]);
 const schedules = createSchedules({
   schedulerRoleArn: schedulerRole.arn,
   combinedHourlySyncArn: stateMachines.combinedHourlySync.arn,
-  syncReferenceDataArn: lambdas.syncReferenceData.arn,
+  referenceSyncArn: stateMachines.referenceSync.arn,
 });
 
 /* ===========================================================================
@@ -105,6 +101,7 @@ export const stateMachineArns = {
   hourlyCarsSync: stateMachines.hourlyCarsSync.arn,
   archivedLotsSync: stateMachines.archivedLotsSync.arn,
   combinedHourlySync: stateMachines.combinedHourlySync.arn,
+  referenceSync: stateMachines.referenceSync.arn,
 };
 
 // Lambda function names.
@@ -112,6 +109,9 @@ export const lambdaNames = {
   syncCarsPage: lambdas.syncCarsPage.name,
   syncArchivedLotsPage: lambdas.syncArchivedLotsPage.name,
   syncReferenceData: lambdas.syncReferenceData.name,
+  referenceInit: lambdas.referenceInit.name,
+  referenceManufacturer: lambdas.referenceManufacturer.name,
+  referenceFinalize: lambdas.referenceFinalize.name,
   refreshListingDetail: lambdas.refreshListingDetail.name,
   createSyncRun: lambdas.createSyncRun.name,
   finalizeSyncRun: lambdas.finalizeSyncRun.name,

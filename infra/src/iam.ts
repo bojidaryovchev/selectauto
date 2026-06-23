@@ -155,11 +155,11 @@ export function createStepFunctionsRole(lambdaArns: pulumi.Output<string>[]): aw
 
 /**
  * Create the EventBridge Scheduler role. Scoped to start exactly the given
- * Step Functions state machine ARNs (and invoke the reference-sync Lambda).
+ * Step Functions state machine ARNs (both schedules target state machines).
  */
 export function createSchedulerRole(
   stateMachineArns: pulumi.Output<string>[],
-  lambdaArns: pulumi.Output<string>[],
+  lambdaArns: pulumi.Output<string>[] = [],
 ): aws.iam.Role {
   const schedulerRole = new aws.iam.Role("ingestion-scheduler-role", {
     name: `${namePrefix}-scheduler-role`,
@@ -186,11 +186,17 @@ export function createSchedulerRole(
           Action: ["states:StartExecution"],
           Resource: stateMachineArns,
         },
-        {
-          Effect: "Allow",
-          Action: ["lambda:InvokeFunction"],
-          Resource: lambdaArns.flatMap((arn) => [arn, pulumi.interpolate`${arn}:*`]),
-        },
+        // Only include the Lambda-invoke statement if any Lambda targets exist
+        // (an empty Resource array is an invalid IAM policy).
+        ...(lambdaArns.length > 0
+          ? [
+              {
+                Effect: "Allow",
+                Action: ["lambda:InvokeFunction"],
+                Resource: lambdaArns.flatMap((arn) => [arn, pulumi.interpolate`${arn}:*`]),
+              },
+            ]
+          : []),
       ],
     }),
   });

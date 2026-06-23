@@ -30,7 +30,12 @@ export interface LambdaSet {
   // Merged fetch+write per page (replaces the old split fetch/upsert/archive fns).
   syncCarsPage: aws.lambda.Function;
   syncArchivedLotsPage: aws.lambda.Function;
+  // Legacy single-Lambda reference sync (bounded via maxManufacturers; quick tests).
   syncReferenceData: aws.lambda.Function;
+  // Timeout-proof reference sync: Step Functions loop, one manufacturer per step.
+  referenceInit: aws.lambda.Function;
+  referenceManufacturer: aws.lambda.Function;
+  referenceFinalize: aws.lambda.Function;
   refreshListingDetail: aws.lambda.Function;
   createSyncRun: aws.lambda.Function;
   finalizeSyncRun: aws.lambda.Function;
@@ -137,12 +142,37 @@ export function createLambdas(
       timeoutSeconds: 300,
       memoryMb: 512,
     }),
-    // Reference sync walks many endpoints at 1 req/sec — give it the max timeout.
+    // Legacy single-Lambda reference sync (use maxManufacturers for quick tests;
+    // the full catalog can exceed 15 min — use the looped state machine instead).
     syncReferenceData: makeFn({
       name: "syncReferenceData",
       bundleFile: "syncReferenceData.js",
       timeoutSeconds: 900,
       memoryMb: 512,
+    }),
+    // Looped reference sync — 3 handlers from the same bundle. Each step is short
+    // (one manufacturer's models+generations), so modest timeouts suffice.
+    referenceInit: makeFn({
+      name: "referenceInit",
+      bundleFile: "syncReferenceData.js",
+      exportName: "referenceInitHandler",
+      timeoutSeconds: 60,
+      memoryMb: 256,
+    }),
+    referenceManufacturer: makeFn({
+      name: "referenceManufacturer",
+      bundleFile: "syncReferenceData.js",
+      exportName: "referenceManufacturerHandler",
+      // One manufacturer = up to ~dozens of model+generation calls at 1 req/sec.
+      // 300s covers even the largest manufacturer comfortably.
+      timeoutSeconds: 300,
+      memoryMb: 256,
+    }),
+    referenceFinalize: makeFn({
+      name: "referenceFinalize",
+      bundleFile: "syncReferenceData.js",
+      exportName: "referenceFinalizeHandler",
+      timeoutSeconds: 30,
     }),
     // Detail-refresh SQS drain worker. reservedConcurrency=1 guarantees only one
     // copy ever runs, so no number of enqueued user requests can exceed the
