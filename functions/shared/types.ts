@@ -82,7 +82,11 @@ export interface ApiLot {
   [key: string]: unknown;
 }
 
-/** A car record from `/api/cars` (and `/api/archived-lots`, same shape assumed). */
+/**
+ * A car record from `/api/cars` (and the detail endpoints, which return the same
+ * car+lots shape). NOTE: `/api/archived-lots` does NOT use this shape — it
+ * returns flat `ApiArchivedLot` records (see below).
+ */
 export interface ApiCar {
   id?: number | null; // -> cars.external_car_id
   year?: number | null;

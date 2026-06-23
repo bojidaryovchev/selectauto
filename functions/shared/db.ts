@@ -242,15 +242,25 @@ export async function archiveLots(rawLots: ApiArchivedLot[]): Promise<number> {
       const lot = normalizeArchivedLot(rawLot);
       if (lot.lotNumber === null || lot.domainId === null) continue;
 
+      // The archived-lots payload carries the AuctionsAPI external car id
+      // (lot.externalCarId). Our auction_lots.car_id is a LOCAL FK to cars.id,
+      // so we resolve it via a subquery on cars.external_car_id. If the car
+      // isn't in our DB yet, the subquery yields NULL and COALESCE keeps any
+      // existing link (on conflict) or leaves it NULL (on fresh insert).
       await client.query(
         `INSERT INTO auction_lots
-           (external_lot_id, lot_number, domain_id, domain_name, status,
+           (external_lot_id, car_id, lot_number, domain_id, domain_name, status,
             bid_price, buy_now_price, final_bid, sale_date,
             archived, archived_at, raw_json, updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, TRUE, COALESCE($10::timestamptz, now()), $11, now())
+         VALUES (
+            $1,
+            (SELECT id FROM cars WHERE external_car_id = $2),
+            $3,$4,$5,$6,$7,$8,$9,$10,
+            TRUE, COALESCE($11::timestamptz, now()), $12, now())
          ON CONFLICT (domain_id, lot_number) DO UPDATE SET
            archived = TRUE,
            archived_at = COALESCE(auction_lots.archived_at, EXCLUDED.archived_at, now()),
+           car_id = COALESCE(EXCLUDED.car_id, auction_lots.car_id),
            status = EXCLUDED.status,
            bid_price = COALESCE(EXCLUDED.bid_price, auction_lots.bid_price),
            buy_now_price = COALESCE(EXCLUDED.buy_now_price, auction_lots.buy_now_price),
@@ -260,6 +270,7 @@ export async function archiveLots(rawLots: ApiArchivedLot[]): Promise<number> {
            updated_at = now()`,
         [
           lot.externalLotId,
+          lot.externalCarId,
           lot.lotNumber,
           lot.domainId,
           lot.domainName,

@@ -52,6 +52,12 @@ export const handler = async (
 
   try {
     // Skip if we already have reference data and not forced.
+    // NOTE: this gate is coarse — it checks PRESENCE, not COMPLETENESS. If a
+    // prior run inserted some manufacturers then died (timeout / maxManufacturers
+    // / API error), this returns early and the catalog stays half-synced until
+    // someone runs with { force: true }. Acceptable for v1; the real fix is to
+    // move reference sync into its own Step Functions loop (see README
+    // "Reference-sync scaling"). Run with force:true after any partial failure.
     if (!input.force && (await countManufacturers()) > 0) {
       await updateSyncRun(syncRunId, { status: "succeeded", finished: true });
       log.info("reference_sync_skipped", { reason: "data_exists" });

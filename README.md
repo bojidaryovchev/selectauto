@@ -28,6 +28,7 @@ EventBridge Scheduler + Secrets Manager + CloudWatch**.
 │   │   ├── normalize.ts         # Raw API -> DB row shapes (keeps raw_json)
 │   │   ├── pagination.ts        # Loop stop-conditions
 │   │   ├── detailRefresh.ts     # Shared fetch+upsert for one listing
+│   │   ├── logger.ts            # Structured JSON logger + timing helper
 │   │   └── syncRun.ts           # sync_runs lifecycle + resume helpers
 │   ├── syncCarsPage/handler.ts          # fetch + upsert one /cars page (merged)
 │   ├── syncArchivedLotsPage/handler.ts  # fetch + archive one /archived-lots page (merged)
@@ -139,9 +140,12 @@ reprocessing. See [db/schema.ts](db/schema.ts) and
 rely on VIN alone for identity (VIN can be missing or duplicated); VIN is stored
 and indexed for lookup only.
 
-**Archiving never hard-deletes:** `archiveLots` sets `archived = TRUE` +
-`archived_at` (preserving the upstream archive time) and updates
-status/prices/sale_date.
+**Archiving never hard-deletes:** `archiveLots` upserts on `(domain_id,
+lot_number)` — it sets `archived = TRUE` + `archived_at` (preserving the upstream
+archive time) and updates status/prices/sale_date on a matching row, or **inserts
+the lot as archived** if we haven't seen it yet (so the archive signal is never
+lost). It also links `car_id` to a local `cars` row when one exists for the
+archived lot's external car id.
 
 ---
 
@@ -398,7 +402,11 @@ it directly for sync health.
 **Step Functions** log executions to CloudWatch at `ERROR` level with execution
 data, and the visual graph shows per-state timing in the console.
 
-**Set `LOG_LEVEL=debug`** (Lambda env var) to enable `logger.debug` lines.
+**Enabling DEBUG logs takes two changes** (not just one): set the `LOG_LEVEL=debug`
+env var **and** lower the Lambda's `applicationLogLevel` from `INFO` to `DEBUG` in
+[infra/src/lambdas.ts](infra/src/lambdas.ts), then redeploy. The env var alone
+won't surface debug lines — the nodejs20.x runtime drops anything below the
+configured `applicationLogLevel` before it reaches CloudWatch.
 
 > Not included by design (chosen scope): X-Ray tracing, CloudWatch alarms, and a
 > dashboard. To add later: set `tracingConfig: { mode: "Active" }` on the Lambdas

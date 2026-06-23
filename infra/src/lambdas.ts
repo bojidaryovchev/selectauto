@@ -84,13 +84,20 @@ export function createLambdas(
       {
         name: fnName,
         runtime: "nodejs20.x",
-        // Bundle is a single ESM file; we ship it as index.mjs.
+        // Bundle is a single ESM file; we ship it as <base>.mjs.
         handler: `${path.basename(opts.bundleFile, ".js")}.${opts.exportName ?? "handler"}`,
         role,
         code: new pulumi.asset.AssetArchive({
-          // Ship just this function's bundle (+ its sourcemap if present).
+          // Ship the bundle AND its sourcemap so NODE_OPTIONS=--enable-source-maps
+          // produces readable stack traces. The bundle's internal
+          // `//# sourceMappingURL=<base>.js.map` comment (esbuild) references the
+          // .js.map name, so we ship the map under that exact name next to the
+          // .mjs — NOT renamed to .mjs.map, or Node won't find it.
           [`${path.basename(opts.bundleFile, ".js")}.mjs`]: new pulumi.asset.FileAsset(
             path.join(FUNCTIONS_DIST, opts.bundleFile),
+          ),
+          [`${path.basename(opts.bundleFile, ".js")}.js.map`]: new pulumi.asset.FileAsset(
+            path.join(FUNCTIONS_DIST, `${opts.bundleFile}.map`),
           ),
         }),
         timeout: opts.timeoutSeconds ?? 60,

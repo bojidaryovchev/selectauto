@@ -19,6 +19,9 @@ import { createSchedules } from "./schedules";
 import { createSecrets, secretArns } from "./secrets";
 import { createStateMachines } from "./step-functions";
 
+// Current AWS account ID (for scoping IAM resource ARNs to this account).
+const accountId = aws.getCallerIdentityOutput({}).accountId;
+
 // 1. Secrets Manager secrets (AUCTIONS_API_KEY, NEON_DATABASE_URL).
 const secrets = createSecrets();
 
@@ -64,9 +67,10 @@ new aws.iam.RolePolicy("ingestion-sfn-nested-exec", {
       },
       {
         // Required for the .sync integration to receive completion events.
+        // Scoped to the managed rule in THIS account/region (not a wildcard).
         Effect: "Allow",
         Action: ["events:PutTargets", "events:PutRule", "events:DescribeRule"],
-        Resource: pulumi.interpolate`arn:aws:events:${aws.config.region}:*:rule/StepFunctionsGetEventsForStepFunctionsExecutionRule`,
+        Resource: pulumi.interpolate`arn:aws:events:${aws.config.region}:${accountId}:rule/StepFunctionsGetEventsForStepFunctionsExecutionRule`,
       },
     ],
   }),

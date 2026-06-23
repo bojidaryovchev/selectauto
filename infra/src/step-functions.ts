@@ -124,10 +124,12 @@ function buildPaginatedDefinition(args: {
         Comment: "Paginated, rate-limited AuctionsAPI ingestion loop",
         StartAt: "InitSyncRun",
         States: {
-          // 1. InitSyncRun — create the sync_runs row, merge syncRunId into state.
+          // 1. InitSyncRun — create the sync_runs row. createHandler returns the
+          // FULL loop-control envelope (flowType, mode, page, perPage, minutes,
+          // syncRunId, counters), and OutputPath REPLACES the state with it — so
+          // every field IncrementPage later reads is guaranteed present.
           InitSyncRun: {
             ...lambdaTask({ fnArn: createArn, resultPath: "$.init", catchTo: "MarkSyncFailed" }),
-            // Pull the handler's returned state (with syncRunId) up to the root.
             OutputPath: "$.init.value",
             Next: "SyncPage",
           },
@@ -189,8 +191,12 @@ function buildPaginatedDefinition(args: {
           Succeed: { Type: "Succeed" },
 
           // 9. MarkSyncFailed — record the failure, then fail the execution.
+          // Its own Catch routes to Fail too, so even if the fail-handler Lambda
+          // errors (e.g. DB unreachable) the execution still terminates in Fail
+          // rather than dying on the secondary error.
           MarkSyncFailed: {
             ...lambdaTask({ fnArn: failArn, resultPath: "$.failResult" }),
+            Catch: [{ ErrorEquals: ["States.ALL"], ResultPath: "$.failError", Next: "Fail" }],
             Next: "Fail",
           },
 
