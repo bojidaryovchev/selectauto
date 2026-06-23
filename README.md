@@ -69,7 +69,7 @@ flowchart TD
     Backfill -.->|shared paginated loop| Loop["Paginated loop<br/>(see below)"]
 
     Backend -- "enqueue" --> Q["SQS FIFO<br/>(content dedup)"]
-    Q --> Worker["refreshListingDetail worker<br/>(reservedConcurrency=1, ~1 req/sec)"]
+    Q --> Worker["refreshListingDetail worker<br/>(reservedConcurrency=1, max ~1 req per sec)"]
 
     Loop -- "x-api-key, 1 req/sec" --> API["AuctionsAPI"]
     RefLambda -- "x-api-key, 1 req/sec" --> API
