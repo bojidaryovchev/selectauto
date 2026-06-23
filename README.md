@@ -301,13 +301,18 @@ messages retry up to 5×, then land in the `-detail-refresh-dlq`.
 
 #### When should the backend enqueue a refresh?
 
-The hourly sync already keeps **everything** reasonably fresh (it re-pulls
-anything AuctionsAPI changed in the last 75 min). So the backend should enqueue a
-refresh only for these **exceptions** — not on every page view:
+In normal operation a row is **complete**: whatever AuctionsAPI returned, we
+stored (any nulls you see — e.g. `sale_date: null` — are the real upstream
+values, not missing data). The bulk sync also keeps everything reasonably fresh
+(it re-pulls anything changed in the last 75 min). So a manual refresh is only
+useful for a few **specific** cases — not "broken data", which the happy path
+doesn't produce:
 
-- **Stale detail page.** On a listing page, if `auction_lots.updated_at` is older
-  than a threshold (e.g. 30 min), enqueue `{ lot, domain }` and render the
-  current row anyway — the refresh lands in seconds, no need to block the page.
+- **Staleness (the main one).** A listing was last synced hours ago (it didn't
+  change inside the 75-min window), so its bid/price may have moved on
+  AuctionsAPI since. On a detail page, if `auction_lots.updated_at` is older than
+  a threshold (e.g. 30 min), enqueue `{ lot, domain }` and render the current row
+  anyway — the refresh lands in seconds.
 - **Cache miss on search.** A user searches a VIN/lot you don't have yet (brand
   new, or never synced). Enqueue `{ vin }` (or `{ lot, domain }`) so the catalog
   self-heals for listings people actually look for; show a "loading" state and
@@ -316,8 +321,13 @@ refresh only for these **exceptions** — not on every page view:
   `prices` history array comes **only** from the detail endpoints. If a page
   shows a price-over-time chart and the row's `raw_json` has no `prices`, enqueue
   a refresh (worker calls with `prices_history=1`).
-- **Looks broken.** A row with a missing image/field from an earlier partial sync
-  — an admin "refresh this listing" button enqueues a targeted re-pull.
+
+> **What a refresh can't fix.** If a record is entirely **absent** (e.g. the
+> initial backfill failed partway and never reached it), that's a job for
+> resuming the backfill, not a per-listing refresh. And we can only detect
+> problems visible in our own rows (null/stale/missing) — we have no way to know
+> if AuctionsAPI served us subtly-wrong-but-present data. There is no correctness
+> oracle beyond the supplier.
 
 **Guard against waste.** Enqueueing is cheap, but each message still costs one of
 your ~1 req/sec budget. Two rules keep it sane: (1) only enqueue past a staleness
@@ -347,7 +357,14 @@ API call, not many. Do **not** enqueue on every request "just in case".
 [functions/shared/logger.ts](functions/shared/logger.ts), and the Lambdas run
 with the nodejs20.x **native JSON `LoggingConfig`** (`logFormat: JSON`,
 `applicationLogLevel: INFO`). Each line carries correlation context
-(`flowType`, `syncRunId`, `page`, `mode`) so you can trace a whole run.
+(`flowType`, `syncRunId`, `page`, `mode`) so you can trace a whole run. INFO,
+WARN and ERROR all reach CloudWatch (DEBUG is gated behind `LOG_LEVEL=debug`).
+
+**Each Lambda has its own log group** (`/aws/lambda/<prefix>-<name>`). The
+interesting INFO logs (page timings, record counts) live in
+`...-syncCarsPage` / `...-syncArchivedLotsPage` — **not** `...-markSyncFailed`,
+which only runs on the failure path and is near-silent. Use Logs Insights across
+groups, or pick the right group, when looking for activity.
 
 **Per-step timing.** `logger.time(name, fn)` wraps each fetch/upsert/archive
 and emits `durationMs`. Example real line:
