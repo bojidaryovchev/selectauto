@@ -8,9 +8,6 @@ directly — AuctionsAPI is treated purely as an external supplier sync API.
 Built with **Pulumi (TypeScript) + AWS Lambda (Node 20) + Step Functions +
 EventBridge Scheduler + Secrets Manager + CloudWatch**.
 
-> **Field mappings in this repo were verified against the LIVE AuctionsAPI**
-> (June 2026), not guessed. See [Verified API facts](#verified-api-facts).
-
 ---
 
 ## Contents / project structure
@@ -92,37 +89,18 @@ EventBridge Scheduler + Secrets Manager + CloudWatch**.
 
 ---
 
-## Verified API facts
+## API notes
 
-These were confirmed by calling the live API, and the code relies on them:
+Field mappings were verified against the live API and documented at the code that
+handles them ([auctionsApiClient.ts](functions/shared/auctionsApiClient.ts),
+[normalize.ts](functions/shared/normalize.ts), [types.ts](functions/shared/types.ts)).
+Two non-obvious behaviours worth knowing before editing those files:
 
-- **Auth:** header `x-api-key: <key>` (not Bearer). Base URL `https://auctionsapi.com/api`.
-- **Pagination envelope** is Laravel `simplePaginate`:
-  ```json
-  { "data": [...],
-    "links": { "first": "...", "last": null, "prev": null, "next": "...|null" },
-    "meta":  { "current_page": 1, "from": 1, "path": "...", "per_page": 1000, "to": 1000 } }
-  ```
-  **There is NO `last_page`/`total`.** The authoritative next-page signal is
-  **`links.next`** (a URL, or `null` on the last page). A past-the-end page
-  returns **HTTP 200 with empty `data` and `links.next: null`**, so the loop
-  terminates cleanly. The client also keeps an "empty/short page ⇒ stop" fallback.
-- **`/cars`** returns car records with a nested **`lots[]`** array. We split these
-  into `cars` + `auction_lots`. In `/cars`, `bid`/`buy_now`/`final_bid` are
-  scalars (e.g. `buy_now: 0`).
-- **`/archived-lots`** returns a **DIFFERENT, FLAT shape** — not car+lots:
-  `{ archived_at, lot_id, car_id, vin, lot, domain:{id,name}, status:{name},
-  bid:{value,updated_at}, buy_now:{value}, sale_date:{value}, final_bid:{value} }`.
-  Here the prices are `{ value }` wrappers. The normalizer handles both forms.
-- **Reference endpoints** return `{ data: [...] }`:
-  - manufacturers: `{ id, name, cars_qty, image, models_qty }`
-  - models: `{ id, name, cars_qty, manufacturer_id, generations_qty }`
-  - generations: `{ id, name, cars_qty, from_year, to_year, model_id }`
-- **Detail** (`/search-lot`, `/search-vin`) returns `{ data: <car object> }` (same
-  `/cars` shape) with `lots[].prices` (price history array) — stored in `raw_json`.
-
-The few remaining `TODO` comments concern only price **units/currency** semantics
-(values are integers; we pass them through) — not field names.
+- **Pagination has no `last_page`/`total`** (Laravel `simplePaginate`). The loop
+  stops when `links.next` is `null` or the page is empty — never on a page count.
+- **`/cars` and `/archived-lots` return different shapes.** `/cars` is a car with
+  a nested `lots[]`; `/archived-lots` is flat lot records with `{value}`-wrapped
+  prices. They have separate normalizers.
 
 ---
 
