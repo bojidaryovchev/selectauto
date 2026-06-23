@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS auction_lots (
   domain_name       TEXT,
   status            TEXT,
   sale_date         TIMESTAMPTZ,
-  odometer_km       INTEGER,
+  odometer_km       BIGINT,
   bid_price         BIGINT,
   buy_now_price     BIGINT,
   final_bid         BIGINT,
@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS sync_runs (
   finished_at         TIMESTAMPTZ,
   pages_processed     INTEGER NOT NULL DEFAULT 0,
   last_page_processed INTEGER NOT NULL DEFAULT 0,
-  records_processed   INTEGER NOT NULL DEFAULT 0,
+  records_processed   BIGINT  NOT NULL DEFAULT 0,
   error_message       TEXT,
   metadata_json       JSONB
 );

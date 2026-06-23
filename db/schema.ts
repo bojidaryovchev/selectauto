@@ -77,7 +77,10 @@ export const auctionLots = pgTable(
     domainName: text("domain_name"),
     status: text("status"),
     saleDate: timestamp("sale_date", { withTimezone: true }),
-    odometerKm: integer("odometer_km"),
+    // BIGINT, not INTEGER: AuctionsAPI sometimes returns odometer values far
+    // above the INT max (2,147,483,647) — e.g. garbage/sentinel readings like
+    // 2553571660 — which overflow a plain integer column.
+    odometerKm: bigint("odometer_km", { mode: "number" }),
     bidPrice: bigint("bid_price", { mode: "number" }),
     buyNowPrice: bigint("buy_now_price", { mode: "number" }),
     finalBid: bigint("final_bid", { mode: "number" }),
@@ -182,7 +185,8 @@ export const syncRuns = pgTable(
     finishedAt: timestamp("finished_at", { withTimezone: true }),
     pagesProcessed: integer("pages_processed").default(0).notNull(),
     lastPageProcessed: integer("last_page_processed").default(0).notNull(),
-    recordsProcessed: integer("records_processed").default(0).notNull(),
+    // BIGINT: a long-lived / large backfill can accumulate more than INT-max records.
+    recordsProcessed: bigint("records_processed", { mode: "number" }).default(0).notNull(),
     errorMessage: text("error_message"),
     metadataJson: jsonb("metadata_json"),
   },

@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "migrate": "node migrate.mjs",
+    "migrate": "node --env-file-if-exists=../.env migrate.mjs",
+    "migrate:status": "node --env-file-if-exists=../.env migrate.mjs --status",
     "type-check": "tsc --noEmit",
     "db:studio": "drizzle-kit studio"
   },

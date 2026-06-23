@@ -6,6 +6,7 @@
   "scripts": {
     "build:functions": "npm --prefix functions run build",
     "migrate": "npm --prefix db run migrate",
+    "migrate:status": "npm --prefix db run migrate:status",
     "deploy": "npm run build:functions && npm --prefix infra run up",
     "preview": "npm run build:functions && npm --prefix infra run preview",
     "type-check": "npm --prefix functions run type-check && npm --prefix infra run type-check && npm --prefix db run type-check",
@@ -22,5 +23,9 @@
     "typescript": "5.9.3",
     "typescript-eslint": "8.44.0"
   },
-  "workspaces": ["db", "functions", "infra"]
+  "workspaces": [
+    "db",
+    "functions",
+    "infra"
+  ]
 }

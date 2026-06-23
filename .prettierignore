@@ -4,3 +4,5 @@ package-lock.json
 # Markdown is hand-formatted (tables, ASCII diagrams, single-line log examples);
 # Prettier's markdown reflow would mangle them.
 *.md
+# Sample API payloads are kept faithful to the real AuctionsAPI response shape.
+docs/

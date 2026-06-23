@@ -208,12 +208,19 @@ pulumi config set --secret auctions-ingestion-infra:neonDatabaseUrl <NEON_POOLED
 > with `?sslmode=require`. The pooled endpoint (PgBouncer) is what keeps many
 > short-lived Lambda invocations from exhausting Postgres backends.
 
-### 4. Run the database migration
+### 4. Run the database migrations
+
+Put `NEON_DATABASE_URL` in a repo-root `.env` (copy `.env.example`) — the migrate
+scripts auto-load it (`node --env-file-if-exists=../.env`), so no manual export:
 
 ```powershell
-$env:NEON_DATABASE_URL = "<NEON_POOLED_URL>"
-npm run migrate            # applies db/migrations/*.sql idempotently
+npm run migrate:status     # list applied vs pending migrations (applies nothing)
+npm run migrate            # apply all pending db/migrations/*.sql (idempotent)
 ```
+
+Migrations are tracked in a `_migrations` table and applied in lexical order;
+re-running only applies new files. (You can still override with an env var:
+`$env:NEON_DATABASE_URL = "<NEON_POOLED_URL>"; npm run migrate`.)
 
 ### 5. Deploy
 
