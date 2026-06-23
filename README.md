@@ -282,9 +282,36 @@ aws sqs send-message --queue-url $q `
   --message-body '{"vin":"WBA3B5G55FNS17722"}'
 ```
 
-From the backend, enqueue with the AWS SDK (`SQS.sendMessage`) to the same URL.
-Tune throughput vs. the bulk sync via the worker's `DETAIL_REFRESH_PACE_MS`
-env var. Failed messages retry up to 5×, then land in the `-detail-refresh-dlq`.
+From the backend, send a message to this queue URL with a JSON body matching the
+shape above and a fixed `MessageGroupId` (e.g. `auctionsapi`). Tune throughput
+vs. the bulk sync via the worker's `DETAIL_REFRESH_PACE_MS` env var. Failed
+messages retry up to 5×, then land in the `-detail-refresh-dlq`.
+
+#### When should the backend enqueue a refresh?
+
+The hourly sync already keeps **everything** reasonably fresh (it re-pulls
+anything AuctionsAPI changed in the last 75 min). So the backend should enqueue a
+refresh only for these **exceptions** — not on every page view:
+
+- **Stale detail page.** On a listing page, if `auction_lots.updated_at` is older
+  than a threshold (e.g. 30 min), enqueue `{ lot, domain }` and render the
+  current row anyway — the refresh lands in seconds, no need to block the page.
+- **Cache miss on search.** A user searches a VIN/lot you don't have yet (brand
+  new, or never synced). Enqueue `{ vin }` (or `{ lot, domain }`) so the catalog
+  self-heals for listings people actually look for; show a "loading" state and
+  re-query shortly after.
+- **Price history needed.** The bulk sync stores *current* prices only. The
+  `prices` history array comes **only** from the detail endpoints. If a page
+  shows a price-over-time chart and the row's `raw_json` has no `prices`, enqueue
+  a refresh (worker calls with `prices_history=1`).
+- **Looks broken.** A row with a missing image/field from an earlier partial sync
+  — an admin "refresh this listing" button enqueues a targeted re-pull.
+
+**Guard against waste.** Enqueueing is cheap, but each message still costs one of
+your ~1 req/sec budget. Two rules keep it sane: (1) only enqueue past a staleness
+threshold, never unconditionally; (2) the queue already deduplicates identical
+requests within ~5 min, so many users hitting the same stale listing cost **one**
+API call, not many. Do **not** enqueue on every request "just in case".
 
 ---
 
