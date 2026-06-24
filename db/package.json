@@ -7,7 +7,7 @@
     "migrate": "node --env-file-if-exists=../.env migrate.mjs",
     "migrate:status": "node --env-file-if-exists=../.env migrate.mjs --status",
     "type-check": "tsc --noEmit",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "node --env-file-if-exists=../.env ../node_modules/drizzle-kit/bin.cjs studio"
   },
   "dependencies": {
     "drizzle-orm": "0.38.3",
