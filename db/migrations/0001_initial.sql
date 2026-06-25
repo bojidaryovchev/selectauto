@@ -52,9 +52,9 @@ CREATE TABLE IF NOT EXISTS auction_lots (
   status            TEXT,
   sale_date         TIMESTAMPTZ,
   odometer_km       BIGINT,
-  bid_price         BIGINT,
-  buy_now_price     BIGINT,
-  final_bid         BIGINT,
+  bid_price         NUMERIC(14, 4),   -- prices can be fractional (e.g. 15530.14)
+  buy_now_price     NUMERIC(14, 4),
+  final_bid         NUMERIC(14, 4),
   buy_now           BOOLEAN,
   condition         TEXT,
   damage_main       TEXT,

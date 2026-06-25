@@ -16,6 +16,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgTable,
   serial,
   text,
@@ -81,9 +82,15 @@ export const auctionLots = pgTable(
     // above the INT max (2,147,483,647) — e.g. garbage/sentinel readings like
     // 2553571660 — which overflow a plain integer column.
     odometerKm: bigint("odometer_km", { mode: "number" }),
-    bidPrice: bigint("bid_price", { mode: "number" }),
-    buyNowPrice: bigint("buy_now_price", { mode: "number" }),
-    finalBid: bigint("final_bid", { mode: "number" }),
+    // NUMERIC, not BIGINT: AuctionsAPI sends FRACTIONAL prices (e.g. 15530.14,
+    // and even 51928.1213) which overflow/reject an integer column. precision 14
+    // / scale 4 covers any vehicle price without truncation. Drizzle returns
+    // NUMERIC as a string in selects (correct for money — no float rounding);
+    // the ingestion path uses raw pg and passes JS numbers, which pg serializes
+    // fine into NUMERIC.
+    bidPrice: numeric("bid_price", { precision: 14, scale: 4 }),
+    buyNowPrice: numeric("buy_now_price", { precision: 14, scale: 4 }),
+    finalBid: numeric("final_bid", { precision: 14, scale: 4 }),
     buyNow: boolean("buy_now"),
     condition: text("condition"),
     damageMain: text("damage_main"),

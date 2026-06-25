@@ -287,6 +287,22 @@ Migrations are tracked in a `_migrations` table and applied in lexical order;
 re-running only applies new files. (You can still override with an env var:
 `$env:NEON_DATABASE_URL = "<NEON_POOLED_URL>"; npm run migrate`.)
 
+> **If a migration is blocked or times out** (column-type changes rewrite the
+> whole table, which contends with running syncs on a large `auction_lots`):
+>
+> - **`canceling statement due to lock timeout` (55P03)** — a sync holds the
+>   table. Stop any running execution (Step Functions console), then clear stale
+>   connections in Neon and re-run `npm run migrate`:
+>   ```sql
+>   SELECT pg_terminate_backend(pid) FROM pg_stat_activity
+>   WHERE datname = current_database() AND pid <> pg_backend_pid() AND state <> 'idle';
+>   ```
+> - **`canceling statement due to statement timeout` (57014)** — the rewrite
+>   itself exceeded Neon's `statement_timeout`. Heavy table-rewrite migrations
+>   set `SET LOCAL statement_timeout = 0` to allow this; if you hit it on a new
+>   migration, add that line. Easiest is to run such migrations when no sync is
+>   active (briefly disable the hourly schedule).
+
 ### 5. Deploy
 
 ```powershell
