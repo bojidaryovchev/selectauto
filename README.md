@@ -45,7 +45,8 @@ EventBridge Scheduler + Secrets Manager + CloudWatch**.
 │   └── bootstrap-github-oidc.ps1     # one-time: GitHub Actions OIDC role
 │
 ├── scripts/start-backfill.ps1   # manually start the full backfill
-└── docs/sample-cars-response.json
+├── docs/sample-cars-response.json
+└── .env.example                 # NEON_DATABASE_URL etc. for local CLI tools (copy to .env)
 ```
 
 ---
@@ -104,6 +105,45 @@ flowchart LR
 | 4. Reference data | Manual + daily | `/manufacturers/cars`, `/models/{id}/cars`, `/generations/{id}/cars` | `referenceSync` SM (loop) / `syncReferenceData` Lambda (tests) |
 | 5. Detail refresh | Internal, via SQS FIFO queue | `/search-lot/{lot}/{domain}` or `/search-vin/{vin}` | `refreshListingDetail` worker |
 
+### State machines (what each one does)
+
+The flows above map to **5** Step Functions state machines (the two hourly flows
+share the `combinedHourlySync` orchestrator). Three are paginated workers that
+share one loop shape; one orchestrates the hourly pair; one is the reference loop.
+
+| Machine | Does | Trigger | Cadence |
+|---------|------|---------|---------|
+| `fullInventoryBackfill` | Full pull of **all** active cars (`/cars`, no `minutes`), page by page. | Manual (`start-backfill.ps1`) | once / on demand |
+| `hourlyCarsSync` | Incremental active-cars sync (`/cars?minutes=75`). | Run by `combinedHourlySync` | hourly |
+| `archivedLotsSync` | Incremental archived-lots sync (`/archived-lots?minutes=75`); marks lots `archived`, never deletes. | Run by `combinedHourlySync` | hourly |
+| `combinedHourlySync` | Runs `hourlyCarsSync` **then** `archivedLotsSync` sequentially (so they never share the 1 req/sec budget at once). | EventBridge `rate(1 hour)` | hourly |
+| `referenceSync` | Populates `manufacturers`/`vehicle_models`/`vehicle_generations`, one manufacturer per step (timeout-proof loop). | EventBridge `rate(1 day)` + manual | daily |
+
+**The three paginated workers share one loop** — see
+[Paginated loop](#paginated-loop-shared-by-backfill-hourly-cars-archived-lots)
+above. Each page is fetched **and** written in one Lambda (`SyncPage`); only
+small loop-control fields cross Step Functions state (never the page data).
+
+**`referenceSync` uses a list-loop instead** (iterates manufacturers, not pages):
+
+```mermaid
+flowchart LR
+    Init["ReferenceInit<br/>(upsert all manufacturers,<br/>build work-list)"] --> Has{"HasMore?"}
+    Has -- "no" --> Final["ReferenceFinalize"] --> Done(["Succeed"])
+    Has -- "yes" --> Step["SyncManufacturer<br/>(one mfg's models + generations)"]
+    Step --> Wait["Wait 1s<br/>(rate limit)"] --> Has
+    Step -. "any error" .-> Fail["MarkSyncFailed"] --> Failed(["Fail"])
+```
+
+**Shared lifecycle states (in every machine):**
+
+- **`InitSyncRun` / `ReferenceInit`** — insert a `sync_runs` row (`status='running'`)
+  and seed the loop state. This row is the checkpoint + audit record.
+- **`FinalizeSyncRun` / `ReferenceFinalize`** — mark the run `succeeded`.
+- **`MarkSyncFailed`** — on any error, write `status='failed'` + `error_message`
+  to that `sync_runs` row, then enter `Fail`. (So an `IngestionFailed` execution
+  means the error path worked — check `sync_runs.error_message` for the cause.)
+
 ---
 
 ## API notes
@@ -127,6 +167,19 @@ Tables: `cars`, `auction_lots`, `manufacturers`, `vehicle_models`,
 `vehicle_generations`, `sync_runs`. Every table stores `raw_json` for future
 reprocessing. See [db/schema.ts](db/schema.ts) and
 [db/migrations/0001_initial.sql](db/migrations/0001_initial.sql).
+
+**How the tables relate (important for writing queries).** AuctionsAPI ids are
+stored as `external_*` columns; local `id` columns are our own serials. The joins
+the app uses:
+
+- `auction_lots.car_id` → `cars.id` (a real FK; the only local-id FK).
+- `cars.manufacturer_id` → `manufacturers.external_id` — **NOT a foreign key**,
+  a value match on the AuctionsAPI external id. Likewise `cars.model_id` →
+  `vehicle_models.external_id` and `cars.generation_id` →
+  `vehicle_generations.external_id`. There are intentionally **no FK constraints**
+  here so cars can be ingested before reference data exists. The reference tables
+  start empty and are filled by the reference sync (Flow 4); until then those
+  joins return nothing, even though `cars.manufacturer_id` is populated.
 
 **Idempotency / unique keys (all upserts use `ON CONFLICT`):**
 
@@ -153,9 +206,15 @@ archived lot's external car id.
 
 - Node 20+, npm
 - Pulumi CLI, AWS CLI v2
-- An AWS account reachable via **SSO** (`aws sso login`), and a Neon project
+- A Neon project (Serverless Postgres)
+- **AWS access via SSO.** Configure a profile once with `aws configure sso` — the
+  profile name you pick is what `AWS_PROFILE` refers to throughout. Then
+  `aws sso login` before each session.
 - This repo uses the **S3 state backend + passphrase encryption** pattern (same
-  as the sibling `ecommerce-store` project), not Pulumi Cloud.
+  as the sibling `ecommerce-store` project), not Pulumi Cloud. You'll set a
+  `PULUMI_CONFIG_PASSPHRASE` during setup — **save it**: it's required for every
+  `pulumi up`/`preview`, and your encrypted config secrets are unrecoverable
+  without it.
 
 ---
 
@@ -211,7 +270,13 @@ pulumi config set --secret auctions-ingestion-infra:neonDatabaseUrl <NEON_POOLED
 ### 4. Run the database migrations
 
 Put `NEON_DATABASE_URL` in a repo-root `.env` (copy `.env.example`) — the migrate
-scripts auto-load it (`node --env-file-if-exists=../.env`), so no manual export:
+scripts auto-load it (`node --env-file-if-exists=../.env`), so no manual export.
+
+> This `.env` is **only** for local CLI tools on your machine (migrations,
+> `drizzle-kit studio`). It is **independent** of the Pulumi secret you set in
+> step 3 — the deployed Lambdas get their `NEON_DATABASE_URL` from Pulumi config,
+> not from this file. You're not configuring the same thing twice; they have
+> different consumers (your laptop vs. AWS).
 
 ```powershell
 npm run migrate:status     # list applied vs pending migrations (applies nothing)
@@ -239,6 +304,51 @@ build before deploying; `npm run preview` does the same for a dry run.
 > in CJS mode — so its internal imports are **extensionless** (`./config`, not
 > `./config.js`). Adding `.js` to infra imports breaks `pulumi up` with
 > `Cannot find module './config.js'`.
+
+---
+
+## First run (get data flowing)
+
+After deploying, populate the database in this order. Each step is safe to
+re-run (idempotent) and writes progress to `sync_runs`.
+
+```powershell
+$env:AWS_PROFILE = "your-sso-profile"
+$env:PULUMI_CONFIG_PASSPHRASE = "your-passphrase"   # start-backfill reads the ARN via pulumi
+
+# 1. Backfill all cars + lots (long-running; ~1815 pages at 1 req/sec).
+./scripts/start-backfill.ps1
+
+# 2. Populate reference tables (manufacturers/models/generations).
+$arn = (cd infra; pulumi stack output stateMachineArns | ConvertFrom-Json).referenceSync
+'{"includeEmpty":false}' | Out-File -Encoding ascii ref.json
+aws stepfunctions start-execution --state-machine-arn $arn --input file://ref.json
+Remove-Item ref.json
+```
+
+Watch progress in the **Step Functions console**, or in Neon:
+
+```sql
+-- run state (look for status='succeeded')
+SELECT id, flow_type, status, last_page_processed, records_processed
+FROM sync_runs ORDER BY id DESC LIMIT 5;
+
+-- row counts climbing
+SELECT (SELECT count(*) FROM cars)               AS cars,
+       (SELECT count(*) FROM auction_lots)       AS lots,
+       (SELECT count(*) FROM manufacturers)      AS manufacturers;
+```
+
+Once both finish, your cars resolve to names (this is the join the app uses):
+
+```sql
+SELECT m.name, count(*) AS cars
+FROM cars c JOIN manufacturers m ON m.external_id = c.manufacturer_id
+GROUP BY m.name ORDER BY cars DESC LIMIT 20;
+```
+
+After this, the **hourly schedule keeps cars/lots fresh and the daily schedule
+keeps reference data fresh automatically** — no manual steps in steady state.
 
 ---
 
@@ -278,7 +388,8 @@ aws stepfunctions start-execution --state-machine-arn $arn --input file://ref.js
 Remove-Item ref.json
 ```
 
-**For a quick test on a few brands**, use the legacy single Lambda with a bound:
+**For a quick test on a few brands**, use the single-Lambda `syncReferenceData`
+with a bound (kept for fast tests — not deprecated, just not for the full catalog):
 ```powershell
 '{"force":true,"maxManufacturers":5}' | Out-File -Encoding ascii payload.json
 aws lambda invoke --function-name auctions-ingestion-dev-syncReferenceData `
@@ -355,6 +466,85 @@ your ~1 req/sec budget. Two rules keep it sane: (1) only enqueue past a stalenes
 threshold, never unconditionally; (2) the queue already deduplicates identical
 requests within ~5 min, so many users hitting the same stale listing cost **one**
 API call, not many. Do **not** enqueue on every request "just in case".
+
+---
+
+## Backend integration (Next.js)
+
+The app backend interacts with this system in exactly **two** ways. It does
+**not** call AuctionsAPI, and it does **not** invoke any Lambda directly.
+
+```mermaid
+flowchart LR
+    NextRead["Next.js<br/>(read path)"] -- "Drizzle / pg query" --> Neon["Neon Postgres"]
+    NextWrite["Next.js<br/>(refresh path)"] -- "SQS sendMessage" --> Q["detail-refresh<br/>SQS FIFO"]
+    Q --> Worker["refreshListingDetail worker"] --> Neon
+```
+
+### 1. Read — query Neon directly (no middleman)
+
+Next.js runs on Node, so it queries Neon directly with the **same Drizzle schema
+this repo defines** ([db/schema.ts](db/schema.ts)) — no separate "data API"
+layer. Reads are always from our DB, never AuctionsAPI.
+
+```ts
+// Server component / route handler. Reuse db/schema.ts for end-to-end types.
+import { db } from "@/lib/db";
+import { auctionLots, cars, manufacturers } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
+
+const [lot] = await db
+  .select()
+  .from(auctionLots)
+  .where(and(eq(auctionLots.domainId, domainId), eq(auctionLots.lotNumber, lotNumber)))
+  .limit(1);
+
+// Reference names join by EXTERNAL id (not a FK) — see "Database":
+//   cars.manufacturer_id = manufacturers.external_id
+const rows = await db
+  .select({ title: cars.title, manufacturer: manufacturers.name })
+  .from(cars)
+  .leftJoin(manufacturers, eq(manufacturers.externalId, cars.manufacturerId));
+```
+
+Use Neon's **pooled** connection string (and the [serverless driver](https://neon.tech/docs/serverless/serverless-driver)
+or `pg`) so serverless/edge invocations don't exhaust Postgres backends.
+
+### 2. Refresh — enqueue to SQS (do NOT invoke a Lambda directly)
+
+To refresh a single stale/missing listing, send one message to the detail-refresh
+**SQS FIFO queue**. The single-concurrency worker drains it at ~1 req/sec, so no
+number of concurrent users can breach the rate limit (see
+[Detail refresh](#detail-refresh-internal-queued)). This is **fire-and-forget** —
+the data lands in Neon seconds later and the next read/revalidate shows it.
+
+```ts
+import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
+
+const sqs = new SQSClient({ region: process.env.AWS_REGION });
+
+await sqs.send(
+  new SendMessageCommand({
+    QueueUrl: process.env.DETAIL_REFRESH_QUEUE_URL, // = pulumi output detailRefreshQueueUrl
+    MessageBody: JSON.stringify({ lot, domain }), // or { vin }
+    MessageGroupId: "auctionsapi", // REQUIRED (FIFO); dedup is content-based
+  }),
+);
+```
+
+> **Why not a synchronous "refresh and return" Lambda?** That would let N
+> concurrent users make N concurrent AuctionsAPI calls and breach the 1 req/sec
+> limit (and starve the bulk sync). The queue + single-concurrency worker is the
+> deliberate trade: eventual refresh, never a rate breach. See
+> [Tradeoffs](#tradeoffs--design-decisions).
+
+**Config the backend needs** (from `pulumi stack output`, in `infra/`):
+
+- `DETAIL_REFRESH_QUEUE_URL` ← `detailRefreshQueueUrl`
+- `NEON_DATABASE_URL` ← the pooled Neon string (same value, separate from this
+  repo's deployment secret)
+- AWS credentials with **only** `sqs:SendMessage` on the detail-refresh queue ARN
+  (`detailRefreshQueueArn`) — least privilege for the backend.
 
 ---
 
@@ -532,14 +722,9 @@ a single Lambda's 15-min limit, so there are **two** ways to sync reference data
   generations) with a 1s `Wait` between — so no single Lambda runs long. It's
   resumable via `sync_runs`, and **skips manufacturers with `cars_qty = 0` by
   default** (~3/4 of the catalog has no cars), roughly halving the work. This is
-  what the daily schedule triggers. Start it manually:
-  ```powershell
-  $arn = pulumi stack output stateMachineArns | ConvertFrom-Json | Select -Expand referenceSync   # in infra/
-  '{"includeEmpty":false}' | Out-File -Encoding ascii ref.json
-  aws stepfunctions start-execution --state-machine-arn $arn --input file://ref.json
-  Remove-Item ref.json
-  ```
-  Pass `{"includeEmpty":true}` to also expand zero-car manufacturers.
+  what the daily schedule triggers. To start it manually (or pass
+  `{"includeEmpty":true}` to also expand zero-car manufacturers), see
+  [Operating the flows → Reference data](#reference-data).
 
 - **`syncReferenceData` Lambda (quick tests only).** Does the whole walk in one
   invocation; bound it with `{ "maxManufacturers": N }` so it finishes fast. Good
