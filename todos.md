@@ -1,4 +1,0 @@
-- distinction between vehicle types
-- page for past auctions
-- find out how the extension works and make it work
-- notification of a random buy now korean car
