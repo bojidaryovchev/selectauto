@@ -71,7 +71,8 @@ model, color, engine, transmission, drive, VIN).
 | `manufacturer_id` | `BIGINT` | AuctionsAPI **external** id → `manufacturers.external_id` |
 | `model_id` | `BIGINT` | external id → `vehicle_models.external_id` |
 | `generation_id` | `BIGINT` | external id → `vehicle_generations.external_id` |
-| `body_type` | `TEXT` | enum `.name` (e.g. `sedan`) |
+| `body_type` | `TEXT` | enum `.name` (e.g. `sedan`) — car sub-shape |
+| `vehicle_type` | `TEXT` | enum `.name` (automobile/truck/boat/moto/…) — top category. Added migration 0013; backfilled from `raw_json` for existing rows. |
 | `color` | `TEXT` | enum `.name` |
 | `fuel_type` | `TEXT` | from upstream `fuel.name` (field renamed) |
 | `transmission` | `TEXT` | enum `.name` |
@@ -221,12 +222,12 @@ auction_lots row)`. The website paginates this **single-table, zero joins, no
 query-time DISTINCT**. Logic, pick-strategy, and maintenance →
 [05](05-projection-tables-car-listings.md).
 
-Shape (migrations 0006 table + 0009 adds `engine`; indexes in 0008):
+Shape (migrations 0006 table + 0009 adds `engine` + 0014 adds `vehicle_type`/`body_type`; indexes in 0008):
 
 | Group | Columns |
 |---|---|
 | identity | `car_id` PK (→cars), `lot_id` (→auction_lots, the lot that won the collapse) |
-| filters | `manufacturer_id`, `model_id`, `car_year`, `car_color`, `drive_wheel`, `buy_now`, `domain_name`, `location_country`, `lot_number`, `vin`, `effective_price` |
+| filters | `manufacturer_id`, `model_id`, `car_year`, `car_color`, `drive_wheel`, `vehicle_type`, `body_type`, `buy_now`, `domain_name`, `location_country`, `lot_number`, `vin`, `effective_price` |
 | sort | `sort_id INTEGER NOT NULL` = chosen lot id (keyset cursor + newest-first) |
 | display | `title`, `engine`, `image_url`, `odometer_km`, `sale_date`, `status`, `condition`, `damage_main`, `seller`, `transmission`, `buy_now_price`, `bid_price`, `final_bid` |
 | meta | `updated_at` |
@@ -248,8 +249,10 @@ Sibling of `car_listings` for **concluded** lots — one row per physical car wh
 chosen archived lot is `sold`/`not_sold`/`failed` **and** which has no active
 image lot (the two tables are kept **disjoint**: a car is active XOR past). Powers
 the "Приключили" (past) toggle for price research. Same shape as `car_listings`
-(it already includes `engine`). Migrations 0010 (table + fn), 0011 (indexes),
-0012 (concluded-only fix). Indexes mirror 0008 with a `cla_` prefix.
+(includes `engine`, and `vehicle_type`/`body_type` via 0014). Migrations 0010
+(table + fn), 0011 (indexes), 0012 (concluded-only fix), 0014 (adds the type
+columns to both projections + redefines both recompute fns). Indexes mirror 0008
+with a `cla_` prefix.
 
 For the membership rule, pick-strategy (most-recent-result), and the
 concluded-only fix history, see [05](05-projection-tables-car-listings.md).
@@ -296,6 +299,8 @@ re-runs are safe.
 | `0010_car_listings_archived.sql` | `car_listings_archived` table + `recompute_archived_car_listings(int[])`. |
 | `0011_car_listings_archived_indexes.sql` | `car_listings_archived` indexes + `ANALYZE`. |
 | `0012_archived_concluded_only.sql` | Tightens archived membership to `sold/not_sold/failed`; purges non-concluded rows. |
+| `0013_cars_vehicle_type.sql` | Adds `cars.vehicle_type` (the API top-level category — boats/trucks/moto/…). Backfilled from `raw_json` (no API; see [03](03-normalization-and-field-mapping.md)). |
+| `0014_listings_vehicle_body_type.sql` | Adds `vehicle_type` + `body_type` to **both** projections + redefines both recompute fns to populate them (powers the website "Тип" filter). |
 
 > Migrations are **append-only and hand-run** (`pnpm migrate`). They are **not**
 > applied automatically on deploy. See [07-operations-runbook.md](07-operations-runbook.md).

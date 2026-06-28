@@ -12,32 +12,41 @@ EventBridge Scheduler + Secrets Manager + CloudWatch**.
 
 ## Contents / project structure
 
+pnpm monorepo (`pnpm-workspace.yaml`): `apps/*`, `packages/*`, and `infra`.
+
 ```
 .
-├── db/                          # Database schema + migrations
-│   ├── schema.ts                # Drizzle schema (source of truth for shape + typed queries)
-│   ├── migrations/0001_initial.sql   # Plain SQL run in production (migrate.mjs)
-│   ├── migrate.mjs              # Tiny idempotent SQL migration runner
-│   └── drizzle.config.ts        # Drizzle Kit config (dev-time generation)
+├── pnpm-workspace.yaml          # workspace globs (apps/*, packages/*, infra)
 │
-├── functions/                   # Lambda source (bundled by esbuild before deploy)
-│   ├── shared/
-│   │   ├── types.ts             # API payload + Lambda<->SFN message types
-│   │   ├── auctionsApiClient.ts # HTTP client (x-api-key, retry classification, pagination)
-│   │   ├── db.ts                # Neon pool + idempotent upserts
-│   │   ├── normalize.ts         # Raw API -> DB row shapes (keeps raw_json)
-│   │   ├── pagination.ts        # Loop stop-conditions
-│   │   ├── detailRefresh.ts     # Shared fetch+upsert for one listing
-│   │   ├── logger.ts            # Structured JSON logger + timing helper
-│   │   └── syncRun.ts           # sync_runs lifecycle + resume helpers
-│   ├── syncCarsPage/handler.ts          # fetch + upsert one /cars page (merged)
-│   ├── syncArchivedLotsPage/handler.ts  # fetch + archive one /archived-lots page (merged)
-│   ├── syncReferenceData/handler.ts
-│   ├── refreshListingDetail/handler.ts  # SQS FIFO drain worker (1 req/sec)
-│   ├── syncRunLifecycle/handler.ts   # create / finalize / fail (3 exports)
-│   └── build.mjs                # esbuild bundler -> functions/dist/<name>.js
+├── apps/
+│   └── web/                     # Next.js frontend (@auctions-ingestion/web)
+│                                #   reads Neon directly + imports the shared db schema
 │
-├── infra/                       # Pulumi program
+├── packages/
+│   ├── db/                      # @auctions-ingestion/db — schema + migrations (SHARED)
+│   │   ├── schema.ts            # Drizzle schema (source of truth; exported to apps/web)
+│   │   ├── migrations/*.sql     # Plain SQL run in production (migrate.mjs)
+│   │   ├── migrate.mjs          # Tiny idempotent SQL migration runner
+│   │   └── drizzle.config.ts    # Drizzle Kit config (dev-time generation)
+│   │
+│   └── functions/               # @auctions-ingestion/functions — Lambda source (esbuild)
+│       ├── shared/
+│       │   ├── types.ts             # API payload + Lambda<->SFN message types
+│       │   ├── auctionsApiClient.ts # HTTP client (x-api-key, retry, pagination)
+│       │   ├── db.ts                # Neon pool + idempotent upserts
+│       │   ├── normalize.ts         # Raw API -> DB row shapes (keeps raw_json)
+│       │   ├── pagination.ts        # Loop stop-conditions
+│       │   ├── detailRefresh.ts     # Shared fetch+upsert for one listing
+│       │   ├── logger.ts            # Structured JSON logger + timing helper
+│       │   └── syncRun.ts           # sync_runs lifecycle + resume helpers
+│       ├── syncCarsPage/handler.ts          # fetch + upsert one /cars page (merged)
+│       ├── syncArchivedLotsPage/handler.ts  # fetch + archive one /archived-lots page
+│       ├── syncReferenceData/handler.ts     # reference sync (legacy + looped handlers)
+│       ├── refreshListingDetail/handler.ts  # SQS FIFO drain worker (1 req/sec)
+│       ├── syncRunLifecycle/handler.ts      # create / finalize / fail (3 exports)
+│       └── build.mjs                # esbuild bundler -> packages/functions/dist/<name>.js
+│
+├── infra/                       # @auctions-ingestion/infra — Pulumi program (CommonJS)
 │   ├── src/{index,config,iam,secrets,lambdas,queues,step-functions,schedules}.ts
 │   ├── Pulumi.yaml
 │   ├── Pulumi.dev.yaml.example
@@ -149,8 +158,8 @@ flowchart LR
 ## API notes
 
 Field mappings were verified against the live API and documented at the code that
-handles them ([auctionsApiClient.ts](functions/shared/auctionsApiClient.ts),
-[normalize.ts](functions/shared/normalize.ts), [types.ts](functions/shared/types.ts)).
+handles them ([auctionsApiClient.ts](packages/functions/shared/auctionsApiClient.ts),
+[normalize.ts](packages/functions/shared/normalize.ts), [types.ts](packages/functions/shared/types.ts)).
 Two non-obvious behaviours worth knowing before editing those files:
 
 - **Pagination has no `last_page`/`total`** (Laravel `simplePaginate`). The loop
@@ -165,8 +174,8 @@ Two non-obvious behaviours worth knowing before editing those files:
 
 Tables: `cars`, `auction_lots`, `manufacturers`, `vehicle_models`,
 `vehicle_generations`, `sync_runs`. Every table stores `raw_json` for future
-reprocessing. See [db/schema.ts](db/schema.ts) and
-[db/migrations/0001_initial.sql](db/migrations/0001_initial.sql).
+reprocessing. See [db/schema.ts](packages/db/schema.ts) and
+[db/migrations/0001_initial.sql](packages/db/migrations/0001_initial.sql).
 
 **How the tables relate (important for writing queries).** AuctionsAPI ids are
 stored as `external_*` columns; local `id` columns are our own serials. The joins
@@ -279,20 +288,20 @@ scripts auto-load it (`node --env-file-if-exists=../.env`), so no manual export.
 > different consumers (your laptop vs. AWS).
 
 ```powershell
-npm run migrate:status     # list applied vs pending migrations (applies nothing)
-npm run migrate            # apply all pending db/migrations/*.sql (idempotent)
+pnpm run migrate:status     # list applied vs pending migrations (applies nothing)
+pnpm run migrate            # apply all pending packages/db/migrations/*.sql (idempotent)
 ```
 
 Migrations are tracked in a `_migrations` table and applied in lexical order;
 re-running only applies new files. (You can still override with an env var:
-`$env:NEON_DATABASE_URL = "<NEON_POOLED_URL>"; npm run migrate`.)
+`$env:NEON_DATABASE_URL = "<NEON_POOLED_URL>"; pnpm run migrate`.)
 
 > **If a migration is blocked or times out** (column-type changes rewrite the
 > whole table, which contends with running syncs on a large `auction_lots`):
 >
 > - **`canceling statement due to lock timeout` (55P03)** — a sync holds the
 >   table. Stop any running execution (Step Functions console), then clear stale
->   connections in Neon and re-run `npm run migrate`:
+>   connections in Neon and re-run `pnpm run migrate`:
 >   ```sql
 >   SELECT pg_terminate_backend(pid) FROM pg_stat_activity
 >   WHERE datname = current_database() AND pid <> pg_backend_pid() AND state <> 'idle';
@@ -306,14 +315,14 @@ re-running only applies new files. (You can still override with an env var:
 ### 5. Deploy
 
 ```powershell
-npm run deploy             # = build Lambda bundles, then `pulumi up` in infra/
+pnpm run deploy             # = build Lambda bundles, then `pulumi up` in infra/
 ```
 
-`npm run deploy` runs `functions/build.mjs` (esbuild bundles each handler into
-`functions/dist/<name>.js`, with `pg` bundled in) **before** `pulumi up`. Always
-build before deploying; `npm run preview` does the same for a dry run.
+`pnpm run deploy` runs `packages/functions/build.mjs` (esbuild bundles each handler into
+`packages/functions/dist/<name>.js`, with `pg` bundled in) **before** `pulumi up`. Always
+build before deploying; `pnpm run preview` does the same for a dry run.
 
-> **Module systems differ by package (don't "fix" this):** the `functions/` and
+> **Module systems differ by package (don't "fix" this):** the `packages/functions/` and
 > `db/` packages are **ESM** (NodeNext) — internal imports use explicit `.js`
 > extensions, and esbuild bundles them. The **`infra/` Pulumi program is
 > CommonJS** (`module: CommonJS`) because Pulumi runs it via its bundled ts-node
@@ -500,13 +509,14 @@ flowchart LR
 ### 1. Read — query Neon directly (no middleman)
 
 Next.js runs on Node, so it queries Neon directly with the **same Drizzle schema
-this repo defines** ([db/schema.ts](db/schema.ts)) — no separate "data API"
+this repo defines** ([db/schema.ts](packages/db/schema.ts)) — no separate "data API"
 layer. Reads are always from our DB, never AuctionsAPI.
 
 ```ts
-// Server component / route handler. Reuse db/schema.ts for end-to-end types.
-import { db } from "@/lib/db";
-import { auctionLots, cars, manufacturers } from "@/db/schema";
+// Server component / route handler. Import the SHARED workspace schema
+// (apps/web depends on @auctions-ingestion/db; transpilePackages compiles it).
+import { db } from "@/lib/db"; // your Drizzle client (pooled Neon connection)
+import { auctionLots, cars, manufacturers } from "@auctions-ingestion/db/schema";
 import { and, eq } from "drizzle-orm";
 
 const [lot] = await db
@@ -566,9 +576,9 @@ await sqs.send(
 
 ## Local testing
 
-- **Type-check everything:** `npm run type-check`.
+- **Type-check everything:** `pnpm run type-check`.
 - **Client/normalize against the live API** (no DB writes): bundle a tiny script
-  with esbuild importing `functions/shared/*` and run it with
+  with esbuild importing `packages/functions/shared/*` and run it with
   `AUCTIONS_API_BASE_URL` + `AUCTIONS_API_KEY` set. (This is exactly how the
   field mappings in this repo were verified.)
 - **DB upserts locally:** set `NEON_DATABASE_URL` to a dev branch and call the
@@ -581,7 +591,7 @@ await sqs.send(
 ## Logging & profiling
 
 **Structured JSON logs.** Every Lambda logs single-line JSON via
-[functions/shared/logger.ts](functions/shared/logger.ts), and the Lambdas run
+[functions/shared/logger.ts](packages/functions/shared/logger.ts), and the Lambdas run
 with the nodejs20.x **native JSON `LoggingConfig`** (`logFormat: JSON`,
 `applicationLogLevel: INFO`). Each line carries correlation context
 (`flowType`, `syncRunId`, `page`, `mode`) so you can trace a whole run. INFO,
@@ -659,7 +669,7 @@ Because every upsert is idempotent (`ON CONFLICT`), re-running a page that
 already committed is harmless — so starting a page or two early to be safe is
 fine; the overlap just updates rows.
 
-`functions/shared/syncRun.ts#findResumePoint` returns the latest unfinished run
+`packages/functions/shared/syncRun.ts#findResumePoint` returns the latest unfinished run
 for a flow, which a future version can use to auto-resume.
 
 **Note on retries vs. failures.** The Step Functions Retry policy only retries

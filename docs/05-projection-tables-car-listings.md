@@ -12,7 +12,9 @@ Source: migrations
 [`0009`](../packages/db/migrations/0009_car_listings_engine.sql),
 [`0010`](../packages/db/migrations/0010_car_listings_archived.sql),
 [`0011`](../packages/db/migrations/0011_car_listings_archived_indexes.sql),
-[`0012`](../packages/db/migrations/0012_archived_concluded_only.sql);
+[`0012`](../packages/db/migrations/0012_archived_concluded_only.sql),
+[`0014`](../packages/db/migrations/0014_listings_vehicle_body_type.sql) (adds
+`vehicle_type`/`body_type` to both projections + redefines both recompute fns);
 backfill [`backfill-car-listings.mjs`](../packages/db/backfill-car-listings.mjs);
 recompute hooks in [`shared/db.ts`](../packages/functions/shared/db.ts).
 The full decision record lives in `apps/web/ALL-CARS-DB-DESIGN.md`.
@@ -118,7 +120,8 @@ full column list). The **derived** parts:
   - archived: `COALESCE(NULLIF(final_bid,0), NULLIF(buy_now_price,0), NULLIF(bid_price,0))`
     — for a sold car the realized price is `final_bid`, so it's preferred.
 - Filter columns (`manufacturer_id`, `model_id`, `car_year`, `car_color`,
-  `drive_wheel`, `vin`) come from **`cars`**; lot-derived filter/display columns
+  `drive_wheel`, `vehicle_type`, `body_type`, `vin`) come from **`cars`**;
+  lot-derived filter/display columns
   (`buy_now`, `domain_name`, `location_country`, `lot_number`, prices, image,
   odometer, sale_date, status, condition, damage_main, seller) come from the
   **chosen lot**; `title`/`engine`/`transmission` come from `cars`.
@@ -129,8 +132,8 @@ lot** — so a per-lot recompute hook would never refresh a denormalized name,
 leaving it stale forever. The tables store only `manufacturer_id`/`model_id`;
 names are resolved at **read time** via a cached id→name lookup in the app. This
 closes the only staleness gap (everything else recomputes via the two db.ts hooks).
-`engine`/`title`/`transmission` are safe to denormalize because they live on
-`cars` and the reference sync doesn't touch them.
+`engine`/`title`/`transmission`/`vehicle_type`/`body_type` are safe to denormalize
+because they live on `cars` and the reference sync doesn't touch them.
 
 ---
 

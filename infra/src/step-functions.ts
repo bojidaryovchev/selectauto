@@ -4,8 +4,9 @@
  * Shared loop shape (used by cars + archived-lots):
  *
  *   InitSyncRun
- *     -> SyncPage                        (fetch + upsert in ONE Lambda; the page
- *           -> HasNextPage?               data never crosses Step Functions state)
+ *     -> SyncPage                        (fetch + upsert + refresh the projection
+ *           -> HasNextPage?               read models, all in ONE Lambda; the page
+ *                                         data never crosses Step Functions state)
  *                 |  --no-->  FinalizeSyncRun -> Succeed
  *                 |yes
  *                 v
@@ -135,9 +136,10 @@ function buildPaginatedDefinition(args: {
             Next: "SyncPage",
           },
 
-          // 2. SyncPage — fetch + upsert one page in a single Lambda. The page
-          // data stays inside the Lambda; only small counters/flags return here.
-          // Retries on 429/5xx/transient via the Retry policy.
+          // 2. SyncPage — fetch + upsert one page AND refresh the projection read
+          // models (car_listings / car_listings_archived), all in a single Lambda.
+          // The page data stays inside the Lambda; only small counters/flags return
+          // here. Retries on 429/5xx/transient via the Retry policy.
           SyncPage: {
             ...lambdaTask({ fnArn: syncArn, resultPath: "$.sync", catchTo: "MarkSyncFailed" }),
             OutputPath: "$.sync.value",

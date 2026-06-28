@@ -1,0 +1,221 @@
+# 08 — Website: the All-Cars Catalog (`/vsichki-avtomobili`)
+
+The `apps/web` (Next.js 16, App Router, Cache Components/PPR) page that renders the
+car catalog by reading the computed read models ([05](05-projection-tables-car-listings.md))
+**single-table, zero joins**. This doc covers the page, its filters, the
+active/past views, and how the app consumes the data. Deeper design records:
+`apps/web/ALL-CARS-PLAN.md`, `apps/web/ALL-CARS-DB-DESIGN.md`.
+
+> **Route slug.** The page lives at **`/vsichki-avtomobili`** (Latin
+> transliteration). It must NOT be the Cyrillic `всички-автомобили` — that folder
+> name broke `next build` with `InvalidCharacterError` during prerender. Nav/
+> footer/hero links use the Latin slug.
+
+---
+
+## 1. What the page is
+
+A production catalog of every importable car, recreating the legacy WordPress
+`[mixed_cars_grid]` page in the app's own stack. Two views behind one URL:
+
+- **Активни** (default) — the live catalog, reads `car_listings`.
+- **Приключили** (`?status=past`) — concluded/sold auctions for price research,
+  reads `car_listings_archived`. Rendered `noindex` (see §6).
+
+The first page is **SSR** (good LCP + SEO); the grid then **virtualizes +
+infinite-scrolls** client-side (`@tanstack/react-virtual`, window virtualizer) by
+calling a Server Action for subsequent pages. Conversion path = **per-card phone /
+Viber** buttons (active view only), like the legacy card. No detail page yet
+("Подробности" links to a section page; the detail route + its SQS-refresh is a
+documented follow-up).
+
+---
+
+## 2. Data flow (web side)
+
+```mermaid
+flowchart TD
+  url["URL searchParams (filters live in the URL)"] --> page["page.tsx (Server Component, SSR)"]
+  page -->|parseCarFilters| f["CarFilters"]
+  page --> q1["getCarsPage(filters, null)"]
+  page --> q2["getCarFacets()"]
+  page --> q3["getCarsCount(filters)"]
+  q1 & q2 & q3 -->|"use cache + cacheTag(cars)"| db["Neon: car_listings / car_listings_archived"]
+  page --> grid["AllCarsGrid (client, virtualized)"]
+  grid -->|"loadMoreCars(filters, cursor) — Server Action"| q1
+```
+
+- **The URL is the single source of truth** for filter state. `page.tsx` reads
+  `searchParams` (a request-time API) → `parseCarFilters` → passes `CarFilters` as
+  **arguments** into the cached queries (a `"use cache"` scope cannot read
+  `searchParams`).
+- Queries are `"use cache"` + `cacheTag(CACHE_TAGS.cars)`; invalidated by
+  `revalidateTag(CACHE_TAGS.cars, "max")` when listings change. Route renders as
+  **`◐ Partial Prerender`** — static shell + streamed listings.
+- Changing a tab/filter pushes a new URL → page re-renders SSR for the new filter
+  set; the client grid remounts (keyed on the serialized filters) and resets.
+
+Key files (`apps/web/src/`):
+
+| Path | Role |
+|---|---|
+| `app/vsichki-avtomobili/page.tsx` + `loading.tsx` | SSR shell, `generateMetadata` (noindex when past), streams the grid |
+| `types/car-filters.type.ts` | `CarFilters`, `FacetOptions`, `CarsPage` |
+| `lib/car-filters.ts` | parse/serialize `CarFilters` ⇄ `URLSearchParams` (symmetric) |
+| `schemas/car-filters.schema.ts` | zod validate/clamp (used by the Server Action) |
+| `lib/car-labels.ts` | BG label maps (status/condition/drive/transmission/color/**vehicle_type**/**body_type**/damage) |
+| `lib/car-mapper.ts` | `carListingToView(row, isPast)` — a projection row → card view-model |
+| `queries/cars/get-cars-page.query.ts` | keyset page (active or past), + search branch |
+| `queries/cars/get-cars-count.query.ts` | capped count ("1000+") |
+| `queries/cars/get-car-facets.query.ts` | dropdown options (brands/models/colors/drives/**types**/years) |
+| `mutations/cars/load-more-cars.action.ts` | `"use server"` infinite-scroll loader |
+| `components/cars/all-cars/*` | `AllCarsGrid`, `AuctionCard`, `AuctionCountdown`, `CarFilterBar`, `CarGridSkeleton` |
+
+---
+
+## 3. Filters (every filter → a single `car_listings` column)
+
+`CarFilters` maps 1:1 to projection columns, so every predicate is single-table.
+`tableFor(filters)` picks `car_listings` (active) or `car_listings_archived` (past)
+— both have identical shape, so the same `buildConditions` + mapper serve both.
+
+| Filter (`CarFilters`) | UI | Predicate |
+|---|---|---|
+| `status` | "Активни \| Приключили" toggle | selects the **table** (past → archived) |
+| `channel` | "Само с Buy Now" toggle | `buy-now` → `buy_now=true AND effective_price>0`; `auction` → not-that |
+| `market` | САЩ / Корея / Канада segmented | `location_country` = `USA` / `kr` / `Canada` (**not** `domain_name`) |
+| `brand` / `model` | dropdowns (model brand-scoped) | `manufacturer_id` / `model_id` (external ids) |
+| `color` | dropdown | `car_color` (canonical name) |
+| `drive` | dropdown | `drive_wheel` (front/all/rear) |
+| `type` | **"Тип" dropdown** (combined) | see §3a |
+| `yearFrom` / `yearTo` | "Година от" / "Година до" inputs | `car_year >= from` / `<= to` (a real range) |
+| `priceMin` / `priceMax` | "Цена от/до" inputs | range on `effective_price` |
+| `search` | "Лот № / VIN" | exact lookup (see §3b) |
+
+### 3a. The combined "Тип" filter (vehicle_type + body_type)
+
+We store **both** `vehicle_type` (top category: automobile/truck/boat/moto/…) and
+`body_type` (car sub-shape: suv/sedan/pickup/…). The "Тип" dropdown is **one
+control over two columns**, using a prefixed value:
+
+- `vt:<value>` → `vehicle_type` (non-car categories — **boat**, truck, motorcycle,
+  bus, atv, jet_sky, trailers, …). ~873k of ~930k active cars are `automobile`;
+  the rest are these.
+- `bt:<value>` → `body_type` (for cars — SUV, sedan, pickup, van, coupe, …).
+
+`getCarFacets` builds the options as: every non-`automobile` `vehicle_type` (as
+`vt:*`) **plus** the `body_type`s that `automobile` cars actually have (as `bt:*`),
+each with a count, sorted by frequency. BG labels come from `VEHICLE_TYPE_BG` /
+`BODY_TYPE_BG` in `car-labels.ts` (e.g. `vt:boat` → "Лодка", `bt:suv` → "Джип (SUV)").
+The query splits the prefix and targets the right column. (Boats ≈ 1,503 active;
+trucks ≈ 24.5k; motorcycles ≈ 10k.)
+
+### 3b. Search is a lookup, not a feed
+
+When `filters.search` is present, `getCarsPage` runs an **exact lookup**
+(`lot_number LIKE 'q%' OR vin = 'Q'`, small `LIMIT`, **no `sort_id` ordering**).
+Verified: adding `ORDER BY sort_id DESC` to a lot search makes the planner ignore
+`cl_lotnumber`/`cl_vin` (37,888 buffers vs ~26). Search results don't need infinite
+scroll.
+
+---
+
+## 4. Pagination (keyset) + the grid
+
+- **Keyset on `sort_id DESC`** (the chosen lot id — unique, monotonic). The query
+  fetches `PAGE+1`; if the extra row exists there's a next page and
+  `nextCursor = sort_id of row[PAGE-1]`, else `null`. Flat cost at any depth (no
+  OFFSET — unusable at ~1M rows). `PAGE_SIZE = 24`.
+- **`AllCarsGrid`** (client) seeds from the SSR first page, then calls the
+  **`loadMoreCars` Server Action** with `(filters, cursor)` when the user nears the
+  end (`useTransition`), appends results, advances the cursor until `nextCursor ===
+  null`. Window-virtualizes **rows** of N responsive columns (1/2/3/4 by
+  breakpoint via a `ResizeObserver`); remounts (resets) when filters change.
+- `loadMoreCars` re-validates input with `safeParseCarFilters` (a Server Action is
+  reachable by direct POST — never trust the client filter shape) and forwards to
+  the same cached `getCarsPage`, so SSR page 1 and scroll pages share cache entries.
+
+---
+
+## 5. The card (`AuctionCard`) + i18n
+
+A projection row → `CarView` via `carListingToView(row, isPast)`. Renders source +
+BUY-NOW badges, a status/countdown bar (live `AuctionCountdown` to `sale_date` for
+active auctions; static pill otherwise), a 2-col info grid (lot №, date, mileage,
+condition, damage, engine, drivetrain, gearbox, seller — each shown only if
+present), a price row, and a CTA.
+
+- **Past mode** (`isPast`): "ПРОДАДЕН" badge + "Продаден за €X" (realized price,
+  `final_bid`-preferred) + sale date; **no** phone/Viber/countdown/buy CTA (a sold
+  car is research data, not a lead) — instead a "Виж активни обяви" link.
+- **i18n** (per [03](03-normalization-and-field-mapping.md)): values are stored raw
+  canonical English; BG labels are applied **here at render** via `car-labels.ts`,
+  not in ingestion. Enum maps (status/condition/drive/transmission/color/
+  vehicle_type/body_type) are complete against the API enums; `damage_main` has a
+  curated head + verbatim tail; `engine`/`title`/`seller` are verbatim passthrough.
+- **Title de-duplication:** some upstream titles already start with the year
+  (`"2015 Nissan…"`); the mapper only prepends `car_year` when the title doesn't
+  already start with `\d{4}` (avoids "2015 2015 Nissan…").
+
+`next/image` remote hosts are whitelisted in `apps/web/next.config.ts`
+(`i.auctionsapi.com` is ~99.9%, plus encar/copart/iaai/ironplanet CDNs).
+
+---
+
+## 6. SEO
+
+- **Active catalog** — fully indexable.
+- **Past view (`?status=past`) — `noindex, follow`** (set in `generateMetadata`).
+  Reason: ~144k thin, fast-decaying, non-actionable sold-car URLs are exactly the
+  programmatic-SEO pattern Google penalizes and would waste crawl budget. Users get
+  it as a price-research utility; crawlers follow through but don't index it.
+- **The indexable SEO play is a FUTURE feature (not built):** model-level
+  **auction-price pages** ("BMW 530 цени от търг" → avg/min/max/count + recent
+  examples, `Product`/`AggregateOffer` JSON-LD, in the sitemap), which can use the
+  archive data and/or the AuctionsAPI `/statistics` endpoint
+  ([01 §9](01-auctionsapi-consumption.md)).
+
+---
+
+## 7. How the page stays correct (ties back to ingestion)
+
+The page is a pure **read** surface; freshness comes entirely from ingestion
+maintaining the read models ([04](04-ingestion-flows.md) / [05](05-projection-tables-car-listings.md)):
+
+- The hourly cars + archived syncs recompute **both** projections on every write,
+  keeping active/past **disjoint** — so the toggle never shows a car in both.
+- Until the ingestion hooks are deployed (`pulumi up` after the `db.ts`/
+  `normalize.ts` changes), the projections are a **static backfilled snapshot**;
+  the page renders correctly but data won't auto-update. Re-run
+  `backfill-car-listings.mjs` (both fns) as a drift sweep if needed.
+
+---
+
+## 8. Build / verify (web)
+
+```bash
+pnpm --filter @auctions-ingestion/web run type-check
+pnpm --filter @auctions-ingestion/web run lint
+pnpm --filter @auctions-ingestion/web run build      # route should show ◐ (PPR)
+pnpm --filter @auctions-ingestion/web run dev         # http://localhost:3000/vsichki-avtomobili/
+```
+
+> **`use cache` gotcha (dev):** the dev server caches query results, so after a
+> DB/data change you must clear `.next` (and restart) to see it. Production
+> invalidates via `revalidateTag` on ingestion writes.
+
+---
+
+## 9. Status & deliberate gaps
+
+- **Built + verified** against live prod: both views serve 200, all filters work
+  (market, channel, brand/model, color, drive, **type incl. boats**, **year
+  range**, search), past view is sold-only + `noindex`, keyset paginates flat,
+  i18n has no leaks. Type-check/lint/build green.
+- **Deferred follow-ups** (documented, not bugs): the car **detail page**
+  `/avtomobil/[id]` (and wiring the detail-refresh SQS enqueue), the **model-level
+  price SEO pages**, inquiry-modal-per-card, and `seller_type` ("Тип продавач" card
+  row — in the API, not yet stored).
+- **One browser check** is the only thing not verifiable headlessly: that the
+  virtualized grid paints + infinite-scroll loads more in a real browser (the data
+  reaching the client is confirmed; client paint needs eyes on it).

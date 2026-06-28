@@ -6,6 +6,12 @@ node_modules/
 # build output
 dist/
 *.tsbuildinfo
+.next/
+out/
+
+# npm lockfiles — this is a pnpm workspace; pnpm-lock.yaml is the source of truth
+package-lock.json
+**/package-lock.json
 
 # env
 .env
@@ -21,3 +27,7 @@ dist/
 # logs / os
 *.log
 .DS_Store
+
+# assets/plugins: ignore everything that does NOT contain "selectauto"
+assets/plugins/*
+!assets/plugins/*selectauto*

@@ -9,7 +9,8 @@
  * Schedules:
  *   1. hourly combined sync  -> StartExecution on combinedHourlySync
  *      (active cars then archived lots, sequentially — protects the rate limit)
- *   2. daily reference sync   -> invoke syncReferenceData Lambda (optional)
+ *   2. daily reference sync   -> StartExecution on the reference-sync STATE MACHINE
+ *      (the timeout-proof loop, not the legacy single syncReferenceData Lambda)
  *
  * The full inventory backfill has NO schedule — it is started manually.
  */

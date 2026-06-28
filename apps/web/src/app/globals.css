@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+/*
+  SelectAuto design tokens — ported from the live theme.css :root block.
+  These map the site's `--sa-*` variables into Tailwind v4 theme tokens so
+  utilities like `text-brand`, `bg-brand-dark`, `font-sans` resolve correctly.
+*/
+@theme {
+  --color-brand: #d86f16;
+  --color-brand-dark: #b95200;
+  --color-brand-soft: #f5a14b;
+  --color-brand-glow: #ff8a3d;
+  --color-ink: #222222;
+  --color-ink-strong: #111111;
+  --color-muted: #666666;
+  --color-line: #e8e8e8;
+  --color-shell: #0f1014;
+  --color-shell-soft: #121317;
+  --color-success: #1eb960;
+
+  --font-sans: var(--font-montserrat), "Montserrat", sans-serif;
+
+  --radius-card: 24px;
+
+  --shadow-card: 0 12px 30px rgba(0, 0, 0, 0.1);
+  --shadow-card-strong: 0 20px 50px rgba(0, 0, 0, 0.18);
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  background: #fff;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scroll-reveal: elements start hidden, `.is-visible` fades them in. */
+.sa-reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition:
+    opacity 0.8s ease,
+    transform 0.8s ease;
+}
+.sa-reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Inquiry-modal step fade-in, ported from theme.css `saFadeIn`. */
+@keyframes saFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Hero badge pulse, ported from the particle-hero styles. */
+@keyframes sa-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 138, 61, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(255, 138, 61, 0);
+  }
+}
+
+/* Process page scroll hint — floating chevron pill. */
+@keyframes sa-scroll-hint-float {
+  0%,
+  100% {
+    transform: translate(-50%, 0);
+  }
+  50% {
+    transform: translate(-50%, 7px);
+  }
+}

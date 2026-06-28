@@ -6,7 +6,16 @@ export default [
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    ignores: ["node_modules/**", "**/dist/**", "**/node_modules/**"],
+    ignores: [
+      "node_modules/**",
+      "**/dist/**",
+      "**/node_modules/**",
+      "**/.next/**",
+      // apps/web has its own eslint config (Next.js flat config) and lints itself.
+      "apps/web/**",
+      // assets/ is legacy WordPress/PHP plugin code being migrated out — not ours.
+      "assets/**",
+    ],
   },
   {
     files: ["**/*.ts"],

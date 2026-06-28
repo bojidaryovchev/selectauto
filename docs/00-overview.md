@@ -1,10 +1,12 @@
 # 00 — Ingestion System Overview
 
-> **Scope of these docs.** This `docs/` folder documents the **data ingestion +
+> **Scope of these docs.** Docs `01`–`07` document the **data ingestion +
 > infrastructure** half of the repo — how we consume the AuctionsAPI, what we
-> store, how we compute our read models, and the AWS infra that runs it. It does
-> **not** document the `apps/web` Next.js frontend (see `apps/web/CLAUDE.md`,
-> `apps/web/ALL-CARS-PLAN.md`, `apps/web/ALL-CARS-DB-DESIGN.md`).
+> store, how we compute our read models, and the AWS infra that runs it.
+> [`08-web-all-cars-page.md`](08-web-all-cars-page.md) documents the **`apps/web`
+> all-cars catalog** that consumes the read models (the page, filters, and the
+> active/past views). Deeper web design records live in `apps/web/CLAUDE.md`,
+> `apps/web/ALL-CARS-PLAN.md`, `apps/web/ALL-CARS-DB-DESIGN.md`.
 
 ## What this system is
 
@@ -94,7 +96,9 @@ flowchart TD
 | `packages/db/migrations/*.sql` | Plain-SQL migrations (what actually runs in prod) |
 | `packages/db/migrate.mjs` | Minimal append-only migration runner |
 | `packages/db/backfill-car-listings.mjs` | One-time projection backfill script |
+| `packages/db/backfill-car-listings.mjs` | Projection backfill / drift-repair (both read models, via `--fn`) |
 | `infra/src/` | Pulumi TS — Lambdas, Step Functions, schedules, IAM, secrets, SQS |
+| `apps/web/` | Next.js frontend (reads Neon). The all-cars catalog → [08](08-web-all-cars-page.md). |
 | `docs/` | These docs + `sample-cars-response.json` (a real `/api/cars` record) |
 
 ## Reading order
@@ -106,3 +110,4 @@ flowchart TD
 5. [05-projection-tables-car-listings.md](05-projection-tables-car-listings.md) — what we compute
 6. [06-infrastructure-aws-pulumi.md](06-infrastructure-aws-pulumi.md) — the AWS/Pulumi layer
 7. [07-operations-runbook.md](07-operations-runbook.md) — build, deploy, migrate, troubleshoot
+8. [08-web-all-cars-page.md](08-web-all-cars-page.md) — the website catalog that consumes the read models

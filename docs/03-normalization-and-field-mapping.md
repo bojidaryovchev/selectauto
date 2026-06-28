@@ -9,7 +9,11 @@ the raw payload types are in [`shared/types.ts`](../packages/functions/shared/ty
 1. **Never assume a field exists.** Every access is guarded; missing → `null`.
    The `Api*` types mark almost everything optional precisely to force this.
 2. **Always keep `raw_json`.** The full upstream object is stored on every row so
-   new columns can be backfilled later without re-pulling from the API.
+   new columns can be backfilled later without re-pulling from the API. This
+   already paid off: `cars.vehicle_type` (migration 0013) was added later and
+   backfilled for ~1.1M existing rows **straight from `raw_json`**
+   (`raw_json->'vehicle_type'->>'name'`) — zero API calls. The one-off backfill
+   script was removed after it ran; new rows are populated by `normalizeCar` above.
 3. **Where a mapping is uncertain, leave it in `raw_json`** rather than guessing a
    column. Many observed fields (seller_type, detailed_title, auction_type,
    airbags, grade_iaai, selling_branch, lat/long, postal_code, the `prices`
@@ -48,6 +52,7 @@ price/date goes through `coerceValue*`. See [01 §6](01-auctionsapi-consumption.
 | `model_id` | `raw.model.id` | `num` |
 | `generation_id` | `raw.generation.id` | `num` |
 | `body_type` | `raw.body_type.name` | `str` |
+| `vehicle_type` | `raw.vehicle_type.name` | `str` — top category (automobile/truck/boat/…); added with migration 0013 |
 | `color` | `raw.color.name` | `str` |
 | `fuel_type` | `raw.fuel.name` | `str` — **field renamed** `fuel` → `fuel_type` |
 | `transmission` | `raw.transmission.name` | `str` |

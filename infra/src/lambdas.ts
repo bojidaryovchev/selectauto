@@ -3,10 +3,12 @@
  *
  * Packaging model
  * ---------------
- * The handler TypeScript in `functions/` is compiled + bundled to
- * `functions/dist/<name>.js` (single ESM file per handler, with `pg` bundled in)
- * BEFORE `pulumi up`. See `functions/package.json` build script and README
- * "Build". Pulumi then ships each bundle as the function code.
+ * The handler TypeScript in `packages/functions/` is compiled + bundled to
+ * `packages/functions/dist/<name>.js` (single ESM file per handler, with `pg`
+ * bundled in) BEFORE `pulumi up`. See `packages/functions/package.json` build
+ * script and README "Build". Pulumi then ships each bundle as the function code,
+ * hashing the bundle content — so rebuilding after a code change and re-running
+ * `pulumi up` re-publishes the function with NO infra edit required.
  *
  * Why bundle: avoids shipping node_modules and keeps cold starts small. `pg` is
  * the only heavy runtime dep and bundles cleanly.
@@ -23,8 +25,10 @@ import * as pulumi from "@pulumi/pulumi";
 import * as path from "path";
 import { config, namePrefix, tags } from "./config";
 
-// Resolve the functions/dist directory relative to the infra project.
-const FUNCTIONS_DIST = path.resolve(__dirname, "..", "..", "functions", "dist");
+// Resolve the functions bundle dir. infra/ is at the repo root; the Lambda
+// handlers live in packages/functions (pnpm monorepo). From infra/src that is
+// ../../packages/functions/dist.
+const FUNCTIONS_DIST = path.resolve(__dirname, "..", "..", "packages", "functions", "dist");
 
 export interface LambdaSet {
   // Merged fetch+write per page (replaces the old split fetch/upsert/archive fns).
@@ -45,7 +49,7 @@ export interface LambdaSet {
 interface MakeFnOpts {
   /** Logical resource name + part of the AWS function name. */
   name: string;
-  /** Bundle file under functions/dist, e.g. "syncCarsPage.js". */
+  /** Bundle file under packages/functions/dist, e.g. "syncCarsPage.js". */
   bundleFile: string;
   /** Exported handler name in the bundle, e.g. "handler" / "createHandler". */
   exportName?: string;

@@ -2,17 +2,18 @@
   "name": "auctions-ingestion",
   "version": "0.1.0",
   "private": true,
-  "description": "AuctionsAPI -> Neon Postgres ingestion system (AWS Lambda + Step Functions + EventBridge, Pulumi).",
+  "description": "AuctionsAPI -> Neon Postgres ingestion system (AWS Lambda + Step Functions + EventBridge, Pulumi) + Next.js frontend.",
+  "packageManager": "pnpm@10.28.0",
   "scripts": {
-    "build:functions": "npm --prefix functions run build",
-    "migrate": "npm --prefix db run migrate",
-    "migrate:status": "npm --prefix db run migrate:status",
-    "deploy": "npm run build:functions && npm --prefix infra run up",
-    "preview": "npm run build:functions && npm --prefix infra run preview",
-    "type-check": "npm --prefix functions run type-check && npm --prefix infra run type-check && npm --prefix db run type-check",
+    "build:functions": "pnpm --filter @auctions-ingestion/functions run build",
+    "migrate": "pnpm --filter @auctions-ingestion/db run migrate",
+    "migrate:status": "pnpm --filter @auctions-ingestion/db run migrate:status",
+    "deploy": "pnpm run build:functions && pnpm --filter @auctions-ingestion/infra run up",
+    "preview": "pnpm run build:functions && pnpm --filter @auctions-ingestion/infra run preview",
+    "type-check": "pnpm --filter @auctions-ingestion/functions --filter @auctions-ingestion/infra --filter @auctions-ingestion/db run type-check",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,mjs,json}\"",
-    "check": "npm run type-check && npm run lint"
+    "check": "pnpm run type-check && pnpm run lint"
   },
   "devDependencies": {
     "@eslint/js": "9.36.0",
@@ -22,10 +23,5 @@
     "prettier-plugin-organize-imports": "4.1.0",
     "typescript": "5.9.3",
     "typescript-eslint": "8.44.0"
-  },
-  "workspaces": [
-    "db",
-    "functions",
-    "infra"
-  ]
+  }
 }

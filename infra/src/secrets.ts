@@ -9,8 +9,8 @@
  * Why Secrets Manager (vs env vars): rotation tooling, centralized access,
  * audit, and the values never appear in the Lambda's static configuration.
  *
- * The Lambdas receive the secret ARNs via env vars and resolve them on cold
- * start (see functions/shared — actually we inject resolved values; see note).
+ * In practice the Lambda env vars are populated with the resolved secret VALUES
+ * (not the ARNs) — see the NOTE below.
  *
  * NOTE: To keep cold starts simple and avoid an extra runtime SDK call per
  * invocation, the Lambda env vars are populated with the secret *values* via

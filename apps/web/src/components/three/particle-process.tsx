@@ -1,0 +1,1052 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+// Type-only imports: erased at build time, so `three` never enters the server
+// bundle, while THREE.* type annotations below still resolve.
+import type * as THREE from "three";
+import type { MeshSurfaceSampler as MeshSurfaceSamplerType } from "three/examples/jsm/math/MeshSurfaceSampler.js";
+
+/**
+ * Scroll-driven 3D particle process animation — a clean React port of the
+ * theme's `process-animation-section.php` shortcode.
+ *
+ * The section is several viewports tall; an inner `position: sticky` stage pins
+ * the canvas while you scroll past it. Scroll progress through the tall section
+ * becomes a single 0→1 value that is sliced into phases — intro text dissolve,
+ * particle formation into the car, a hold, then dispersion — and a rAF loop
+ * lerp-smooths that value and interpolates ~50k particles between scatter → car
+ * → explosion targets.
+ *
+ * three is loaded dynamically inside the effect so it never lands in the server
+ * bundle and the canvas only initialises in the browser.
+ */
+
+const MODEL_URL = "/models/sedan.glb";
+
+type Step = {
+  num: string;
+  title: string;
+  desc: string;
+  rail: string;
+};
+
+const STEPS: Step[] = [
+  {
+    num: "Стъпка 01 / 05",
+    title: "Подбор",
+    desc: "Слушаме нуждите. Анализираме бюджета и целта. Предлагаме точните възможности.",
+    rail: "Подбор",
+  },
+  {
+    num: "Стъпка 02 / 05",
+    title: "Търг",
+    desc: "Участваме директно — на корейски, японски и германски аукциони. Стратегия, не късмет.",
+    rail: "Търг",
+  },
+  {
+    num: "Стъпка 03 / 05",
+    title: "Оформяне",
+    desc: "Прозрачно плащане през регулирани канали. Изрядна документация без скрити такси.",
+    rail: "Оформяне",
+  },
+  {
+    num: "Стъпка 04 / 05",
+    title: "Логистика",
+    desc: "Транспорт, митница, регистрация — поемаме всичко. Колата ви пътува, вие следите.",
+    rail: "Логистика",
+  },
+  {
+    num: "Стъпка 05 / 05",
+    title: "Ключът",
+    desc: "Колата ви очаква. Подготвена, прегледана, изрядна. Готова за път от деня на предаването.",
+    rail: "Ключът",
+  },
+];
+
+export function ParticleProcess() {
+  const rootRef = useRef<HTMLElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const introCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Overlay state driven by the animation loop (React, not imperative DOM).
+  const [activeStep, setActiveStep] = useState(0);
+  const [introHidden, setIntroHidden] = useState(false);
+  const [formationPct, setFormationPct] = useState(0);
+  const [outroOpacity, setOutroOpacity] = useState(0);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    const canvas = canvasRef.current;
+    const introCanvas = introCanvasRef.current;
+    if (!root || !canvas) return;
+
+    let disposed = false;
+    let rafId = 0;
+    let cleanupListeners = () => {};
+
+    (async () => {
+      const THREE = await import("three");
+      const { GLTFLoader } = await import(
+        "three/examples/jsm/loaders/GLTFLoader.js"
+      );
+      const { MeshSurfaceSampler } = await import(
+        "three/examples/jsm/math/MeshSurfaceSampler.js"
+      );
+      if (disposed) return;
+
+      const isMobile = window.innerWidth < 768;
+
+      // ---- particle buffers ------------------------------------------------
+      const particleCount = isMobile ? 4000 : 18000;
+      const positions = new Float32Array(particleCount * 3);
+      const initialPositions = new Float32Array(particleCount * 3);
+      const targets = new Float32Array(particleCount * 3);
+      const dispersionTargets = new Float32Array(particleCount * 3);
+      const colors = new Float32Array(particleCount * 3);
+
+      const outlineCount = isMobile ? 8000 : 32000;
+      const outlinePositions = new Float32Array(outlineCount * 3);
+      const outlineTargets = new Float32Array(outlineCount * 3);
+      const outlineDispersionTargets = new Float32Array(outlineCount * 3);
+      const outlineInitialPositions = new Float32Array(outlineCount * 3);
+
+      type Seed = {
+        delay: number;
+        speed: number;
+        noise: THREE.Vector3;
+        dispersionDelay: number;
+        dispersionSpeed: number;
+        dispersionDir: THREE.Vector3;
+        dispersionDist: number;
+      };
+      const seeds: Seed[] = [];
+      const outlineSeeds: Seed[] = [];
+
+      let modelLoaded = false;
+
+      // Smoothed scroll-driven progress (0→1 each).
+      let displayFormation = 0;
+      let displayDispersion = 0;
+      let lastStep = -1;
+
+      const ease = (t: number) => t * (2 - t);
+
+      // ---- scene -----------------------------------------------------------
+      const scene = new THREE.Scene();
+
+      const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+      camera.position.set(0, isMobile ? 1.4 : 0.8, isMobile ? 7 : 9);
+
+      const renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: !isMobile,
+        alpha: true,
+        powerPreference: "high-performance",
+      });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2));
+
+      const carGroup = new THREE.Group();
+      carGroup.position.set(isMobile ? 0 : 2.4, isMobile ? 1.05 : 0, 0);
+      scene.add(carGroup);
+
+      const edgeLineGroup = new THREE.Group();
+      carGroup.add(edgeLineGroup);
+      let edgeLines: THREE.LineSegments[] = [];
+
+      // ---- lights ----------------------------------------------------------
+      scene.add(new THREE.AmbientLight(0xffffff, 1.15));
+      const keyLight = new THREE.DirectionalLight(0xff8a3d, 2.3);
+      keyLight.position.set(5, 5, 6);
+      scene.add(keyLight);
+      const fillLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      fillLight.position.set(-4, 2, -4);
+      scene.add(fillLight);
+
+      // ---- ambient background dust ----------------------------------------
+      let backgroundParticles: THREE.Points | null = null;
+      {
+        const count = isMobile ? 120 : 300;
+        const geometry = new THREE.BufferGeometry();
+        const bgPositions = new Float32Array(count * 3);
+        for (let i = 0; i < count; i++) {
+          bgPositions[i * 3] = (Math.random() - 0.5) * 40;
+          bgPositions[i * 3 + 1] = (Math.random() - 0.5) * 20;
+          bgPositions[i * 3 + 2] = (Math.random() - 0.5) * 15 - 5;
+        }
+        geometry.setAttribute("position", new THREE.BufferAttribute(bgPositions, 3));
+        const material = new THREE.PointsMaterial({
+          color: 0xff8a3d,
+          size: isMobile ? 0.018 : 0.012,
+          transparent: true,
+          opacity: 0.16,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          sizeAttenuation: true,
+        });
+        backgroundParticles = new THREE.Points(geometry, material);
+        scene.add(backgroundParticles);
+      }
+
+      // ---- surface particles ----------------------------------------------
+      const makeSeed = (overrides: Partial<Seed>): Seed => ({
+        delay: Math.random() * 0.18,
+        speed: 0.85 + Math.random() * 0.7,
+        noise: new THREE.Vector3(
+          Math.random() - 0.5,
+          Math.random() - 0.5,
+          Math.random() - 0.5,
+        ),
+        dispersionDelay: Math.random() * 0.35,
+        dispersionSpeed: 0.7 + Math.random() * 0.9,
+        dispersionDir: new THREE.Vector3(
+          (Math.random() - 0.5) * 2,
+          0.6 + Math.random() * 1.6,
+          (Math.random() - 0.5) * 2,
+        ).normalize(),
+        dispersionDist: 3.5 + Math.random() * 4.5,
+        ...overrides,
+      });
+
+      {
+        const spreadX = isMobile ? 4.5 : 5.8;
+        const spreadY = isMobile ? 2.2 : 2.8;
+        const spreadZ = isMobile ? 2.8 : 3.4;
+        for (let i = 0; i < particleCount; i++) {
+          const x = (Math.random() - 0.5) * spreadX;
+          const y = (Math.random() - 0.5) * spreadY;
+          const z = (Math.random() - 0.5) * spreadZ;
+          positions[i * 3] = x;
+          positions[i * 3 + 1] = y;
+          positions[i * 3 + 2] = z;
+          initialPositions[i * 3] = x;
+          initialPositions[i * 3 + 1] = y;
+          initialPositions[i * 3 + 2] = z;
+          colors[i * 3] = 1;
+          colors[i * 3 + 1] = 0.35;
+          colors[i * 3 + 2] = 0.1;
+          seeds.push(makeSeed({}));
+        }
+      }
+
+      const particleGeometry = new THREE.BufferGeometry();
+      particleGeometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+      particleGeometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+      const particleMaterial = new THREE.PointsMaterial({
+        size: isMobile ? 0.024 : 0.018,
+        color: 0xffb36b,
+        transparent: true,
+        opacity: 1,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        sizeAttenuation: true,
+      });
+      const particles = new THREE.Points(particleGeometry, particleMaterial);
+      carGroup.add(particles);
+
+      // ---- outline (edge-biased) particles --------------------------------
+      {
+        const spreadX = isMobile ? 4.2 : 5.4;
+        const spreadY = isMobile ? 1.8 : 2.4;
+        const spreadZ = isMobile ? 2.4 : 3.0;
+        for (let i = 0; i < outlineCount; i++) {
+          const x = (Math.random() - 0.5) * spreadX;
+          const y = (Math.random() - 0.5) * spreadY;
+          const z = (Math.random() - 0.5) * spreadZ;
+          outlinePositions[i * 3] = x;
+          outlinePositions[i * 3 + 1] = y;
+          outlinePositions[i * 3 + 2] = z;
+          outlineInitialPositions[i * 3] = x;
+          outlineInitialPositions[i * 3 + 1] = y;
+          outlineInitialPositions[i * 3 + 2] = z;
+          outlineSeeds.push(
+            makeSeed({
+              delay: Math.random() * 0.12,
+              speed: 1.0 + Math.random() * 0.6,
+              dispersionDelay: Math.random() * 0.25,
+              dispersionSpeed: 0.85 + Math.random() * 0.9,
+              dispersionDir: new THREE.Vector3(
+                (Math.random() - 0.5) * 2,
+                0.7 + Math.random() * 1.8,
+                (Math.random() - 0.5) * 2,
+              ).normalize(),
+              dispersionDist: 4.5 + Math.random() * 5.0,
+            }),
+          );
+        }
+      }
+
+      const outlineGeometry = new THREE.BufferGeometry();
+      outlineGeometry.setAttribute("position", new THREE.BufferAttribute(outlinePositions, 3));
+      const outlineMaterial = new THREE.PointsMaterial({
+        size: isMobile ? 0.035 : 0.028,
+        color: 0xffb36b,
+        transparent: true,
+        opacity: 0.95,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        sizeAttenuation: true,
+      });
+      const outlineParticles = new THREE.Points(outlineGeometry, outlineMaterial);
+      carGroup.add(outlineParticles);
+
+      // ---- intro text → particle dissolve (2D canvas) ----------------------
+      const introCtx = introCanvas?.getContext("2d") ?? null;
+      let introParticles: {
+        ox: number;
+        oy: number;
+        tx: number;
+        ty: number;
+        r: number;
+        g: number;
+        b: number;
+        a: number;
+        size: number;
+        delay: number;
+        speed: number;
+        wobble: number;
+      }[] = [];
+      let introDpr = 1;
+
+      function buildIntroTextParticles() {
+        if (!introCanvas || !introCtx) return;
+        const w = introCanvas.width;
+        const h = introCanvas.height;
+        const dpr = introDpr;
+        if (!w || !h) return;
+
+        const off = document.createElement("canvas");
+        off.width = w;
+        off.height = h;
+        const ctx = off.getContext("2d");
+        if (!ctx) return;
+
+        ctx.clearRect(0, 0, w, h);
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        const titleSize = isMobile ? 52 : 96;
+        const cx = w / 2;
+        const cy = h / 2;
+        ctx.font = `900 ${titleSize * dpr}px Arial, sans-serif`;
+        ctx.fillStyle = "#ffffff";
+
+        if (isMobile) {
+          ctx.fillText("Пет стъпки.", cx, cy - titleSize * dpr * 0.35);
+          const textA = "Един";
+          const textB = " резултат.";
+          const widthA = ctx.measureText(textA).width;
+          const widthB = ctx.measureText(textB).width;
+          const startX = cx - (widthA + widthB) / 2;
+          ctx.fillStyle = "#ff8a3d";
+          ctx.fillText(textA, startX + widthA / 2, cy + titleSize * dpr * 0.55);
+          ctx.fillStyle = "#ffffff";
+          ctx.fillText(textB, startX + widthA + widthB / 2, cy + titleSize * dpr * 0.55);
+        } else {
+          const line1A = "Пет стъпки. ";
+          const line1B = "Един";
+          const line1W = ctx.measureText(line1A + line1B).width;
+          let x = cx - line1W / 2;
+          ctx.fillStyle = "#ffffff";
+          ctx.fillText(line1A, x + ctx.measureText(line1A).width / 2, cy - titleSize * dpr * 0.25);
+          x += ctx.measureText(line1A).width;
+          ctx.fillStyle = "#ff8a3d";
+          ctx.fillText(line1B, x + ctx.measureText(line1B).width / 2, cy - titleSize * dpr * 0.25);
+          ctx.fillStyle = "#ffffff";
+          ctx.fillText("резултат.", cx, cy + titleSize * dpr * 0.75);
+        }
+
+        const img = ctx.getImageData(0, 0, w, h).data;
+        const gap = isMobile ? 6 : 5;
+        introParticles = [];
+        for (let y = 0; y < h; y += gap) {
+          for (let x = 0; x < w; x += gap) {
+            const index = (y * w + x) * 4;
+            const alpha = img[index + 3];
+            if (alpha > 60) {
+              const angle = Math.random() * Math.PI * 2;
+              const dist = (isMobile ? 80 : 120) * dpr + Math.random() * (isMobile ? 220 : 360) * dpr;
+              const upward = Math.random() * (isMobile ? 180 : 260) * dpr;
+              introParticles.push({
+                ox: x,
+                oy: y,
+                tx: x + Math.cos(angle) * dist,
+                ty: y - Math.abs(Math.sin(angle)) * dist - upward,
+                r: img[index],
+                g: img[index + 1],
+                b: img[index + 2],
+                a: alpha / 255,
+                size: isMobile ? 2.1 * dpr : 2.25 * dpr,
+                delay: Math.random() * 0.24,
+                speed: 0.85 + Math.random() * 0.75,
+                wobble: Math.random() * Math.PI * 2,
+              });
+            }
+          }
+        }
+      }
+
+      function updateIntroParticles() {
+        if (!introCtx || !introCanvas || !introParticles.length) return;
+        const rect = root!.getBoundingClientRect();
+        const totalSticky = rect.height - window.innerHeight;
+        const t = totalSticky > 0 ? Math.max(0, Math.min(1, -rect.top / totalSticky)) : 0;
+
+        const start = 0.015;
+        const end = 0.2;
+        let p = Math.max(0, Math.min(1, (t - start) / (end - start)));
+        p = p * (2 - p);
+
+        introCtx.clearRect(0, 0, introCanvas.width, introCanvas.height);
+        const now = performance.now() * 0.002;
+
+        for (const particle of introParticles) {
+          const local = Math.max(0, Math.min(1, (p - particle.delay) * particle.speed));
+          const e = local * (2 - local);
+          const wave = Math.sin(now + particle.wobble) * 10 * introDpr * local;
+          const x = particle.ox + (particle.tx - particle.ox) * e + wave;
+          const y = particle.oy + (particle.ty - particle.oy) * e;
+          const alpha = particle.a * (1 - Math.pow(local, 1.35));
+          if (alpha <= 0.01) continue;
+          introCtx.fillStyle = `rgba(${particle.r},${particle.g},${particle.b},${alpha})`;
+          introCtx.fillRect(x, y, particle.size, particle.size);
+        }
+
+        setIntroHidden(p >= 0.99);
+      }
+
+      // ---- model loading: sample surface + edge targets --------------------
+      function computeMeshSurfaceArea(geometry: THREE.BufferGeometry) {
+        const pos = geometry.attributes.position;
+        const idx = geometry.index;
+        let area = 0;
+        const a = new THREE.Vector3();
+        const b = new THREE.Vector3();
+        const c = new THREE.Vector3();
+        const ab = new THREE.Vector3();
+        const ac = new THREE.Vector3();
+        const cross = new THREE.Vector3();
+        const accumulate = (i0: number, i1: number, i2: number) => {
+          a.fromBufferAttribute(pos, i0);
+          b.fromBufferAttribute(pos, i1);
+          c.fromBufferAttribute(pos, i2);
+          ab.subVectors(b, a);
+          ac.subVectors(c, a);
+          cross.crossVectors(ab, ac);
+          area += cross.length() * 0.5;
+        };
+        if (idx) {
+          for (let i = 0; i < idx.count; i += 3) {
+            accumulate(idx.getX(i), idx.getX(i + 1), idx.getX(i + 2));
+          }
+        } else {
+          for (let i = 0; i < pos.count; i += 3) accumulate(i, i + 1, i + 2);
+        }
+        return area;
+      }
+
+      function buildOutlineTargets(
+        meshes: THREE.Mesh[],
+        samplers: MeshSurfaceSamplerType[],
+        cumulative: number[],
+        totalArea: number,
+      ) {
+        const targetCount = isMobile ? 8000 : 36000;
+        const edgeBudget = Math.floor(targetCount * 0.65);
+        const surfaceBudget = targetCount - edgeBudget;
+        const points: THREE.Vector3[] = [];
+
+        const overallBox = new THREE.Box3();
+        meshes.forEach((m) => {
+          m.geometry.computeBoundingBox();
+          if (m.geometry.boundingBox) overallBox.union(m.geometry.boundingBox);
+        });
+        const overallSize = overallBox.getSize(new THREE.Vector3());
+        const maxDim = Math.max(overallSize.x, overallSize.y, overallSize.z);
+
+        const edgeThreshold = isMobile ? 14 : 1;
+        const minEdgeLength = isMobile ? maxDim * 0.018 : 0;
+        const segmentsPerEdge = isMobile ? 2 : 4;
+
+        const edgePool: THREE.Vector3[] = [];
+        for (const mesh of meshes) {
+          const edges = new THREE.EdgesGeometry(mesh.geometry, edgeThreshold);
+          const position = edges.attributes.position;
+          if (!position) continue;
+          for (let i = 0; i < position.count - 1; i += 2) {
+            const ax = position.getX(i);
+            const ay = position.getY(i);
+            const az = position.getZ(i);
+            const bx = position.getX(i + 1);
+            const by = position.getY(i + 1);
+            const bz = position.getZ(i + 1);
+            if (minEdgeLength > 0) {
+              const dx = bx - ax;
+              const dy = by - ay;
+              const dz = bz - az;
+              if (Math.sqrt(dx * dx + dy * dy + dz * dz) < minEdgeLength) continue;
+            }
+            for (let s = 0; s <= segmentsPerEdge; s++) {
+              const tt = s / segmentsPerEdge;
+              edgePool.push(
+                new THREE.Vector3(
+                  ax + (bx - ax) * tt,
+                  ay + (by - ay) * tt,
+                  az + (bz - az) * tt,
+                ),
+              );
+            }
+          }
+        }
+
+        if (edgePool.length > 0) {
+          for (let i = 0; i < edgeBudget; i++) {
+            points.push(edgePool[Math.floor(Math.random() * edgePool.length)]);
+          }
+        }
+
+        const temp = new THREE.Vector3();
+        for (let i = 0; i < surfaceBudget; i++) {
+          const r = Math.random() * totalArea;
+          let chosen = 0;
+          for (let j = 0; j < cumulative.length; j++) {
+            if (r < cumulative[j]) {
+              chosen = j;
+              break;
+            }
+          }
+          samplers[chosen].sample(temp);
+          points.push(temp.clone());
+        }
+
+        return points.length ? points : [new THREE.Vector3(0, 0, 0)];
+      }
+
+      function buildEdgeLines(meshes: THREE.Mesh[]) {
+        edgeLineGroup.clear();
+        edgeLines = [];
+        const minMaxDim = isMobile ? 0.25 : 0.12;
+        const edgeThreshold = isMobile ? 22 : 10;
+        meshes.forEach((mesh) => {
+          if (!mesh.geometry?.attributes.position) return;
+          mesh.geometry.computeBoundingBox();
+          const box = mesh.geometry.boundingBox;
+          if (!box) return;
+          const size = box.getSize(new THREE.Vector3());
+          if (Math.max(size.x, size.y, size.z) < minMaxDim) return;
+          const edges = new THREE.EdgesGeometry(mesh.geometry, edgeThreshold);
+          const material = new THREE.LineBasicMaterial({
+            color: 0xffd7a0,
+            transparent: true,
+            opacity: 0,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            depthTest: false,
+          });
+          const lines = new THREE.LineSegments(edges, material);
+          edgeLines.push(lines);
+          edgeLineGroup.add(lines);
+        });
+      }
+
+      const loader = new GLTFLoader();
+      loader.load(
+        MODEL_URL,
+        (gltf) => {
+          if (disposed) return;
+          const model = gltf.scene;
+          model.updateMatrixWorld(true);
+
+          const box = new THREE.Box3().setFromObject(model);
+          const center = box.getCenter(new THREE.Vector3());
+          const size = box.getSize(new THREE.Vector3());
+          const maxSize = Math.max(size.x, size.y, size.z);
+          const normalizeScale = (isMobile ? 5.0 : 6.5) / maxSize;
+
+          const meshes: THREE.Mesh[] = [];
+          model.traverse((child) => {
+            const mesh = child as THREE.Mesh;
+            if (!mesh.isMesh || !mesh.geometry) return;
+            const geometry = mesh.geometry.clone();
+            geometry.applyMatrix4(mesh.matrixWorld);
+            geometry.translate(-center.x, -center.y, -center.z);
+            geometry.scale(normalizeScale, normalizeScale, normalizeScale);
+            meshes.push(new THREE.Mesh(geometry));
+          });
+          if (!meshes.length) return;
+
+          const areas = meshes.map((m) => computeMeshSurfaceArea(m.geometry));
+          const totalArea = areas.reduce((a, b) => a + b, 0);
+          const cumulative: number[] = [];
+          let acc = 0;
+          for (const a of areas) {
+            acc += a;
+            cumulative.push(acc);
+          }
+
+          const samplers = meshes.map((m) => new MeshSurfaceSampler(m).build());
+          const temp = new THREE.Vector3();
+
+          for (let i = 0; i < particleCount; i++) {
+            const r = Math.random() * totalArea;
+            let chosen = 0;
+            for (let j = 0; j < cumulative.length; j++) {
+              if (r < cumulative[j]) {
+                chosen = j;
+                break;
+              }
+            }
+            samplers[chosen].sample(temp);
+            targets[i * 3] = temp.x;
+            targets[i * 3 + 1] = temp.y;
+            targets[i * 3 + 2] = temp.z;
+          }
+
+          const outlinePts = buildOutlineTargets(meshes, samplers, cumulative, totalArea);
+          for (let i = 0; i < outlineCount; i++) {
+            const point = outlinePts[i % outlinePts.length];
+            outlineTargets[i * 3] = point.x;
+            outlineTargets[i * 3 + 1] = point.y;
+            outlineTargets[i * 3 + 2] = point.z;
+          }
+
+          for (let i = 0; i < particleCount; i++) {
+            const seed = seeds[i];
+            dispersionTargets[i * 3] = targets[i * 3] + seed.dispersionDir.x * seed.dispersionDist;
+            dispersionTargets[i * 3 + 1] = targets[i * 3 + 1] + seed.dispersionDir.y * seed.dispersionDist;
+            dispersionTargets[i * 3 + 2] = targets[i * 3 + 2] + seed.dispersionDir.z * seed.dispersionDist;
+          }
+          for (let i = 0; i < outlineCount; i++) {
+            const seed = outlineSeeds[i];
+            outlineDispersionTargets[i * 3] = outlineTargets[i * 3] + seed.dispersionDir.x * seed.dispersionDist;
+            outlineDispersionTargets[i * 3 + 1] = outlineTargets[i * 3 + 1] + seed.dispersionDir.y * seed.dispersionDist;
+            outlineDispersionTargets[i * 3 + 2] = outlineTargets[i * 3 + 2] + seed.dispersionDir.z * seed.dispersionDist;
+          }
+
+          buildEdgeLines(meshes);
+          modelLoaded = true;
+        },
+        undefined,
+        (error) => {
+          console.error("GLB LOADER ERROR:", error);
+        },
+      );
+
+      // ---- per-frame scroll → progress ------------------------------------
+      function computeProgress() {
+        const rect = root!.getBoundingClientRect();
+        const totalSticky = rect.height - window.innerHeight;
+        if (totalSticky <= 0) return { formation: 0, dispersion: 0 };
+        const t = Math.max(0, Math.min(1, -rect.top / totalSticky));
+        const introEnd = 0.18;
+        const formationEnd = 0.62;
+        const holdEnd = 0.78;
+        const formation = Math.max(0, Math.min(1, (t - introEnd) / (formationEnd - introEnd)));
+        const dispersion = Math.max(0, Math.min(1, (t - holdEnd) / (1 - holdEnd)));
+        return { formation, dispersion };
+      }
+
+      function updateParticles() {
+        if (!modelLoaded) return;
+        const now = performance.now();
+        const fP = displayFormation;
+        const dP = displayDispersion;
+        const fT = ease(fP);
+        const dT = dP * (2 - dP);
+        const dispersing = dP > 0.001;
+        const formationLocked = fP >= 0.94 && !dispersing;
+
+        for (let i = 0; i < particleCount; i++) {
+          const seed = seeds[i];
+          const tx = targets[i * 3];
+          const ty = targets[i * 3 + 1];
+          const tz = targets[i * 3 + 2];
+
+          if (dispersing) {
+            const localT = Math.max(0, Math.min(1, (dT - seed.dispersionDelay) * seed.dispersionSpeed));
+            positions[i * 3] = tx + (dispersionTargets[i * 3] - tx) * localT;
+            positions[i * 3 + 1] = ty + (dispersionTargets[i * 3 + 1] - ty) * localT;
+            positions[i * 3 + 2] = tz + (dispersionTargets[i * 3 + 2] - tz) * localT;
+          } else if (formationLocked) {
+            positions[i * 3] = tx;
+            positions[i * 3 + 1] = ty;
+            positions[i * 3 + 2] = tz;
+          } else {
+            const localT = Math.max(0, Math.min(1, (fT - seed.delay) * seed.speed));
+            const ix = initialPositions[i * 3];
+            const iy = initialPositions[i * 3 + 1];
+            const iz = initialPositions[i * 3 + 2];
+            const swirl = Math.sin(localT * Math.PI) * 0.07 * (1 - localT);
+            const time = now * 0.0006;
+            const fade = 1 - localT;
+            positions[i * 3] = ix + (tx - ix) * localT + seed.noise.x * swirl + Math.sin(time + i * 0.2) * fade * 0.03;
+            positions[i * 3 + 1] = iy + (ty - iy) * localT + seed.noise.y * swirl + Math.sin(time * 1.2 + i * 0.17) * fade * 0.03;
+            positions[i * 3 + 2] = iz + (tz - iz) * localT + seed.noise.z * swirl;
+          }
+
+          const heat = dP * 0.25;
+          if (isMobile) {
+            colors[i * 3] = 1.0;
+            colors[i * 3 + 1] = 0.23 + Math.min(1, fT * 0.08 + heat);
+            colors[i * 3 + 2] = 0.035 + heat * 0.15;
+          } else {
+            colors[i * 3] = 1.0;
+            colors[i * 3 + 1] = Math.min(1, 0.42 + fT * 0.3 + heat);
+            colors[i * 3 + 2] = Math.min(1, 0.14 + fT * 0.18 + heat * 0.5);
+          }
+        }
+
+        particleGeometry.attributes.position.needsUpdate = true;
+        particleGeometry.attributes.color.needsUpdate = true;
+
+        const baseSize = isMobile ? 0.018 : 0.021;
+        particleMaterial.size = baseSize * (1 - dP * 0.45) - fP * 0.002;
+
+        const baseOpacity = isMobile ? 0.55 : 1.0;
+        const fadeStart = 0.55;
+        let formationOpacity = baseOpacity;
+        if (fP >= fadeStart) {
+          const fadeT = Math.min(1, (fP - fadeStart) / (1 - fadeStart));
+          formationOpacity = isMobile ? baseOpacity - fadeT * 0.4 : baseOpacity - fadeT * 0.85;
+        }
+        particleMaterial.opacity = Math.max(0, formationOpacity * (1 - Math.pow(dP, 1.4)));
+      }
+
+      function updateOutlineParticles() {
+        if (!modelLoaded) return;
+        const fP = displayFormation;
+        const dP = displayDispersion;
+        const fT = ease(fP);
+        const dT = dP * (2 - dP);
+        const dispersing = dP > 0.001;
+        const formationLocked = fP >= 0.995 && !dispersing;
+
+        for (let i = 0; i < outlineCount; i++) {
+          const seed = outlineSeeds[i];
+          const tx = outlineTargets[i * 3];
+          const ty = outlineTargets[i * 3 + 1];
+          const tz = outlineTargets[i * 3 + 2];
+
+          if (dispersing) {
+            const localT = Math.max(0, Math.min(1, (dT - seed.dispersionDelay) * seed.dispersionSpeed));
+            outlinePositions[i * 3] = tx + (outlineDispersionTargets[i * 3] - tx) * localT;
+            outlinePositions[i * 3 + 1] = ty + (outlineDispersionTargets[i * 3 + 1] - ty) * localT;
+            outlinePositions[i * 3 + 2] = tz + (outlineDispersionTargets[i * 3 + 2] - tz) * localT;
+            continue;
+          }
+          if (formationLocked) {
+            outlinePositions[i * 3] = tx;
+            outlinePositions[i * 3 + 1] = ty;
+            outlinePositions[i * 3 + 2] = tz;
+            continue;
+          }
+
+          const localT = Math.max(0, Math.min(1, (fT - seed.delay) * seed.speed));
+          const ix = outlineInitialPositions[i * 3];
+          const iy = outlineInitialPositions[i * 3 + 1];
+          const iz = outlineInitialPositions[i * 3 + 2];
+          const swirl = Math.sin(localT * Math.PI) * 0.08 * (1 - localT);
+          const hold = Math.max(0, localT - 0.78) / 0.22;
+          if (hold > 0) {
+            outlinePositions[i * 3] = tx;
+            outlinePositions[i * 3 + 1] = ty;
+            outlinePositions[i * 3 + 2] = tz;
+          } else {
+            outlinePositions[i * 3] = ix + (tx - ix) * localT + seed.noise.x * swirl;
+            outlinePositions[i * 3 + 1] = iy + (ty - iy) * localT + seed.noise.y * swirl;
+            outlinePositions[i * 3 + 2] = iz + (tz - iz) * localT + seed.noise.z * swirl;
+          }
+        }
+
+        outlineGeometry.attributes.position.needsUpdate = true;
+
+        const formationOpacity = isMobile
+          ? Math.min(0.5, 0.18 + fP * 0.55)
+          : Math.min(1.0, 0.4 + fP * 1.4);
+        outlineMaterial.opacity = Math.max(0, formationOpacity * (1 - Math.pow(dP, 1.3)));
+
+        const baseOutlineSize = isMobile ? 0.022 : 0.024;
+        outlineMaterial.size = baseOutlineSize * (1 - dP * 0.4) - fP * 0.001;
+
+        if (isMobile) {
+          outlineMaterial.color.setRGB(1.0, 0.42 + dP * 0.15, 0.14 + dP * 0.1);
+        } else if (fP > 0.92) {
+          const boost = (fP - 0.92) / 0.08;
+          outlineMaterial.color.setRGB(1.0, 0.74 + boost * 0.04 + dP * 0.1, 0.42 + boost * 0.04 + dP * 0.08);
+        } else {
+          outlineMaterial.color.setRGB(1.0, 0.74 + dP * 0.1, 0.42 + dP * 0.08);
+        }
+      }
+
+      function updateEdgeLines() {
+        if (!edgeLines.length || !modelLoaded) return;
+        const fP = displayFormation;
+        const dP = displayDispersion;
+        const formationFade = Math.min(1, Math.max(0, (fP - 0.15) / 0.35));
+        const lineOpacity = formationFade * (1 - dP);
+        edgeLines.forEach((line) => {
+          const material = line.material as THREE.LineBasicMaterial;
+          material.opacity = lineOpacity * (isMobile ? 0.28 : 1.2);
+          if (isMobile) {
+            material.color.setRGB(1.0, 0.46, 0.16);
+          } else if (fP > 0.9) {
+            material.color.setRGB(1.0, 0.62, 0.3);
+          } else {
+            material.color.setRGB(1.0, 0.5, 0.22);
+          }
+        });
+      }
+
+      function updateCarGroup() {
+        const fP = displayFormation;
+        const dP = displayDispersion;
+        const now = performance.now();
+        if (backgroundParticles) backgroundParticles.rotation.y += 0.0004;
+
+        if (isMobile) {
+          carGroup.position.set(0, 1.55 - fP * 0.04, 0);
+          carGroup.rotation.y = -0.48 + fP * 0.18 + Math.sin(now * 0.0003) * 0.015 + dP * 0.18;
+          carGroup.rotation.x = -0.02;
+          camera.position.set(0, 1.55, 6.5);
+          camera.lookAt(0, 1.35, 0);
+        } else {
+          carGroup.rotation.y = -0.15 + fP * 0.45 + Math.sin(now * 0.0003) * 0.04 + dP * 0.18;
+          carGroup.rotation.x = -0.04 - fP * 0.04;
+          carGroup.position.y = 0 - fP * 0.1;
+          camera.position.y = 0.8 + Math.sin(now * 0.0004) * 0.08 - fP * 0.15;
+          camera.lookAt(carGroup.position.x, 0, 0);
+        }
+      }
+
+      function syncOverlays() {
+        const step = Math.max(0, Math.min(4, Math.floor(displayFormation * 5 + 0.001)));
+        if (step !== lastStep) {
+          lastStep = step;
+          setActiveStep(step);
+        }
+        setFormationPct(Math.round(displayFormation * 100));
+        setOutroOpacity(Math.min(1, Math.max(0, (displayDispersion - 0.15) / 0.55)));
+      }
+
+      function animate() {
+        rafId = requestAnimationFrame(animate);
+        const phases = computeProgress();
+        const k = isMobile ? 0.28 : 0.22;
+        displayFormation += (phases.formation - displayFormation) * k;
+        displayDispersion += (phases.dispersion - displayDispersion) * k;
+
+        updateIntroParticles();
+        updateParticles();
+        updateOutlineParticles();
+        updateEdgeLines();
+        updateCarGroup();
+        syncOverlays();
+
+        renderer.render(scene, camera);
+      }
+
+      // ---- sizing ----------------------------------------------------------
+      function resize() {
+        const width = root!.offsetWidth || window.innerWidth;
+        const height = window.innerHeight;
+        camera.fov = window.innerWidth < 768 ? 46 : 38;
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(width, height);
+
+        if (introCanvas) {
+          const dpr = Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2);
+          introDpr = dpr;
+          introCanvas.width = Math.floor(width * dpr);
+          introCanvas.height = Math.floor(height * dpr);
+          introCanvas.style.width = width + "px";
+          introCanvas.style.height = height + "px";
+          buildIntroTextParticles();
+        }
+      }
+
+      resize();
+      animate();
+
+      const onResize = () => resize();
+      window.addEventListener("resize", onResize, { passive: true });
+
+      cleanupListeners = () => {
+        window.removeEventListener("resize", onResize);
+        renderer.dispose();
+        particleGeometry.dispose();
+        particleMaterial.dispose();
+        outlineGeometry.dispose();
+        outlineMaterial.dispose();
+        edgeLines.forEach((l) => {
+          l.geometry.dispose();
+          (l.material as THREE.Material).dispose();
+        });
+      };
+    })();
+
+    return () => {
+      disposed = true;
+      cancelAnimationFrame(rafId);
+      cleanupListeners();
+    };
+  }, []);
+
+  return (
+    <section
+      ref={rootRef}
+      className="relative h-[580vh] overflow-visible bg-[#050302] text-white max-md:h-[500vh]"
+    >
+      {/* Intro — full-screen title that dissolves into particles on scroll */}
+      <div
+        className="absolute inset-x-0 top-0 z-[5] flex h-screen flex-col items-center justify-center overflow-hidden px-6 pb-6 pt-20 text-center transition-opacity duration-300 max-md:justify-start max-md:pt-[60px]"
+        style={{ opacity: introHidden ? 0 : 1 }}
+      >
+        <canvas
+          ref={introCanvasRef}
+          className="pointer-events-none absolute inset-0 z-[1] h-full w-full"
+        />
+        <h2 className="relative z-[2] max-w-[1100px] text-[clamp(34px,9vw,84px)] font-black leading-none tracking-[-1.5px]">
+          Пет стъпки.{" "}
+          <span className="bg-gradient-to-br from-brand-glow to-[#ffb37a] bg-clip-text text-transparent">
+            Един
+          </span>{" "}
+          резултат.
+        </h2>
+      </div>
+
+      {/* Floating scroll hint */}
+      <div
+        className="fixed bottom-[34px] left-1/2 z-20 inline-flex -translate-x-1/2 items-center gap-3 rounded-full border border-brand-glow/20 bg-[#050302]/[0.72] px-[18px] py-3 text-xs font-bold uppercase tracking-[1.4px] text-white/80 backdrop-blur-md shadow-[0_14px_34px_rgba(0,0,0,0.35)] transition-opacity duration-300 max-md:bottom-[92px] max-md:max-w-[calc(100vw-32px)] max-md:px-3.5 max-md:py-[11px] max-md:text-[10px]"
+        style={{
+          opacity: introHidden ? 0 : 1,
+          animation: "sa-scroll-hint-float 1.8s ease-in-out infinite",
+        }}
+      >
+        Скролни надолу, за да започне процесът
+        <span className="h-2 w-2 rotate-45 border-b-2 border-r-2 border-brand-glow" />
+      </div>
+
+      {/* Sticky stage — pinned canvas + step overlays */}
+      <div className="sticky top-0 z-[2] h-screen w-full overflow-hidden">
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 z-[1] block h-full w-full"
+        />
+
+        {/* Vignette */}
+        <div className="pointer-events-none absolute inset-0 z-[2] bg-[radial-gradient(ellipse_at_70%_50%,transparent_30%,rgba(0,0,0,0.4)_75%),linear-gradient(180deg,rgba(5,3,2,0.6)_0%,transparent_15%,transparent_85%,rgba(5,3,2,0.7)_100%)] max-md:bg-[radial-gradient(ellipse_at_50%_35%,transparent_30%,rgba(0,0,0,0.45)_80%),linear-gradient(180deg,rgba(5,3,2,0.4)_0%,transparent_12%,transparent_70%,rgba(5,3,2,0.85)_100%)]" />
+
+        {/* Giant step number watermark */}
+        <div className="pointer-events-none absolute left-[-2vw] top-1/2 z-[3] -translate-y-1/2 select-none text-[52vw] font-black leading-[0.8] tracking-[-8px] text-transparent [-webkit-text-stroke:1px_rgba(255,138,61,0.06)] max-md:bottom-[28%] max-md:left-[-4vw] max-md:top-auto max-md:translate-y-0 max-md:text-[40vw] max-md:tracking-[-3px]">
+          {`0${activeStep + 1}`}
+        </div>
+
+        {/* Mobile rail (top dots) */}
+        <div className="absolute left-1/2 top-6 z-[5] hidden -translate-x-1/2 gap-2 max-md:flex">
+          {STEPS.map((_, i) => (
+            <span
+              key={i}
+              className={`h-[3px] rounded-sm transition-all duration-300 ${
+                i === activeStep
+                  ? "w-9 bg-gradient-to-r from-brand-glow to-[#ffb37a] shadow-[0_0_8px_rgba(255,138,61,0.6)]"
+                  : i < activeStep
+                    ? "w-6 bg-brand-glow/40"
+                    : "w-6 bg-white/15"
+              }`}
+            />
+          ))}
+        </div>
+
+        {/* Step content — cards stacked on top of each other, only active shown */}
+        <div className="pointer-events-none absolute left-20 top-1/2 z-[4] h-[320px] w-[480px] max-w-[480px] -translate-y-1/2 max-md:inset-x-5 max-md:bottom-[100px] max-md:top-auto max-md:h-[260px] max-md:w-auto max-md:max-w-none max-md:translate-y-0">
+          {STEPS.map((step, i) => (
+            <div
+              key={step.title}
+              className="absolute inset-0 transition-[opacity,transform] duration-[600ms] ease-[cubic-bezier(.22,.61,.36,1)]"
+              style={{
+                opacity: i === activeStep ? 1 : 0,
+                transform: i === activeStep ? "translateY(0)" : "translateY(15px)",
+                visibility: i === activeStep ? "visible" : "hidden",
+              }}
+            >
+              <div className="mb-[18px] flex items-center gap-3.5 text-sm font-bold uppercase tracking-[4px] text-brand-glow max-md:mb-3 max-md:text-[11px] max-md:tracking-[3px]">
+                {step.num}
+                <span className="h-px max-w-20 flex-1 bg-gradient-to-r from-brand-glow to-transparent" />
+              </div>
+              <h3 className="mb-6 text-[clamp(36px,7vw,88px)] font-black leading-[0.95] tracking-[-2px] max-md:mb-3 max-md:text-[clamp(36px,11vw,64px)] max-md:tracking-[-1.5px]">
+                {step.title}
+              </h3>
+              <p className="max-w-[420px] text-lg leading-relaxed text-white/70 max-md:max-w-full max-md:text-sm">
+                {step.desc}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop rail (right side) */}
+        <div className="pointer-events-none absolute right-14 top-1/2 z-[5] flex -translate-y-1/2 flex-col gap-7 max-md:hidden">
+          {STEPS.map((step, i) => (
+            <div
+              key={step.rail}
+              className="flex items-center gap-4 transition-opacity duration-300"
+              style={{ opacity: i === activeStep ? 1 : i < activeStep ? 0.7 : 0.35 }}
+            >
+              <span className="whitespace-nowrap text-xs font-semibold uppercase tracking-[2px] text-white/85">
+                {step.rail}
+              </span>
+              <span
+                className="h-px transition-all duration-300"
+                style={
+                  i === activeStep
+                    ? {
+                        width: "40px",
+                        height: "2px",
+                        background: "linear-gradient(90deg, transparent, #ff8a3d)",
+                        boxShadow: "0 0 12px rgba(255,138,61,0.6)",
+                      }
+                    : { width: "24px", background: "rgba(255,255,255,0.3)" }
+                }
+              />
+              <span className="w-8 text-right text-xs font-bold tracking-[2px] text-white/70">
+                {`0${i + 1}`}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Progress spine */}
+        <div className="absolute bottom-[70px] left-20 z-[5] text-[11px] font-bold uppercase tracking-[3px] text-white/40 max-md:bottom-[38px] max-md:left-5 max-md:text-[9px] max-md:tracking-[2px]">
+          <span className="text-brand-glow">{formationPct}%</span> · от заявка до ключ
+        </div>
+        <div className="absolute bottom-[60px] left-20 right-20 z-[5] h-px overflow-hidden bg-white/[0.08] max-md:bottom-[30px] max-md:left-5 max-md:right-5">
+          <div
+            className="h-full bg-gradient-to-r from-brand-glow to-[#ffb37a] shadow-[0_0_8px_rgba(255,138,61,0.7)]"
+            style={{ width: `${formationPct}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Outro — fades in during dispersion */}
+      <div
+        className="absolute inset-x-0 bottom-0 z-[5] flex h-screen flex-col items-center justify-center px-6 pb-8 text-center transition-opacity duration-300 max-md:justify-start max-md:pt-[120px]"
+        style={{ opacity: outroOpacity, pointerEvents: outroOpacity > 0.9 ? "auto" : "none" }}
+      >
+        <div className="mb-5 text-xs font-bold uppercase tracking-[4px] text-brand-glow/90 max-md:mb-4 max-md:text-[10px] max-md:tracking-[3px]">
+          Резултат
+        </div>
+        <h3 className="mb-7 bg-gradient-to-br from-white to-[#ffb37a] bg-clip-text text-[clamp(34px,8vw,72px)] font-black leading-none tracking-[-1.5px] text-transparent max-md:mb-5">
+          Колата ви очаква.
+        </h3>
+        <p className="mb-9 max-w-[460px] text-[17px] leading-relaxed text-white/65 max-md:mb-7 max-md:text-[15px]">
+          Не каталог. Не обещание. Готов автомобил с изрядна история и документи.
+        </p>
+        <a
+          href="/kontakti/"
+          className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-full bg-gradient-to-br from-brand-glow to-[#e86c20] px-9 py-[18px] text-[15px] font-bold text-white shadow-[0_12px_30px_rgba(232,108,32,0.4)] transition-transform duration-200 hover:-translate-y-0.5 active:scale-[0.97] max-md:px-[30px] max-md:py-4 max-md:text-sm"
+        >
+          Започнете процеса →
+        </a>
+      </div>
+    </section>
+  );
+}

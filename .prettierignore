@@ -1,6 +1,12 @@
 node_modules/
 **/dist/**
+**/.next/**
+pnpm-lock.yaml
 package-lock.json
+# The Next.js app formats itself (its own config); skip it at the root.
+apps/web/
+# Legacy WordPress/PHP plugin assets being migrated out — not our code.
+assets/
 # Markdown is hand-formatted (tables, ASCII diagrams, single-line log examples);
 # Prettier's markdown reflow would mangle them.
 *.md

@@ -377,3 +377,5 @@ upstream contract, and they're available if we ever push filtering upstream.
   the lot instead.
 - `seller_type`, image galleries (we keep one image), `lots[].prices` history as
   structured columns (kept only in `raw_json`). These are noted follow-ups.
+  *(`vehicle_type` and `body_type` were such follow-ups but are now stored on
+  `cars` and the projections — they power the website "Тип" filter.)*
