@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRightIcon } from "@/components/icons";
 import { serializeCarFilters } from "@/lib/car-filters";
-import { getCarFacets } from "@/queries/cars";
+import { getCarBrands } from "@/queries/cars";
 import { BRANDS } from "@/data/home";
 
 const CATALOG_PATH = "/vsichki-avtomobili/";
@@ -18,13 +18,14 @@ const CATALOG_PATH = "/vsichki-avtomobili/";
  *
  * Each card deep-links into the catalog with that make pre-selected
  * (`?brand=<externalId>`). The catalog filters brands by `manufacturers
- * .external_id`, not by name, so we resolve the id from `getCarFacets()` — the
- * same brand list the filter bar uses — keyed by lowercased name. A brand with
- * no active cars (not in the facet set) falls back to the unfiltered catalog.
+ * .external_id`, not by name, so we resolve the id from `getCarBrands()` — a cheap
+ * brand-list query (NOT the full `getCarFacets`, which is ~5s and statement-
+ * timeout'd the build) — keyed by lowercased name. An unknown brand falls back to
+ * the unfiltered catalog.
  */
 export async function BrandsGrid() {
-  const facets = await getCarFacets();
-  const brandIdByName = new Map(facets.brands.map((b) => [b.label.toLowerCase(), b.value]));
+  const brands = await getCarBrands();
+  const brandIdByName = new Map(brands.map((b) => [b.label.toLowerCase(), b.value]));
 
   const hrefFor = (name: string): string => {
     const id = brandIdByName.get(name.toLowerCase());

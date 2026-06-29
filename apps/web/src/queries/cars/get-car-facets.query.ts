@@ -3,9 +3,51 @@ import { and, asc, eq, isNotNull, sql } from "drizzle-orm";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { COLOR_BG, bodyTypeLabel, colorLabel, conditionLabel, driveLabel, vehicleTypeLabel } from "@/lib/car-labels";
 import { getDb, schema } from "@/lib/db";
-import type { FacetOptions } from "@/types/car-filters.type";
+import type { FacetOption, FacetOptions } from "@/types/car-filters.type";
 
 const cl = schema.carListings;
+
+/** Empty facet set — the safe fallback when the DB is slow/unreachable so a page
+ *  (catalog filter bar, homepage brand grid) renders instead of hard-failing. */
+const EMPTY_FACETS: FacetOptions = {
+  brands: [],
+  modelsByBrand: {},
+  colors: [],
+  drives: [],
+  conditions: [],
+  types: [],
+  years: [],
+};
+
+/**
+ * Just the brand list (external id + name), for components that only need to map
+ * a brand NAME → its catalog filter id — e.g. the homepage "Популярни марки" grid.
+ *
+ * This is a deliberately cheap subset of `getCarFacets`: the full facets query
+ * computes models-per-brand, colors, years and type counts with several joins +
+ * GROUP BYs over the whole projection (~5s cold), which is far too heavy to run on
+ * the homepage and was a cause of production-build statement timeouts. This single
+ * `manufacturers` read (~75ms) returns every brand name; the caller resolves ids
+ * from it. Cached for a day; returns [] on DB error so the homepage still renders.
+ */
+export async function getCarBrands(): Promise<FacetOption[]> {
+  "use cache";
+  cacheTag(CACHE_TAGS.cars);
+  cacheLife("days");
+
+  try {
+    const rows = await getDb()
+      .select({ value: schema.manufacturers.externalId, label: schema.manufacturers.name })
+      .from(schema.manufacturers)
+      .orderBy(asc(schema.manufacturers.name));
+    return rows
+      .filter((r) => r.value != null)
+      .map((r) => ({ value: String(r.value), label: r.label ?? `#${r.value}` }));
+  } catch (error) {
+    console.error("[get-car-brands] query failed, returning []", error);
+    return [];
+  }
+}
 
 /**
  * Options for the catalog filter dropdowns. Brands/models come from the
@@ -21,6 +63,18 @@ export async function getCarFacets(): Promise<FacetOptions> {
   cacheTag(CACHE_TAGS.cars);
   cacheLife("days");
 
+  try {
+    return await computeCarFacets();
+  } catch (error) {
+    // Never hard-fail a render on facets (it's the heaviest query set). An empty
+    // facet set degrades the filter dropdowns gracefully; the catalog still works.
+    // This also keeps a slow build-time prerender from failing the whole build.
+    console.error("[get-car-facets] query failed, returning empty facets", error);
+    return EMPTY_FACETS;
+  }
+}
+
+async function computeCarFacets(): Promise<FacetOptions> {
   const db = getDb();
 
   // Brands that actually appear in the catalog, with their display name.

@@ -34,7 +34,7 @@ export default async function HomePage() {
           title="Налични предложения, които можеш да вземеш сега"
           subtitle="Това са автомобили с директна възможност за покупка — подходящи за клиенти, които искат бързо и ясно решение."
           cars={buyNowCars}
-          ctaHref="/коли-за-продажба/"
+          ctaHref="/vsichki-avtomobili/?channel=buy-now"
           ctaLabel="Виж всички Buy Now"
         />
 
@@ -46,7 +46,7 @@ export default async function HomePage() {
           title="Възможности от аукционите, подбрани със стратегия"
           subtitle="Аукционните автомобили дават силни възможности, когато зад избора има правилен подход и реална експертиза."
           cars={auctionCars}
-          ctaHref="/внос/"
+          ctaHref="/vsichki-avtomobili/?channel=auction"
           ctaLabel="Виж всички аукционни автомобили"
         />
 
