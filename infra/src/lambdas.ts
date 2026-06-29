@@ -44,6 +44,11 @@ export interface LambdaSet {
   createSyncRun: aws.lambda.Function;
   finalizeSyncRun: aws.lambda.Function;
   markSyncFailed: aws.lambda.Function;
+  // Periodic projection drift-repair sweep: looped state machine, one car-id
+  // window per step (3 handlers from one bundle).
+  driftSweepInit: aws.lambda.Function;
+  driftSweepStep: aws.lambda.Function;
+  driftSweepFinalize: aws.lambda.Function;
 }
 
 interface MakeFnOpts {
@@ -205,6 +210,28 @@ export function createLambdas(
       name: "markSyncFailed",
       bundleFile: "syncRunLifecycle.js",
       exportName: "failHandler",
+      timeoutSeconds: 30,
+    }),
+    // Drift-repair sweep — 3 handlers from one bundle. The step recomputes a
+    // 25k car-id window (~19s of DB work); 300s gives wide margin. Init/finalize
+    // are tiny. No API calls, so the common AUCTIONS_* env is unused but harmless.
+    driftSweepInit: makeFn({
+      name: "driftSweepInit",
+      bundleFile: "driftSweep.js",
+      exportName: "driftSweepInitHandler",
+      timeoutSeconds: 30,
+    }),
+    driftSweepStep: makeFn({
+      name: "driftSweepStep",
+      bundleFile: "driftSweep.js",
+      exportName: "driftSweepStepHandler",
+      timeoutSeconds: 300,
+      memoryMb: 512,
+    }),
+    driftSweepFinalize: makeFn({
+      name: "driftSweepFinalize",
+      bundleFile: "driftSweep.js",
+      exportName: "driftSweepFinalizeHandler",
       timeoutSeconds: 30,
     }),
   };

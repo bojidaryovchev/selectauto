@@ -36,6 +36,7 @@ export interface StateMachines {
   archivedLotsSync: aws.sfn.StateMachine;
   combinedHourlySync: aws.sfn.StateMachine;
   referenceSync: aws.sfn.StateMachine;
+  driftSweep: aws.sfn.StateMachine;
 }
 
 /**
@@ -275,6 +276,61 @@ function buildReferenceDefinition(args: {
     );
 }
 
+/**
+ * ASL for the drift-repair sweep: loop over cars.id by keyset, recomputing ONE
+ * window per SweepBatch step (a short Wait between, to keep DB load gentle — there
+ * is no API rate limit here, it's pure DB). Resumable via sync_runs. Mirrors the
+ * reference loop's shape (Init → HasMore? → Step → Wait → HasMore → Finalize).
+ */
+function buildDriftSweepDefinition(args: {
+  initFnArn: pulumi.Input<string>;
+  stepFnArn: pulumi.Input<string>;
+  finalizeFnArn: pulumi.Input<string>;
+  failFnArn: pulumi.Input<string>;
+}): pulumi.Output<string> {
+  return pulumi
+    .all([args.initFnArn, args.stepFnArn, args.finalizeFnArn, args.failFnArn])
+    .apply(([initArn, stepArn, finalizeArn, failArn]) =>
+      JSON.stringify({
+        Comment: "Projection drift-repair sweep — recompute every car in keyset windows.",
+        StartAt: "DriftSweepInit",
+        States: {
+          // Create the run row, return { cursor:0, batchSize, hasMore:true }.
+          DriftSweepInit: {
+            ...lambdaTask({ fnArn: initArn, resultPath: "$.init", catchTo: "MarkSyncFailed" }),
+            OutputPath: "$.init.value",
+            Next: "HasMore",
+          },
+          HasMore: {
+            Type: "Choice",
+            Choices: [{ Variable: "$.hasMore", BooleanEquals: true, Next: "SweepBatch" }],
+            Default: "DriftSweepFinalize",
+          },
+          // Recompute the next car-id window; advance the cursor.
+          SweepBatch: {
+            ...lambdaTask({ fnArn: stepArn, resultPath: "$.step", catchTo: "MarkSyncFailed" }),
+            OutputPath: "$.step.value",
+            Next: "WaitBetweenBatches",
+          },
+          // Brief breather between batches (DB-friendly; not a rate limit).
+          WaitBetweenBatches: { Type: "Wait", Seconds: 1, Next: "HasMore" },
+          DriftSweepFinalize: {
+            ...lambdaTask({ fnArn: finalizeArn, resultPath: "$.finalize" }),
+            OutputPath: "$.finalize.value",
+            Next: "Succeed",
+          },
+          Succeed: { Type: "Succeed" },
+          MarkSyncFailed: {
+            ...lambdaTask({ fnArn: failArn, resultPath: "$.failResult" }),
+            Catch: [{ ErrorEquals: ["States.ALL"], ResultPath: "$.failError", Next: "Fail" }],
+            Next: "Fail",
+          },
+          Fail: { Type: "Fail", Error: "DriftSweepFailed", Cause: "See sync_runs.error_message" },
+        },
+      }),
+    );
+}
+
 export function createStateMachines(lambdas: LambdaSet, sfnRoleArn: pulumi.Input<string>): StateMachines {
   const common = {
     createFnArn: lambdas.createSyncRun.arn,
@@ -402,5 +458,21 @@ export function createStateMachines(lambdas: LambdaSet, sfnRoleArn: pulumi.Input
     tags,
   });
 
-  return { fullInventoryBackfill, hourlyCarsSync, archivedLotsSync, combinedHourlySync, referenceSync };
+  // --- Drift-repair sweep: recompute every car in keyset windows (weekly) ---
+  const driftSweepLog = sfnLogGroup("drift-sweep");
+  const driftSweep = new aws.sfn.StateMachine("drift-sweep", {
+    name: `${namePrefix}-drift-sweep`,
+    roleArn: sfnRoleArn,
+    type: "STANDARD",
+    definition: buildDriftSweepDefinition({
+      initFnArn: lambdas.driftSweepInit.arn,
+      stepFnArn: lambdas.driftSweepStep.arn,
+      finalizeFnArn: lambdas.driftSweepFinalize.arn,
+      failFnArn: lambdas.markSyncFailed.arn,
+    }),
+    ...mkLogging(driftSweepLog),
+    tags,
+  });
+
+  return { fullInventoryBackfill, hourlyCarsSync, archivedLotsSync, combinedHourlySync, referenceSync, driftSweep };
 }

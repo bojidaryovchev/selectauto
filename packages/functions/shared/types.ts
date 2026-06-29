@@ -193,7 +193,13 @@ export interface NormalizedPage<T> {
  * Lambda <-> Step Functions message types
  * ======================================================================== */
 
-export type FlowType = "full_backfill" | "hourly_cars" | "archived_lots" | "reference" | "detail_refresh";
+export type FlowType =
+  | "full_backfill"
+  | "hourly_cars"
+  | "archived_lots"
+  | "reference"
+  | "detail_refresh"
+  | "drift_sweep";
 
 /** Mode distinguishes a full backfill from an incremental (minutes-windowed) sync. */
 export type SyncMode = "full" | "incremental";
@@ -281,5 +287,32 @@ export interface ReferenceInitOutput extends ReferenceSyncState {
 
 /** Per-manufacturer step output: advanced index + updated counters. */
 export interface ReferenceStepOutput extends ReferenceSyncState {
+  hasMore: boolean;
+}
+
+/* ---------------------------------------------------------------------------
+ * Drift-repair sweep (Step Functions loop, one car-id keyset window / step).
+ * A periodic full re-run of the projection recompute over EVERY car, to repair
+ * any best-effort recompute that was swallowed during ingestion (the projection
+ * hooks log-and-swallow failures so they can't fail the source-of-truth write —
+ * see docs/05 §11/§12). Walks cars.id by keyset (ids are sparse), recomputing a
+ * batch per step via the SAME *_counted wrappers the backfill uses, so it also
+ * keeps car_listing_counts / car_listing_facets exact. Idempotent + resumable.
+ * ------------------------------------------------------------------------ */
+
+/** State threaded through the drift-sweep state machine. */
+export interface DriftSweepState {
+  flowType: "drift_sweep";
+  syncRunId: number;
+  /** Keyset cursor: the last cars.id processed. The next step takes ids > this. */
+  cursor: number;
+  /** Car-id window size per step (how many ids to recompute per invocation). */
+  batchSize: number;
+  /** Running total of cars recomputed (observability). */
+  processed: number;
+}
+
+/** Init/step output: the full state above plus the loop-control flag. */
+export interface DriftSweepStepOutput extends DriftSweepState {
   hasMore: boolean;
 }

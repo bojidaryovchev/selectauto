@@ -1,6 +1,4 @@
-import { cacheLife, cacheTag } from "next/cache";
 import { and, desc, eq, gte, ilike, inArray, lt, lte, ne, or, sql } from "drizzle-orm";
-import { CACHE_TAGS } from "@/lib/cache-tags";
 import { carListingToView } from "@/lib/car-mapper";
 import { getDb, schema } from "@/lib/db";
 import type { CarFilters, CarsPage } from "@/types/car-filters.type";
@@ -88,15 +86,11 @@ function decodeCursor(cursor: string | null): number | null {
  *  - **Feed** (everything else): keyset pagination on `sort_id DESC`, fetching
  *    PAGE+1 to detect a next page. Flat cost at any depth.
  *
- * `"use cache"` + cacheTag(CACHE_TAGS.cars): cached by (filters, cursor) args;
- * invalidated by `revalidateTag(CACHE_TAGS.cars, "max")` when listings change.
- * `searchParams`/cookies are NOT read here — the page passes filters as args.
+ * Not cached: reads Neon directly per request (keyset feed is flat-cost, so this
+ * stays fast). The page passes parsed filters as args rather than reading
+ * `searchParams` here.
  */
 export async function getCarsPage(filters: CarFilters, cursor: string | null): Promise<CarsPage> {
-  "use cache: remote";
-  cacheTag(CACHE_TAGS.cars);
-  cacheLife("hours");
-
   const db = getDb();
   const t = tableFor(filters);
   const isPast = filters.status === "past";

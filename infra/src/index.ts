@@ -81,11 +81,16 @@ const stateMachines = createStateMachines(lambdas, sfnRole.arn);
 
 // 6. EventBridge Scheduler role + schedules. Both schedules start a state
 //    machine (hourly combined, daily reference loop) — no Lambda targets.
-const schedulerRole = createSchedulerRole([stateMachines.combinedHourlySync.arn, stateMachines.referenceSync.arn]);
+const schedulerRole = createSchedulerRole([
+  stateMachines.combinedHourlySync.arn,
+  stateMachines.referenceSync.arn,
+  stateMachines.driftSweep.arn,
+]);
 const schedules = createSchedules({
   schedulerRoleArn: schedulerRole.arn,
   combinedHourlySyncArn: stateMachines.combinedHourlySync.arn,
   referenceSyncArn: stateMachines.referenceSync.arn,
+  driftSweepArn: stateMachines.driftSweep.arn,
 });
 
 /* ===========================================================================
@@ -102,6 +107,7 @@ export const stateMachineArns = {
   archivedLotsSync: stateMachines.archivedLotsSync.arn,
   combinedHourlySync: stateMachines.combinedHourlySync.arn,
   referenceSync: stateMachines.referenceSync.arn,
+  driftSweep: stateMachines.driftSweep.arn,
 };
 
 // Lambda function names.
@@ -116,12 +122,16 @@ export const lambdaNames = {
   createSyncRun: lambdas.createSyncRun.name,
   finalizeSyncRun: lambdas.finalizeSyncRun.name,
   markSyncFailed: lambdas.markSyncFailed.name,
+  driftSweepInit: lambdas.driftSweepInit.name,
+  driftSweepStep: lambdas.driftSweepStep.name,
+  driftSweepFinalize: lambdas.driftSweepFinalize.name,
 };
 
 // Schedule names.
 export const scheduleNames = {
   hourlyCombinedSync: schedules.hourlyCombinedSync.name,
   dailyReferenceSync: schedules.dailyReferenceSync.name,
+  weeklyDriftSweep: schedules.weeklyDriftSweep.name,
 };
 
 // Secret names (NOT values).

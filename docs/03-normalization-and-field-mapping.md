@@ -94,9 +94,11 @@ Note the asymmetry: for `manufacturer`/`model`/`generation` we keep the **id**
 
 ### The `archived` handling (why it's nullable here)
 `archived` is coerced **only when the payload actually carries a boolean**,
-otherwise `null`. This is deliberate: the `/cars` feed sends `archived: false`
-for active lots, but the **detail endpoints** can return `archived: true,
-status: "sold"` for a directly looked-up concluded lot. The upsert then does:
+otherwise `null`. This is deliberate: the live `/cars` feed sends `archived:
+null` for active lots (historically documented as `false`; confirmed `null`
+against the live API 2026-06 — in both cases *not* `true`), but the **detail
+endpoints** can return `archived: true, status: "sold"` for a directly looked-up
+concluded lot. The upsert then does:
 
 ```sql
 archived = CASE WHEN $20::boolean IS NULL

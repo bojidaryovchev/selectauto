@@ -41,7 +41,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
  * this page server-side (and remounts the grid via its `key`).
  *
  * Reads `searchParams` here (a request-time API) and passes parsed filters as
- * args into the cached queries — `"use cache"` scopes can't read searchParams.
+ * args into the query functions, which read Neon directly (no app-level cache).
  */
 export default async function AllCarsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const sp = await searchParams;

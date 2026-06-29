@@ -1,4 +1,4 @@
-import { cacheTag } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { and, desc, isNotNull, ne, or, sql } from "drizzle-orm";
 import { FALLBACK_AUCTION_CARS } from "@/data/home";
 import { CACHE_TAGS } from "@/lib/cache-tags";
@@ -19,18 +19,20 @@ const DEFAULT_LIMIT = 6;
  * Querying raw `auction_lots` here used to `ORDER BY sale_date` (unindexed) and
  * statement-timeout under load — the projection makes this a flat, fast read.
  *
- * Cached via `"use cache: remote"` (shared across serverless instances, unlike
- * the default in-memory `"use cache"` which is discarded per-invocation on Vercel)
- * + `cacheTag` (requires `cacheComponents`, enabled in
- * next.config.ts). Invalidate on write with `revalidateTag(CACHE_TAGS.auctionCars,
- * "max")` when listings change.
+ * Cached with `"use cache"` + `cacheLife("hours")`, same rationale as
+ * `getBuyNowCars`: no per-request key (only `limit`), shared by all homepage
+ * visitors, slow-changing (hourly sync). Plain `"use cache"` (in-memory LRU),
+ * not `"use cache: remote"` — see `getBuyNowCars` and
+ * [cache-tags.ts](../../lib/cache-tags.ts) for why the catalog queries stay
+ * uncached and why we don't use a remote handler.
  *
  * Falls back to `FALLBACK_AUCTION_CARS` (already photo-filtered) when the DB
  * returns nothing or is unreachable.
  */
 export async function getAuctionCars(limit = DEFAULT_LIMIT): Promise<CarView[]> {
-  "use cache: remote";
+  "use cache";
   cacheTag(CACHE_TAGS.auctionCars);
+  cacheLife("hours");
 
   const cl = schema.carListings;
 

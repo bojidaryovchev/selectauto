@@ -1,6 +1,4 @@
-import { cacheLife, cacheTag } from "next/cache";
 import { and, eq, gte, inArray, lte, ne, or, sql } from "drizzle-orm";
-import { CACHE_TAGS } from "@/lib/cache-tags";
 import { getDb, schema } from "@/lib/db";
 import type { CarFilters } from "@/types/car-filters.type";
 
@@ -113,17 +111,17 @@ function buildConditions(filters: CarFilters, t: ListingTable = cl) {
 export type CarsCount = { count: number };
 
 /**
- * **Exact** count of cars matching the filters. Single-table `COUNT(*)` over the
- * projection — measured 43–197ms even unfiltered (the `vehicle_type`/`body_type`
- * indexes in migration 0015 + a VACUUM ANALYZE keep the rare-type and archived
- * counts fast). Cached by filters (`cacheLife("hours")`), so repeated combos are
- * instant. We show the true number ("Намерени: 12 743"), not a "1000+" cap.
+ * **Exact** count of cars matching the filters — we show the true number
+ * ("Намерени: 12 743"), not a "1000+" cap.
+ *
+ * Broad page-tab views (market × channel × active/past) read the precomputed
+ * `car_listing_counts` summary table — an O(1) PK lookup (~35ms), avoiding the
+ * full-table `COUNT(*)` seq scan that an unbounded count over ~750k+ rows incurs
+ * (see migration 0016 + `getBroadCount`). Narrow filters (brand/model/year/price/…)
+ * fall back to a live single-table `COUNT(*)`; those filtered sets are small enough
+ * to scan quickly. Not app-cached — reads Neon directly each request.
  */
 export async function getCarsCount(filters: CarFilters): Promise<CarsCount> {
-  "use cache: remote";
-  cacheTag(CACHE_TAGS.cars);
-  cacheLife("hours");
-
   const db = getDb();
 
   // Search results are shown as a list; the header is hidden for search.

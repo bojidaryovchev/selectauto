@@ -21,6 +21,7 @@ import { config, namePrefix, tags } from "./config";
 export interface Schedules {
   hourlyCombinedSync: aws.scheduler.Schedule;
   dailyReferenceSync: aws.scheduler.Schedule;
+  weeklyDriftSweep: aws.scheduler.Schedule;
 }
 
 export function createSchedules(args: {
@@ -28,6 +29,8 @@ export function createSchedules(args: {
   combinedHourlySyncArn: pulumi.Input<string>;
   /** The timeout-proof reference-sync STATE MACHINE arn (not the legacy Lambda). */
   referenceSyncArn: pulumi.Input<string>;
+  /** The drift-repair sweep STATE MACHINE arn (weekly projection self-heal). */
+  driftSweepArn: pulumi.Input<string>;
 }): Schedules {
   // --- 1. Hourly combined sync ---
   const hourlyCombinedSync = new aws.scheduler.Schedule("hourly-combined-sync", {
@@ -57,7 +60,25 @@ export function createSchedules(args: {
     },
   });
 
-  return { hourlyCombinedSync, dailyReferenceSync };
+  // --- 3. Weekly drift-repair sweep (projection self-heal) ---
+  // Re-runs the projection recompute over EVERY car via the looped state machine,
+  // repairing any best-effort recompute swallowed during ingestion (and keeping
+  // car_listing_counts/_facets exact). Weekly is enough: the hourly sync already
+  // recomputes touched cars; this only mops up the rare swallowed failure. ~14 min
+  // of DB work, off-peak. Default Sunday 03:00 UTC.
+  const weeklyDriftSweep = new aws.scheduler.Schedule("weekly-drift-sweep", {
+    name: `${namePrefix}-weekly-drift-sweep`,
+    scheduleExpression: config.weeklyDriftSweepScheduleExpression, // e.g. cron(0 3 ? * SUN *)
+    flexibleTimeWindow: { mode: "OFF" },
+    target: {
+      arn: args.driftSweepArn,
+      roleArn: args.schedulerRoleArn,
+      // Init supplies its own defaults (batchSize 25000, cursor 0).
+      input: JSON.stringify({ triggeredBy: "eventbridge-weekly" }),
+    },
+  });
+
+  return { hourlyCombinedSync, dailyReferenceSync, weeklyDriftSweep };
 }
 
 // Tags note: aws.scheduler.Schedule does not accept tags; tagging is applied to

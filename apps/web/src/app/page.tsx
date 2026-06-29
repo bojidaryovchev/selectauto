@@ -10,6 +10,10 @@ import { ParticleHero } from "@/components/three";
 import { getAuctionCars, getBuyNowCars } from "@/queries/cars";
 
 export default async function HomePage() {
+  // The homepage is a static shell (Cache Components / PPR): the buy-now + auction
+  // queries are `"use cache"` (cacheLife "hours"), so their output is prerendered
+  // into the shell and shared across visitors; the WebGL hero's randomness is
+  // client-only (inside useEffect), so nothing here is request-dependent.
   const [buyNowCars, auctionCars] = await Promise.all([
     getBuyNowCars(),
     getAuctionCars(),

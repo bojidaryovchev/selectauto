@@ -15,12 +15,25 @@ const nextConfig: NextConfig = {
   // Compile the shared workspace package (TS source, not pre-built) so the app
   // can import the Drizzle schema/types from @auctions-ingestion/db.
   transpilePackages: ["@auctions-ingestion/db"],
-  // Cache Components: enables the `"use cache"` directive + `cacheTag`, so the
-  // car-listing queries fetch live DB data at request time and cache it by tag
-  // (revalidated on writes via `revalidateTag(tag, "max")`), instead of baking
-  // the result in at build time. This makes data fetching dynamic-by-default and
-  // turns on Partial Prerendering — pages render a static shell with the cached
-  // listings streamed in. See RESTRUCTURE-PLAN.md §7 and the Next 16 docs.
+  // Cache Components (Next 16, stable; the v16 flag that unifies the old
+  // experimental ppr/useCache/dynamicIO): data is dynamic-by-default with Partial
+  // Prerendering — pages render a static shell and stream request-time data under
+  // Suspense. Our caching split (see queries/cars/*):
+  //   - HOMEPAGE shared queries (getBuyNowCars/getAuctionCars/getCarBrands) use
+  //     the `"use cache"` directive (+ cacheLife/cacheTag) so their output is baked
+  //     into the static shell — these have no per-request key and change only as
+  //     fast as ingestion. Caching getCarBrands specifically is what lets the
+  //     homepage fully prerender (it renders outside any Suspense boundary).
+  //   - CATALOG queries (page/count/facets/detail) are NOT cached: they're already
+  //     DB-cheap (keyset reads + the counts/facets summary tables, migrations
+  //     0016/0017) and their keys are per-request-unique (filters × cursor), and
+  //     the catalog route is dynamic anyway (reads searchParams).
+  //   - We use plain `"use cache"` (in-memory LRU), NOT `"use cache: remote"`:
+  //     without a configured cacheHandlers.remote the two are identical, and on
+  //     Vercel serverless the in-memory store is best-effort per instance. A
+  //     durable cross-instance cache would need a Redis/KV handler — intentionally
+  //     not added (catalog perf was solved at the DB layer). See cache-tags.ts and
+  //     node_modules/next/dist/docs (use-cache, use-cache-remote, cacheHandlers).
   cacheComponents: true,
   // Auction-listing photos are served from the upstream source hosts that
   // AuctionsAPI aggregates (encar, copart, iaai, ironplanet, plus its own CDN).

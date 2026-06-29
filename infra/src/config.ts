@@ -25,6 +25,8 @@ export const config = {
   // Schedules. Defaults match the brief.
   hourlySyncScheduleExpression: cfg.get("hourlySyncScheduleExpression") ?? "rate(1 hour)",
   dailyReferenceSyncScheduleExpression: cfg.get("dailyReferenceSyncScheduleExpression") ?? "rate(1 day)",
+  // Weekly projection drift-repair sweep. Off-peak Sunday 03:00 UTC by default.
+  weeklyDriftSweepScheduleExpression: cfg.get("weeklyDriftSweepScheduleExpression") ?? "cron(0 3 ? * SUN *)",
 
   logRetentionDays: cfg.getNumber("logRetentionDays") ?? 14,
 

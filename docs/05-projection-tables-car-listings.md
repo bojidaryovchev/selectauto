@@ -263,9 +263,19 @@ on **correctness** (per-car dedupe without a timing-out query), not storage.
 
 ## 12. Known gaps / follow-ups
 
-- **A nightly drift sweep** (re-run the backfill, or recompute recently-touched
-  cars) is recommended to catch any best-effort recompute that was swallowed. Not
-  yet scheduled.
+- **Drift sweep — DONE (migration-free, infra).** A **weekly** drift-repair sweep
+  now re-runs the projection recompute over **every** car via the same
+  `recompute_*_counted` wrappers (so counts + facets are repaired too), catching
+  any best-effort recompute that was swallowed during ingestion. It is a Step
+  Functions loop (`<prefix>-drift-sweep`) processing one car-id keyset window per
+  step (resumable, idempotent), triggered by the `weekly-drift-sweep` EventBridge
+  schedule (Sunday 03:00 UTC by default). Handlers:
+  [`driftSweep/handler.ts`](../packages/functions/driftSweep/handler.ts); infra in
+  [`infra/src/step-functions.ts`](../infra/src/step-functions.ts) +
+  [`schedules.ts`](../infra/src/schedules.ts). Weekly (not nightly) is sufficient:
+  the hourly sync already recomputes touched cars; the sweep only mops up the rare
+  swallowed failure (the audit found 9 such rows out of ~148k). A full walk is
+  ~14 min of DB work, which is why it loops rather than running in one Lambda.
 - **`car_listings` is only kept live once the ingestion hooks are deployed**
   (`pulumi up` after the db.ts changes). Until then it's a static backfilled
   snapshot.

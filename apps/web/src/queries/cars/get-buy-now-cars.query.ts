@@ -1,4 +1,4 @@
-import { cacheTag } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { FALLBACK_BUY_NOW_CARS } from "@/data/home";
 import { CACHE_TAGS } from "@/lib/cache-tags";
@@ -20,19 +20,26 @@ const DEFAULT_LIMIT = 6;
  * statement-timeout'd and hard-failed the production prerender. The projection
  * read is ~280ms.
  *
- * Cached via `"use cache: remote"` + `cacheTag` (requires `cacheComponents`,
- * enabled in next.config.ts). Remote (shared) cache, not in-memory: on Vercel the
- * default in-memory `"use cache"` is per-instance and discarded between serverless
- * invocations, so it never hit across requests/users; the remote handler persists
- * the entry across all instances. Invalidate on write with
- * `revalidateTag(CACHE_TAGS.buyNowCars, "max")` when listings change.
+ * Cached with `"use cache"` + `cacheLife("hours")`: this is one of the few
+ * queries worth app-caching — it takes no per-request key (only the numeric
+ * `limit`, which becomes part of the cache key), is shared by every homepage
+ * visitor, and changes only as fast as the hourly ingestion sync. The directive
+ * also lets Next prefetch it into the static shell. It's plain `"use cache"`
+ * (in-memory LRU per instance), NOT `"use cache: remote"` — without a configured
+ * `cacheHandlers.remote` the two are identical, and naming it "remote" would imply
+ * a durable shared store we don't have (that was the prior bug: a "remote"
+ * directive silently falling back to ephemeral memory on Vercel). The catalog
+ * queries are NOT cached — they're DB-cheap and per-request-unique; see
+ * [cache-tags.ts](../../lib/cache-tags.ts). `cacheTag(CACHE_TAGS.buyNowCars)` lets
+ * a write/webhook expire it early via `revalidateTag`.
  *
  * Falls back to `FALLBACK_BUY_NOW_CARS` when the DB returns nothing or is
  * unreachable, so the homepage always renders.
  */
 export async function getBuyNowCars(limit = DEFAULT_LIMIT): Promise<CarView[]> {
-  "use cache: remote";
+  "use cache";
   cacheTag(CACHE_TAGS.buyNowCars);
+  cacheLife("hours");
 
   const cl = schema.carListings;
 

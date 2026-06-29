@@ -387,6 +387,41 @@ export const carListingCounts = pgTable(
   (t) => [primaryKey({ columns: [t.tableKind, t.dim, t.val] })],
 );
 
+/**
+ * car_listing_facets — precomputed FACET options for the catalog filter dropdowns
+ * (the values + counts behind getCarFacets). Like car_listing_counts, a tiny
+ * summary table maintained INCREMENTALLY by the recompute_*_counted wrappers via a
+ * before/after snapshot-diff in the same transaction as the projection write, so
+ * the website reads dropdown options with one index scan instead of 8 GROUP-BY/
+ * DISTINCT full-projection passes (which contended on one Neon compute → ~3s).
+ *
+ * Stores only dimension VALUES + counts, never brand/model NAMES (Flow 4 renames
+ * without touching lots → a denormalized name would go stale; see docs/05 §5). The
+ * app resolves brand/model ids → names at read time. Keep in sync with
+ * migrations/0017_listing_facets.sql.
+ *
+ *   table_kind: 'active' | 'past'
+ *   dim:        'brand'|'model'|'color'|'drive'|'condition'|'year'|'vtype'|'btype'
+ *   val:        the facet value (manufacturer/model id as text for brand/model;
+ *               raw string for color/drive/condition/year/vtype/btype)
+ *   val2:       parent brand id for 'model' (the dropdown groups models by brand);
+ *               '' for every other dimension
+ */
+export const carListingFacets = pgTable(
+  "car_listing_facets",
+  {
+    tableKind: text("table_kind").notNull(),
+    dim: text("dim").notNull(),
+    val: text("val").notNull(),
+    val2: text("val2").notNull().default(""),
+    n: bigint("n", { mode: "number" }).notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.tableKind, t.dim, t.val, t.val2] }),
+    index("car_listing_facets_kind_dim_idx").on(t.tableKind, t.dim),
+  ],
+);
+
 // Inferred types for use in queries elsewhere in the app.
 export type Car = typeof cars.$inferSelect;
 export type NewCar = typeof cars.$inferInsert;
@@ -399,6 +434,7 @@ export type SyncRun = typeof syncRuns.$inferSelect;
 export type CarfaxRequest = typeof carfaxRequests.$inferSelect;
 export type NewCarfaxRequest = typeof carfaxRequests.$inferInsert;
 export type CarListingCount = typeof carListingCounts.$inferSelect;
+export type CarListingFacet = typeof carListingFacets.$inferSelect;
 export type Inquiry = typeof inquiries.$inferSelect;
 export type NewInquiry = typeof inquiries.$inferInsert;
 export type CarListing = typeof carListings.$inferSelect;

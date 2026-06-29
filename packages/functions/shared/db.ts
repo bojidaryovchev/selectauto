@@ -116,6 +116,47 @@ async function recomputeListings(
 }
 
 /**
+ * Recompute both projection read models for an arbitrary batch of car ids, via
+ * the *_counted wrappers (so car_listings/_archived AND car_listing_counts/
+ * _facets are all refreshed in one transaction per wrapper). This is the exact
+ * operation the ingestion hooks and the backfill perform; exposed standalone so
+ * the periodic drift-repair sweep (driftSweep) can re-run it over every car to
+ * repair any best-effort recompute that was swallowed during ingestion.
+ *
+ * Idempotent + order-independent (the wrappers read CURRENT state and write the
+ * whole row + a before/after count/facet diff). Uses a single pooled connection
+ * for the pair. Not best-effort here: the sweep WANTS to know if a recompute
+ * fails, so errors propagate to the caller (the Step Functions Catch records it).
+ */
+export async function recomputeProjectionsForCars(carIds: Iterable<number>): Promise<number> {
+  const ids = Array.from(new Set([...carIds].filter((id) => Number.isInteger(id))));
+  if (ids.length === 0) return 0;
+  const db = getPool();
+  const client = await db.connect();
+  try {
+    await client.query(`SELECT recompute_car_listings_counted($1::int[])`, [ids]);
+    await client.query(`SELECT recompute_archived_car_listings_counted($1::int[])`, [ids]);
+    return ids.length;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Fetch the next window of car ids strictly greater than `afterId`, ascending,
+ * for the drift-sweep keyset walk. Returns up to `limit` ids (empty array at the
+ * end of the table). Keyset (not OFFSET) because cars.id is sparse.
+ */
+export async function fetchCarIdsAfter(afterId: number, limit: number): Promise<number[]> {
+  const db = getPool();
+  const res = await db.query<{ id: number }>(`SELECT id FROM cars WHERE id > $1 ORDER BY id ASC LIMIT $2`, [
+    afterId,
+    limit,
+  ]);
+  return res.rows.map((r) => r.id);
+}
+
+/**
  * Upsert a single page of AuctionsAPI car records into `cars` + `auction_lots`.
  *
  * For each car:

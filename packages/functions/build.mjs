@@ -21,6 +21,8 @@ const entries = [
   { name: "syncReferenceData", entry: "syncReferenceData/handler.ts" },
   { name: "refreshListingDetail", entry: "refreshListingDetail/handler.ts" },
   { name: "syncRunLifecycle", entry: "syncRunLifecycle/handler.ts" },
+  // Periodic projection drift-repair sweep (looped state machine; 3 handlers).
+  { name: "driftSweep", entry: "driftSweep/handler.ts" },
 ];
 
 // Clean first so renamed/removed handlers don't leave stale bundles behind.

@@ -196,11 +196,16 @@ we request `prices_history=1`). See the full real sample in
 **In `/cars`, prices are SCALARS** (`buy_now: 0`, `bid: null`). This differs from
 `/archived-lots` (below). Our normalizer handles both forms.
 
-> **`archived` on the lot.** Every lot object carries an explicit `archived`
-> boolean + `archived_at`. The `/cars` feed sends `archived: false` for active
-> lots; the **detail endpoints can return `archived: true, status: "sold"`** for
-> a directly looked-up concluded lot. We persist these so the active upsert never
-> silently resurrects an archived lot. See [03](03-normalization-and-field-mapping.md).
+> **`archived` on the lot.** Every lot object carries an `archived` field +
+> `archived_at`. In the live `/cars` feed `archived` is usually **`null`** for
+> active lots (historically documented as `false`; confirmed `null` against the
+> live API 2026-06) — either way it is **not `true`**. The **detail endpoints can
+> return `archived: true, status: "sold"`** for a directly looked-up concluded
+> lot. The normalizer keeps the value only when it's a real boolean (else `null`),
+> and the upsert defaults a fresh insert to `false` (`COALESCE($archived, FALSE)`)
+> and otherwise keeps the existing state when the field is absent — so the active
+> upsert never silently resurrects an archived lot, regardless of `false`-vs-`null`.
+> See [03](03-normalization-and-field-mapping.md).
 
 ### 6b. `/archived-lots` — FLAT shape (different!), with `{value}` wrappers
 

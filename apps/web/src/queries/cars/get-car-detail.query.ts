@@ -1,6 +1,4 @@
-import { cacheLife, cacheTag } from "next/cache";
 import { and, eq, ne, sql } from "drizzle-orm";
-import { CACHE_TAGS } from "@/lib/cache-tags";
 import { carDetailFromRows } from "@/lib/car-detail-mapper";
 import { carListingToView } from "@/lib/car-mapper";
 import { getDb, schema } from "@/lib/db";
@@ -27,14 +25,9 @@ const RELATED_LIMIT = 8;
  *
  * Unlike the catalog list (single-table, zero joins), this is a single-ROW page,
  * so the join to `cars` + the chosen `auction_lots` row (for the raw_json gallery
- * + appraisal prices) is cheap. `"use cache"` keyed on the id; shares the `cars`
- * tag so a listings write invalidates it too.
+ * + appraisal prices) is cheap. Not cached — reads Neon directly per request.
  */
 export async function getCarDetail(carId: number): Promise<CarDetailPayload | null> {
-  "use cache";
-  cacheTag(CACHE_TAGS.cars);
-  cacheLife("hours");
-
   if (!Number.isInteger(carId) || carId <= 0) return null;
 
   const db = getDb();

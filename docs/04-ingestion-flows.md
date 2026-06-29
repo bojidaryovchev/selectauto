@@ -19,10 +19,15 @@ stay correct no matter how data arrives.
 | 3 | **Hourly archived lots sync** | (same hourly machine, after #2) | `/archived-lots?minutes=75` | `archiveLots` | `incremental` |
 | 4 | **Reference data sync** | EventBridge `rate(1 day)` | `/manufacturers` → `/models` → `/generations` | `upsertManufacturer/Model/Generation` | — |
 | 5 | **Detail refresh** | on-demand (app → SQS) | `/search-lot` or `/search-vin` | `upsertDetail` → `upsertCarsAndLots` | — |
+| 6 | **Drift-repair sweep** | EventBridge `cron(0 3 ? * SUN *)` (weekly) | none (DB-only) | `recompute_*_counted` over every car | — |
 
 Flows **1, 2, 5** call `upsertCarsAndLots`; **3** calls `archiveLots`; **4** uses
 the reference upserts. So the recompute hook (read-model maintenance) is exercised
-by 1/2/3/5 automatically.
+by 1/2/3/5 automatically. **Flow 6** calls no API — it re-runs the projection
+recompute over every car to repair any best-effort recompute swallowed by 1/2/3/5
+(see [05 §11/§12](05-projection-tables-car-listings.md)); it keeps
+`car_listings_counts`/`_facets` exact too because it uses the same `_counted`
+wrappers as the backfill.
 
 ---
 
@@ -287,10 +292,12 @@ Scheduler** (not classic Rules):
 |---|---|---|---|
 | `hourly-combined-sync` | `rate(1 hour)` | `combinedHourlySync` state machine | `{ triggeredBy: "eventbridge-hourly" }` (children supply their own inputs) |
 | `daily-reference-sync` | `rate(1 day)` | `referenceSync` state machine | `{ includeEmpty: false }` |
+| `weekly-drift-sweep` | `cron(0 3 ? * SUN *)` | `driftSweep` state machine | `{ triggeredBy: "eventbridge-weekly" }` (Init defaults batchSize 25000) |
 
-Both expressions are configurable via Pulumi config
-(`hourlySyncScheduleExpression`, `dailyReferenceSyncScheduleExpression`).
-**The full backfill has no schedule** — it is started manually.
+All three expressions are configurable via Pulumi config
+(`hourlySyncScheduleExpression`, `dailyReferenceSyncScheduleExpression`,
+`weeklyDriftSweepScheduleExpression`). **The full backfill has no schedule** — it
+is started manually.
 
 ---
 
