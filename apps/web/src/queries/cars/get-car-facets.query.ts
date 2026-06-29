@@ -25,8 +25,9 @@ const FACET_TABLE_KIND = "active";
 const YEAR_MIN = 1980;
 const YEAR_MAX = 2027;
 
-/** Empty facet set — the safe fallback when the DB is slow/unreachable so a page
- *  (catalog filter bar, homepage brand grid) renders instead of hard-failing. */
+/** Empty facet set — the safe fallback for `getCarFacets` when the DB is slow/
+ *  unreachable, so the catalog filter bar renders instead of hard-failing.
+ *  (`getCarBrands` has its own `[]` fallback.) */
 const EMPTY_FACETS: FacetOptions = {
   brands: [],
   modelsByBrand: {},

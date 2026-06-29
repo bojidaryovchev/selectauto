@@ -18,7 +18,7 @@ flowchart TD
   B --> C["pnpm run deploy<br/>(build bundles + pulumi up)"]
   C --> D["Start full-inventory-backfill<br/>(manual, one-time)"]
   D --> E["Backfill car_listings + car_listings_archived<br/>(backfill-car-listings.mjs)"]
-  E --> F["Hourly + daily schedules keep everything live"]
+  E --> F["Hourly + daily + weekly schedules keep everything live"]
 ```
 
 ---
@@ -97,13 +97,31 @@ Enqueue to `detailRefreshQueueUrl` (FIFO — include a `MessageGroupId`):
 The single-concurrency worker drains it at ~1 req/sec. *(App-side enqueue is not
 wired yet — see [04](04-ingestion-flows.md#flow-5--detail-refresh-sqs-fifo-drain-worker).)*
 
+### Drift-repair sweep (automatic weekly; manual on demand)
+The `weekly-drift-sweep` schedule (Sunday 03:00 UTC) starts the `drift-sweep`
+state machine, which re-runs the projection recompute over **every** car via the
+`recompute_*_counted` wrappers — repairing any best-effort recompute swallowed
+during ingestion and keeping `car_listing_counts`/`car_listing_facets` exact (it's
+the scheduled equivalent of the read-model backfill in §5). It loops one car-id
+keyset window per step (resumable via `sync_runs.last_page_processed`, idempotent).
+To run it off-cycle, start the machine directly:
+```powershell
+aws stepfunctions start-execution `
+  --state-machine-arn <driftSweep ARN from stateMachineArns> `
+  --input '{"batchSize":25000}'    # optional; Init defaults to 25000, cursor 0
+```
+Watch `sync_runs` for a `drift_sweep` row reaching `succeeded`.
+
 ---
 
 ## 5. Backfilling the computed read models
 
-After a full backfill (or to repair drift), populate the projections with
+After a full backfill, populate the projections with
 [`backfill-car-listings.mjs`](../packages/db/backfill-car-listings.mjs) — it calls
-the same recompute functions ingestion uses, so no drift:
+the same recompute functions ingestion uses, so no drift. (For *ongoing* drift
+repair you no longer need to run this by hand: the weekly `drift-sweep` machine in
+§4 does exactly this on a schedule. Use the script for the initial seed or an
+immediate full rebuild.):
 
 ```bash
 # from packages/db/
@@ -169,7 +187,7 @@ is order-independent, so an overlapping resume produces no duplicates.
 | `canceling statement due to statement timeout` during a type change | full-table rewrite exceeds Neon's default timeout | 0003 sets `statement_timeout 0` for that txn. Use it / the direct connection. |
 | node-postgres `SECURITY WARNING ... sslmode` | redundant `sslmode` in the URL | `db.ts`/`migrate.mjs` strip `sslmode` and configure TLS via the `ssl` object. Harmless. |
 | Reference catalog half-synced | legacy single-Lambda timed out / skip gate returned early | Run the `reference-sync` state machine (or legacy with `{force:true}`). |
-| `car_listings` stale / a sold car still shows active | recompute hooks not deployed, or a swallowed best-effort recompute | `pulumi up` to deploy hooks; re-run `backfill-car-listings.mjs` (both fns) as a drift sweep. |
+| `car_listings` stale / a sold car still shows active | recompute hooks not deployed, or a swallowed best-effort recompute | `pulumi up` to deploy hooks. For a one-off fix, start the `drift-sweep` machine (§4) or re-run `backfill-car-listings.mjs` (both fns); the weekly `drift-sweep` schedule mops this up automatically. |
 | Detail refreshes overwhelming the API | concurrency/pacing misconfigured | Confirm `refreshListingDetail` `reservedConcurrency = 1` and `DETAIL_REFRESH_PACE_MS`. |
 | AuctionsApiError 4xx (not 429) failing a run | terminal upstream error (bad key/param) | Check the key/params; 4xx is non-retryable by design. |
 

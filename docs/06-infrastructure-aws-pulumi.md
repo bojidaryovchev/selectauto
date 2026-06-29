@@ -13,8 +13,8 @@ flowchart TD
   secrets["secrets.ts<br/>Secrets Manager"] --> iam
   queues["queues.ts<br/>SQS FIFO + DLQ"] --> iam
   iam["iam.ts<br/>Lambda / SFN / Scheduler roles"] --> lambdas
-  lambdas["lambdas.ts<br/>10 Lambda functions"] --> esm["EventSourceMapping<br/>SQS → detail worker"]
-  lambdas --> sfn["step-functions.ts<br/>5 state machines"]
+  lambdas["lambdas.ts<br/>13 Lambda functions"] --> esm["EventSourceMapping<br/>SQS → detail worker"]
+  lambdas --> sfn["step-functions.ts<br/>6 state machines"]
   sfn --> sched["schedules.ts<br/>EventBridge Scheduler"]
   sched --> outputs["index.ts exports<br/>ARNs, names, queue URL"]
 ```
@@ -34,6 +34,7 @@ config.
 | `auctionsApiBaseUrl` | `auctionsApiBaseUrl` | `https://auctionsapi.com/api` |
 | `hourlySyncScheduleExpression` | config | `rate(1 hour)` |
 | `dailyReferenceSyncScheduleExpression` | config | `rate(1 day)` |
+| `weeklyDriftSweepScheduleExpression` | config | `cron(0 3 ? * SUN *)` |
 | `logRetentionDays` | config | `14` |
 | `perPage` | config | `1000` |
 | `incrementalMinutes` | config | `75` |
@@ -102,7 +103,7 @@ infra edit**. Build **before** `pulumi up`.
 - **native JSON logging** (`loggingConfig`: `applicationLogLevel INFO`,
   `systemLogLevel WARN`) — pairs with the structured logger
 
-### The 10 functions (note: several share one bundle)
+### The 13 functions (note: several share one bundle)
 
 | Logical name | Bundle | Export | Timeout | Mem | Special |
 |---|---|---|---|---|---|
@@ -116,10 +117,14 @@ infra edit**. Build **before** `pulumi up`.
 | `createSyncRun` | syncRunLifecycle | `createHandler` | 30s | 256 | SFN InitSyncRun |
 | `finalizeSyncRun` | syncRunLifecycle | `finalizeHandler` | 30s | 256 | SFN FinalizeSyncRun |
 | `markSyncFailed` | syncRunLifecycle | `failHandler` | 30s | 256 | SFN MarkSyncFailed |
+| `driftSweepInit` | driftSweep | `driftSweepInitHandler` | 30s | 256 | sweep loop: create run, cursor=0 |
+| `driftSweepStep` | driftSweep | `driftSweepStepHandler` | 300s | 512 | sweep loop: recompute one car-id window |
+| `driftSweepFinalize` | driftSweep | `driftSweepFinalizeHandler` | 30s | 256 | sweep loop: mark succeeded |
 
-The page functions get 300s + 512 MB for headroom (network call + bulk upsert +
-two recomputes). `refreshListingDetail`'s `reservedConcurrency 1` is the hard
-guarantee that no number of users can exceed the rate limit.
+The page functions (and `driftSweepStep`) get 300s + 512 MB for headroom (a sync
+page does a network call + bulk upsert + two recomputes; a sweep step recomputes a
+25k car-id window ≈ ~19s). `refreshListingDetail`'s `reservedConcurrency 1` is the
+hard guarantee that no number of users can exceed the rate limit.
 
 ### SQS event source mapping (in `index.ts`)
 `detailRefreshQueue` → `refreshListingDetail`, `batchSize 1`,
@@ -155,14 +160,14 @@ flowchart LR
   `DescribeExecution` / `StopExecution` + managed EventBridge rule permissions the
   `.sync:2` nested-execution integration requires (the rule perm is scoped to the
   single managed rule in this account/region, not a wildcard).
-- **Scheduler role** — `states:StartExecution` scoped to the two scheduled state
-  machine ARNs.
+- **Scheduler role** — `states:StartExecution` scoped to the three scheduled state
+  machine ARNs (combined-hourly, reference, drift-sweep).
 
 ---
 
 ## 6. Step Functions ([`step-functions.ts`](../infra/src/step-functions.ts))
 
-Five `STANDARD` state machines (full ASL walkthrough in
+Six `STANDARD` state machines (full ASL walkthrough in
 [04-ingestion-flows.md](04-ingestion-flows.md)):
 
 | Machine | Shape | Sync Lambda(s) |
@@ -172,6 +177,7 @@ Five `STANDARD` state machines (full ASL walkthrough in
 | `archived-lots-sync` | paginated loop | `syncArchivedLotsPage` |
 | `combined-hourly-sync` | sequential nest (`startExecution.sync:2`) | the two hourly machines |
 | `reference-sync` | manufacturer-index loop | `referenceInit`/`Manufacturer`/`Finalize` |
+| `drift-sweep` | car-id keyset loop | `driftSweepInit`/`Step`/`Finalize` |
 
 Each has a dedicated CloudWatch log group
 (`/aws/vendedlogs/states/${prefix}-<name>`) with `level: ERROR` +
@@ -181,9 +187,10 @@ Each has a dedicated CloudWatch log group
 
 ## 7. EventBridge Scheduler ([`schedules.ts`](../infra/src/schedules.ts))
 
-Two schedules, both targeting **state machines** (no Lambda targets):
+Three schedules, all targeting **state machines** (no Lambda targets):
 `hourly-combined-sync` → `combinedHourlySync`, `daily-reference-sync` →
-`referenceSync`. See the table in [04 §Schedules](04-ingestion-flows.md#schedules-eventbridge-scheduler).
+`referenceSync`, `weekly-drift-sweep` → `driftSweep` (`cron(0 3 ? * SUN *)`, the
+projection self-heal). See the table in [04 §Schedules](04-ingestion-flows.md#schedules-eventbridge-scheduler).
 `aws.scheduler.Schedule` doesn't accept tags (tagging is per schedule-group; the
 default group is used).
 
@@ -209,9 +216,9 @@ From [`index.ts`](../infra/src/index.ts):
 
 - `region`, `prefix`
 - `stateMachineArns` — fullInventoryBackfill, hourlyCarsSync, archivedLotsSync,
-  combinedHourlySync, referenceSync
-- `lambdaNames` — all 10 functions
-- `scheduleNames` — hourlyCombinedSync, dailyReferenceSync
+  combinedHourlySync, referenceSync, driftSweep
+- `lambdaNames` — all 13 functions
+- `scheduleNames` — hourlyCombinedSync, dailyReferenceSync, weeklyDriftSweep
 - `secretNames` — the two secret names (not values)
 - **`detailRefreshQueueUrl`**, `detailRefreshQueueArn`, `detailRefreshDlqUrl` —
   the app backend enqueues to `detailRefreshQueueUrl` (FIFO: include a

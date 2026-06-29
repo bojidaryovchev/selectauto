@@ -1,8 +1,8 @@
 # 04 — Ingestion Flows (The 5 Write Paths)
 
-Every byte that lands in Neon arrives through one of **five write paths**, and all
-five funnel through just **two DB write functions** in
-[`shared/db.ts`](../packages/functions/shared/db.ts):
+Every byte of **upstream** data that lands in Neon arrives through one of **five
+write paths** (Flows 1–5), and all five funnel through just **two DB write
+functions** in [`shared/db.ts`](../packages/functions/shared/db.ts):
 
 - `upsertCarsAndLots(cars[])` — writes `cars` + `auction_lots`, then recomputes
   the read models.
@@ -10,7 +10,12 @@ five funnel through just **two DB write functions** in
   models.
 
 This funnel is what makes the computed read models ([05](05-projection-tables-car-listings.md))
-stay correct no matter how data arrives.
+stay correct no matter how data arrives. **Flow 6** (the drift-repair sweep) is
+**not** an upstream write path — it fetches nothing and writes no source table; it
+only re-derives the projections (calling `recompute_*_counted` directly) to repair
+any best-effort recompute that Flows 1/2/3/5 swallowed. It's listed here because it
+shares the recompute machinery, but the "five write paths / two write functions"
+framing above is about API→Neon ingestion and is unchanged by it.
 
 | # | Flow | Trigger | Endpoint | DB function | Mode |
 |---|------|---------|----------|-------------|------|

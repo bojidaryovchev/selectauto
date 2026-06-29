@@ -1,14 +1,19 @@
 /**
  * Cache-tag constants for the app's `"use cache"` data.
  *
- * Only the homepage listing queries (`getBuyNowCars` / `getAuctionCars`) are
- * app-cached today — they take no per-request key, are shared across all visitors,
- * and change only as slowly as the hourly ingestion sync. The catalog queries
- * (page/count/facets/detail) are deliberately NOT cached: they're already
- * DB-cheap (keyset reads, and the counts/facets summary tables — migrations
- * 0016/0017 — answer in ~40ms), and their cache keys are per-request-unique
- * (filters × cursor) so a cache in front of them would hit near-zero. See the Next
- * caching docs in node_modules/next/dist/docs (use-cache, use-cache-remote).
+ * Only the homepage queries are app-cached today, all with no per-request key and
+ * shared across all visitors:
+ *   - `getBuyNowCars` / `getAuctionCars` → `cacheLife("hours")` (tags
+ *     `buyNowCars` / `auctionCars`); track the hourly ingestion sync.
+ *   - `getCarBrands` → `cacheLife("days")` (tag `cars`); tracks the daily
+ *     reference sync, and caching it is what lets the homepage prerender (it
+ *     renders outside a Suspense boundary — see its docstring).
+ * The catalog queries (page/count/facets/detail) are deliberately NOT cached:
+ * they're already DB-cheap (keyset reads, and the counts/facets summary tables —
+ * migrations 0016/0017 — answer in ~40ms), their cache keys are per-request-unique
+ * (filters × cursor) so a cache would hit near-zero, and the catalog route is
+ * dynamic anyway (reads searchParams). See the Next caching docs in
+ * node_modules/next/dist/docs (use-cache, use-cache-remote).
  *
  * Invalidation today is purely TTL-based: the homepage queries set
  * `cacheLife("hours")`, and ingestion runs hourly, so the cache naturally tracks

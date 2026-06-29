@@ -40,18 +40,26 @@ flowchart TD
   page --> q1["getCarsPage(filters, null)"]
   page --> q2["getCarFacets()"]
   page --> q3["getCarsCount(filters)"]
-  q1 & q2 & q3 -->|"use cache + cacheTag(cars)"| db["Neon: car_listings / car_listings_archived"]
+  q1 -->|"keyset, uncached (~40ms)"| db["Neon: car_listings / car_listings_archived"]
+  q2 -->|"reads car_listing_facets summary, uncached"| db
+  q3 -->|"reads car_listing_counts summary, uncached"| db
   page --> grid["AllCarsGrid (client, virtualized)"]
   grid -->|"loadMoreCars(filters, cursor) — Server Action"| q1
 ```
 
 - **The URL is the single source of truth** for filter state. `page.tsx` reads
   `searchParams` (a request-time API) → `parseCarFilters` → passes `CarFilters` as
-  **arguments** into the cached queries (a `"use cache"` scope cannot read
-  `searchParams`).
-- Queries are `"use cache"` + `cacheTag(CACHE_TAGS.cars)`; invalidated by
-  `revalidateTag(CACHE_TAGS.cars, "max")` when listings change. Route renders as
-  **`◐ Partial Prerender`** — static shell + streamed listings.
+  **arguments** into the queries. Because it reads `searchParams`, the route is
+  **dynamic** (renders **`◐ Partial Prerender`** — static shell + streamed grid).
+- **The catalog queries are NOT app-cached** — and deliberately so. They're already
+  DB-cheap: `getCarsPage` is a keyset read (~40ms, flat at any depth), `getCarsCount`
+  is an O(1) lookup in the `car_listing_counts` summary (migration 0016), and
+  `getCarFacets` reads the `car_listing_facets` summary (migration 0017, ~40ms)
+  instead of 8 GROUP-BY/DISTINCT passes. Their cache keys would also be
+  per-request-unique (filters × cursor) → near-zero hit rate. The summary tables are
+  the "cache" — maintained at write time by ingestion, not per request. (Only the
+  *homepage* queries — `getBuyNowCars`/`getAuctionCars`/`getCarBrands` — use
+  `"use cache"`; see `lib/cache-tags.ts` for the full rationale.)
 - Changing a tab/filter pushes a new URL → page re-renders SSR for the new filter
   set; the client grid remounts (keyed on the serialized filters) and resets.
 
@@ -65,9 +73,9 @@ Key files (`apps/web/src/`):
 | `schemas/car-filters.schema.ts` | zod validate/clamp (used by the Server Action) |
 | `lib/car-labels.ts` | BG label maps (status/condition/drive/transmission/color/**vehicle_type**/**body_type**/damage) |
 | `lib/car-mapper.ts` | `carListingToView(row, isPast)` — a projection row → card view-model |
-| `queries/cars/get-cars-page.query.ts` | keyset page (active or past), + search branch |
-| `queries/cars/get-cars-count.query.ts` | capped count ("1000+") |
-| `queries/cars/get-car-facets.query.ts` | dropdown options (brands/models/colors/drives/**types**/years) |
+| `queries/cars/get-cars-page.query.ts` | keyset page (active or past), + search branch; uncached |
+| `queries/cars/get-cars-count.query.ts` | **exact** count — `car_listing_counts` summary (0016) for broad views, live `COUNT` for narrow; uncached |
+| `queries/cars/get-car-facets.query.ts` | dropdown options (brands/models/colors/drives/**types**/years) from the `car_listing_facets` summary (0017); uncached. Also exports `getCarBrands` (homepage, **`"use cache"`**) |
 | `mutations/cars/load-more-cars.action.ts` | `"use server"` infinite-scroll loader |
 | `components/cars/all-cars/*` | `AllCarsGrid`, `AuctionCard`, `AuctionCountdown`, `CarFilterBar`, `CarGridSkeleton` |
 
@@ -201,9 +209,13 @@ pnpm --filter @auctions-ingestion/web run build      # route should show ◐ (PP
 pnpm --filter @auctions-ingestion/web run dev         # http://localhost:3000/vsichki-avtomobili/
 ```
 
-> **`use cache` gotcha (dev):** the dev server caches query results, so after a
-> DB/data change you must clear `.next` (and restart) to see it. Production
-> invalidates via `revalidateTag` on ingestion writes.
+> **Caching note:** the catalog queries are **uncached** (they read Neon every
+> request — fast via the summary tables), so a DB/data change shows immediately on
+> `/vsichki-avtomobili` with no cache to clear. The `"use cache"` gotcha only
+> applies to the **homepage** (`getBuyNowCars`/`getAuctionCars`/`getCarBrands`):
+> in dev the cached output sticks until you clear `.next`; in prod it refreshes on
+> the `cacheLife` TTL (hours/days). Catalog freshness is bounded only by how
+> current the projection is (ingestion + the weekly drift sweep).
 
 ---
 
@@ -235,8 +247,9 @@ everything that isn't promoted to a projection column.
   `href` in `car-mapper.ts` matches). PPR: a static shell (header/footer) renders,
   the body streams inside `<Suspense>` (awaiting `params` at the root would block
   the route — the build rejects it).
-- **Query**: `getCarDetail(carId)` (`get-car-detail.query.ts`, `"use cache"` on the
-  `cars` tag). Resolves the listing row in **`car_listings` first, then
+- **Query**: `getCarDetail(carId)` (`get-car-detail.query.ts`, **uncached** — a
+  cheap single-row lookup, and one entry per ~935k car ids isn't worth caching).
+  Resolves the listing row in **`car_listings` first, then
   `car_listings_archived`** — so a concluded car still resolves (renders as a past
   result + `noindex`). Then joins `cars` + the chosen `auction_lots` row for the
   raw_json, and resolves brand/model names (same as the facets query). Returns the

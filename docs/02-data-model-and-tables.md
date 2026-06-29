@@ -259,6 +259,39 @@ concluded-only fix history, see [05](05-projection-tables-car-listings.md).
 
 ---
 
+## Summary tables — `car_listing_counts` & `car_listing_facets`
+
+Two tiny **derived-from-the-projection** tables that exist purely to make the
+website's catalog header + filter dropdowns O(1) instead of full scans. Both are
+maintained **incrementally** by the same `recompute_*_counted` wrappers that
+maintain the projections (a before/after snapshot-diff in the same transaction —
+PgBouncer-safe, no temp tables), so they never drift from `car_listings`/
+`car_listings_archived`. The ingestion hooks and the backfill already call the
+`_counted` wrappers, so both stay live with no extra wiring.
+
+### `car_listing_counts` — exact broad-view counts (migration 0016)
+PK `(table_kind, dim, val)`, plus a `bigint n`. One row per broad dimension key:
+`dim ∈ {total, country, channel, country+channel}`. The website's
+`getCarsCount` reads this for broad page-tab views (market × channel ×
+active/past) — an O(1) PK lookup instead of a ~750k-row `COUNT(*)`. Narrow filters
+(brand/model/year/…) fall back to a live `COUNT` (those sets are small).
+
+### `car_listing_facets` — precomputed filter-dropdown options (migration 0017)
+PK `(table_kind, dim, val, val2)`, plus a `bigint n`. One row per facet value that
+appears in the projection: `dim ∈ {brand, model, color, drive, condition, year,
+vtype, btype}`; `val` is the value (id-as-text for brand/model, raw string
+otherwise) and `val2` carries the parent **brand id** for `model` rows (so the
+dropdown can group models by brand) — `''` for every other dim. Index
+`(table_kind, dim)` makes each dropdown's read an index range scan. The website's
+`getCarFacets` reads this (~40ms) instead of 8 GROUP-BY/DISTINCT passes over the
+~916k-row projection (~3s). **Brand/model NAMES are deliberately absent** (the
+daily reference sync renames without touching a lot, so a denormalized name would
+go stale — see [05 §5](05-projection-tables-car-listings.md)); the app resolves
+ids→names at read time via an `INNER JOIN` to `manufacturers`/`vehicle_models`,
+which also drops any value with no display name.
+
+---
+
 ## Website-lead tables (not ingestion)
 
 These are written by the **website backend**, not the ingestion system. They are
@@ -301,6 +334,9 @@ re-runs are safe.
 | `0012_archived_concluded_only.sql` | Tightens archived membership to `sold/not_sold/failed`; purges non-concluded rows. |
 | `0013_cars_vehicle_type.sql` | Adds `cars.vehicle_type` (the API top-level category — boats/trucks/moto/…). Backfilled from `raw_json` (no API; see [03](03-normalization-and-field-mapping.md)). |
 | `0014_listings_vehicle_body_type.sql` | Adds `vehicle_type` + `body_type` to **both** projections + redefines both recompute fns to populate them (powers the website "Тип" filter). |
+| `0015_type_count_indexes.sql` | Adds `vehicle_type`/`body_type` lead-column indexes (`+ sort_id DESC`) to **both** projections, so the "Тип" filter + its counts are index-driven instead of seq-scanning rare categories. |
+| `0016_listing_counts.sql` | `car_listing_counts` summary table + the snapshot-diff machinery (`listing_count_keys`, `listing_count_snapshot`, `apply_listing_count_delta`) and the `recompute_*_counted` wrappers that maintain it incrementally. O(1) broad-view catalog counts instead of a ~750k-row `COUNT(*)`. |
+| `0017_listing_facets.sql` | `car_listing_facets` summary table + its snapshot-diff helpers (`listing_facet_keys`, `listing_facet_snapshot`, `apply_listing_facet_delta`); **folds** facet maintenance into the same `recompute_*_counted` wrappers. Precomputed catalog filter-dropdown options instead of 8 GROUP-BY/DISTINCT passes over the projection (~3s → ~40ms). |
 
 > Migrations are **append-only and hand-run** (`pnpm migrate`). They are **not**
 > applied automatically on deploy. See [07-operations-runbook.md](07-operations-runbook.md).
