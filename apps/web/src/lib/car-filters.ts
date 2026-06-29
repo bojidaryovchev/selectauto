@@ -18,6 +18,7 @@ const KEYS = {
   model: "model",
   color: "color",
   drive: "drive",
+  condition: "condition",
   type: "type",
   yearFrom: "year_from",
   yearTo: "year_to",
@@ -69,6 +70,12 @@ export function parseCarFilters(input: URLSearchParams | Record<string, string |
   const drive = get(KEYS.drive);
   if (drive === "front" || drive === "all" || drive === "rear") filters.drive = drive;
 
+  // Condition is one or more canonical enum values (some BG labels cover several
+  // raws, e.g. run_and_drives,engine_starts), comma-joined. The exact set is
+  // validated against facets at query time.
+  const condition = get(KEYS.condition);
+  if (condition && /^[a-z_]+(,[a-z_]+)*$/.test(condition)) filters.condition = condition;
+
   // Combined type: "vt:<value>" or "bt:<value>" (the value itself is validated
   // against facets at query time; here we only accept the prefixed shape).
   const type = get(KEYS.type);
@@ -106,6 +113,7 @@ export function serializeCarFilters(filters: CarFilters): URLSearchParams {
   if (filters.model !== undefined) params.set(KEYS.model, String(filters.model));
   if (filters.color) params.set(KEYS.color, filters.color);
   if (filters.drive) params.set(KEYS.drive, filters.drive);
+  if (filters.condition) params.set(KEYS.condition, filters.condition);
   if (filters.type) params.set(KEYS.type, filters.type);
   if (filters.yearFrom !== undefined) params.set(KEYS.yearFrom, String(filters.yearFrom));
   if (filters.yearTo !== undefined) params.set(KEYS.yearTo, String(filters.yearTo));

@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { carfaxSchema, type CarfaxFormValues } from "@/schemas/carfax.schema";
+import { Button } from "@/components/common";
 import { normalizePhone } from "@/lib/phone";
 import { FormField } from "./form-field";
 
@@ -213,13 +214,14 @@ export function CarfaxForm() {
         </div>
       )}
 
-      <button
+      <Button
         type="submit"
         disabled={isSubmitting}
-        className="min-h-[58px] w-full cursor-pointer rounded-[18px] border-0 bg-[linear-gradient(90deg,#b95200_0%,#d86f16_55%,#f08a1f_100%)] text-[17px] font-extrabold text-white shadow-[0_16px_30px_rgba(216,111,22,0.26)] transition-transform duration-200 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70"
+        rippleTheme="light"
+        className="min-h-[58px] w-full rounded-[18px] border-0 bg-[linear-gradient(90deg,#b95200_0%,#d86f16_55%,#f08a1f_100%)] text-[17px] font-extrabold text-white shadow-[0_16px_30px_rgba(216,111,22,0.26)] transition-transform duration-200 hover:-translate-y-0.5 disabled:opacity-70"
       >
         Изпрати запитването
-      </button>
+      </Button>
     </form>
   );
 }

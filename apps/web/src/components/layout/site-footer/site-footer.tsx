@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { LinkButton } from "@/components/common";
 import { CONTACT, SOCIALS } from "@/constants";
 import { FOOTER_INFO, FOOTER_NAV } from "@/data/navigation";
 import {
@@ -22,7 +23,7 @@ const SOCIAL_ICONS: Record<string, ComponentType<{ className?: string }>> = {
 /** Footer — ported from the site's `sa-site-footer`. */
 export function SiteFooter() {
   return (
-    <footer className="relative mt-20 overflow-hidden bg-[radial-gradient(circle_at_top_center,rgba(216,111,22,0.12),transparent_30%),linear-gradient(180deg,#0f1014_0%,#090a0d_100%)] text-white">
+    <footer className="relative overflow-hidden bg-[radial-gradient(circle_at_top_center,rgba(216,111,22,0.12),transparent_30%),linear-gradient(180deg,#0f1014_0%,#090a0d_100%)] pt-20 text-white">
       <div className="mx-auto w-[min(100%-28px,1280px)]">
         <div className="grid grid-cols-[1.3fr_0.8fr_0.8fr_0.9fr] gap-[34px] py-[72px] pb-[42px] max-[1100px]:grid-cols-2 max-[920px]:grid-cols-1 max-[920px]:py-[58px] max-[920px]:pb-[34px]">
           {/* Brand */}
@@ -59,16 +60,17 @@ export function SiteFooter() {
               {SOCIALS.map((s) => {
                 const Icon = SOCIAL_ICONS[s.label];
                 return (
-                  <a
+                  <LinkButton
                     key={s.label}
                     href={s.href}
                     aria-label={s.label}
+                    rippleTheme="light"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex h-11 w-11 items-center justify-center rounded-[14px] border border-white/[0.12] bg-white/[0.04] text-white transition-all duration-200 hover:-translate-y-0.5 hover:border-brand/55 hover:bg-brand/[0.12]"
                   >
                     {Icon && <Icon className="block h-[19px] w-[19px]" />}
-                  </a>
+                  </LinkButton>
                 );
               })}
             </div>
@@ -121,7 +123,10 @@ export function SiteFooter() {
               <p className="mb-4 leading-[1.75] text-white/70">
                 Имаш въпрос за автомобил, доставка или аукцион?
               </p>
-              <InquiryButton className="inline-flex min-h-[54px] w-full items-center justify-center rounded-full bg-gradient-to-r from-brand-dark to-brand px-6 text-[15px] font-extrabold text-white shadow-[0_12px_28px_rgba(216,111,22,0.22)] transition-transform duration-200 hover:-translate-y-0.5">
+              <InquiryButton
+                rippleTheme="light"
+                className="inline-flex min-h-[54px] w-full items-center justify-center rounded-full bg-gradient-to-r from-brand-dark to-brand px-6 text-[15px] font-extrabold text-white shadow-[0_12px_28px_rgba(216,111,22,0.22)] transition-transform duration-200 hover:-translate-y-0.5"
+              >
                 Запитване
               </InquiryButton>
             </div>

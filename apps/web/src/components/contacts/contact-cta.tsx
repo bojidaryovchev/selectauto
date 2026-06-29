@@ -1,4 +1,4 @@
-import { Container, Reveal } from "@/components/common";
+import { Container, LinkButton, Reveal } from "@/components/common";
 import { InquiryButton } from "@/components/inquiry";
 import { CONTACT } from "@/constants";
 
@@ -20,23 +20,28 @@ export function ContactCta() {
               правилния избор. Започни кратката консултация и ще се свържем с теб.
             </p>
 
-            <InquiryButton className="inline-flex min-h-[58px] items-center justify-center rounded-full bg-[linear-gradient(90deg,#b95200,#d86f16)] px-9 text-base font-extrabold text-white shadow-[0_14px_34px_rgba(216,111,22,0.28)] transition-transform duration-200 hover:-translate-y-0.5 max-md:w-full">
+            <InquiryButton
+              rippleTheme="light"
+              className="inline-flex min-h-[58px] items-center justify-center rounded-full bg-[linear-gradient(90deg,#b95200,#d86f16)] px-9 text-base font-extrabold text-white shadow-[0_14px_34px_rgba(216,111,22,0.28)] transition-transform duration-200 hover:-translate-y-0.5 max-md:w-full"
+            >
               Започни консултация
             </InquiryButton>
 
             <div className="mx-auto mt-9 grid max-w-[520px] gap-2.5 sm:grid-cols-2">
-              <a
+              <LinkButton
                 href={CONTACT.phoneHref}
+                rippleTheme="light"
                 className="rounded-2xl border border-white/[0.08] bg-white/[0.07] px-4 py-3.5 text-base font-bold transition-colors hover:bg-white/[0.12]"
               >
                 📱 {CONTACT.phone}
-              </a>
-              <a
+              </LinkButton>
+              <LinkButton
                 href={CONTACT.emailHref}
+                rippleTheme="light"
                 className="rounded-2xl border border-white/[0.08] bg-white/[0.07] px-4 py-3.5 text-base font-bold transition-colors hover:bg-white/[0.12]"
               >
                 ✉️ {CONTACT.email}
-              </a>
+              </LinkButton>
             </div>
           </div>
         </Reveal>

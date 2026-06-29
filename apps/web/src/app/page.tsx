@@ -20,6 +20,8 @@ export default async function HomePage() {
       <SiteHeader />
 
       <main className="flex-1 text-ink">
+        {/* Dark spacer so the fixed header sits above the hero, not on it. */}
+        <div className="h-(--header-h) bg-shell" />
         <ParticleHero />
 
         <WhyUsSection />

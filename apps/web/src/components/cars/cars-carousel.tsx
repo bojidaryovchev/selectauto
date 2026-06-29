@@ -7,6 +7,7 @@ import type { Swiper as SwiperClass } from "swiper/types";
 import "swiper/css";
 import "swiper/css/navigation";
 import type { CarView } from "@/types/car.type";
+import { Button } from "@/components/common";
 import { CarCard } from "@/components/cars/car-card";
 
 /**
@@ -24,22 +25,22 @@ export function CarsCarousel({ cars }: { cars: CarView[] }) {
     <div className="sa-cars-slider-block">
       {/* Arrows row — right-aligned on desktop, centered on mobile. */}
       <div className="mb-[22px] flex items-center justify-end gap-3 max-md:justify-center">
-        <button
+        <Button
           ref={prevRef}
-          type="button"
+          rippleTheme="light"
           aria-label="Назад"
-          className="sa-cars-arrow grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-brand-dark to-brand text-3xl leading-none text-white shadow-[0_14px_30px_rgba(216,111,22,0.24)] transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:scale-[1.03] hover:shadow-[0_18px_34px_rgba(216,111,22,0.30)] disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none max-lg:h-[50px] max-lg:w-[50px] max-lg:text-[26px] max-md:h-[46px] max-md:w-[46px] max-md:text-2xl"
+          className="sa-cars-arrow grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-brand-dark to-brand text-3xl leading-none text-white shadow-[0_14px_30px_rgba(216,111,22,0.24)] transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:scale-[1.03] hover:shadow-[0_18px_34px_rgba(216,111,22,0.30)] disabled:opacity-45 disabled:shadow-none max-lg:h-[50px] max-lg:w-[50px] max-lg:text-[26px] max-md:h-[46px] max-md:w-[46px] max-md:text-2xl"
         >
           ‹
-        </button>
-        <button
+        </Button>
+        <Button
           ref={nextRef}
-          type="button"
+          rippleTheme="light"
           aria-label="Напред"
-          className="sa-cars-arrow grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-brand-dark to-brand text-3xl leading-none text-white shadow-[0_14px_30px_rgba(216,111,22,0.24)] transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:scale-[1.03] hover:shadow-[0_18px_34px_rgba(216,111,22,0.30)] disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none max-lg:h-[50px] max-lg:w-[50px] max-lg:text-[26px] max-md:h-[46px] max-md:w-[46px] max-md:text-2xl"
+          className="sa-cars-arrow grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-brand-dark to-brand text-3xl leading-none text-white shadow-[0_14px_30px_rgba(216,111,22,0.24)] transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:scale-[1.03] hover:shadow-[0_18px_34px_rgba(216,111,22,0.30)] disabled:opacity-45 disabled:shadow-none max-lg:h-[50px] max-lg:w-[50px] max-lg:text-[26px] max-md:h-[46px] max-md:w-[46px] max-md:text-2xl"
         >
           ›
-        </button>
+        </Button>
       </div>
 
       <Swiper

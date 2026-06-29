@@ -7,7 +7,7 @@ export default function Loading() {
   return (
     <>
       <SiteHeader />
-      <main className="flex-1 bg-[#fafafa] text-ink">
+      <main className="flex-1 bg-[#fafafa] pt-(--header-h) text-ink">
         <Container>
           <div className="py-10 max-md:py-7">
             <div className="mb-6 h-10 w-72 animate-pulse rounded bg-[#e9e9ea]" />

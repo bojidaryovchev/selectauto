@@ -1,7 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { and, asc, eq, isNotNull, sql } from "drizzle-orm";
 import { CACHE_TAGS } from "@/lib/cache-tags";
-import { COLOR_BG, bodyTypeLabel, colorLabel, driveLabel, vehicleTypeLabel } from "@/lib/car-labels";
+import { COLOR_BG, bodyTypeLabel, colorLabel, conditionLabel, driveLabel, vehicleTypeLabel } from "@/lib/car-labels";
 import { getDb, schema } from "@/lib/db";
 import type { FacetOptions } from "@/types/car-filters.type";
 
@@ -76,6 +76,30 @@ export async function getCarFacets(): Promise<FacetOptions> {
     .filter(Boolean)
     .map((d) => ({ value: d, label: driveLabel(d) }));
 
+  // Conditions present, grouped BY BG LABEL: several raw values collapse to one
+  // buyer-facing label (run_and_drives + engine_starts both → "Пали и се движи"),
+  // so the option's value is the comma-joined raw set and the query matches with
+  // IN(...) — picking the label must catch all underlying raws. Ordered by count.
+  const condRows = await db
+    .select({ value: cl.condition, n: sql<number>`count(*)::int` })
+    .from(cl)
+    .where(isNotNull(cl.condition))
+    .groupBy(cl.condition);
+  const condByLabel = new Map<string, { values: string[]; count: number }>();
+  for (const r of condRows) {
+    const raw = r.value as string;
+    if (!raw) continue;
+    const label = conditionLabel(raw);
+    if (!label) continue; // unmapped/blank → don't offer as a filter
+    const entry = condByLabel.get(label) ?? { values: [], count: 0 };
+    entry.values.push(raw);
+    entry.count += r.n;
+    condByLabel.set(label, entry);
+  }
+  const conditions = [...condByLabel.entries()]
+    .map(([label, { values, count }]) => ({ value: values.join(","), label, count }))
+    .sort((a, b) => b.count - a.count);
+
   // Years present, newest first. Clamp to a sane window — the data carries junk
   // years (0, 206, 1900, …) that would clutter the dropdown.
   // Static bounds (a `"use cache"` scope shouldn't depend on `new Date()`); bump
@@ -118,5 +142,5 @@ export async function getCarFacets(): Promise<FacetOptions> {
   }
   const types = typeOpts.sort((a, b) => b.count - a.count);
 
-  return { brands, modelsByBrand, colors, drives, types, years };
+  return { brands, modelsByBrand, colors, drives, conditions, types, years };
 }

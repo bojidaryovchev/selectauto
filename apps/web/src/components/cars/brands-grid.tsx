@@ -1,7 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRightIcon } from "@/components/icons";
+import { serializeCarFilters } from "@/lib/car-filters";
+import { getCarFacets } from "@/queries/cars";
 import { BRANDS } from "@/data/home";
+
+const CATALOG_PATH = "/vsichki-avtomobili/";
 
 /**
  * Popular-brands grid — ports the `selectauto_popular_brands` plugin's
@@ -11,8 +15,23 @@ import { BRANDS } from "@/data/home";
  *
  * The flex item widths use the plugin's exact `calc()` formulas, expressed as
  * arbitrary Tailwind values with responsive variants.
+ *
+ * Each card deep-links into the catalog with that make pre-selected
+ * (`?brand=<externalId>`). The catalog filters brands by `manufacturers
+ * .external_id`, not by name, so we resolve the id from `getCarFacets()` — the
+ * same brand list the filter bar uses — keyed by lowercased name. A brand with
+ * no active cars (not in the facet set) falls back to the unfiltered catalog.
  */
-export function BrandsGrid() {
+export async function BrandsGrid() {
+  const facets = await getCarFacets();
+  const brandIdByName = new Map(facets.brands.map((b) => [b.label.toLowerCase(), b.value]));
+
+  const hrefFor = (name: string): string => {
+    const id = brandIdByName.get(name.toLowerCase());
+    if (id === undefined) return CATALOG_PATH;
+    return `${CATALOG_PATH}?${serializeCarFilters({ brand: Number(id) }).toString()}`;
+  };
+
   return (
     <section className="py-14">
       <div className="mx-auto w-[min(100%-28px,1280px)]">
@@ -35,7 +54,7 @@ export function BrandsGrid() {
           {BRANDS.map((brand) => (
             <Link
               key={brand.slug}
-              href="/vsichki-avtomobili/"
+              href={hrefFor(brand.name)}
               aria-label={brand.name}
               className="group block min-w-0 basis-[calc((100%-90px)/6)] max-[1600px]:basis-[calc((100%-72px)/5)] max-[1280px]:basis-[calc((100%-54px)/4)] max-[991px]:basis-[calc((100%-28px)/3)]"
             >

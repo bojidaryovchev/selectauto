@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { Container, Reveal } from "@/components/common";
+import { Container, LinkButton, Reveal } from "@/components/common";
 
 /** Premium "Как работим" CTA card linking to the process page. */
 export function ProcessCtaSection() {
@@ -18,15 +17,16 @@ export function ProcessCtaSection() {
               Показали сме всяка стъпка по ясен и визуален начин — от първия
               разговор до готовия автомобил.
             </p>
-            <Link
+            <LinkButton
               href="/proces/"
+              rippleTheme="light"
               className="mt-[38px] inline-flex min-h-[62px] items-center justify-center gap-3.5 rounded-full bg-gradient-to-br from-[#ff9b4a] via-[#f06f20] to-[#c94e0f] pl-[34px] pr-[18px] text-base font-extrabold text-white shadow-[0_14px_34px_rgba(232,108,32,0.22),inset_0_1px_0_rgba(255,255,255,0.22)] transition-transform duration-200 hover:-translate-y-[3px] max-md:w-full max-md:pl-6"
             >
               Разгледай процеса
               <span className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-full bg-white/[0.18]">
                 →
               </span>
-            </Link>
+            </LinkButton>
           </div>
         </Reveal>
       </Container>

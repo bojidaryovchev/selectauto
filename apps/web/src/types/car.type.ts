@@ -25,6 +25,8 @@ export type CarView = {
   id?: number;
   /** Lot number → "Търг №" row. */
   lotNumber?: string;
+  /** Production year → "Година" row (also in the title, shown as its own field). */
+  year?: number;
   /** Chosen lot sale date (ISO) → date row + the live countdown. */
   saleDate?: string;
   /** BG-localized status pill ("Наличен" / "Предстои" / "Продаден" …). */
@@ -39,6 +41,13 @@ export type CarView = {
   transmission?: string;
   /** Seller name (passthrough). */
   seller?: string;
+  /** BG-localized colour ("Черен" …) — a filterable shown on the card. */
+  color?: string;
+  /** BG-localized vehicle/body type ("Джип (SUV)" / "Лодка" …). */
+  type?: string;
+  /** True when the type is a NON-automobile category (boat/trailer/moto/…) → a
+   *  type chip is shown by the title so it's obvious at a glance. */
+  isNonCar?: boolean;
   /** True for auction lots (controls countdown vs "Наличен"). */
   isAuction?: boolean;
   /** True when an auction lot also has a valid buy-now (shows the BUY NOW badge). */

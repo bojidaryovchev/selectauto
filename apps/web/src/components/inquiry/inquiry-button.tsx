@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/common";
 import { useInquiry } from "@/contexts/inquiry-context";
 
 /**
@@ -11,14 +12,17 @@ import { useInquiry } from "@/contexts/inquiry-context";
 export function InquiryButton({
   className,
   children,
+  rippleTheme,
 }: {
   className?: string;
   children: React.ReactNode;
+  /** Forwarded to the underlying Button — set "light" on dark/brand surfaces. */
+  rippleTheme?: "dark" | "light";
 }) {
   const { open } = useInquiry();
   return (
-    <button type="button" onClick={open} className={className}>
+    <Button onClick={open} className={className} rippleTheme={rippleTheme}>
       {children}
-    </button>
+    </Button>
   );
 }

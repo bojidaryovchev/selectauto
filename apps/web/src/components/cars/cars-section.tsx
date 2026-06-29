@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { Container, SectionHeader } from "@/components/common";
+import { Container, LinkButton, SectionHeader } from "@/components/common";
 import { CarsCarousel } from "@/components/cars/cars-carousel";
 import type { CarView } from "@/types/car.type";
 
@@ -34,12 +33,13 @@ export function CarsSection({
         <CarsCarousel cars={cars} />
 
         <div className="mt-7 flex justify-center">
-          <Link
+          <LinkButton
             href={ctaHref}
+            rippleTheme="dark"
             className="inline-flex min-h-[54px] items-center justify-center rounded-full border border-[#ddd] bg-white px-7 text-[15px] font-extrabold text-[#333] transition-transform duration-200 hover:-translate-y-0.5 hover:text-brand-dark"
           >
             {ctaLabel}
-          </Link>
+          </LinkButton>
         </div>
       </Container>
     </section>

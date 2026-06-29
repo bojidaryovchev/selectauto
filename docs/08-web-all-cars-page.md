@@ -87,6 +87,7 @@ Key files (`apps/web/src/`):
 | `brand` / `model` | dropdowns (model brand-scoped) | `manufacturer_id` / `model_id` (external ids) |
 | `color` | dropdown | `car_color` (canonical name) |
 | `drive` | dropdown | `drive_wheel` (front/all/rear) |
+| `condition` | **"Състояние" dropdown** | `condition` IN (raws) — options grouped by BG label (one label can cover several raws, e.g. `run_and_drives,engine_starts` → "Пали и се движи") |
 | `type` | **"Тип" dropdown** (combined) | see §3a |
 | `yearFrom` / `yearTo` | "Година от" / "Година до" inputs | `car_year >= from` / `<= to` (a real range) |
 | `priceMin` / `priceMax` | "Цена от/до" inputs | range on `effective_price` |
@@ -212,10 +213,49 @@ pnpm --filter @auctions-ingestion/web run dev         # http://localhost:3000/vs
   (market, channel, brand/model, color, drive, **type incl. boats**, **year
   range**, search), past view is sold-only + `noindex`, keyset paginates flat,
   i18n has no leaks. Type-check/lint/build green.
-- **Deferred follow-ups** (documented, not bugs): the car **detail page**
-  `/avtomobil/[id]` (and wiring the detail-refresh SQS enqueue), the **model-level
-  price SEO pages**, inquiry-modal-per-card, and `seller_type` ("Тип продавач" card
-  row — in the API, not yet stored).
+- **Built + verified**: the car **detail page** `/avtomobil/[id]` (see §10).
+- **Deferred follow-ups** (documented, not bugs): wiring the **detail-refresh SQS
+  enqueue** (refresh-on-visit for stale cars), the **model-level price SEO pages**,
+  and inquiry-modal-per-card.
 - **One browser check** is the only thing not verifiable headlessly: that the
   virtualized grid paints + infinite-scroll loads more in a real browser (the data
   reaching the client is confirmed; client paint needs eyes on it).
+
+---
+
+## 10. The car detail page (`/avtomobil/[id]`)
+
+The single-car page the catalog cards ("Подробности") link to. Where the catalog
+reads the **lean** `car_listings` row, the detail page is the **rich** view: it
+loads the one car + its chosen lot and reads into both `raw_json` blobs for
+everything that isn't promoted to a projection column.
+
+- **Route**: `src/app/avtomobil/[id]/page.tsx`. `[id]` is the **`car_id`** (the
+  projection PK), no trailing slash (the site canonicalizes slashless — the card
+  `href` in `car-mapper.ts` matches). PPR: a static shell (header/footer) renders,
+  the body streams inside `<Suspense>` (awaiting `params` at the root would block
+  the route — the build rejects it).
+- **Query**: `getCarDetail(carId)` (`get-car-detail.query.ts`, `"use cache"` on the
+  `cars` tag). Resolves the listing row in **`car_listings` first, then
+  `car_listings_archived`** — so a concluded car still resolves (renders as a past
+  result + `noindex`). Then joins `cars` + the chosen `auction_lots` row for the
+  raw_json, and resolves brand/model names (same as the facets query). Returns the
+  `CarDetail` + a few same-model (else same-brand) **related** active cars.
+- **What raw_json adds** (only there, not columns — coverage over 2k active cars):
+  the full **image gallery** (≈99% have multiple; 5 CDN `downloaded` + 10-20
+  `normal`), appraisal **prices** (ACV, est. repair, clean wholesale, pre-accident),
+  **damage.second**, **detailed_title** (Salvage/Clean…), **keys/airbags**,
+  **seller_type / auction_type / selling_branch / grade_iaai**, **cylinders**. Each
+  renders only when present (uneven per source — IAAI is richer than Copart). The
+  parse + BG localization lives in `lib/car-detail-mapper.ts` (+ new label maps in
+  `car-labels.ts`: seller/auction/title-doc/airbags/fuel).
+- **Layout**: two-column desktop (gallery + spec sheet left; price + status +
+  contact panel sticky right), stacked mobile. Components in
+  `components/cars/car-detail/` (`CarGallery` is the one client part — thumbnail
+  strip + lightbox + keyboard nav; the rest are server). Related cars reuse the
+  catalog `AuctionCard`.
+- **SEO**: active cars are indexable with `Vehicle`/`Product`+`Offer` **JSON-LD**
+  (`lib/car-detail-jsonld.ts`) + canonical + OG; concluded cars are
+  `noindex, follow` and emit no JSON-LD (a sold price as an active Offer would
+  mislead). A missing/invalid id renders the not-found UI (with `noindex`) — note
+  it's HTTP 200, not 404, an inherent PPR trade-off (the noindex is what matters).

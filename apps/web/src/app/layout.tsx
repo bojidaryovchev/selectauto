@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
+import { Suspense } from "react";
+import { ScrollToTop } from "@/components/layout";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
@@ -24,6 +26,11 @@ export default function RootLayout({
   return (
     <html lang="bg" className={`${montserrat.variable} h-full`}>
       <body className="flex min-h-full flex-col bg-white text-ink">
+        {/* Reads usePathname → needs a Suspense boundary under cacheComponents on
+            routes with a dynamic param (e.g. /avtomobil/[id]). Renders null. */}
+        <Suspense fallback={null}>
+          <ScrollToTop />
+        </Suspense>
         <Providers>{children}</Providers>
       </body>
     </html>

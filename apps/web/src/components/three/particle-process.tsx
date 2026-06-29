@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { LinkButton } from "@/components/common";
 // Type-only imports: erased at build time, so `three` never enters the server
 // bundle, while THREE.* type annotations below still resolve.
 import type * as THREE from "three";
@@ -22,6 +23,29 @@ import type { MeshSurfaceSampler as MeshSurfaceSamplerType } from "three/example
  */
 
 const MODEL_URL = "/models/sedan.glb";
+
+/** Below this width the scene + overlays switch to the mobile layout. */
+const MOBILE_MAX_WIDTH = 991;
+
+/**
+ * Reactive `isMobile` via useSyncExternalStore — SSR-safe (no hydration mismatch)
+ * and re-renders only when the breakpoint boolean actually flips. The resize
+ * listener is debounced so a drag-resize coalesces into one update.
+ */
+function subscribeIsMobile(onChange: () => void) {
+  let timer: ReturnType<typeof setTimeout>;
+  const onResize = () => {
+    clearTimeout(timer);
+    timer = setTimeout(onChange, 200);
+  };
+  window.addEventListener("resize", onResize, { passive: true });
+  return () => {
+    clearTimeout(timer);
+    window.removeEventListener("resize", onResize);
+  };
+}
+const getIsMobileSnapshot = () => window.innerWidth <= MOBILE_MAX_WIDTH;
+const getIsMobileServerSnapshot = () => false;
 
 type Step = {
   num: string;
@@ -73,6 +97,21 @@ export function ParticleProcess() {
   const [introHidden, setIntroHidden] = useState(false);
   const [formationPct, setFormationPct] = useState(0);
   const [outroOpacity, setOutroOpacity] = useState(0);
+  // 0 while the intro title is shown, ramps to 1 as it dissolves — gates the
+  // whole step stage (cards + rail + spine + watermark) so they don't overlap
+  // the intro at the top of the section.
+  const [stageOpacity, setStageOpacity] = useState(0);
+  // The "scroll down" hint fades out as soon as the user scrolls a little.
+  const [hintOpacity, setHintOpacity] = useState(1);
+
+  // Mobile/desktop breakpoint as reactive state. The WebGL scene reads this once
+  // at build time, so when it flips (crossing 991px) the scene effect re-runs and
+  // rebuilds for the new layout — no manual refresh needed.
+  const isMobile = useSyncExternalStore(
+    subscribeIsMobile,
+    getIsMobileSnapshot,
+    getIsMobileServerSnapshot,
+  );
 
   useEffect(() => {
     const root = rootRef.current;
@@ -94,7 +133,9 @@ export function ParticleProcess() {
       );
       if (disposed) return;
 
-      const isMobile = window.innerWidth < 768;
+      // `isMobile` here is the component-scope state (matches the CSS
+      // max-[991px]: variants). The effect re-runs when it flips, rebuilding the
+      // whole scene for the new layout.
 
       // ---- particle buffers ------------------------------------------------
       const particleCount = isMobile ? 4000 : 18000;
@@ -135,7 +176,9 @@ export function ParticleProcess() {
       const scene = new THREE.Scene();
 
       const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
-      camera.position.set(0, isMobile ? 1.4 : 0.8, isMobile ? 7 : 9);
+      // Initial placement; updateCarGroup() drives it per-frame thereafter. Both
+      // mobile and desktop use a level, front-on view (eye y≈0.8, looking at y=0).
+      camera.position.set(0, 0.8, isMobile ? 8 : 9);
 
       const renderer = new THREE.WebGLRenderer({
         canvas,
@@ -145,8 +188,13 @@ export function ParticleProcess() {
       });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2));
 
+      // Car/scatter starts at world origin (centred in the level camera view) on
+      // both layouts; updateCarGroup() drives Y per-frame (mobile lifts it as it
+      // forms). Camera looks straight ahead (CAR_LOOK_X = 0).
+      const CAR_X = 0;
+      const CAR_LOOK_X = 0;
       const carGroup = new THREE.Group();
-      carGroup.position.set(isMobile ? 0 : 2.4, isMobile ? 1.05 : 0, 0);
+      carGroup.position.set(CAR_X, 0, 0);
       scene.add(carGroup);
 
       const edgeLineGroup = new THREE.Group();
@@ -321,39 +369,37 @@ export function ParticleProcess() {
         if (!ctx) return;
 
         ctx.clearRect(0, 0, w, h);
-        ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
-        const titleSize = isMobile ? 52 : 96;
+        const titleSize = isMobile
+          ? Math.min(52, (w / dpr) * 0.11)
+          : Math.max(40, Math.min(80, (w / dpr) * 0.052));
         const cx = w / 2;
         const cy = h / 2;
-        ctx.font = `900 ${titleSize * dpr}px Arial, sans-serif`;
-        ctx.fillStyle = "#ffffff";
+        // Reuse the app font (exposed as the --font-montserrat CSS var on <html>)
+        // so the particle glyphs match the rest of the site.
+        const titleFont =
+          getComputedStyle(document.documentElement)
+            .getPropertyValue("--font-montserrat")
+            .trim() || "Arial";
+        ctx.font = `900 ${titleSize * dpr}px ${titleFont}, Arial, sans-serif`;
+        ctx.textAlign = "center";
 
-        if (isMobile) {
-          ctx.fillText("Пет стъпки.", cx, cy - titleSize * dpr * 0.35);
-          const textA = "Един";
-          const textB = " резултат.";
-          const widthA = ctx.measureText(textA).width;
-          const widthB = ctx.measureText(textB).width;
-          const startX = cx - (widthA + widthB) / 2;
-          ctx.fillStyle = "#ff8a3d";
-          ctx.fillText(textA, startX + widthA / 2, cy + titleSize * dpr * 0.55);
-          ctx.fillStyle = "#ffffff";
-          ctx.fillText(textB, startX + widthA + widthB / 2, cy + titleSize * dpr * 0.55);
-        } else {
-          const line1A = "Пет стъпки. ";
-          const line1B = "Един";
-          const line1W = ctx.measureText(line1A + line1B).width;
-          let x = cx - line1W / 2;
-          ctx.fillStyle = "#ffffff";
-          ctx.fillText(line1A, x + ctx.measureText(line1A).width / 2, cy - titleSize * dpr * 0.25);
-          x += ctx.measureText(line1A).width;
-          ctx.fillStyle = "#ff8a3d";
-          ctx.fillText(line1B, x + ctx.measureText(line1B).width / 2, cy - titleSize * dpr * 0.25);
-          ctx.fillStyle = "#ffffff";
-          ctx.fillText("резултат.", cx, cy + titleSize * dpr * 0.75);
-        }
+        // Two centered lines, one sentence each:
+        //   line 1: "Пет стъпки."        (white)
+        //   line 2: "Един резултат."     ("Един" in brand orange)
+        const lineGap = titleSize * dpr * (isMobile ? 0.45 : 0.6);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText("Пет стъпки.", cx, cy - lineGap);
+        const textA = "Един";
+        const textB = " резултат.";
+        const widthA = ctx.measureText(textA).width;
+        const widthB = ctx.measureText(textB).width;
+        const startX = cx - (widthA + widthB) / 2;
+        ctx.fillStyle = "#ff8a3d";
+        ctx.fillText(textA, startX + widthA / 2, cy + lineGap);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(textB, startX + widthA + widthB / 2, cy + lineGap);
 
         const img = ctx.getImageData(0, 0, w, h).data;
         const gap = isMobile ? 6 : 5;
@@ -391,8 +437,11 @@ export function ParticleProcess() {
         const totalSticky = rect.height - window.innerHeight;
         const t = totalSticky > 0 ? Math.max(0, Math.min(1, -rect.top / totalSticky)) : 0;
 
+        // Finish dissolving (and hide) just before the car formation begins
+        // (introEnd = 0.18 in computeProgress) so intro particles never co-exist
+        // with the car's particles on the right.
         const start = 0.015;
-        const end = 0.2;
+        const end = 0.16;
         let p = Math.max(0, Math.min(1, (t - start) / (end - start)));
         p = p * (2 - p);
 
@@ -560,7 +609,9 @@ export function ParticleProcess() {
           const center = box.getCenter(new THREE.Vector3());
           const size = box.getSize(new THREE.Vector3());
           const maxSize = Math.max(size.x, size.y, size.z);
-          const normalizeScale = (isMobile ? 5.0 : 6.5) / maxSize;
+          // Mobile car is a bit smaller so it fits fully in the upper area with
+          // the step text below it (no overlap, no roof clipping when lifted).
+          const normalizeScale = (isMobile ? 4.0 : 6.5) / maxSize;
 
           const meshes: THREE.Mesh[] = [];
           model.traverse((child) => {
@@ -803,17 +854,22 @@ export function ParticleProcess() {
         if (backgroundParticles) backgroundParticles.rotation.y += 0.0004;
 
         if (isMobile) {
-          carGroup.position.set(0, 1.55 - fP * 0.04, 0);
-          carGroup.rotation.y = -0.48 + fP * 0.18 + Math.sin(now * 0.0003) * 0.015 + dP * 0.18;
-          carGroup.rotation.x = -0.02;
-          camera.position.set(0, 1.55, 6.5);
-          camera.lookAt(0, 1.35, 0);
+          // Mobile uses the same level, front-on camera as desktop (looking at
+          // y=0) — not angled up from below. The scatter cloud starts centered
+          // (y=0 at fP=0) and migrates up as it forms, so the finished car sits
+          // top-centre, fully in frame above the bottom-pinned step text.
+          carGroup.rotation.y = -0.15 + fP * 0.45 + Math.sin(now * 0.0003) * 0.04 + dP * 0.18;
+          carGroup.rotation.x = -0.04 - fP * 0.04;
+          carGroup.position.y = fP * 1.2;
+          camera.position.set(0, 0.8, 8);
+          camera.lookAt(0, 0, 0);
         } else {
           carGroup.rotation.y = -0.15 + fP * 0.45 + Math.sin(now * 0.0003) * 0.04 + dP * 0.18;
           carGroup.rotation.x = -0.04 - fP * 0.04;
+          // Desktop keeps the car centered in the viewport.
           carGroup.position.y = 0 - fP * 0.1;
           camera.position.y = 0.8 + Math.sin(now * 0.0004) * 0.08 - fP * 0.15;
-          camera.lookAt(carGroup.position.x, 0, 0);
+          camera.lookAt(CAR_LOOK_X, 0, 0);
         }
       }
 
@@ -825,6 +881,22 @@ export function ParticleProcess() {
         }
         setFormationPct(Math.round(displayFormation * 100));
         setOutroOpacity(Math.min(1, Math.max(0, (displayDispersion - 0.15) / 0.55)));
+
+        // The step stage (cards + rail + spine + watermark) is only visible in
+        // the middle of the section: it fades IN as the intro title dissolves and
+        // back OUT as the car disperses, so neither the intro nor the outro ever
+        // shares the screen with it.
+        const rect = root!.getBoundingClientRect();
+        const totalSticky = rect.height - window.innerHeight;
+        const t = totalSticky > 0 ? Math.max(0, Math.min(1, -rect.top / totalSticky)) : 0;
+        const reveal = Math.max(0, Math.min(1, (t - 0.09) / (0.18 - 0.09)));
+        // Fade out over the dispersion window (mirrors the outro fade-in), fully
+        // gone before the outro is solid.
+        const exit = 1 - Math.max(0, Math.min(1, (displayDispersion - 0.05) / 0.35));
+        setStageOpacity(Math.min(reveal, exit));
+
+        // The scroll hint fades out as soon as the user scrolls a little.
+        setHintOpacity(1 - Math.max(0, Math.min(1, t / 0.04)));
       }
 
       function animate() {
@@ -848,7 +920,7 @@ export function ParticleProcess() {
       function resize() {
         const width = root!.offsetWidth || window.innerWidth;
         const height = window.innerHeight;
-        camera.fov = window.innerWidth < 768 ? 46 : 38;
+        camera.fov = isMobile ? 46 : 38;
         camera.aspect = width / height;
         camera.updateProjectionMatrix();
         renderer.setSize(width, height);
@@ -866,6 +938,12 @@ export function ParticleProcess() {
 
       resize();
       animate();
+
+      // Re-sample the title once the web font is ready, in case the first build
+      // ran before Montserrat loaded (otherwise the particles take Arial's shape).
+      document.fonts?.ready.then(() => {
+        if (!disposed) buildIntroTextParticles();
+      });
 
       const onResize = () => resize();
       window.addEventListener("resize", onResize, { passive: true });
@@ -889,41 +967,40 @@ export function ParticleProcess() {
       cancelAnimationFrame(rafId);
       cleanupListeners();
     };
-  }, []);
+    // Rebuild the whole scene when the breakpoint flips (mobile/desktop differ in
+    // particle counts, sizing, camera and car placement).
+  }, [isMobile]);
 
   return (
     <section
       ref={rootRef}
-      className="relative h-[580vh] overflow-visible bg-[#050302] text-white max-md:h-[500vh]"
+      className="relative h-[580vh] overflow-visible bg-[#050302] text-white max-[991px]:h-[500vh]"
     >
-      {/* Intro — full-screen title that dissolves into particles on scroll */}
+      {/* Intro — the title is rendered entirely as dissolving canvas particles
+          (left-aligned to the step column). The DOM heading is screen-reader-only
+          so the page still exposes a real <h2> for a11y/SEO. The scroll hint sits
+          in normal flow, flex-centered at the bottom of this overlay. */}
       <div
-        className="absolute inset-x-0 top-0 z-[5] flex h-screen flex-col items-center justify-center overflow-hidden px-6 pb-6 pt-20 text-center transition-opacity duration-300 max-md:justify-start max-md:pt-[60px]"
+        className="pointer-events-none absolute inset-x-0 top-0 z-[5] flex h-screen flex-col items-center overflow-hidden transition-opacity duration-300"
         style={{ opacity: introHidden ? 0 : 1 }}
       >
         <canvas
           ref={introCanvasRef}
-          className="pointer-events-none absolute inset-0 z-[1] h-full w-full"
+          className="absolute inset-0 z-[1] h-full w-full"
         />
-        <h2 className="relative z-[2] max-w-[1100px] text-[clamp(34px,9vw,84px)] font-black leading-none tracking-[-1.5px]">
-          Пет стъпки.{" "}
-          <span className="bg-gradient-to-br from-brand-glow to-[#ffb37a] bg-clip-text text-transparent">
-            Един
-          </span>{" "}
-          резултат.
-        </h2>
-      </div>
+        <h2 className="sr-only">Пет стъпки. Един резултат.</h2>
 
-      {/* Floating scroll hint */}
-      <div
-        className="fixed bottom-[34px] left-1/2 z-20 inline-flex -translate-x-1/2 items-center gap-3 rounded-full border border-brand-glow/20 bg-[#050302]/[0.72] px-[18px] py-3 text-xs font-bold uppercase tracking-[1.4px] text-white/80 backdrop-blur-md shadow-[0_14px_34px_rgba(0,0,0,0.35)] transition-opacity duration-300 max-md:bottom-[92px] max-md:max-w-[calc(100vw-32px)] max-md:px-3.5 max-md:py-[11px] max-md:text-[10px]"
-        style={{
-          opacity: introHidden ? 0 : 1,
-          animation: "sa-scroll-hint-float 1.8s ease-in-out infinite",
-        }}
-      >
-        Скролни надолу, за да започне процесът
-        <span className="h-2 w-2 rotate-45 border-b-2 border-r-2 border-brand-glow" />
+        {/* Scroll hint — flex-centered at the bottom of the intro overlay */}
+        <div
+          className="relative z-[2] mt-auto mb-[34px] inline-flex items-center gap-3 rounded-full border border-brand-glow/20 bg-[#050302]/[0.72] px-[18px] py-3 text-xs font-bold uppercase tracking-[1.4px] text-white/80 backdrop-blur-md shadow-[0_14px_34px_rgba(0,0,0,0.35)] max-[991px]:mb-[92px] max-[991px]:max-w-[calc(100vw-32px)] max-[991px]:px-3.5 max-[991px]:py-[11px] max-[991px]:text-[10px]"
+          style={{
+            opacity: hintOpacity,
+            animation: "sa-scroll-hint-float 1.8s ease-in-out infinite",
+          }}
+        >
+          Скролни надолу, за да започне процесът
+          <span className="h-2 w-2 rotate-45 border-b-2 border-r-2 border-brand-glow" />
+        </div>
       </div>
 
       {/* Sticky stage — pinned canvas + step overlays */}
@@ -934,15 +1011,21 @@ export function ParticleProcess() {
         />
 
         {/* Vignette */}
-        <div className="pointer-events-none absolute inset-0 z-[2] bg-[radial-gradient(ellipse_at_70%_50%,transparent_30%,rgba(0,0,0,0.4)_75%),linear-gradient(180deg,rgba(5,3,2,0.6)_0%,transparent_15%,transparent_85%,rgba(5,3,2,0.7)_100%)] max-md:bg-[radial-gradient(ellipse_at_50%_35%,transparent_30%,rgba(0,0,0,0.45)_80%),linear-gradient(180deg,rgba(5,3,2,0.4)_0%,transparent_12%,transparent_70%,rgba(5,3,2,0.85)_100%)]" />
+        <div className="pointer-events-none absolute inset-0 z-[2] bg-[radial-gradient(ellipse_at_70%_50%,transparent_30%,rgba(0,0,0,0.4)_75%),linear-gradient(180deg,rgba(5,3,2,0.6)_0%,transparent_15%,transparent_85%,rgba(5,3,2,0.7)_100%)] max-[991px]:bg-[radial-gradient(ellipse_at_50%_35%,transparent_30%,rgba(0,0,0,0.45)_80%),linear-gradient(180deg,rgba(5,3,2,0.4)_0%,transparent_12%,transparent_70%,rgba(5,3,2,0.85)_100%)]" />
 
-        {/* Giant step number watermark */}
-        <div className="pointer-events-none absolute left-[-2vw] top-1/2 z-[3] -translate-y-1/2 select-none text-[52vw] font-black leading-[0.8] tracking-[-8px] text-transparent [-webkit-text-stroke:1px_rgba(255,138,61,0.06)] max-md:bottom-[28%] max-md:left-[-4vw] max-md:top-auto max-md:translate-y-0 max-md:text-[40vw] max-md:tracking-[-3px]">
+        {/* Giant step number watermark — fades in with the stage. */}
+        <div
+          className="pointer-events-none absolute left-[-2vw] top-1/2 z-[3] -translate-y-1/2 select-none text-[52vw] font-black leading-[0.8] tracking-[-8px] text-transparent transition-opacity duration-200 [-webkit-text-stroke:1px_rgba(255,138,61,0.06)] max-[991px]:bottom-[28%] max-[991px]:left-[-4vw] max-[991px]:top-auto max-[991px]:translate-y-0 max-[991px]:text-[40vw] max-[991px]:tracking-[-3px]"
+          style={{ opacity: stageOpacity }}
+        >
           {`0${activeStep + 1}`}
         </div>
 
         {/* Mobile rail (top dots) */}
-        <div className="absolute left-1/2 top-6 z-[5] hidden -translate-x-1/2 gap-2 max-md:flex">
+        <div
+          className="absolute left-1/2 top-6 z-[5] hidden -translate-x-1/2 gap-2 transition-opacity duration-200 max-[991px]:flex"
+          style={{ opacity: stageOpacity }}
+        >
           {STEPS.map((_, i) => (
             <span
               key={i}
@@ -957,8 +1040,15 @@ export function ParticleProcess() {
           ))}
         </div>
 
-        {/* Step content — cards stacked on top of each other, only active shown */}
-        <div className="pointer-events-none absolute left-20 top-1/2 z-[4] h-[320px] w-[480px] max-w-[480px] -translate-y-1/2 max-md:inset-x-5 max-md:bottom-[100px] max-md:top-auto max-md:h-[260px] max-md:w-auto max-md:max-w-none max-md:translate-y-0">
+        {/* Step content — cards stacked on top of each other, only active shown.
+            The outer track centers on the shared 1280px page column (matches the
+            header/nav and every Container section); the card sits at its left edge.
+            Fades in with the rest of the stage as the intro dissolves. */}
+        <div
+          className="pointer-events-none absolute inset-x-0 top-1/2 z-[4] mx-auto w-[min(100%-28px,1280px)] -translate-y-1/2 transition-opacity duration-200 max-[991px]:inset-x-5 max-[991px]:bottom-[100px] max-[991px]:top-auto max-[991px]:mx-0 max-[991px]:w-auto max-[991px]:translate-y-0"
+          style={{ opacity: stageOpacity }}
+        >
+          <div className="relative h-[360px] w-[440px] max-w-[440px] max-[991px]:h-[260px] max-[991px]:w-auto max-[991px]:max-w-none">
           {STEPS.map((step, i) => (
             <div
               key={step.title}
@@ -969,22 +1059,29 @@ export function ParticleProcess() {
                 visibility: i === activeStep ? "visible" : "hidden",
               }}
             >
-              <div className="mb-[18px] flex items-center gap-3.5 text-sm font-bold uppercase tracking-[4px] text-brand-glow max-md:mb-3 max-md:text-[11px] max-md:tracking-[3px]">
+              <div className="mb-[18px] flex items-center gap-3.5 text-sm font-bold uppercase tracking-[4px] text-brand-glow max-[991px]:mb-3 max-[991px]:text-[11px] max-[991px]:tracking-[3px]">
                 {step.num}
                 <span className="h-px max-w-20 flex-1 bg-gradient-to-r from-brand-glow to-transparent" />
               </div>
-              <h3 className="mb-6 text-[clamp(36px,7vw,88px)] font-black leading-[0.95] tracking-[-2px] max-md:mb-3 max-md:text-[clamp(36px,11vw,64px)] max-md:tracking-[-1.5px]">
+              {/* Heading width is capped to the left lane so it can't grow into
+                  the car's column on the right. */}
+              <h3 className="mb-6 max-w-[440px] text-[clamp(36px,4.6vw,68px)] font-black leading-[0.98] tracking-[-2px] max-[991px]:mb-3 max-[991px]:max-w-none max-[991px]:text-[clamp(36px,11vw,64px)] max-[991px]:tracking-[-1.5px]">
                 {step.title}
               </h3>
-              <p className="max-w-[420px] text-lg leading-relaxed text-white/70 max-md:max-w-full max-md:text-sm">
+              <p className="max-w-[420px] text-lg leading-relaxed text-white/70 max-[991px]:max-w-full max-[991px]:text-sm">
                 {step.desc}
               </p>
             </div>
           ))}
+          </div>
         </div>
 
-        {/* Desktop rail (right side) */}
-        <div className="pointer-events-none absolute right-14 top-1/2 z-[5] flex -translate-y-1/2 flex-col gap-7 max-md:hidden">
+        {/* Desktop rail — pinned to the right edge of the shared page column.
+            Fades in with the stage as the intro dissolves. */}
+        <div
+          className="pointer-events-none absolute inset-x-0 top-1/2 z-[5] mx-auto flex w-[min(100%-28px,1280px)] -translate-y-1/2 flex-col items-end gap-7 transition-opacity duration-200 max-[991px]:hidden"
+          style={{ opacity: stageOpacity }}
+        >
           {STEPS.map((step, i) => (
             <div
               key={step.rail}
@@ -1014,11 +1111,18 @@ export function ParticleProcess() {
           ))}
         </div>
 
-        {/* Progress spine */}
-        <div className="absolute bottom-[70px] left-20 z-[5] text-[11px] font-bold uppercase tracking-[3px] text-white/40 max-md:bottom-[38px] max-md:left-5 max-md:text-[9px] max-md:tracking-[2px]">
+        {/* Progress spine — label + bar span the shared page column. Fades in
+            with the stage as the intro dissolves. */}
+        <div
+          className="absolute inset-x-0 bottom-[70px] z-[5] mx-auto w-[min(100%-28px,1280px)] text-[11px] font-bold uppercase tracking-[3px] text-white/40 transition-opacity duration-200 max-[991px]:bottom-[38px] max-[991px]:w-auto max-[991px]:px-5 max-[991px]:text-[9px] max-[991px]:tracking-[2px]"
+          style={{ opacity: stageOpacity }}
+        >
           <span className="text-brand-glow">{formationPct}%</span> · от заявка до ключ
         </div>
-        <div className="absolute bottom-[60px] left-20 right-20 z-[5] h-px overflow-hidden bg-white/[0.08] max-md:bottom-[30px] max-md:left-5 max-md:right-5">
+        <div
+          className="absolute inset-x-0 bottom-[60px] z-[5] mx-auto h-px w-[min(100%-28px,1280px)] overflow-hidden bg-white/[0.08] transition-opacity duration-200 max-[991px]:bottom-[30px] max-[991px]:w-[calc(100%-40px)]"
+          style={{ opacity: stageOpacity }}
+        >
           <div
             className="h-full bg-gradient-to-r from-brand-glow to-[#ffb37a] shadow-[0_0_8px_rgba(255,138,61,0.7)]"
             style={{ width: `${formationPct}%` }}
@@ -1026,26 +1130,28 @@ export function ParticleProcess() {
         </div>
       </div>
 
-      {/* Outro — fades in during dispersion */}
+      {/* Outro — fades in during dispersion. Centered on all sizes so there's no
+          large empty gap below the CTA. */}
       <div
-        className="absolute inset-x-0 bottom-0 z-[5] flex h-screen flex-col items-center justify-center px-6 pb-8 text-center transition-opacity duration-300 max-md:justify-start max-md:pt-[120px]"
+        className="absolute inset-x-0 bottom-0 z-[5] flex h-screen flex-col items-center justify-center px-6 pb-8 text-center transition-opacity duration-300"
         style={{ opacity: outroOpacity, pointerEvents: outroOpacity > 0.9 ? "auto" : "none" }}
       >
-        <div className="mb-5 text-xs font-bold uppercase tracking-[4px] text-brand-glow/90 max-md:mb-4 max-md:text-[10px] max-md:tracking-[3px]">
+        <div className="mb-5 text-xs font-bold uppercase tracking-[4px] text-brand-glow/90 max-[991px]:mb-4 max-[991px]:text-[10px] max-[991px]:tracking-[3px]">
           Резултат
         </div>
-        <h3 className="mb-7 bg-gradient-to-br from-white to-[#ffb37a] bg-clip-text text-[clamp(34px,8vw,72px)] font-black leading-none tracking-[-1.5px] text-transparent max-md:mb-5">
+        <h3 className="mb-7 bg-gradient-to-br from-white to-[#ffb37a] bg-clip-text text-[clamp(34px,8vw,72px)] font-black leading-none tracking-[-1.5px] text-transparent max-[991px]:mb-5">
           Колата ви очаква.
         </h3>
-        <p className="mb-9 max-w-[460px] text-[17px] leading-relaxed text-white/65 max-md:mb-7 max-md:text-[15px]">
+        <p className="mb-9 max-w-[460px] text-[17px] leading-relaxed text-white/65 max-[991px]:mb-7 max-[991px]:text-[15px]">
           Не каталог. Не обещание. Готов автомобил с изрядна история и документи.
         </p>
-        <a
+        <LinkButton
           href="/kontakti/"
-          className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-full bg-gradient-to-br from-brand-glow to-[#e86c20] px-9 py-[18px] text-[15px] font-bold text-white shadow-[0_12px_30px_rgba(232,108,32,0.4)] transition-transform duration-200 hover:-translate-y-0.5 active:scale-[0.97] max-md:px-[30px] max-md:py-4 max-md:text-sm"
+          rippleTheme="light"
+          className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-full bg-gradient-to-br from-brand-glow to-[#e86c20] px-9 py-[18px] text-[15px] font-bold text-white shadow-[0_12px_30px_rgba(232,108,32,0.4)] transition-transform duration-200 hover:-translate-y-0.5 active:scale-[0.97] max-[991px]:px-[30px] max-[991px]:py-4 max-[991px]:text-sm"
         >
           Започнете процеса →
-        </a>
+        </LinkButton>
       </div>
     </section>
   );

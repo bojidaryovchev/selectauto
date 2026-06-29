@@ -1,5 +1,11 @@
 export { ArrowRightIcon } from "./arrow-right-icon";
+export { ChevronLeftIcon } from "./chevron-left-icon";
+export { ChevronRightIcon } from "./chevron-right-icon";
 export { FacebookIcon } from "./facebook-icon";
+export { FlagCaIcon } from "./flag-ca-icon";
+export { FlagKrIcon } from "./flag-kr-icon";
+export { FlagUsIcon } from "./flag-us-icon";
+export { GlobeIcon } from "./globe-icon";
 export { InstagramIcon } from "./instagram-icon";
 export { PhoneIcon } from "./phone-icon";
 export { TiktokIcon } from "./tiktok-icon";

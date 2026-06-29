@@ -1,14 +1,10 @@
 import { cacheLife, cacheTag } from "next/cache";
-import { and, eq, gte, lte, ne, or, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, lte, ne, or, sql } from "drizzle-orm";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { getDb, schema } from "@/lib/db";
 import type { CarFilters } from "@/types/car-filters.type";
 
 const cl = schema.carListings;
-
-/** Above this, we report "1000+" instead of an exact count (broad-filter COUNT is
- *  the one slow query — see DB-design §6). The grid header reads "Намерени: N". */
-const COUNT_CAP = 1000;
 
 /** Same WHERE builder as the listing page, minus the keyset cursor. */
 type ListingTable = typeof schema.carListings | typeof schema.carListingsArchived;
@@ -29,6 +25,13 @@ function buildConditions(filters: CarFilters, t: ListingTable = cl) {
   if (filters.model !== undefined) conds.push(eq(t.modelId, filters.model));
   if (filters.color) conds.push(eq(t.carColor, filters.color));
   if (filters.drive) conds.push(eq(t.driveWheel, filters.drive));
+  if (filters.condition) {
+    // Mirror the page query: the facet value is one or more raws (a BG label can
+    // cover several, e.g. run_and_drives,engine_starts), so match the whole set.
+    const raws = filters.condition.split(",").filter(Boolean);
+    if (raws.length === 1) conds.push(eq(t.condition, raws[0]));
+    else if (raws.length > 1) conds.push(inArray(t.condition, raws));
+  }
   if (filters.type) {
     const [kind, value] = filters.type.split(":");
     if (kind === "vt" && value) conds.push(eq(t.vehicleType, value));
@@ -41,13 +44,15 @@ function buildConditions(filters: CarFilters, t: ListingTable = cl) {
   return conds;
 }
 
-/** Result of a capped count: the number, and whether it was capped ("N+"). */
-export type CarsCount = { count: number; capped: boolean };
+/** The exact number of cars matching the filters. */
+export type CarsCount = { count: number };
 
 /**
- * Count of cars matching the filters, capped at COUNT_CAP for display. We count
- * up to CAP+1 rows via a subquery `LIMIT` so a broad filter doesn't scan the
- * whole 935k table — exact below the cap, "1000+" above it. Cached by filters.
+ * **Exact** count of cars matching the filters. Single-table `COUNT(*)` over the
+ * projection — measured 43–197ms even unfiltered (the `vehicle_type`/`body_type`
+ * indexes in migration 0015 + a VACUUM ANALYZE keep the rare-type and archived
+ * counts fast). Cached by filters (`cacheLife("hours")`), so repeated combos are
+ * instant. We show the true number ("Намерени: 12 743"), not a "1000+" cap.
  */
 export async function getCarsCount(filters: CarFilters): Promise<CarsCount> {
   "use cache";
@@ -56,21 +61,16 @@ export async function getCarsCount(filters: CarFilters): Promise<CarsCount> {
 
   const db = getDb();
 
-  // Search results are small + shown as a list; report their exact count.
+  // Search results are shown as a list; the header is hidden for search.
   if (filters.search && filters.search.trim() !== "") {
-    return { count: 0, capped: false }; // header hidden for search; placeholder
+    return { count: 0 };
   }
 
   const t = tableFor(filters);
   const conds = buildConditions(filters, t);
-  const capped = db
-    .select({ one: sql<number>`1` })
+  const rows = await db
+    .select({ n: sql<number>`count(*)::int` })
     .from(t)
-    .where(conds.length > 0 ? and(...conds) : undefined)
-    .limit(COUNT_CAP + 1)
-    .as("capped");
-
-  const rows = await db.select({ n: sql<number>`count(*)::int` }).from(capped);
-  const n = rows[0]?.n ?? 0;
-  return n > COUNT_CAP ? { count: COUNT_CAP, capped: true } : { count: n, capped: false };
+    .where(conds.length > 0 ? and(...conds) : undefined);
+  return { count: rows[0]?.n ?? 0 };
 }

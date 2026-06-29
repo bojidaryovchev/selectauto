@@ -20,6 +20,13 @@ export const carFiltersSchema = z.object({
   model: z.number().int().positive().optional(),
   color: z.string().trim().min(1).max(40).optional(),
   drive: z.enum(["front", "all", "rear"]).optional(),
+  // One or more canonical condition raws, comma-joined (a BG label can cover
+  // several raws — see get-car-facets).
+  condition: z
+    .string()
+    .regex(/^[a-z_]+(,[a-z_]+)*$/)
+    .max(120)
+    .optional(),
   type: z
     .string()
     .regex(/^(vt|bt):[a-z_]+$/)

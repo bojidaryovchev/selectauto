@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 // Type-only import: erased at build time, so `three` never enters the server
 // bundle, while THREE.* type annotations below still resolve.
 import type * as THREE from "three";
+import { Button, LinkButton } from "@/components/common";
 import { HERO_MODELS } from "@/data/home";
 import { useInquiry } from "@/contexts/inquiry-context";
 
@@ -453,8 +454,9 @@ export function ParticleHero() {
       {/* Vignette */}
       <div className="pointer-events-none absolute inset-0 z-[2] bg-[linear-gradient(90deg,rgba(0,0,0,0.62)_0%,rgba(0,0,0,0.28)_42%,rgba(0,0,0,0.05)_100%),radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.58)_100%)]" />
 
-      {/* Copy */}
-      <div className="pointer-events-none relative z-[5] flex min-h-screen max-w-[760px] flex-col items-start justify-center px-20 pb-[90px] pt-[clamp(110px,12vh,150px)] [&>*]:pointer-events-auto max-[900px]:min-h-fit max-[900px]:max-w-full max-[900px]:justify-start max-[900px]:px-5 max-[900px]:pb-0 max-[900px]:pt-[52px]">
+      {/* Copy — aligned to the shared 1280px page column (matches the header/nav
+          and every Container section) instead of a fixed viewport inset. */}
+      <div className="pointer-events-none relative z-[5] mx-auto flex min-h-screen w-[min(100%-28px,1280px)] flex-col items-start justify-center pb-[90px] pt-[clamp(110px,12vh,150px)] [&>*]:pointer-events-auto max-[900px]:min-h-fit max-[900px]:justify-start max-[900px]:pb-0 max-[900px]:pt-[52px]">
         <div
           className="mb-6 inline-flex w-fit items-center gap-2.5 rounded-full border border-[#e86c20]/50 bg-[#e86c20]/[0.12] px-5 py-2.5 text-xs font-extrabold tracking-[2px] text-[#ffb37a] backdrop-blur-md max-[900px]:mb-[18px] max-[900px]:px-3.5 max-[900px]:py-2 max-[900px]:text-[10px] max-[900px]:tracking-[1.4px]"
         >
@@ -484,38 +486,41 @@ export function ParticleHero() {
         </p>
 
         <div className="flex flex-wrap items-center gap-4 max-[900px]:w-full max-[900px]:flex-col max-[900px]:gap-3">
-          <a
+          <LinkButton
             href="/vsichki-avtomobili/"
+            rippleTheme="light"
             className="inline-flex min-h-[54px] items-center justify-center rounded-full bg-gradient-to-br from-brand-glow to-[#e86c20] px-[30px] text-[15px] font-extrabold text-white shadow-[0_12px_40px_rgba(232,108,32,0.4)] transition-transform duration-200 hover:-translate-y-[3px] max-[900px]:w-full"
           >
             Разгледай автомобилите
-          </a>
-          <button
-            type="button"
+          </LinkButton>
+          <Button
             onClick={openInquiry}
+            rippleTheme="light"
             className="inline-flex min-h-[54px] items-center justify-center rounded-full border border-white/[0.18] bg-white/[0.08] px-[30px] text-[15px] font-extrabold text-white backdrop-blur-md transition-colors hover:bg-white/[0.14] max-[900px]:w-full"
           >
             Направете запитване
-          </button>
+          </Button>
         </div>
       </div>
 
-      {/* Model label */}
-      <div className="pointer-events-none absolute bottom-[58px] right-20 z-[5] text-right max-[900px]:bottom-5 max-[900px]:right-5 max-[900px]:z-[8]">
-        <div className="mb-2 text-[11px] font-extrabold uppercase tracking-[3px] text-white/40 max-[900px]:hidden">
-          Подбор · Внос · Доставка
-        </div>
-        <div
-          className="bg-gradient-to-br from-brand-glow to-[#ffb37a] bg-clip-text text-[56px] font-black leading-none tracking-[-1px] text-transparent transition-opacity duration-300 max-[900px]:text-[36px] max-[900px]:tracking-[-0.5px]"
-          style={{ opacity: infoVisible ? 1 : 0 }}
-        >
-          {modelName}
-        </div>
-        <div
-          className="mt-3 text-[13px] font-semibold text-white/50 transition-opacity duration-300 max-[900px]:mt-1 max-[900px]:text-[11px] max-[900px]:text-white/65"
-          style={{ opacity: infoVisible ? 1 : 0 }}
-        >
-          {modelMeta}
+      {/* Model label — pinned to the right edge of the shared page column. */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-[58px] z-[5] max-[900px]:bottom-5 max-[900px]:z-[8]">
+        <div className="mx-auto w-[min(100%-28px,1280px)] text-right">
+          <div className="mb-2 text-[11px] font-extrabold uppercase tracking-[3px] text-white/40 max-[900px]:hidden">
+            Подбор · Внос · Доставка
+          </div>
+          <div
+            className="bg-gradient-to-br from-brand-glow to-[#ffb37a] bg-clip-text text-[56px] font-black leading-none tracking-[-1px] text-transparent transition-opacity duration-300 max-[900px]:text-[36px] max-[900px]:tracking-[-0.5px]"
+            style={{ opacity: infoVisible ? 1 : 0 }}
+          >
+            {modelName}
+          </div>
+          <div
+            className="mt-3 text-[13px] font-semibold text-white/50 transition-opacity duration-300 max-[900px]:mt-1 max-[900px]:text-[11px] max-[900px]:text-white/65"
+            style={{ opacity: infoVisible ? 1 : 0 }}
+          >
+            {modelMeta}
+          </div>
         </div>
       </div>
 

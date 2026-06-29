@@ -62,7 +62,7 @@ export default async function AllCarsPage({ searchParams }: { searchParams: Prom
   return (
     <>
       <SiteHeader />
-      <main className="flex-1 bg-[#fafafa] text-ink">
+      <main className="flex-1 bg-[#fafafa] pt-(--header-h) text-ink">
         <Container>
           <div className="py-10 max-md:py-7">
             <h1 className="mb-2 text-4xl font-black uppercase tracking-tight text-ink max-md:text-3xl">
@@ -81,7 +81,7 @@ export default async function AllCarsPage({ searchParams }: { searchParams: Prom
             ) : (
               <p className="mb-4 mt-6 text-sm text-muted">
                 {isPast ? "Намерени резултати: " : "Намерени автомобили: "}
-                <strong className="text-ink">{count.capped ? `${count.count}+` : count.count}</strong>
+                <strong className="text-ink">{count.count.toLocaleString("bg-BG").replace(/ /g, " ")}</strong>
               </p>
             )}
 

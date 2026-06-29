@@ -2,20 +2,51 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/common";
 import { NAV } from "@/data/navigation";
 import { useInquiry } from "@/contexts/inquiry-context";
-import { MobileTab } from "./mobile-tab";
+import { NavHamburger } from "./nav-hamburger";
 
 /**
- * Sticky header with the orange gradient pill shell on desktop and a slide-in
+ * Fixed header with the orange gradient pill shell on desktop and a slide-in
  * drawer + fixed bottom-nav on mobile. Ported from the site's `sa-site-header`
  * and `sa-mobile-*` styles.
+ *
+ * The header is `position: fixed`, so it occupies no layout space. Pages whose
+ * content starts at the top (the light catalog/detail pages) offset it with
+ * `pt-(--header-h)`. That token has a static fallback in globals.css, but we
+ * also measure the real rendered height here and publish it to `--header-h` so
+ * the offset is always pixel-exact across viewports (and never drifts if the
+ * header's padding/min-height changes).
  */
 export function SiteHeader() {
   const { open: openInquiry } = useInquiry();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [openSub, setOpenSub] = useState<string | null>(null);
+  const [hidden, setHidden] = useState(false);
+  const headerRef = useRef<HTMLElement | null>(null);
+
+  // Publish the header's real height to `--header-h` so page top-padding tracks
+  // it exactly. ResizeObserver keeps it correct through breakpoint/content
+  // changes (e.g. logo swap at lg). Measured on <html> so every page can read it.
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+
+    const root = document.documentElement;
+    const publish = () => {
+      root.style.setProperty("--header-h", `${Math.round(el.offsetHeight)}px`);
+    };
+    publish();
+
+    const ro = new ResizeObserver(publish);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      root.style.removeProperty("--header-h");
+    };
+  }, []);
 
   // Lock body scroll while the mobile drawer is open.
   useEffect(() => {
@@ -25,13 +56,49 @@ export function SiteHeader() {
     };
   }, [drawerOpen]);
 
+  // Hide the header when scrolling down past it, reveal it when scrolling up.
+  // rAF-throttled so the scroll handler does no layout work per event.
+  useEffect(() => {
+    let lastY = window.scrollY;
+    let ticking = false;
+
+    const update = () => {
+      ticking = false;
+      const y = window.scrollY;
+      const delta = y - lastY;
+      // Ignore sub-pixel jitter; never hide near the very top of the page.
+      if (Math.abs(delta) > 6) {
+        setHidden(delta > 0 && y > 120);
+        lastY = y;
+      }
+    };
+
+    const onScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(update);
+      }
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Keep the header visible whenever the mobile drawer is open.
+  const isHidden = hidden && !drawerOpen;
+
   return (
     <>
-      <header className="sticky top-0 z-[9999] border-b border-white/[0.06] bg-[#0f1014]/[0.88] px-0 py-3.5 backdrop-blur-xl">
+      <header
+        ref={headerRef}
+        className={`fixed inset-x-0 top-0 z-[9999] border-b border-white/[0.06] bg-shell/88 px-0 py-3.5 backdrop-blur-xl transition-transform duration-300 ease-out will-change-transform ${
+          isHidden ? "-translate-y-full" : "translate-y-0"
+        }`}
+      >
         <div className="mx-auto w-[min(100%-28px,1280px)]">
-          <div className="flex min-h-[78px] items-center justify-between gap-6 rounded-[24px] bg-gradient-to-r from-brand to-brand-dark px-[26px] shadow-[0_16px_40px_rgba(0,0,0,0.2)] max-lg:min-h-[72px] max-lg:justify-center max-lg:rounded-none max-lg:bg-none max-lg:px-0 max-lg:shadow-none">
+          <div className="flex min-h-[78px] items-center justify-between gap-6 rounded-[24px] bg-gradient-to-r from-brand to-brand-dark px-[26px] shadow-[0_16px_40px_rgba(0,0,0,0.2)] max-lg:min-h-[72px] max-lg:rounded-none max-lg:bg-none max-lg:px-0 max-lg:shadow-none">
             {/* Logo */}
-            <Link href="/" className="inline-flex items-center max-lg:-ml-2">
+            <Link href="/" className="inline-flex items-center">
               <Image
                 src="/logo.png"
                 alt="SelectAuto"
@@ -74,36 +141,26 @@ export function SiteHeader() {
 
             {/* Desktop inquiry button */}
             <div className="flex items-center gap-[22px] max-lg:hidden">
-              <button
-                type="button"
+              <Button
                 onClick={openInquiry}
+                rippleTheme="light"
                 className="inline-flex min-h-[54px] items-center justify-center rounded-full border border-white/25 bg-white/10 px-6 text-[15px] font-extrabold text-white transition-transform duration-200 hover:-translate-y-0.5"
               >
                 Запитване
-              </button>
+              </Button>
             </div>
+
+            {/* Mobile drawer toggle */}
+            <NavHamburger
+              active={drawerOpen}
+              onClick={() => setDrawerOpen((open) => !open)}
+              aria-label={drawerOpen ? "Затвори менюто" : "Отвори менюто"}
+              aria-expanded={drawerOpen}
+              className="hidden max-lg:inline-block"
+            />
           </div>
         </div>
       </header>
-
-      {/* Mobile bottom-nav */}
-      <nav className="fixed inset-x-0 bottom-0 z-[9999] hidden pb-[calc(8px+env(safe-area-inset-bottom))] max-lg:block">
-        <div className="flex min-h-[74px] items-stretch justify-between border-t border-white/[0.08] bg-[#0a0b0f]/[0.92] shadow-[0_-10px_34px_rgba(0,0,0,0.28)] backdrop-blur-xl">
-          <MobileTab label="Начало" href="/" icon="⌂" active />
-          <MobileTab label="Автомобили" href="/vsichki-avtomobili/" icon="🚗" />
-          <MobileTab label="Carfax" href="/carfax/" icon="📄" />
-          <button
-            type="button"
-            onClick={() => setDrawerOpen(true)}
-            className="flex flex-1 flex-col items-center justify-center gap-1.5 px-1.5 pb-2.5 pt-2 text-[11px] font-bold text-white/60 transition-colors"
-          >
-            <span className="flex h-6 w-6 items-center justify-center text-xl leading-none">
-              ☰
-            </span>
-            Меню
-          </button>
-        </div>
-      </nav>
 
       {/* Drawer overlay */}
       <div
@@ -123,14 +180,14 @@ export function SiteHeader() {
           <p className="m-0 text-sm font-extrabold uppercase tracking-[0.08em] text-white">
             Меню
           </p>
-          <button
-            type="button"
+          <Button
             onClick={() => setDrawerOpen(false)}
+            rippleTheme="light"
             className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/[0.08] text-white"
             aria-label="Затвори менюто"
           >
             ✕
-          </button>
+          </Button>
         </div>
         <div className="pb-[calc(22px+env(safe-area-inset-bottom))] pt-2.5">
           <ul className="m-0 list-none p-0">
@@ -140,11 +197,11 @@ export function SiteHeader() {
                   key={item.label}
                   className="border-b border-white/[0.06]"
                 >
-                  <button
-                    type="button"
+                  <Button
                     onClick={() =>
                       setOpenSub(openSub === item.label ? null : item.label)
                     }
+                    rippleTheme="light"
                     className="flex min-h-[56px] w-full items-center justify-between gap-3 px-[18px] text-[15px] font-bold text-[#f2f3f5]"
                   >
                     {item.label}
@@ -155,7 +212,7 @@ export function SiteHeader() {
                     >
                       ⌄
                     </span>
-                  </button>
+                  </Button>
                   {openSub === item.label && (
                     <ul className="m-0 list-none bg-white/[0.02] p-0 pb-2.5 pt-1.5">
                       {item.children.map((sub) => (
@@ -186,16 +243,16 @@ export function SiteHeader() {
             )}
           </ul>
           <div className="px-[18px] pt-5">
-            <button
-              type="button"
+            <Button
               onClick={() => {
                 setDrawerOpen(false);
                 openInquiry();
               }}
+              rippleTheme="light"
               className="inline-flex min-h-[54px] w-full items-center justify-center rounded-full bg-gradient-to-r from-brand-dark to-brand px-6 text-[15px] font-extrabold text-white shadow-[0_12px_26px_rgba(216,111,22,0.24)]"
             >
               Направете запитване
-            </button>
+            </Button>
           </div>
         </div>
       </aside>

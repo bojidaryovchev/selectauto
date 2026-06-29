@@ -17,7 +17,10 @@ export function AboutCta() {
                 и регистрацията.
               </p>
             </div>
-            <InquiryButton className="inline-flex min-h-[54px] shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-brand-dark to-brand px-[26px] text-[15px] font-extrabold text-white shadow-[0_12px_30px_rgba(216,111,22,0.25)] transition-transform duration-200 hover:-translate-y-0.5 max-[900px]:w-full">
+            <InquiryButton
+              rippleTheme="light"
+              className="inline-flex min-h-[54px] shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-brand-dark to-brand px-[26px] text-[15px] font-extrabold text-white shadow-[0_12px_30px_rgba(216,111,22,0.25)] transition-transform duration-200 hover:-translate-y-0.5 max-[900px]:w-full"
+            >
               Запитване
             </InquiryButton>
           </div>

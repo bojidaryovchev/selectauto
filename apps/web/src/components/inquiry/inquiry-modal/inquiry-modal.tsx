@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/common";
 import {
   INQUIRY_BRANDS,
   INQUIRY_BUDGETS,
@@ -191,14 +192,13 @@ export function InquiryModal({
 
       {/* Dialog */}
       <div className="relative z-[2] mx-auto mt-[5vh] max-h-[min(88vh,820px)] w-[min(100%-24px,520px)] overflow-y-auto rounded-[30px] bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(248,248,250,0.98)_100%)] px-7 pb-[26px] pt-7 shadow-[0_30px_80px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-md max-[640px]:mt-[3vh] max-[640px]:max-h-[92vh] max-[640px]:w-[min(100%-16px,460px)] max-[640px]:rounded-[22px] max-[640px]:px-[18px] max-[640px]:pb-[18px] max-[640px]:pt-[22px]">
-        <button
-          type="button"
+        <Button
           aria-label="Затвори"
           onClick={close}
           className="absolute right-3.5 top-3 inline-flex h-11 w-11 items-center justify-center rounded-[14px] bg-[#f1f2f4] text-2xl leading-none text-[#6f747c] transition-all duration-200 hover:-translate-y-px hover:bg-[#e8eaee] hover:text-[#17181b]"
         >
           ×
-        </button>
+        </Button>
 
         {/* Start screen */}
         {screen === "start" && (
@@ -232,14 +232,13 @@ export function InquiryModal({
           <div>
             <div className="mb-2.5 flex items-center justify-between">
               {showBack ? (
-                <button
-                  type="button"
+                <Button
                   onClick={back}
                   aria-label="Назад"
                   className="inline-flex h-11 w-11 items-center justify-center rounded-[14px] bg-[#f1f2f4] text-2xl leading-none text-[#6f747c] transition-all duration-200 hover:-translate-y-px hover:bg-[#e8eaee] hover:text-[#17181b]"
                 >
                   ←
-                </button>
+                </Button>
               ) : (
                 <span />
               )}

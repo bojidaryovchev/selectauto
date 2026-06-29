@@ -1,5 +1,5 @@
 import { cacheLife, cacheTag } from "next/cache";
-import { and, desc, eq, gte, ilike, lt, lte, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, inArray, lt, lte, ne, or, sql } from "drizzle-orm";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { carListingToView } from "@/lib/car-mapper";
 import { getDb, schema } from "@/lib/db";
@@ -51,6 +51,13 @@ function buildConditions(filters: CarFilters, t: ListingTable = cl) {
   if (filters.model !== undefined) conds.push(eq(t.modelId, filters.model));
   if (filters.color) conds.push(eq(t.carColor, filters.color));
   if (filters.drive) conds.push(eq(t.driveWheel, filters.drive));
+  if (filters.condition) {
+    // The condition facet value is one or more raws (a BG label can cover several,
+    // e.g. run_and_drives,engine_starts), so match the whole set.
+    const raws = filters.condition.split(",").filter(Boolean);
+    if (raws.length === 1) conds.push(eq(t.condition, raws[0]));
+    else if (raws.length > 1) conds.push(inArray(t.condition, raws));
+  }
   if (filters.type) {
     // "vt:<value>" → vehicle_type column; "bt:<value>" → body_type column.
     const [kind, value] = filters.type.split(":");

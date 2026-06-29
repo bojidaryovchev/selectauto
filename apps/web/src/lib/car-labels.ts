@@ -200,3 +200,93 @@ const SOURCE_BADGE: Record<string, string> = {
   encar_com: "ENCAR",
 };
 export const sourceBadge = (v: string | null | undefined) => (v ? (SOURCE_BADGE[v.toLowerCase()] ?? v.toUpperCase()) : "—");
+
+/* ---------------------------------------------------------------------------
+ * Detail-page-only labels. These map fields that live ONLY in the lot's
+ * raw_json (not promoted to car_listings columns) and are surfaced on the
+ * single-car page. Same store-canonical/translate-on-render rule as above.
+ * ------------------------------------------------------------------------ */
+
+/** raw_json.seller_type.name → BG (who is selling — insurance/dealer/…). */
+const SELLER_TYPE_BG: Record<string, string> = {
+  insurance: "Застраховател",
+  dealer: "Дилър",
+  dealership: "Дилър",
+  rental: "Под наем (rental)",
+  fleet: "Автопарк",
+  finance: "Финансова компания",
+  credit_company: "Кредитна компания",
+  bank: "Банка",
+  individual: "Частно лице",
+  charity: "Дарение",
+  government: "Държавен",
+};
+export const sellerTypeLabel = (v: string | null | undefined) => lookup(SELLER_TYPE_BG, v, "");
+
+/** raw_json.auction_type.name → BG (how it sells — live/timed/buy-now/…). */
+const AUCTION_TYPE_BG: Record<string, string> = {
+  live: "На живо",
+  timed: "Таймер",
+  on_approval: "С одобрение",
+  buy_now: "Купи сега",
+  pure_sale: "Директна продажба",
+  minimum_bid: "Минимална оферта",
+};
+export const auctionTypeLabel = (v: string | null | undefined) => lookup(AUCTION_TYPE_BG, v, "");
+
+/**
+ * raw_json.title.name / detailed_title.name → BG (the legal document title:
+ * Salvage / Clean / Rebuilt …). Large free-text head; long tail passes through.
+ */
+const TITLE_DOC_BG: Record<string, string> = {
+  salvage: "Salvage (тотална щета)",
+  clean: "Чист талон",
+  "clean title": "Чист талон",
+  rebuilt: "Възстановен (rebuilt)",
+  "certificate of title": "Талон за собственост",
+  "non-repairable": "Невъзстановим",
+  nonrepairable: "Невъзстановим",
+  junk: "За скрап (junk)",
+  "bill of sale": "Договор за продажба",
+  "export only": "Само за износ",
+  "parts only": "Само за части",
+  "flood": "Наводнение",
+  "certificate of destruction": "За унищожаване",
+};
+export const titleDocLabel = (v: string | null | undefined): string => {
+  if (v == null || v === "") return "";
+  const key = v.toLowerCase().trim();
+  // Match on a known prefix too ("Salvage (Colorado)" → "Salvage …").
+  for (const [k, label] of Object.entries(TITLE_DOC_BG)) {
+    if (key === k || key.startsWith(`${k} `) || key.startsWith(`${k}(`)) return label;
+  }
+  return v;
+};
+
+/** keys_available boolean → BG ("С ключове" / "Без ключове"). */
+export const keysLabel = (v: boolean | null | undefined): string =>
+  v === true ? "Да" : v === false ? "Не" : "";
+
+/** raw_json.airbags.name → BG (intact / deployed). */
+const AIRBAGS_BG: Record<string, string> = {
+  intact: "Налични",
+  deployed: "Сработили",
+  not_deployed: "Не са сработили",
+  missing: "Липсват",
+};
+export const airbagsLabel = (v: string | null | undefined) => lookup(AIRBAGS_BG, v, "");
+
+/** cars.fuel_type → BG. */
+const FUEL_BG: Record<string, string> = {
+  gasoline: "Бензин",
+  petrol: "Бензин",
+  diesel: "Дизел",
+  hybrid: "Хибрид",
+  electric: "Електрически",
+  flexible: "Flex-fuel",
+  gas: "Газ",
+  lpg: "Газ (LPG)",
+  cng: "Метан (CNG)",
+  hydrogen: "Водород",
+};
+export const fuelLabel = (v: string | null | undefined) => lookup(FUEL_BG, v, v ?? "");

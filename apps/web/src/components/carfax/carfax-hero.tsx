@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { Container, Reveal } from "@/components/common";
+import { Container, LinkButton, Reveal } from "@/components/common";
 
 const HERO_BG =
   "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1800&q=80";
@@ -35,18 +34,20 @@ export function CarfaxHero() {
             </p>
 
             <div className="flex flex-wrap gap-3.5 max-md:flex-col">
-              <Link
+              <LinkButton
                 href="#sa-carfax-form-block"
+                rippleTheme="light"
                 className="inline-flex min-h-[54px] items-center justify-center rounded-full bg-[linear-gradient(90deg,#b95200,#d86f16)] px-[26px] text-[15px] font-extrabold text-white shadow-[0_12px_28px_rgba(216,111,22,0.24)] transition-transform duration-200 hover:-translate-y-0.5 max-md:w-full"
               >
                 Изпрати запитване
-              </Link>
-              <Link
+              </LinkButton>
+              <LinkButton
                 href="/kontakti/"
+                rippleTheme="light"
                 className="inline-flex min-h-[54px] items-center justify-center rounded-full border border-white/[0.18] bg-white/[0.08] px-[26px] text-[15px] font-extrabold text-white backdrop-blur-md transition-transform duration-200 hover:-translate-y-0.5 max-md:w-full"
               >
                 Свържи се с нас
-              </Link>
+              </LinkButton>
             </div>
           </Reveal>
 

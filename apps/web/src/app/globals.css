@@ -32,12 +32,41 @@ body {
   padding: 0;
 }
 
+/*
+  Reserve the scrollbar gutter permanently. When the mobile drawer or the
+  inquiry modal locks the page (body { overflow: hidden }), the scrollbar would
+  otherwise vanish, widen the viewport by its width, and re-center the fixed
+  header — a visible sideways "jump". Reserving the gutter keeps the layout
+  stable across the lock. Classic-scrollbar browsers only; no-op for overlay
+  scrollbars (most mobile), where there was never a jump.
+*/
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   font-family: var(--font-sans);
   color: var(--color-ink);
   background: #fff;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+}
+
+/*
+  Height of the fixed <SiteHeader>, exposed as a token so page wrappers can
+  offset their top padding by exactly the header's footprint (the header is
+  `position: fixed`, so it occupies no layout space of its own).
+  Derived from the header's classes: py-3.5 (14px ×2) + inner min-height
+  + 1px bottom border. Mobile inner min-height is 72px, desktop is 78px.
+  Keep these in sync with site-header.tsx if its padding/min-height changes.
+*/
+:root {
+  --header-h: 101px;
+}
+@media (min-width: 1024px) {
+  :root {
+    --header-h: 107px;
+  }
 }
 
 /* Scroll-reveal: elements start hidden, `.is-visible` fades them in. */
@@ -76,13 +105,41 @@ body {
   }
 }
 
-/* Process page scroll hint — floating chevron pill. */
+/* Process page scroll hint — floating chevron pill. Vertical-only float; the pill
+   is flex-centered by its container (no horizontal translate). */
 @keyframes sa-scroll-hint-float {
   0%,
   100% {
-    transform: translate(-50%, 0);
+    transform: translateY(0);
   }
   50% {
-    transform: translate(-50%, 7px);
+    transform: translateY(7px);
+  }
+}
+
+/*
+  Material-style click ripple, driven by the <Ripple> component. The component
+  positions an absolutely-placed circle at the pointer (or button center for
+  keyboard activation) and removes it after the animation; this keyframe scales
+  it up while fading it out. The `animate-ripple-effect` utility is referenced
+  from the component's className. Suppressed under reduced-motion.
+*/
+@keyframes ripple-effect {
+  from {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  to {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+.animate-ripple-effect {
+  animation: ripple-effect 1s ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-ripple-effect {
+    animation: none;
+    display: none;
   }
 }

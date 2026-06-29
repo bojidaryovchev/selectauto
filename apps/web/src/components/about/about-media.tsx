@@ -1,4 +1,5 @@
 import { Container, Reveal } from "@/components/common";
+import { CanvasVideo } from "./canvas-video";
 import { FeatureCard } from "./feature-card";
 import { ABOUT_VIDEO_POSTER, ABOUT_VIDEO_SRC } from "./media";
 
@@ -17,17 +18,11 @@ export function AboutMedia() {
         <div className="grid grid-cols-[1.15fr_0.85fr] items-stretch gap-6 max-[1100px]:grid-cols-1">
           <Reveal>
             <div className="group relative min-h-[540px] overflow-hidden rounded-[30px] shadow-[0_18px_50px_rgba(0,0,0,0.14)] max-[1100px]:min-h-[420px] max-md:min-h-[280px]">
-              <video
-                autoPlay
-                muted
-                loop
-                playsInline
-                preload="metadata"
+              <CanvasVideo
+                src={ABOUT_VIDEO_SRC}
                 poster={ABOUT_VIDEO_POSTER}
-                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
-              >
-                <source src={ABOUT_VIDEO_SRC} type="video/mp4" />
-              </video>
+                className="transition-transform duration-700 group-hover:scale-[1.04]"
+              />
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.06),rgba(0,0,0,0.34))]" />
             </div>
           </Reveal>

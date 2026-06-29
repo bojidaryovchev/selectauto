@@ -31,6 +31,12 @@ export type CarFilters = {
   /** Drivetrain canonical name (front/all/rear). */
   drive?: string;
   /**
+   * Condition: one or more canonical raws, comma-joined. Some BG labels cover
+   * several raws (e.g. `run_and_drives,engine_starts` → "Пали и се движи"), so the
+   * facet value is the whole set and the query matches with IN(...).
+   */
+  condition?: string;
+  /**
    * Combined vehicle/body type, prefixed to pick the column:
    *  - `vt:<value>` → vehicle_type (non-car categories: boat/truck/moto/…)
    *  - `bt:<value>` → body_type (car sub-shapes: suv/sedan/pickup/…)
@@ -68,6 +74,7 @@ export type FacetOptions = {
   modelsByBrand: Record<string, FacetOption[]>;
   colors: FacetOption[];
   drives: FacetOption[];
+  conditions: FacetOption[];
   /** Combined vehicle/body type options; values are `vt:*` / `bt:*` (see CarFilters.type). */
   types: FacetOption[];
   years: number[];

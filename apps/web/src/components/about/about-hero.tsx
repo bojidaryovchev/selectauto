@@ -1,5 +1,5 @@
-import Link from "next/link";
-import { Container, Reveal } from "@/components/common";
+import { Container, LinkButton, Reveal } from "@/components/common";
+import { CanvasVideo } from "./canvas-video";
 import { ABOUT_VIDEO_POSTER, ABOUT_VIDEO_SRC } from "./media";
 
 const HERO_POINTS = [
@@ -12,17 +12,7 @@ const HERO_POINTS = [
 export function AboutHero() {
   return (
     <section className="relative flex min-h-[92vh] items-end overflow-hidden bg-black">
-      <video
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="metadata"
-        poster={ABOUT_VIDEO_POSTER}
-        className="absolute inset-0 h-full w-full object-cover"
-      >
-        <source src={ABOUT_VIDEO_SRC} type="video/mp4" />
-      </video>
+      <CanvasVideo src={ABOUT_VIDEO_SRC} poster={ABOUT_VIDEO_POSTER} />
 
       {/* Gradient + orange-glow overlay */}
       <div className="absolute inset-0 z-[1] bg-[linear-gradient(180deg,rgba(0,0,0,0.20)_0%,rgba(0,0,0,0.48)_54%,rgba(0,0,0,0.78)_100%),radial-gradient(circle_at_20%_18%,rgba(216,111,22,0.22),transparent_26%),radial-gradient(circle_at_78%_76%,rgba(216,111,22,0.18),transparent_30%)]" />
@@ -44,18 +34,20 @@ export function AboutHero() {
             </p>
 
             <div className="flex flex-wrap gap-3.5 max-md:flex-col">
-              <Link
-                href="/контакти/"
+              <LinkButton
+                href="/kontakti/"
+                rippleTheme="light"
                 className="inline-flex min-h-[54px] items-center justify-center rounded-full bg-gradient-to-r from-brand-dark to-brand px-[26px] text-[15px] font-extrabold text-white shadow-[0_12px_30px_rgba(216,111,22,0.25)] transition-transform duration-200 hover:-translate-y-0.5 max-md:w-full"
               >
                 Свържи се с нас
-              </Link>
-              <Link
+              </LinkButton>
+              <LinkButton
                 href="/vsichki-avtomobili/"
+                rippleTheme="light"
                 className="inline-flex min-h-[54px] items-center justify-center rounded-full border border-white/[0.18] bg-white/[0.08] px-[26px] text-[15px] font-extrabold text-white backdrop-blur-sm transition-transform duration-200 hover:-translate-y-0.5 max-md:w-full"
               >
                 Разгледай автомобилите
-              </Link>
+              </LinkButton>
             </div>
           </div>
 

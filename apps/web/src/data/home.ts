@@ -47,7 +47,7 @@ export const FALLBACK_BUY_NOW_CARS: CarView[] = [
   },
   {
     title: "2021 Hyundai",
-    href: "/коли-за-продажба/",
+    href: "/vsichki-avtomobili/",
     price: "9 928 €",
     mileage: "80 044 км",
     source: "ENCAR",
@@ -56,7 +56,7 @@ export const FALLBACK_BUY_NOW_CARS: CarView[] = [
   },
   {
     title: "2020 Hyundai",
-    href: "/коли-за-продажба/",
+    href: "/vsichki-avtomobili/",
     price: "9 928 €",
     mileage: "152 427 км",
     source: "ENCAR",
@@ -68,7 +68,7 @@ export const FALLBACK_BUY_NOW_CARS: CarView[] = [
 export const FALLBACK_AUCTION_CARS: CarView[] = [
   {
     title: "2026 BMW X6 M Competition",
-    href: "/внос/",
+    href: "/vsichki-avtomobili/",
     mileage: "5 322 км",
     source: "IAAI",
     image: "/cars/car-884817-074947fd19251b.jpg",
@@ -76,7 +76,7 @@ export const FALLBACK_AUCTION_CARS: CarView[] = [
   },
   {
     title: "2022 Hyundai Tucson",
-    href: "/внос/",
+    href: "/vsichki-avtomobili/",
     price: "15 000 €",
     mileage: "63 998 км",
     source: "IAAI",
@@ -85,7 +85,7 @@ export const FALLBACK_AUCTION_CARS: CarView[] = [
   },
   {
     title: "2019 Lamborghini Urus",
-    href: "/внос/",
+    href: "/vsichki-avtomobili/",
     price: "104 000 €",
     mileage: "33 302 км",
     source: "IAAI",
@@ -94,7 +94,7 @@ export const FALLBACK_AUCTION_CARS: CarView[] = [
   },
   {
     title: "2016 Chevrolet Corvette",
-    href: "/внос/",
+    href: "/vsichki-avtomobili/",
     price: "25 000 €",
     mileage: "37 022 км",
     source: "IAAI",
@@ -103,7 +103,7 @@ export const FALLBACK_AUCTION_CARS: CarView[] = [
   },
   {
     title: "2020 Hyundai Elantra SE",
-    href: "/внос/",
+    href: "/vsichki-avtomobili/",
     mileage: "135 265 км",
     source: "IAAI",
     image: null,
@@ -111,7 +111,7 @@ export const FALLBACK_AUCTION_CARS: CarView[] = [
   },
   {
     title: "2013 Ram 1500 Laramie Longhorn",
-    href: "/внос/",
+    href: "/vsichki-avtomobili/",
     mileage: "343 936 км",
     source: "IAAI",
     image: null,

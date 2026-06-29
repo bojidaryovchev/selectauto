@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { CarView } from "@/types/car.type";
+import { LinkButton } from "@/components/common";
 
 /** A single listing card — ported from the site's `sa-car-card`. */
 export function CarCard({ car }: { car: CarView }) {
@@ -64,12 +65,13 @@ export function CarCard({ car }: { car: CarView }) {
           )}
         </div>
 
-        <Link
+        <LinkButton
           href={car.href}
+          rippleTheme="light"
           className="mt-auto inline-flex min-h-[54px] w-full items-center justify-center rounded-full bg-gradient-to-r from-brand-dark to-brand px-6 text-[15px] font-extrabold text-white shadow-[0_12px_28px_rgba(216,111,22,0.22)] transition-transform duration-200 hover:-translate-y-0.5"
         >
           Виж автомобила
-        </Link>
+        </LinkButton>
       </div>
     </article>
   );

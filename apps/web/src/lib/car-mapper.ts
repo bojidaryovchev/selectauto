@@ -1,5 +1,7 @@
 import type { AuctionLot, Car, CarListing, CarListingArchived } from "@auctions-ingestion/db/schema";
 import {
+  bodyTypeLabel,
+  colorLabel,
   conditionLabel,
   damageLabel,
   driveLabel,
@@ -7,6 +9,7 @@ import {
   sourceBadge,
   statusLabel,
   transmissionLabel,
+  vehicleTypeLabel,
 } from "@/lib/car-labels";
 import type { CarView } from "@/types/car.type";
 
@@ -91,11 +94,22 @@ function listingTitle(row: AnyCarListing): string {
  * sync can change them) — pass a resolved name via `brandModel` for the title if
  * desired; by default the row's `title` already includes the model.
  */
+/** Combined vehicle/body type → BG label (mirrors the "Тип" facet logic). For an
+ *  automobile we show the body type (SUV/Седан/…); otherwise the vehicle type
+ *  (Лодка/Камион/…). Returns the label + whether it's a non-car category. */
+function typeLabel(vehicleType: string | null, bodyType: string | null): { label?: string; isNonCar: boolean } {
+  if (vehicleType && vehicleType !== "automobile") {
+    return { label: vehicleTypeLabel(vehicleType) || undefined, isNonCar: true };
+  }
+  return { label: bodyType ? bodyTypeLabel(bodyType) || undefined : undefined, isNonCar: false };
+}
+
 export function carListingToView(row: AnyCarListing, isPast = false): CarView {
   // Buy-now when the chosen lot is buy_now with a positive price; otherwise it's
   // an auction listing. `status` decides the active/ended pill either way.
   const isBuyNow = row.buyNow === true && Number(row.buyNowPrice ?? 0) > 0;
   const isAuction = !isBuyNow;
+  const type = typeLabel(row.vehicleType, row.bodyType);
 
   // Price: for past/sold rows, effective_price IS the realized sale price
   // (final_bid-preferred in the archived recompute). For active, buy-now price
@@ -109,10 +123,11 @@ export function carListingToView(row: AnyCarListing, isPast = false): CarView {
   return {
     id: row.carId,
     title: listingTitle(row),
-    // No per-lot detail route yet (deferred follow-up) — link to the relevant
-    // section page like the homepage mapper does. Past cards aren't actionable,
-    // so they don't deep-link anywhere meaningful.
-    href: isBuyNow ? "/коли-за-продажба/" : "/внос/",
+    // Deep-link to the single-car detail page (`/avtomobil/[carId]`). Works for
+    // both active and past rows — an archived car resolves there too (rendered as
+    // a result + noindexed). No trailing slash — the site canonicalizes to the
+    // slashless form (a trailing slash 308-redirects), matching the other routes.
+    href: `/avtomobil/${row.carId}`,
     price,
     mileage: formatKm(row.odometerKm),
     engine: row.engine ?? undefined, // verbatim spec string ("2.0l 4"); not translated
@@ -128,6 +143,7 @@ export function carListingToView(row: AnyCarListing, isPast = false): CarView {
 
     // rich AuctionCard fields
     lotNumber: row.lotNumber ?? undefined,
+    year: row.carYear ?? undefined,
     saleDate: row.saleDate ? row.saleDate.toISOString() : undefined,
     status: statusLabel(row.status),
     condition: conditionLabel(row.condition) || undefined,
@@ -135,6 +151,9 @@ export function carListingToView(row: AnyCarListing, isPast = false): CarView {
     drive: driveLabel(row.driveWheel) || undefined,
     transmission: transmissionLabel(row.transmission) || undefined,
     seller: row.seller ?? undefined,
+    color: colorLabel(row.carColor) || undefined,
+    type: type.label,
+    isNonCar: type.isNonCar,
     // Past cards are never "active auctions" → no countdown; never show buy badge.
     isAuction: isPast ? false : isAuction,
     hasBuyNow: isPast ? false : row.buyNow === true && Number(row.buyNowPrice ?? 0) > 0,

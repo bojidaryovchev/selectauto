@@ -115,7 +115,10 @@ export function AllCarsGrid({ initialPage, filters }: { initialPage: CarsPage; f
                 style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
               >
                 {rowCars.map((car, i) => (
-                  <AuctionCard key={car.id ?? `${start + i}`} car={car} />
+                  // Eager-load the first row (above the fold on the SSR first
+                  // page → the LCP candidate); everything else lazy-loads as it
+                  // virtualizes into view.
+                  <AuctionCard key={car.id ?? `${start + i}`} car={car} priority={start + i < columns} />
                 ))}
               </div>
             </div>
