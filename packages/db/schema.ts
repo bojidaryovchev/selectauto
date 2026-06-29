@@ -18,6 +18,7 @@ import {
   jsonb,
   numeric,
   pgTable,
+  primaryKey,
   serial,
   text,
   timestamp,
@@ -361,6 +362,31 @@ export const carListingsArchived = pgTable("car_listings_archived", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+/**
+ * car_listing_counts — exact, O(1) result counts for the catalog's BROAD views
+ * (market × channel × active/past, the page-level tabs). One row per dimension
+ * key; maintained incrementally by recompute_*_counted(car_ids[]) via a
+ * before/after snapshot-diff in the same transaction as the projection write.
+ * The website's getCarsCount reads this for broad views instead of a full-table
+ * COUNT(*) (a ~750k-row seq scan); narrow filters still use a live COUNT. Keep in
+ * sync with migrations/0016_listing_counts.sql.
+ *
+ *   table_kind: 'active' | 'past'
+ *   dim:        'total' | 'country' | 'channel' | 'country+channel'
+ *   val:        the dimension value ('' for total; e.g. 'USA', 'buy-now',
+ *               'USA|auction')
+ */
+export const carListingCounts = pgTable(
+  "car_listing_counts",
+  {
+    tableKind: text("table_kind").notNull(),
+    dim: text("dim").notNull(),
+    val: text("val").notNull(),
+    n: bigint("n", { mode: "number" }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.tableKind, t.dim, t.val] })],
+);
+
 // Inferred types for use in queries elsewhere in the app.
 export type Car = typeof cars.$inferSelect;
 export type NewCar = typeof cars.$inferInsert;
@@ -372,6 +398,7 @@ export type VehicleGeneration = typeof vehicleGenerations.$inferSelect;
 export type SyncRun = typeof syncRuns.$inferSelect;
 export type CarfaxRequest = typeof carfaxRequests.$inferSelect;
 export type NewCarfaxRequest = typeof carfaxRequests.$inferInsert;
+export type CarListingCount = typeof carListingCounts.$inferSelect;
 export type Inquiry = typeof inquiries.$inferSelect;
 export type NewInquiry = typeof inquiries.$inferInsert;
 export type CarListing = typeof carListings.$inferSelect;

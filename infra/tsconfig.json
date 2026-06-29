@@ -8,7 +8,12 @@
     // CommonJS then can't find on disk). Keep this CommonJS for the infra only.
     "module": "CommonJS",
     "moduleResolution": "node10",
-    "ignoreDeprecations": "6.0",
+    // `node10` (the renamed `node`) is deprecated and TypeScript will error on it
+    // in a future release. We pin TypeScript 5.9.x, whose accepted suppression
+    // value is "5.0" (the value "6.0" is only valid on TS ≥ 6.0 and otherwise
+    // fails with TS5103 "Invalid value for '--ignoreDeprecations'"). Bump this to
+    // "6.0" only when the toolchain actually moves to TypeScript 6.
+    "ignoreDeprecations": "5.0",
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,

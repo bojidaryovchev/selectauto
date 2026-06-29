@@ -5,6 +5,71 @@ import { getDb, schema } from "@/lib/db";
 import type { CarFilters } from "@/types/car-filters.type";
 
 const cl = schema.carListings;
+const clc = schema.carListingCounts;
+
+/**
+ * Resolve the BROAD count for a filter set from the car_listing_counts summary
+ * table (migration 0016) — an O(1) PK lookup instead of a full-table COUNT(*)
+ * (~750k-row seq scan, the cause of the slow "Намерени автомобили" on big
+ * markets). Returns null when the filter set is NOT purely a broad page-tab combo
+ * (i.e. any narrow dropdown/range filter is set), in which case the caller falls
+ * back to a live COUNT — those filtered sets are small enough to scan quickly.
+ *
+ * "Broad" = only status (active/past), market, and channel may be set. The
+ * (dim, val) key MUST match how listing_count_keys() bucketed each row:
+ *   none        → ('total','')
+ *   market only → ('country', <USA|kr|Canada>)
+ *   channel only→ ('channel', <buy-now|auction>)
+ *   both        → ('country+channel', '<country>|<channel>')
+ */
+async function getBroadCount(filters: CarFilters): Promise<number | null> {
+  // Any narrow filter present → not a broad combo; caller does a live COUNT.
+  const hasNarrow =
+    filters.brand !== undefined ||
+    filters.model !== undefined ||
+    filters.color !== undefined ||
+    filters.drive !== undefined ||
+    filters.condition !== undefined ||
+    filters.type !== undefined ||
+    filters.yearFrom !== undefined ||
+    filters.yearTo !== undefined ||
+    filters.priceMin !== undefined ||
+    filters.priceMax !== undefined;
+  if (hasNarrow) return null;
+
+  const tableKind = filters.status === "past" ? "past" : "active";
+
+  // Map market → the location_country value the counter stores (same as the
+  // page query's predicate: us→USA, kr→kr, ca→Canada).
+  const country =
+    filters.market === "us" ? "USA" : filters.market === "kr" ? "kr" : filters.market === "ca" ? "Canada" : undefined;
+  const channel = filters.channel === "buy-now" ? "buy-now" : filters.channel === "auction" ? "auction" : undefined;
+
+  let dim: string;
+  let val: string;
+  if (country && channel) {
+    dim = "country+channel";
+    val = `${country}|${channel}`;
+  } else if (country) {
+    dim = "country";
+    val = country;
+  } else if (channel) {
+    dim = "channel";
+    val = channel;
+  } else {
+    dim = "total";
+    val = "";
+  }
+
+  const rows = await getDb()
+    .select({ n: clc.n })
+    .from(clc)
+    .where(and(eq(clc.tableKind, tableKind), eq(clc.dim, dim), eq(clc.val, val)))
+    .limit(1);
+
+  // A key with count 0 legitimately may not have a row; treat missing as 0.
+  return rows[0]?.n ?? 0;
+}
 
 /** Same WHERE builder as the listing page, minus the keyset cursor. */
 type ListingTable = typeof schema.carListings | typeof schema.carListingsArchived;
@@ -65,6 +130,11 @@ export async function getCarsCount(filters: CarFilters): Promise<CarsCount> {
   if (filters.search && filters.search.trim() !== "") {
     return { count: 0 };
   }
+
+  // Broad page-tab views (market × channel × active/past) → O(1) summary-table
+  // lookup, avoiding the ~750k-row COUNT(*) seq scan. Narrow filters fall through.
+  const broad = await getBroadCount(filters);
+  if (broad !== null) return { count: broad };
 
   const t = tableFor(filters);
   const conds = buildConditions(filters, t);

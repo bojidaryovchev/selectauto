@@ -28,14 +28,20 @@ const arg = (name, def) => {
 const BATCH = arg("batch", 25000);
 const SLEEP_MS = arg("sleep", 25);
 let START = arg("start", 0);
-// Which recompute function to call: the active table (default) or the archived one.
+// Which recompute function to call: the active table (default) or the archived
+// one. We call the *_counted wrappers (migration 0016) so a (re)backfill also
+// keeps car_listing_counts in sync via the before/after diff, never drifting from
+// the projection it rebuilds. Pass --raw to call the bare recompute_* instead
+// (skips count maintenance — only for a projection-only rebuild).
+const RAW = process.argv.includes("--raw");
 const fnHit = process.argv.find((a) => a.startsWith("--fn="));
-const FN = fnHit ? fnHit.split("=")[1] : "recompute_car_listings";
-const TABLE = FN === "recompute_archived_car_listings" ? "car_listings_archived" : "car_listings";
-if (!["recompute_car_listings", "recompute_archived_car_listings"].includes(FN)) {
-  console.error(`Unknown --fn=${FN}`);
+const baseFn = fnHit ? fnHit.split("=")[1] : "recompute_car_listings";
+if (!["recompute_car_listings", "recompute_archived_car_listings"].includes(baseFn)) {
+  console.error(`Unknown --fn=${baseFn}`);
   process.exit(1);
 }
+const FN = RAW ? baseFn : `${baseFn}_counted`;
+const TABLE = baseFn === "recompute_archived_car_listings" ? "car_listings_archived" : "car_listings";
 
 const connectionString = process.env.NEON_DATABASE_URL;
 if (!connectionString) {

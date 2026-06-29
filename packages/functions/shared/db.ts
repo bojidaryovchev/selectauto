@@ -103,7 +103,7 @@ function stripSslMode(connectionString: string): string {
  */
 async function recomputeListings(
   client: pg.PoolClient,
-  fn: "recompute_car_listings" | "recompute_archived_car_listings",
+  fn: "recompute_car_listings_counted" | "recompute_archived_car_listings_counted",
   carIds: Iterable<number>,
 ): Promise<void> {
   const ids = Array.from(new Set([...carIds].filter((id) => Number.isInteger(id))));
@@ -265,9 +265,11 @@ export async function upsertCarsAndLots(rawCars: ApiCar[]): Promise<number> {
 
     // Refresh both read models for every car touched this page. A car (re)seen in
     // /cars is active → it lands in car_listings AND (if it was there) drops out of
-    // the archived table (which excludes cars that still have an active lot).
-    await recomputeListings(client, "recompute_car_listings", touchedCarIds);
-    await recomputeListings(client, "recompute_archived_car_listings", touchedCarIds);
+    // the archived table (which excludes cars that still have an active lot). The
+    // *_counted wrappers also maintain car_listing_counts via a before/after diff
+    // in the same transaction (migration 0016), so broad-view counts stay exact.
+    await recomputeListings(client, "recompute_car_listings_counted", touchedCarIds);
+    await recomputeListings(client, "recompute_archived_car_listings_counted", touchedCarIds);
 
     return lotsWritten;
   } finally {
@@ -354,9 +356,10 @@ export async function archiveLots(rawLots: ApiArchivedLot[]): Promise<number> {
 
     // Refresh both read models for every car whose lot was archived this page. The
     // archived lot drops/swaps the car's ACTIVE card (recompute_car_listings) and
-    // adds/refreshes its PAST card (recompute_archived_car_listings).
-    await recomputeListings(client, "recompute_car_listings", touchedCarIds);
-    await recomputeListings(client, "recompute_archived_car_listings", touchedCarIds);
+    // adds/refreshes its PAST card (recompute_archived_car_listings). The *_counted
+    // wrappers also keep car_listing_counts in sync (migration 0016).
+    await recomputeListings(client, "recompute_car_listings_counted", touchedCarIds);
+    await recomputeListings(client, "recompute_archived_car_listings_counted", touchedCarIds);
 
     return archived;
   } finally {
