@@ -19,7 +19,9 @@ const DEFAULT_LIMIT = 6;
  * Querying raw `auction_lots` here used to `ORDER BY sale_date` (unindexed) and
  * statement-timeout under load — the projection makes this a flat, fast read.
  *
- * Cached via `"use cache"` + `cacheTag` (requires `cacheComponents`, enabled in
+ * Cached via `"use cache: remote"` (shared across serverless instances, unlike
+ * the default in-memory `"use cache"` which is discarded per-invocation on Vercel)
+ * + `cacheTag` (requires `cacheComponents`, enabled in
  * next.config.ts). Invalidate on write with `revalidateTag(CACHE_TAGS.auctionCars,
  * "max")` when listings change.
  *
@@ -27,7 +29,7 @@ const DEFAULT_LIMIT = 6;
  * returns nothing or is unreachable.
  */
 export async function getAuctionCars(limit = DEFAULT_LIMIT): Promise<CarView[]> {
-  "use cache";
+  "use cache: remote";
   cacheTag(CACHE_TAGS.auctionCars);
 
   const cl = schema.carListings;

@@ -20,15 +20,18 @@ const DEFAULT_LIMIT = 6;
  * statement-timeout'd and hard-failed the production prerender. The projection
  * read is ~280ms.
  *
- * Cached via `"use cache"` + `cacheTag` (requires `cacheComponents`, enabled in
- * next.config.ts). Invalidate on write with `revalidateTag(CACHE_TAGS.buyNowCars,
- * "max")` when listings change.
+ * Cached via `"use cache: remote"` + `cacheTag` (requires `cacheComponents`,
+ * enabled in next.config.ts). Remote (shared) cache, not in-memory: on Vercel the
+ * default in-memory `"use cache"` is per-instance and discarded between serverless
+ * invocations, so it never hit across requests/users; the remote handler persists
+ * the entry across all instances. Invalidate on write with
+ * `revalidateTag(CACHE_TAGS.buyNowCars, "max")` when listings change.
  *
  * Falls back to `FALLBACK_BUY_NOW_CARS` when the DB returns nothing or is
  * unreachable, so the homepage always renders.
  */
 export async function getBuyNowCars(limit = DEFAULT_LIMIT): Promise<CarView[]> {
-  "use cache";
+  "use cache: remote";
   cacheTag(CACHE_TAGS.buyNowCars);
 
   const cl = schema.carListings;

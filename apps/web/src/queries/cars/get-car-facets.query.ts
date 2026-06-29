@@ -40,7 +40,7 @@ const EMPTY_FACETS: FacetOptions = {
  * from it. Cached for a day; returns [] on DB error so the homepage still renders.
  */
 export async function getCarBrands(): Promise<FacetOption[]> {
-  "use cache";
+  "use cache: remote";
   cacheTag(CACHE_TAGS.cars);
   cacheLife("days");
 
@@ -68,7 +68,7 @@ export async function getCarBrands(): Promise<FacetOption[]> {
  * DB-design §7. modelsByBrand is keyed by manufacturer external id (string).
  */
 export async function getCarFacets(): Promise<FacetOptions> {
-  "use cache";
+  "use cache: remote";
   cacheTag(CACHE_TAGS.cars);
   cacheLife("days");
 

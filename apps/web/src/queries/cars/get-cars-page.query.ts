@@ -93,7 +93,7 @@ function decodeCursor(cursor: string | null): number | null {
  * `searchParams`/cookies are NOT read here — the page passes filters as args.
  */
 export async function getCarsPage(filters: CarFilters, cursor: string | null): Promise<CarsPage> {
-  "use cache";
+  "use cache: remote";
   cacheTag(CACHE_TAGS.cars);
   cacheLife("hours");
 

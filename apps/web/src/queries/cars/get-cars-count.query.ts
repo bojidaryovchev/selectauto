@@ -120,7 +120,7 @@ export type CarsCount = { count: number };
  * instant. We show the true number ("Намерени: 12 743"), not a "1000+" cap.
  */
 export async function getCarsCount(filters: CarFilters): Promise<CarsCount> {
-  "use cache";
+  "use cache: remote";
   cacheTag(CACHE_TAGS.cars);
   cacheLife("hours");
 
