@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { LinkButton } from "@/components/common";
-// Type-only imports: erased at build time, so `three` never enters the server
+import { loadBakedGeometry } from "@/lib/baked-edges";
+// Type-only import: erased at build time, so `three` never enters the server
 // bundle, while THREE.* type annotations below still resolve.
 import type * as THREE from "three";
-import type { MeshSurfaceSampler as MeshSurfaceSamplerType } from "three/examples/jsm/math/MeshSurfaceSampler.js";
 
 /**
  * Scroll-driven 3D particle process animation — a clean React port of the
@@ -124,13 +124,13 @@ export function ParticleProcess() {
     let cleanupListeners = () => {};
 
     (async () => {
+      // Kick off the baked-geometry fetch in parallel with the three import. The
+      // particle targets / outline / edge lines for this model + breakpoint are
+      // fully precomputed (no GLB, no MeshSurfaceSampler, no EdgesGeometry at
+      // runtime — those cost ~2.5s of main-thread work). See
+      // scripts/bake-particle-edges.mjs.
+      const bakedPromise = loadBakedGeometry(MODEL_URL, isMobile);
       const THREE = await import("three");
-      const { GLTFLoader } = await import(
-        "three/examples/jsm/loaders/GLTFLoader.js"
-      );
-      const { MeshSurfaceSampler } = await import(
-        "three/examples/jsm/math/MeshSurfaceSampler.js"
-      );
       if (disposed) return;
 
       // `isMobile` here is the component-scope state (matches the CSS
@@ -283,7 +283,11 @@ export function ParticleProcess() {
         size: isMobile ? 0.024 : 0.018,
         color: 0xffb36b,
         transparent: true,
-        opacity: 1,
+        // Start invisible: until the baked targets arrive (~100-200ms) the
+        // particles sit in their raw scatter positions, which would otherwise
+        // flash as a dense cloud. updateParticles() sets opacity each frame once
+        // modelLoaded flips true.
+        opacity: 0,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         sizeAttenuation: true,
@@ -463,203 +467,21 @@ export function ParticleProcess() {
         setIntroHidden(p >= 0.99);
       }
 
-      // ---- model loading: sample surface + edge targets --------------------
-      function computeMeshSurfaceArea(geometry: THREE.BufferGeometry) {
-        const pos = geometry.attributes.position;
-        const idx = geometry.index;
-        let area = 0;
-        const a = new THREE.Vector3();
-        const b = new THREE.Vector3();
-        const c = new THREE.Vector3();
-        const ab = new THREE.Vector3();
-        const ac = new THREE.Vector3();
-        const cross = new THREE.Vector3();
-        const accumulate = (i0: number, i1: number, i2: number) => {
-          a.fromBufferAttribute(pos, i0);
-          b.fromBufferAttribute(pos, i1);
-          c.fromBufferAttribute(pos, i2);
-          ab.subVectors(b, a);
-          ac.subVectors(c, a);
-          cross.crossVectors(ab, ac);
-          area += cross.length() * 0.5;
-        };
-        if (idx) {
-          for (let i = 0; i < idx.count; i += 3) {
-            accumulate(idx.getX(i), idx.getX(i + 1), idx.getX(i + 2));
-          }
-        } else {
-          for (let i = 0; i < pos.count; i += 3) accumulate(i, i + 1, i + 2);
-        }
-        return area;
-      }
-
-      function buildOutlineTargets(
-        meshes: THREE.Mesh[],
-        samplers: MeshSurfaceSamplerType[],
-        cumulative: number[],
-        totalArea: number,
-      ) {
-        const targetCount = isMobile ? 8000 : 36000;
-        const edgeBudget = Math.floor(targetCount * 0.65);
-        const surfaceBudget = targetCount - edgeBudget;
-        const points: THREE.Vector3[] = [];
-
-        const overallBox = new THREE.Box3();
-        meshes.forEach((m) => {
-          m.geometry.computeBoundingBox();
-          if (m.geometry.boundingBox) overallBox.union(m.geometry.boundingBox);
-        });
-        const overallSize = overallBox.getSize(new THREE.Vector3());
-        const maxDim = Math.max(overallSize.x, overallSize.y, overallSize.z);
-
-        const edgeThreshold = isMobile ? 14 : 1;
-        const minEdgeLength = isMobile ? maxDim * 0.018 : 0;
-        const segmentsPerEdge = isMobile ? 2 : 4;
-
-        const edgePool: THREE.Vector3[] = [];
-        for (const mesh of meshes) {
-          const edges = new THREE.EdgesGeometry(mesh.geometry, edgeThreshold);
-          const position = edges.attributes.position;
-          if (!position) continue;
-          for (let i = 0; i < position.count - 1; i += 2) {
-            const ax = position.getX(i);
-            const ay = position.getY(i);
-            const az = position.getZ(i);
-            const bx = position.getX(i + 1);
-            const by = position.getY(i + 1);
-            const bz = position.getZ(i + 1);
-            if (minEdgeLength > 0) {
-              const dx = bx - ax;
-              const dy = by - ay;
-              const dz = bz - az;
-              if (Math.sqrt(dx * dx + dy * dy + dz * dz) < minEdgeLength) continue;
-            }
-            for (let s = 0; s <= segmentsPerEdge; s++) {
-              const tt = s / segmentsPerEdge;
-              edgePool.push(
-                new THREE.Vector3(
-                  ax + (bx - ax) * tt,
-                  ay + (by - ay) * tt,
-                  az + (bz - az) * tt,
-                ),
-              );
-            }
-          }
-        }
-
-        if (edgePool.length > 0) {
-          for (let i = 0; i < edgeBudget; i++) {
-            points.push(edgePool[Math.floor(Math.random() * edgePool.length)]);
-          }
-        }
-
-        const temp = new THREE.Vector3();
-        for (let i = 0; i < surfaceBudget; i++) {
-          const r = Math.random() * totalArea;
-          let chosen = 0;
-          for (let j = 0; j < cumulative.length; j++) {
-            if (r < cumulative[j]) {
-              chosen = j;
-              break;
-            }
-          }
-          samplers[chosen].sample(temp);
-          points.push(temp.clone());
-        }
-
-        return points.length ? points : [new THREE.Vector3(0, 0, 0)];
-      }
-
-      function buildEdgeLines(meshes: THREE.Mesh[]) {
-        edgeLineGroup.clear();
-        edgeLines = [];
-        const minMaxDim = isMobile ? 0.25 : 0.12;
-        const edgeThreshold = isMobile ? 22 : 10;
-        meshes.forEach((mesh) => {
-          if (!mesh.geometry?.attributes.position) return;
-          mesh.geometry.computeBoundingBox();
-          const box = mesh.geometry.boundingBox;
-          if (!box) return;
-          const size = box.getSize(new THREE.Vector3());
-          if (Math.max(size.x, size.y, size.z) < minMaxDim) return;
-          const edges = new THREE.EdgesGeometry(mesh.geometry, edgeThreshold);
-          const material = new THREE.LineBasicMaterial({
-            color: 0xffd7a0,
-            transparent: true,
-            opacity: 0,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-            depthTest: false,
-          });
-          const lines = new THREE.LineSegments(edges, material);
-          edgeLines.push(lines);
-          edgeLineGroup.add(lines);
-        });
-      }
-
-      const loader = new GLTFLoader();
-      loader.load(
-        MODEL_URL,
-        (gltf) => {
+      // ---- model loading: consume precomputed targets ---------------------
+      // Everything geometry-derived (surface targets, outline targets, edge
+      // lines) is baked ahead of time; the runtime only fetches it and computes
+      // the cheap per-load bits (dispersion targets from the random seeds).
+      bakedPromise
+        .then((baked) => {
           if (disposed) return;
-          const model = gltf.scene;
-          model.updateMatrixWorld(true);
 
-          const box = new THREE.Box3().setFromObject(model);
-          const center = box.getCenter(new THREE.Vector3());
-          const size = box.getSize(new THREE.Vector3());
-          const maxSize = Math.max(size.x, size.y, size.z);
-          // Mobile car is a bit smaller so it fits fully in the upper area with
-          // the step text below it (no overlap, no roof clipping when lifted).
-          const normalizeScale = (isMobile ? 4.0 : 6.5) / maxSize;
+          // Surface + outline targets copy straight into the scene buffers (sized
+          // to particleCount / outlineCount, matching the bake variant).
+          targets.set(baked.targets.subarray(0, targets.length));
+          outlineTargets.set(baked.outline.subarray(0, outlineTargets.length));
 
-          const meshes: THREE.Mesh[] = [];
-          model.traverse((child) => {
-            const mesh = child as THREE.Mesh;
-            if (!mesh.isMesh || !mesh.geometry) return;
-            const geometry = mesh.geometry.clone();
-            geometry.applyMatrix4(mesh.matrixWorld);
-            geometry.translate(-center.x, -center.y, -center.z);
-            geometry.scale(normalizeScale, normalizeScale, normalizeScale);
-            meshes.push(new THREE.Mesh(geometry));
-          });
-          if (!meshes.length) return;
-
-          const areas = meshes.map((m) => computeMeshSurfaceArea(m.geometry));
-          const totalArea = areas.reduce((a, b) => a + b, 0);
-          const cumulative: number[] = [];
-          let acc = 0;
-          for (const a of areas) {
-            acc += a;
-            cumulative.push(acc);
-          }
-
-          const samplers = meshes.map((m) => new MeshSurfaceSampler(m).build());
-          const temp = new THREE.Vector3();
-
-          for (let i = 0; i < particleCount; i++) {
-            const r = Math.random() * totalArea;
-            let chosen = 0;
-            for (let j = 0; j < cumulative.length; j++) {
-              if (r < cumulative[j]) {
-                chosen = j;
-                break;
-              }
-            }
-            samplers[chosen].sample(temp);
-            targets[i * 3] = temp.x;
-            targets[i * 3 + 1] = temp.y;
-            targets[i * 3 + 2] = temp.z;
-          }
-
-          const outlinePts = buildOutlineTargets(meshes, samplers, cumulative, totalArea);
-          for (let i = 0; i < outlineCount; i++) {
-            const point = outlinePts[i % outlinePts.length];
-            outlineTargets[i * 3] = point.x;
-            outlineTargets[i * 3 + 1] = point.y;
-            outlineTargets[i * 3 + 2] = point.z;
-          }
-
+          // Dispersion targets depend on this load's random seeds, so they stay
+          // at runtime (cheap — a single pass over the buffers).
           for (let i = 0; i < particleCount; i++) {
             const seed = seeds[i];
             dispersionTargets[i * 3] = targets[i * 3] + seed.dispersionDir.x * seed.dispersionDist;
@@ -673,14 +495,31 @@ export function ParticleProcess() {
             outlineDispersionTargets[i * 3 + 2] = outlineTargets[i * 3 + 2] + seed.dispersionDir.z * seed.dispersionDist;
           }
 
-          buildEdgeLines(meshes);
+          // Edge lines: one LineSegments per precomputed position buffer.
+          // (Disposed in cleanup via the edgeLines list.)
+          edgeLineGroup.clear();
+          edgeLines = [];
+          for (const positions of baked.edgeLines) {
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+            const material = new THREE.LineBasicMaterial({
+              color: 0xffd7a0,
+              transparent: true,
+              opacity: 0,
+              blending: THREE.AdditiveBlending,
+              depthWrite: false,
+              depthTest: false,
+            });
+            const lines = new THREE.LineSegments(geometry, material);
+            edgeLines.push(lines);
+            edgeLineGroup.add(lines);
+          }
+
           modelLoaded = true;
-        },
-        undefined,
-        (error) => {
-          console.error("GLB LOADER ERROR:", error);
-        },
-      );
+        })
+        .catch((error) => {
+          console.error("PARTICLE BAKE LOAD ERROR:", error);
+        });
 
       // ---- per-frame scroll → progress ------------------------------------
       function computeProgress() {
