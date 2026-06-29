@@ -168,6 +168,9 @@ export function ParticleProcess() {
       // Smoothed scroll-driven progress (0→1 each).
       let displayFormation = 0;
       let displayDispersion = 0;
+      // Gates the car particles' opacity so they stay hidden behind the intro
+      // title and fade in as it dissolves (see computeProgress().reveal).
+      let displayReveal = 0;
       let lastStep = -1;
 
       const ease = (t: number) => t * (2 - t);
@@ -333,7 +336,11 @@ export function ParticleProcess() {
         size: isMobile ? 0.035 : 0.028,
         color: 0xffb36b,
         transparent: true,
-        opacity: 0.95,
+        // Start invisible (like particleMaterial): until baked targets arrive and
+        // the reveal gate ramps up, the outline particles sit in raw scatter
+        // positions and would otherwise flash as a dense cloud for one frame.
+        // updateOutlineParticles() drives opacity each frame once modelLoaded.
+        opacity: 0,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         sizeAttenuation: true,
@@ -525,14 +532,18 @@ export function ParticleProcess() {
       function computeProgress() {
         const rect = root!.getBoundingClientRect();
         const totalSticky = rect.height - window.innerHeight;
-        if (totalSticky <= 0) return { formation: 0, dispersion: 0 };
+        if (totalSticky <= 0) return { formation: 0, dispersion: 0, reveal: 0 };
         const t = Math.max(0, Math.min(1, -rect.top / totalSticky));
         const introEnd = 0.18;
         const formationEnd = 0.62;
         const holdEnd = 0.78;
         const formation = Math.max(0, Math.min(1, (t - introEnd) / (formationEnd - introEnd)));
         const dispersion = Math.max(0, Math.min(1, (t - holdEnd) / (1 - holdEnd)));
-        return { formation, dispersion };
+        // Reveal gate for the car particles: hidden while the intro title is up,
+        // ramping in as it dissolves so they don't sit as a dense scatter cloud
+        // behind the intro at the top of the section. Mirrors the stage reveal.
+        const reveal = Math.max(0, Math.min(1, (t - 0.09) / (0.18 - 0.09)));
+        return { formation, dispersion, reveal };
       }
 
       function updateParticles() {
@@ -598,7 +609,7 @@ export function ParticleProcess() {
           const fadeT = Math.min(1, (fP - fadeStart) / (1 - fadeStart));
           formationOpacity = isMobile ? baseOpacity - fadeT * 0.4 : baseOpacity - fadeT * 0.85;
         }
-        particleMaterial.opacity = Math.max(0, formationOpacity * (1 - Math.pow(dP, 1.4)));
+        particleMaterial.opacity = Math.max(0, formationOpacity * (1 - Math.pow(dP, 1.4)) * displayReveal);
       }
 
       function updateOutlineParticles() {
@@ -652,7 +663,7 @@ export function ParticleProcess() {
         const formationOpacity = isMobile
           ? Math.min(0.5, 0.18 + fP * 0.55)
           : Math.min(1.0, 0.4 + fP * 1.4);
-        outlineMaterial.opacity = Math.max(0, formationOpacity * (1 - Math.pow(dP, 1.3)));
+        outlineMaterial.opacity = Math.max(0, formationOpacity * (1 - Math.pow(dP, 1.3)) * displayReveal);
 
         const baseOutlineSize = isMobile ? 0.022 : 0.024;
         outlineMaterial.size = baseOutlineSize * (1 - dP * 0.4) - fP * 0.001;
@@ -744,6 +755,7 @@ export function ParticleProcess() {
         const k = isMobile ? 0.28 : 0.22;
         displayFormation += (phases.formation - displayFormation) * k;
         displayDispersion += (phases.dispersion - displayDispersion) * k;
+        displayReveal += ((phases.reveal ?? 0) - displayReveal) * k;
 
         updateIntroParticles();
         updateParticles();
