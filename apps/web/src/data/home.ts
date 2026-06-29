@@ -12,7 +12,7 @@ export const FALLBACK_BUY_NOW_CARS: CarView[] = [
   {
     title: "2022 Hyundai Palisade",
     href: "/car/2022-hyundai-palisade/",
-    price: "16 743 €",
+    price: "16 743 $",
     mileage: "97 626 км",
     source: "ENCAR",
     image: "/cars/sale-884816-af9b69d93d5149.webp",
@@ -21,7 +21,7 @@ export const FALLBACK_BUY_NOW_CARS: CarView[] = [
   {
     title: "2021 Hyundai Palisade",
     href: "/car/2021-hyundai-palisade/",
-    price: "14 863 €",
+    price: "14 863 $",
     mileage: "61 912 км",
     source: "ENCAR",
     image: "/cars/sale-884815-31f159aedad8f0.webp",
@@ -30,7 +30,7 @@ export const FALLBACK_BUY_NOW_CARS: CarView[] = [
   {
     title: "2022 Kia Sorento",
     href: "/car/2022-kia-sorento/",
-    price: "12 924 €",
+    price: "12 924 $",
     mileage: "87 765 км",
     source: "ENCAR",
     image: "/cars/sale-884814-5a43164909931e.webp",
@@ -39,7 +39,7 @@ export const FALLBACK_BUY_NOW_CARS: CarView[] = [
   {
     title: "2019 BMW 5 Series",
     href: "/car/2019-bmw-5series/",
-    price: "17 031 €",
+    price: "17 031 $",
     mileage: "74 565 км",
     source: "ENCAR",
     image: "/cars/sale-884813-54e988b3fdc9b0.webp",
@@ -48,7 +48,7 @@ export const FALLBACK_BUY_NOW_CARS: CarView[] = [
   {
     title: "2021 Hyundai",
     href: "/vsichki-avtomobili/",
-    price: "9 928 €",
+    price: "9 928 $",
     mileage: "80 044 км",
     source: "ENCAR",
     image: "/cars/sale-884812-d7aae1495ad77e.webp",
@@ -57,7 +57,7 @@ export const FALLBACK_BUY_NOW_CARS: CarView[] = [
   {
     title: "2020 Hyundai",
     href: "/vsichki-avtomobili/",
-    price: "9 928 €",
+    price: "9 928 $",
     mileage: "152 427 км",
     source: "ENCAR",
     image: "/cars/sale-884811-4a28b5ba3b5133.webp",
@@ -77,7 +77,7 @@ export const FALLBACK_AUCTION_CARS: CarView[] = [
   {
     title: "2022 Hyundai Tucson",
     href: "/vsichki-avtomobili/",
-    price: "15 000 €",
+    price: "15 000 $",
     mileage: "63 998 км",
     source: "IAAI",
     image: "/cars/car-884807-50aa6ef2c40253.jpg",
@@ -86,7 +86,7 @@ export const FALLBACK_AUCTION_CARS: CarView[] = [
   {
     title: "2019 Lamborghini Urus",
     href: "/vsichki-avtomobili/",
-    price: "104 000 €",
+    price: "104 000 $",
     mileage: "33 302 км",
     source: "IAAI",
     image: "/cars/car-884806-0beb5ea4467d78.jpg",
@@ -95,7 +95,7 @@ export const FALLBACK_AUCTION_CARS: CarView[] = [
   {
     title: "2016 Chevrolet Corvette",
     href: "/vsichki-avtomobili/",
-    price: "25 000 €",
+    price: "25 000 $",
     mileage: "37 022 км",
     source: "IAAI",
     image: "/cars/car-884804-e1f28dd9ec9258.jpg",

@@ -16,7 +16,7 @@ import type { CarView } from "./car.type";
 export type CarDetailPrice = {
   /** BG label for the price row ("Купи сега", "Текуща цена", "Продаден за", …). */
   label: string;
-  /** Pre-formatted amount ("16 743 €"). */
+  /** Pre-formatted amount ("16 743 $"). */
   value: string;
   /** Emphasize as the primary/CTA price (buy-now or realized sale price). */
   primary?: boolean;

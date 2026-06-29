@@ -51,10 +51,10 @@ function posNum(v: unknown): number | undefined {
   return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
-/** "16 743 €" (thin-space grouping, matching the card mapper). */
+/** "16 743 $" (thin-space grouping, matching the card mapper). */
 function eur(n: number | undefined): string | undefined {
   if (n === undefined) return undefined;
-  return `${Math.round(n).toLocaleString("bg-BG").replace(/ /g, " ")} €`;
+  return `${Math.round(n).toLocaleString("bg-BG").replace(/ /g, " ")} $`;
 }
 
 /** Latin "km" grouping, matching the rich card. */

@@ -24,6 +24,6 @@ export const INQUIRY_BRANDS: Record<string, string[]> = {
   Jeep: ["Renegade", "Compass", "Cherokee", "Grand Cherokee", "Wrangler"],
 };
 
-export const INQUIRY_BUDGETS = ["15-25 хил. €.", "25-35 хил. €.", "35-50 хил. €.", "Над 50 хил. €."];
+export const INQUIRY_BUDGETS = ["15-25 хил. $.", "25-35 хил. $.", "35-50 хил. $.", "Над 50 хил. $."];
 export const INQUIRY_TIMES = ["Възможно най-скоро", "До месец", "След няколко месеца"];
 export const INQUIRY_FINANCE = ["Собствени средства", "Лизинг / Кредит", "Не съм сигурен"];

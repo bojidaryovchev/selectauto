@@ -16,7 +16,7 @@ import type { CarView } from "@/types/car.type";
 /**
  * Maps a database listing (an `auction_lots` row joined to its `cars` row) to the
  * UI `CarView` consumed by the listing card. Centralizes the formatting the
- * static snapshot encoded by hand: price (NUMERIC → "16 743 €"), odometer
+ * static snapshot encoded by hand: price (NUMERIC → "16 743 $"), odometer
  * ("97 626 км"), the ENCAR/IAAI source label, and the buy-now-vs-auction-time
  * badge.
  *
@@ -42,12 +42,12 @@ export type LotWithCar = {
   car: Pick<Car, "title" | "year" | "engine"> | null;
 };
 
-/** "16743.00" | 16743 → "16 743 €" (thin-space grouping, like the live site). */
+/** "16743.00" | 16743 → "16 743 $" (thin-space grouping, like the live site). */
 function formatPrice(value: string | number | null): string | undefined {
   if (value === null) return undefined;
   const n = typeof value === "string" ? Number(value) : value;
   if (!Number.isFinite(n) || n <= 0) return undefined;
-  return `${Math.round(n).toLocaleString("bg-BG").replace(/ /g, " ")} €`;
+  return `${Math.round(n).toLocaleString("bg-BG").replace(/ /g, " ")} $`;
 }
 
 /** 97626 → "97 626 км". */

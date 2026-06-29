@@ -46,7 +46,7 @@ export type CarFilters = {
   /** Year range on car_year ("Година от"/"Година до", inclusive). */
   yearFrom?: number;
   yearTo?: number;
-  /** Price range on effective_price (EUR). */
+  /** Price range on effective_price (USD). */
   priceMin?: number;
   priceMax?: number;
   /** Lot-number prefix OR exact VIN search (a lookup, not a paged feed). */

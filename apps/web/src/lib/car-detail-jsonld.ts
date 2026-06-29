@@ -49,7 +49,7 @@ export function buildCarJsonLd(detail: CarDetail, url: string): Record<string, u
     additionalProperty: vehicle,
   };
 
-  // Offer: the primary price as a bare EUR number + in-stock availability.
+  // Offer: the primary price as a bare USD number + in-stock availability.
   const primary = detail.prices.find((p) => p.primary);
   if (primary) {
     const amount = Number(primary.value.replace(/[^\d]/g, ""));
@@ -57,7 +57,7 @@ export function buildCarJsonLd(detail: CarDetail, url: string): Record<string, u
       product.offers = {
         "@type": "Offer",
         price: amount,
-        priceCurrency: "EUR",
+        priceCurrency: "USD",
         availability: "https://schema.org/InStock",
         url,
         ...(detail.location ? { availableAtOrFrom: { "@type": "Place", name: detail.location } } : {}),

@@ -237,7 +237,7 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
           />
         </div>
         <div>
-          <label className={labelCls}>Цена от (€)</label>
+          <label className={labelCls}>Цена от ($)</label>
           <input
             className={inputCls}
             type="number"
@@ -248,7 +248,7 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
           />
         </div>
         <div>
-          <label className={labelCls}>Цена до (€)</label>
+          <label className={labelCls}>Цена до ($)</label>
           <input
             className={inputCls}
             type="number"

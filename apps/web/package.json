@@ -12,10 +12,10 @@
   "dependencies": {
     "@auctions-ingestion/db": "workspace:*",
     "@hookform/resolvers": "^5.4.0",
+    "@neondatabase/serverless": "^1.1.0",
     "@tanstack/react-virtual": "^3.14.4",
     "drizzle-orm": "0.38.3",
     "next": "16.2.9",
-    "pg": "8.13.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.80.0",
@@ -27,7 +27,6 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
-    "@types/pg": "8.11.10",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/three": "^0.184.1",
