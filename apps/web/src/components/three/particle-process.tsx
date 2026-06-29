@@ -413,7 +413,11 @@ export function ParticleProcess() {
         ctx.fillText(textB, startX + widthA + widthB / 2, cy + lineGap);
 
         const img = ctx.getImageData(0, 0, w, h).data;
-        const gap = isMobile ? 6 : 5;
+        // gap is in canvas (device) pixels; the canvas is dpr-scaled, so on-screen
+        // dot pitch = gap / dpr. Mobile (dpr 1.5) uses gap 4 to land at ~2.7px
+        // pitch, matching desktop's 5/2 = 2.5px — otherwise the mobile grid is far
+        // coarser and the glyphs read as a loose, washed-out dot matrix.
+        const gap = isMobile ? 4 : 5;
         introParticles = [];
         for (let y = 0; y < h; y += gap) {
           for (let x = 0; x < w; x += gap) {
@@ -432,7 +436,9 @@ export function ParticleProcess() {
                 g: img[index + 1],
                 b: img[index + 2],
                 a: alpha / 255,
-                size: isMobile ? 2.1 * dpr : 2.25 * dpr,
+                // Keep visibly separated dots (the dot-matrix look), not solid
+                // glyphs: ~65% cell fill. Desktop 2.25/2.5px, mobile 2.6/2.7px.
+                size: isMobile ? 2.6 * dpr : 2.25 * dpr,
                 delay: Math.random() * 0.24,
                 speed: 0.85 + Math.random() * 0.75,
                 wobble: Math.random() * Math.PI * 2,
