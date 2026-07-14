@@ -2,11 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/common";
+import { useSession } from "next-auth/react";
+import { Button, LinkButton } from "@/components/common";
+import { UserMenu } from "@/components/auth";
 import { NAV } from "@/data/navigation";
 import { useInquiry } from "@/contexts/inquiry-context";
-import { NavHamburger } from "./nav-hamburger";
+import { MobileBottomNav } from "./mobile-bottom-nav";
 
 /**
  * Fixed header with the orange gradient pill shell on desktop and a slide-in
@@ -22,10 +25,22 @@ import { NavHamburger } from "./nav-hamburger";
  */
 export function SiteHeader() {
   const { open: openInquiry } = useInquiry();
+  // Auth.js session state for the header controls. `status` is "loading" until the
+  // SessionProvider resolves; we treat anything but "authenticated" as signed-out
+  // (shows the "Вход" button), which swaps to the account menu once authenticated.
+  const { status } = useSession();
+  const isSignedIn = status === "authenticated";
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [openSub, setOpenSub] = useState<string | null>(null);
   const [hidden, setHidden] = useState(false);
   const headerRef = useRef<HTMLElement | null>(null);
+
+  // Current path (trailing-slash normalised to match the NAV hrefs) so the
+  // drawer can highlight the active entry, mirroring the bottom nav.
+  const pathname = usePathname();
+  const currentPath = pathname.endsWith("/") ? pathname : `${pathname}/`;
+  const isActivePath = (href: string) =>
+    href === "/" ? currentPath === "/" : currentPath === href || currentPath.startsWith(href);
 
   // Publish the header's real height to `--header-h` so page top-padding tracks
   // it exactly. ResizeObserver keeps it correct through breakpoint/content
@@ -56,19 +71,60 @@ export function SiteHeader() {
     };
   }, [drawerOpen]);
 
+  // Always reveal the header when the route changes. Header visibility is otherwise
+  // driven purely by scroll direction, with no reset tied to navigation — so a
+  // `hidden` state set on one page carries onto the next. A client navigation can
+  // also land the new page at a deep, *restored* scroll position (the catalog's
+  // `?after=` restore teleports far down the feed), and the scroll handler below
+  // deliberately does NOT react to such teleports when they land away from the top
+  // (`Math.abs(delta) > 1000` re-anchors without revealing unless `y <= 120`).
+  // Together that leaves the header stuck off-screen after some navigations until
+  // the user manually scrolls up. Reset on the pathname change itself — done during
+  // render (not in an effect) so the new page never paints a carried-over hidden
+  // header even for a frame. It hides again normally once you scroll down the page.
+  const [lastPath, setLastPath] = useState(pathname);
+  if (pathname !== lastPath) {
+    setLastPath(pathname);
+    setHidden(false);
+  }
+
   // Hide the header when scrolling down past it, reveal it when scrolling up.
   // rAF-throttled so the scroll handler does no layout work per event.
   useEffect(() => {
     let lastY = window.scrollY;
     let ticking = false;
+    let downFrames = 0;
 
     const update = () => {
       ticking = false;
       const y = window.scrollY;
       const delta = y - lastY;
+      // A multi-thousand-px jump in one frame is a TELEPORT (programmatic
+      // scrollTo, e.g. the catalog's `?after=` restore jumping deep into the
+      // feed on load), not a user gesture — reacting to its direction would
+      // flicker the header. Re-anchor the baseline and keep the current
+      // state — except near the page top, where the header must always be
+      // visible.
+      if (Math.abs(delta) > 1000) {
+        lastY = y;
+        downFrames = 0;
+        if (y <= 120) setHidden(false);
+        return;
+      }
       // Ignore sub-pixel jitter; never hide near the very top of the page.
       if (Math.abs(delta) > 6) {
-        setHidden(delta > 0 && y > 120);
+        // HIDING requires the down-motion to persist for 2+ consecutive frames.
+        // Real scrolling always does (Chrome spreads even one wheel notch over
+        // many frames); the virtualizer's one-frame row-measurement corrections
+        // (tens to a few hundred px, downward) never do — without this they
+        // blink the header out mid-pause. Revealing stays instant.
+        if (delta > 0) {
+          downFrames += 1;
+          if (downFrames >= 2 && y > 120) setHidden(true);
+        } else {
+          downFrames = 0;
+          setHidden(false);
+        }
         lastY = y;
       }
     };
@@ -84,49 +140,56 @@ export function SiteHeader() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Keep the header visible whenever the mobile drawer is open.
-  const isHidden = hidden && !drawerOpen;
+  // Header visibility is driven purely by scroll direction. It used to also be
+  // force-shown while the drawer was open (back when the hamburger lived in the
+  // header — hiding it would have hidden the only way to close the menu). The
+  // drawer trigger now lives in the bottom nav and the drawer renders above the
+  // header (z-[10050] > z-[9999]), so pinning the header buys nothing — decoupled.
+  const isHidden = hidden;
 
   return (
     <>
       <header
         ref={headerRef}
-        className={`fixed inset-x-0 top-0 z-[9999] border-b border-white/[0.06] bg-shell/88 px-0 py-3.5 backdrop-blur-xl transition-transform duration-300 ease-out will-change-transform ${
+        className={`fixed inset-x-0 top-0 z-9999 border-b border-white/6 bg-shell/88 px-0 py-3.5 backdrop-blur-xl transition-transform duration-300 ease-out will-change-transform ${
           isHidden ? "-translate-y-full" : "translate-y-0"
         }`}
       >
         <div className="mx-auto w-[min(100%-28px,1280px)]">
-          <div className="flex min-h-[78px] items-center justify-between gap-6 rounded-[24px] bg-gradient-to-r from-brand to-brand-dark px-[26px] shadow-[0_16px_40px_rgba(0,0,0,0.2)] max-lg:min-h-[72px] max-lg:rounded-none max-lg:bg-none max-lg:px-0 max-lg:shadow-none">
-            {/* Logo */}
-            <Link href="/" className="inline-flex items-center">
+          <div className="flex min-h-19.5 items-center justify-between gap-6 rounded-card bg-linear-to-r from-brand to-brand-dark px-6.5 shadow-[0_16px_40px_rgba(0,0,0,0.2)] max-lg:min-h-18 max-lg:rounded-none max-lg:bg-none max-lg:px-0 max-lg:shadow-none">
+            {/* Logo. On mobile the desktop nav + action buttons are hidden, so the
+                logo is the only child of this row — stretch it full-width and
+                center its content so the logo sits in the middle of the bar.
+                Desktop keeps the natural inline (left) placement. */}
+            <Link href="/" className="inline-flex items-center max-lg:w-full max-lg:justify-center">
               <Image
                 src="/logo.png"
                 alt="SelectAuto"
                 width={150}
                 height={62}
                 priority
-                className="h-[62px] w-auto object-contain max-lg:h-[50px]"
+                className="h-15.5 w-auto object-contain max-lg:h-12.5"
               />
             </Link>
 
             {/* Desktop nav */}
             <nav className="flex items-center max-lg:hidden">
-              <ul className="flex items-center gap-[30px]">
+              <ul className="flex items-center gap-7.5">
                 {NAV.map((item) => (
                   <li key={item.label} className="group relative">
                     <Link
                       href={item.href}
-                      className="relative inline-flex min-h-[44px] items-center text-base font-bold text-white after:absolute after:bottom-[5px] after:left-0 after:h-0.5 after:w-0 after:rounded-full after:bg-[#fff2d9] after:transition-[width] after:duration-200 group-hover:after:w-full"
+                      className="relative inline-flex min-h-11 items-center text-base font-bold text-white after:absolute after:bottom-1.25 after:left-0 after:h-0.5 after:w-0 after:rounded-full after:bg-[#fff2d9] after:transition-[width] after:duration-200 group-hover:after:w-full"
                     >
                       {item.label}
                     </Link>
                     {item.children && (
-                      <ul className="invisible absolute left-0 top-full z-50 mt-3 min-w-[220px] translate-y-2 rounded-2xl bg-white p-2.5 opacity-0 shadow-[0_18px_40px_rgba(0,0,0,0.16)] transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
+                      <ul className="invisible absolute left-0 top-full z-50 mt-3 min-w-55 translate-y-2 rounded-2xl bg-white p-2.5 opacity-0 shadow-[0_18px_40px_rgba(0,0,0,0.16)] transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
                         {item.children.map((sub) => (
                           <li key={sub.label}>
                             <Link
                               href={sub.href}
-                              className="block rounded-xl px-3.5 py-3 text-sm font-semibold text-[#1d1d1d] transition-colors hover:bg-brand/[0.08] hover:text-brand-dark"
+                              className="block rounded-xl px-3.5 py-3 text-sm font-semibold text-[#1d1d1d] transition-colors hover:bg-brand/8 hover:text-brand-dark"
                             >
                               {sub.label}
                             </Link>
@@ -139,120 +202,183 @@ export function SiteHeader() {
               </ul>
             </nav>
 
-            {/* Desktop inquiry button */}
-            <div className="flex items-center gap-[22px] max-lg:hidden">
+            {/* Desktop inquiry button + auth controls */}
+            <div className="flex items-center gap-4.5 max-lg:hidden">
               <Button
-                onClick={openInquiry}
+                onClick={() => openInquiry()}
                 rippleTheme="light"
-                className="inline-flex min-h-[54px] items-center justify-center rounded-full border border-white/25 bg-white/10 px-6 text-[15px] font-extrabold text-white transition-transform duration-200 hover:-translate-y-0.5"
+                className="inline-flex min-h-13.5 items-center justify-center rounded-full border border-white/25 bg-white/10 px-6 text-[15px] font-extrabold text-white transition-transform duration-200 hover:-translate-y-0.5"
               >
                 Запитване
               </Button>
+              {/* Signed out → "Вход" links to the sign-in page; signed in → the
+                  account dropdown (favourites + sign-out). */}
+              {isSignedIn ? (
+                <UserMenu tone="light" />
+              ) : (
+                <LinkButton
+                  href="/sign-in"
+                  rippleTheme="light"
+                  className="inline-flex min-h-13.5 items-center justify-center rounded-full bg-white px-6 text-[15px] font-extrabold text-brand-dark transition-transform duration-200 hover:-translate-y-0.5"
+                >
+                  Вход
+                </LinkButton>
+              )}
             </div>
 
-            {/* Mobile drawer toggle */}
-            <NavHamburger
-              active={drawerOpen}
-              onClick={() => setDrawerOpen((open) => !open)}
-              aria-label={drawerOpen ? "Затвори менюто" : "Отвори менюто"}
-              aria-expanded={drawerOpen}
-              className="hidden max-lg:inline-block"
-            />
+            {/* The mobile drawer toggle now lives in the fixed bottom nav (the
+                Меню tab) — see <MobileBottomNav> below. */}
           </div>
         </div>
       </header>
 
+      {/* Fixed app-style bottom tab bar (mobile only). Shares the drawer state so
+          its Меню tab opens the same slide-in drawer rendered below. */}
+      <MobileBottomNav
+        drawerOpen={drawerOpen}
+        onToggleDrawer={() => setDrawerOpen((open) => !open)}
+      />
+
       {/* Drawer overlay */}
       <div
         onClick={() => setDrawerOpen(false)}
-        className={`fixed inset-0 z-[10040] bg-black/[0.52] transition-opacity duration-200 lg:hidden ${
+        className={`fixed inset-0 z-10040 bg-black/52 transition-opacity duration-200 lg:hidden ${
           drawerOpen ? "visible opacity-100" : "invisible opacity-0"
         }`}
       />
 
       {/* Drawer */}
       <aside
-        className={`fixed right-0 top-0 z-[10050] h-[100dvh] w-[min(88vw,380px)] overflow-y-auto bg-gradient-to-b from-[#121318] to-[#0b0c10] shadow-[-12px_0_40px_rgba(0,0,0,0.28)] transition-transform duration-300 lg:hidden ${
-          drawerOpen ? "translate-x-0" : "translate-x-full"
+        className={`fixed right-0 top-0 z-10050 h-dvh w-[min(88vw,380px)] overflow-y-auto bg-linear-to-b from-[#121318] to-[#0b0c10] transition-transform duration-300 lg:hidden ${
+          // The shadow is cast to the LEFT (-12px, 40px blur). While the drawer is
+          // parked off-canvas (translate-x-full moves it right by only its own
+          // width), that shadow would bleed ~52px back onto the viewport's right
+          // edge as a dark strip on every mobile page — so only render it while
+          // the drawer is actually open.
+          drawerOpen ? "translate-x-0 shadow-[-12px_0_40px_rgba(0,0,0,0.28)]" : "translate-x-full"
         }`}
       >
-        <div className="sticky top-0 z-[2] flex items-center justify-between gap-3 border-b border-white/[0.08] bg-[#121318]/[0.94] px-4 py-[18px] backdrop-blur-md">
+        <div className="sticky top-0 z-2 flex items-center justify-between gap-3 border-b border-white/8 bg-[#121318]/94 px-4 py-4.5 backdrop-blur-md">
           <p className="m-0 text-sm font-extrabold uppercase tracking-[0.08em] text-white">
             Меню
           </p>
           <Button
             onClick={() => setDrawerOpen(false)}
             rippleTheme="light"
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/[0.08] text-white"
+            className="flex size-10 items-center justify-center rounded-xl bg-white/8 text-white"
             aria-label="Затвори менюто"
           >
             ✕
           </Button>
         </div>
-        <div className="pb-[calc(22px+env(safe-area-inset-bottom))] pt-2.5">
-          <ul className="m-0 list-none p-0">
-            {NAV.map((item) =>
-              item.children ? (
-                <li
-                  key={item.label}
-                  className="border-b border-white/[0.06]"
-                >
-                  <Button
-                    onClick={() =>
-                      setOpenSub(openSub === item.label ? null : item.label)
-                    }
-                    rippleTheme="light"
-                    className="flex min-h-[56px] w-full items-center justify-between gap-3 px-[18px] text-[15px] font-bold text-[#f2f3f5]"
-                  >
-                    {item.label}
-                    <span
-                      className={`transition-transform duration-200 ${
-                        openSub === item.label ? "rotate-180" : ""
-                      }`}
+        <div className="pb-[calc(22px+env(safe-area-inset-bottom))]">
+          <nav aria-label="Меню навигация">
+            <ul className="m-0 list-none p-0">
+              {NAV.map((item) =>
+                item.children ? (
+                  <li key={item.label} className="border-b border-white/6">
+                    <Button
+                      onClick={() =>
+                        setOpenSub(openSub === item.label ? null : item.label)
+                      }
+                      rippleTheme="light"
+                      aria-expanded={openSub === item.label}
+                      className="flex min-h-14 w-full items-center justify-between gap-3 px-4.5 text-[15px] font-bold text-[#f2f3f5]"
                     >
-                      ⌄
-                    </span>
-                  </Button>
-                  {openSub === item.label && (
-                    <ul className="m-0 list-none bg-white/[0.02] p-0 pb-2.5 pt-1.5">
-                      {item.children.map((sub) => (
-                        <li key={sub.label}>
-                          <Link
-                            href={sub.href}
-                            onClick={() => setDrawerOpen(false)}
-                            className="block py-[11px] pl-[30px] pr-[18px] text-sm font-semibold text-white/70"
-                          >
-                            {sub.label}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </li>
-              ) : (
-                <li key={item.label} className="border-b border-white/[0.06]">
-                  <Link
-                    href={item.href}
-                    onClick={() => setDrawerOpen(false)}
-                    className="flex min-h-[56px] items-center px-[18px] text-[15px] font-bold text-[#f2f3f5]"
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              ),
-            )}
-          </ul>
-          <div className="px-[18px] pt-5">
+                      {item.label}
+                      <span
+                        className={`transition-transform duration-200 ${
+                          openSub === item.label ? "rotate-180" : ""
+                        }`}
+                      >
+                        ⌄
+                      </span>
+                    </Button>
+                    {openSub === item.label && (
+                      <ul className="m-0 list-none bg-white/2 p-0 pb-2.5 pt-1.5">
+                        {item.children.map((sub) => {
+                          const active = isActivePath(sub.href);
+                          return (
+                            <li key={sub.label}>
+                              <LinkButton
+                                href={sub.href}
+                                rippleTheme="light"
+                                onClick={() => setDrawerOpen(false)}
+                                aria-current={active ? "page" : undefined}
+                                className={`block py-2.75 pl-7.5 pr-4.5 text-sm font-semibold transition-colors ${
+                                  active ? "text-brand-soft" : "text-white/70"
+                                }`}
+                              >
+                                {sub.label}
+                              </LinkButton>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </li>
+                ) : (
+                  (() => {
+                    const active = isActivePath(item.href);
+                    return (
+                      <li key={item.label} className="border-b border-white/6">
+                        <LinkButton
+                          href={item.href}
+                          rippleTheme="light"
+                          onClick={() => setDrawerOpen(false)}
+                          aria-current={active ? "page" : undefined}
+                          className={`flex min-h-14 items-center px-4.5 text-[15px] font-bold transition-colors ${
+                            active ? "bg-brand/12 text-brand-soft" : "text-[#f2f3f5]"
+                          }`}
+                        >
+                          {/* Active row reads as a highlighted, selected row: a
+                              subtle brand wash + a full-height left accent bar in
+                              the gutter. The bar is absolutely positioned so it
+                              never shifts the label — every row's text stays flush
+                              at px-[18px] whether active or not. */}
+                          <span
+                            aria-hidden="true"
+                            className={`absolute inset-y-0 left-0 w-1 transition-colors ${
+                              active ? "bg-brand-soft" : "bg-transparent"
+                            }`}
+                          />
+                          {item.label}
+                        </LinkButton>
+                      </li>
+                    );
+                  })()
+                ),
+              )}
+            </ul>
+          </nav>
+          <div className="flex flex-col gap-3 px-4.5 pt-5">
             <Button
               onClick={() => {
                 setDrawerOpen(false);
                 openInquiry();
               }}
               rippleTheme="light"
-              className="inline-flex min-h-[54px] w-full items-center justify-center rounded-full bg-gradient-to-r from-brand-dark to-brand px-6 text-[15px] font-extrabold text-white shadow-[0_12px_26px_rgba(216,111,22,0.24)]"
+              className="inline-flex min-h-13.5 w-full items-center justify-center rounded-full bg-linear-to-r from-brand-dark to-brand px-6 text-[15px] font-extrabold text-white shadow-[0_12px_26px_rgba(216,111,22,0.24)]"
             >
               Направете запитване
             </Button>
+            {/* Auth: signed-out links to sign-in; signed-in shows the account menu
+                with a label so it's obvious in the dark drawer. */}
+            {isSignedIn ? (
+              <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/6 px-5 py-2.5">
+                <UserMenu tone="dark" />
+                <span className="text-sm font-bold text-white/80">Моят профил</span>
+              </div>
+            ) : (
+              <LinkButton
+                href="/sign-in"
+                rippleTheme="light"
+                onClick={() => setDrawerOpen(false)}
+                className="inline-flex min-h-13.5 w-full items-center justify-center rounded-full border border-white/20 bg-white/10 px-6 text-[15px] font-extrabold text-white"
+              >
+                Вход / Регистрация
+              </LinkButton>
+            )}
           </div>
         </div>
       </aside>

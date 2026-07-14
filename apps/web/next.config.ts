@@ -64,6 +64,33 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "www-ironplanet.s3-us-west-2.amazonaws.com" },
     ],
   },
+  // Baseline security headers on every route. Deliberately CONSERVATIVE — the
+  // broadly-safe set that won't break anything here:
+  //   - X-Content-Type-Options: nosniff — stop MIME-sniffing.
+  //   - Referrer-Policy: strict-origin-when-cross-origin — send origin only
+  //     cross-site (the modern default; also what the contacts map iframe uses).
+  //   - X-Frame-Options: SAMEORIGIN — we embed a Google Map *in* our page (fine);
+  //     this only stops OTHERS from framing us (clickjacking).
+  //   - Strict-Transport-Security — force HTTPS (prod is HTTPS-only).
+  //   - Permissions-Policy — disable powerful APIs we don't use.
+  // NOT setting a Content-Security-Policy here: a correct CSP must allowlist the
+  // WebGL/three assets, next/image remote auction hosts, the Google Maps embed,
+  // Resend, and Auth.js endpoints — easy to get wrong and silently break the app.
+  // That's a deliberate, separately-tested follow-up, not a Phase-0 one-liner.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

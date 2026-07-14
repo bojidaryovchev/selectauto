@@ -3,7 +3,7 @@
 -- market × channel × active/past). The website header shows "Намерени
 -- автомобили: N"; computing that with COUNT(*) over car_listings is a full seq
 -- scan (~750k rows for market=us → ~200ms warm, up to ~2s cold on a fresh Neon
--- compute), because no index can satisfy an unbounded COUNT. See ALL-CARS-DB-DESIGN.
+-- compute), because no index can satisfy an unbounded COUNT. See docs/05-projection-tables-car-listings.md.
 --
 -- Fix: a tiny summary table (car_listing_counts, a few dozen rows) holding the
 -- count for each broad dimension key, maintained INCREMENTALLY by the same

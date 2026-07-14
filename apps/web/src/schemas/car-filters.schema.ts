@@ -14,12 +14,19 @@ const CURRENT_YEAR = 2027; // upper bound for the year filter (matches the mocku
 
 export const carFiltersSchema = z.object({
   status: z.enum(["active", "past"]).optional(),
+  // Auction-timing window (active view only) → a sale_date range; see
+  // docs/08-web-all-cars-page.md §3.
+  auctionWindow: z.enum(["scheduled", "today", "24h", "3d", "7d"]).optional(),
   channel: z.enum(["buy-now", "auction"]).optional(),
   market: z.enum(["us", "kr", "ca"]).optional(),
   brand: z.number().int().positive().optional(),
   model: z.number().int().positive().optional(),
   color: z.string().trim().min(1).max(40).optional(),
   drive: z.enum(["front", "all", "rear"]).optional(),
+  // Canonical AuctionsAPI fuel values that appear in the catalog (see
+  // get-car-facets / car-filters parser). 'electric' is a drivetrain tag that
+  // also covers hybrids; 'hybrid' is separate — both are offered.
+  fuel: z.enum(["gasoline", "diesel", "electric", "hybrid", "flexible", "gas", "hydrogen"]).optional(),
   // One or more canonical condition raws, comma-joined (a BG label can cover
   // several raws — see get-car-facets).
   condition: z

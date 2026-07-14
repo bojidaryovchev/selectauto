@@ -2,6 +2,7 @@ import { and, eq, ne, sql } from "drizzle-orm";
 import { carDetailFromRows } from "@/lib/car-detail-mapper";
 import { carListingToView } from "@/lib/car-mapper";
 import { getDb, schema } from "@/lib/db";
+import { getModelYearSoldStat } from "./get-model-sold-prices.query";
 import type { CarDetailPayload } from "@/types/car-detail.type";
 import type { CarView } from "@/types/car.type";
 
@@ -78,6 +79,7 @@ export async function getCarDetail(carId: number): Promise<CarDetailPayload | nu
         transmission: cars.transmission,
         driveWheel: cars.driveWheel,
         engine: cars.engine,
+        generationId: cars.generationId,
         rawJson: cars.rawJson,
       })
       .from(cars)
@@ -112,16 +114,16 @@ export async function getCarDetail(carId: number): Promise<CarDetailPayload | nu
   const lot = lotRow[0];
   if (!car || !lot) return null;
 
-  // Resolve brand/model display names (not stored on the listing row — same as
-  // the facets query). Best-effort: missing names just omit from JSON-LD.
-  const [brand, model] = await Promise.all([
+  // Resolve brand (name + logo) / model / generation display data (not stored on the
+  // listing row — same as the facets query). Best-effort: anything missing is omitted.
+  const [brand, model, generation, marketAvg] = await Promise.all([
     listing.manufacturerId != null
       ? db
-          .select({ name: schema.manufacturers.name })
+          .select({ name: schema.manufacturers.name, imageUrl: schema.manufacturers.imageUrl })
           .from(schema.manufacturers)
           .where(eq(schema.manufacturers.externalId, listing.manufacturerId))
           .limit(1)
-      : Promise.resolve([] as { name: string | null }[]),
+      : Promise.resolve([] as { name: string | null; imageUrl: string | null }[]),
     listing.modelId != null
       ? db
           .select({ name: schema.vehicleModels.name })
@@ -129,14 +131,39 @@ export async function getCarDetail(carId: number): Promise<CarDetailPayload | nu
           .where(eq(schema.vehicleModels.externalId, listing.modelId))
           .limit(1)
       : Promise.resolve([] as { name: string | null }[]),
+    car.generationId != null
+      ? db
+          .select({
+            name: schema.vehicleGenerations.name,
+            fromYear: schema.vehicleGenerations.fromYear,
+            toYear: schema.vehicleGenerations.toYear,
+          })
+          .from(schema.vehicleGenerations)
+          .where(eq(schema.vehicleGenerations.externalId, car.generationId))
+          .limit(1)
+      : Promise.resolve([] as { name: string | null; fromYear: number | null; toYear: number | null }[]),
+    // Market benchmark: avg archive sale price for this model+year (fails soft to null).
+    listing.manufacturerId != null && listing.modelId != null && car.year != null
+      ? getModelYearSoldStat(listing.manufacturerId, listing.modelId, car.year)
+      : Promise.resolve(null),
   ]);
 
+  const gen = generation[0];
   const detail = carDetailFromRows({
     carId,
     car,
     lot,
     brand: brand[0]?.name ?? undefined,
+    brandLogo: brand[0]?.imageUrl ?? undefined,
     model: model[0]?.name ?? undefined,
+    generation: gen
+      ? {
+          name: gen.name ?? undefined,
+          fromYear: gen.fromYear ?? undefined,
+          toYear: gen.toYear ?? undefined,
+        }
+      : undefined,
+    marketAvg: marketAvg ?? undefined,
     isPast,
     effectivePrice: listing.effectivePrice != null ? Number(listing.effectivePrice) : undefined,
   });

@@ -5,8 +5,14 @@
 > store, how we compute our read models, and the AWS infra that runs it.
 > [`08-web-all-cars-page.md`](08-web-all-cars-page.md) documents the **`apps/web`
 > all-cars catalog** that consumes the read models (the page, filters, and the
-> active/past views). Deeper web design records live in `apps/web/CLAUDE.md`,
-> `apps/web/ALL-CARS-PLAN.md`, `apps/web/ALL-CARS-DB-DESIGN.md`.
+> active/past views); [`09-web-authentication.md`](09-web-authentication.md)
+> documents **auth (Auth.js)** and
+> [`10-web-favorites.md`](10-web-favorites.md) the **favourites** feature on top of
+> it; [`11-web-seo-and-indexing.md`](11-web-seo-and-indexing.md) documents the **as-built SEO
+> & indexing**, and [`12-web-seo-strategy.md`](12-web-seo-strategy.md) the **SEO strategy /
+> roadmap**. Web coding conventions live in `apps/web/CLAUDE.md` / `apps/web/AGENTS.md`; the
+> former `ALL-CARS-PLAN.md` / `ALL-CARS-DB-DESIGN.md` design records are now folded
+> into docs 02/05/08.
 
 ## What this system is
 
@@ -38,6 +44,7 @@ flowchart TD
     f2["daily reference sync<br/>manufacturers → models → generations · rate(1d)"]
     f3["manual full backfill<br/>all active cars · started by operator"]
     f4["detail refresh worker<br/>SQS FIFO drain, conc=1 · on-demand (app)"]
+    f5["weekly drift sweep<br/>recompute every car · cron(SUN 03:00) · DB-only, no API"]
   end
 
   subgraph neon["Neon Postgres — public endpoint, pooled / PgBouncer"]
@@ -55,15 +62,25 @@ flowchart TD
   neon -->|"SELECT (single-table, keyset)"| web
 ```
 
-## The three kinds of tables (why each exists)
+## The kinds of tables (why each exists)
+
+The full per-table data dictionary lives in
+[02-data-model-and-tables.md](02-data-model-and-tables.md) (18 tables). At a
+glance, they fall into these categories:
 
 | Kind | Tables | Populated by | Purpose |
 |------|--------|--------------|---------|
 | **Raw mirror** | `cars`, `auction_lots` | hourly cars sync, full backfill, detail refresh, archived sync | A faithful, idempotent mirror of upstream vehicle + lot data. Every row keeps `raw_json` so new columns can be backfilled without re-pulling from the API. |
 | **Reference** | `manufacturers`, `vehicle_models`, `vehicle_generations` | daily reference sync | Brand/model/generation lookup tables. `cars` stores only external numeric ids (`manufacturer_id` etc.); names are resolved through these. |
 | **Computed read models** | `car_listings`, `car_listings_archived` | recompute functions called from every write path | Pre-joined, pre-deduped, pre-computed **one-row-per-physical-car** projections that the website paginates single-table with zero joins. The expensive per-car collapse (`GROUP BY car_id`) times out on the ~1M-row live set, so it is materialized incrementally at write time. See [05](05-projection-tables-car-listings.md). |
+| **Summary (the cache)** | `car_listing_counts`, `car_listing_facets` | maintained in the same transaction as the read models (via a snapshot-diff in the `_counted` recompute wrappers) | Make catalog counts and filter-dropdown facets **O(1)**: `counts(table_kind, dim, val, n)` powers `getCarsCount`; `facets(table_kind, dim, val, val2, n)` powers the filter dropdowns. Correct by construction — no periodic reseed. See [02](02-data-model-and-tables.md). |
 | **Website leads** | `carfax_requests`, `inquiries` | the website backend (not ingestion) | Low-volume form submissions. Documented here only for completeness of the schema. |
 | **Observability** | `sync_runs` | every sync flow | One row per sync execution: status, pages, records, errors, checkpoint. |
+
+The database also holds **web-owned** tables that ingestion never touches —
+Auth.js auth (`users`, `accounts`, `verification_tokens`,
+`password_reset_tokens`) and user `favorites`, plus the `_migrations` ledger.
+See [02-data-model-and-tables.md](02-data-model-and-tables.md).
 
 ## Key design facts (carried throughout these docs)
 
@@ -95,8 +112,8 @@ flowchart TD
 | `packages/db/schema.ts` | Drizzle schema (source of truth for table SHAPE + typed queries) |
 | `packages/db/migrations/*.sql` | Plain-SQL migrations (what actually runs in prod) |
 | `packages/db/migrate.mjs` | Minimal append-only migration runner |
-| `packages/db/backfill-car-listings.mjs` | One-time projection backfill script |
-| `packages/db/backfill-car-listings.mjs` | Projection backfill / drift-repair (both read models, via `--fn`) |
+| `packages/db/backfill-car-listings.mjs` | Projection backfill / drift-repair — rebuilds **both** read models via `--fn`; default calls the `_counted` wrapper so counts + facets stay in sync |
+| `packages/db/reseed-summaries.mjs` | Authoritative reseed of the summary tables (`--check` = drift / negative-`n` diagnostic). Only needed after a deliberate recompute-logic change |
 | `infra/src/` | Pulumi TS — Lambdas, Step Functions, schedules, IAM, secrets, SQS |
 | `apps/web/` | Next.js frontend (reads Neon). The all-cars catalog → [08](08-web-all-cars-page.md). |
 | `docs/` | These docs + `sample-cars-response.json` (a real `/api/cars` record) |
@@ -106,8 +123,12 @@ flowchart TD
 1. [01-auctionsapi-consumption.md](01-auctionsapi-consumption.md) — the upstream contract
 2. [02-data-model-and-tables.md](02-data-model-and-tables.md) — what we store
 3. [03-normalization-and-field-mapping.md](03-normalization-and-field-mapping.md) — raw → rows
-4. [04-ingestion-flows.md](04-ingestion-flows.md) — how data moves (the 5 write paths)
+4. [04-ingestion-flows.md](04-ingestion-flows.md) — how data moves (6 flows: 5 API-driven write paths + the weekly DB-only drift sweep)
 5. [05-projection-tables-car-listings.md](05-projection-tables-car-listings.md) — what we compute
 6. [06-infrastructure-aws-pulumi.md](06-infrastructure-aws-pulumi.md) — the AWS/Pulumi layer
 7. [07-operations-runbook.md](07-operations-runbook.md) — build, deploy, migrate, troubleshoot
 8. [08-web-all-cars-page.md](08-web-all-cars-page.md) — the website catalog that consumes the read models
+9. [09-web-authentication.md](09-web-authentication.md) — auth (Auth.js): Google + email/password
+10. [10-web-favorites.md](10-web-favorites.md) — the favourites feature
+11. [11-web-seo-and-indexing.md](11-web-seo-and-indexing.md) — SEO & indexing (hubs, sitemaps, 410, GEO)
+12. [12-web-seo-strategy.md](12-web-seo-strategy.md) — SEO strategy: market research, keywords, roadmap

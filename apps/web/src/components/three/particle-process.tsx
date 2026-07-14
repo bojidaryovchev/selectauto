@@ -838,41 +838,41 @@ export function ParticleProcess() {
           so the page still exposes a real <h2> for a11y/SEO. The scroll hint sits
           in normal flow, flex-centered at the bottom of this overlay. */}
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 z-[5] flex h-screen flex-col items-center overflow-hidden transition-opacity duration-300"
+        className="pointer-events-none absolute inset-x-0 top-0 z-5 flex h-screen flex-col items-center overflow-hidden transition-opacity duration-300"
         style={{ opacity: introHidden ? 0 : 1 }}
       >
         <canvas
           ref={introCanvasRef}
-          className="absolute inset-0 z-[1] h-full w-full"
+          className="absolute inset-0 z-1 size-full"
         />
         <h2 className="sr-only">Пет стъпки. Един резултат.</h2>
 
         {/* Scroll hint — flex-centered at the bottom of the intro overlay */}
         <div
-          className="relative z-[2] mt-auto mb-[34px] inline-flex items-center gap-3 rounded-full border border-brand-glow/20 bg-[#050302]/[0.72] px-[18px] py-3 text-xs font-bold uppercase tracking-[1.4px] text-white/80 backdrop-blur-md shadow-[0_14px_34px_rgba(0,0,0,0.35)] max-[991px]:mb-[92px] max-[991px]:max-w-[calc(100vw-32px)] max-[991px]:px-3.5 max-[991px]:py-[11px] max-[991px]:text-[10px]"
+          className="relative z-2 mt-auto mb-8.5 inline-flex items-center gap-3 rounded-full border border-brand-glow/20 bg-[#050302]/72 px-4.5 py-3 text-xs font-bold uppercase tracking-[1.4px] text-white/80 backdrop-blur-md shadow-[0_14px_34px_rgba(0,0,0,0.35)] max-[991px]:mb-23 max-[991px]:max-w-[calc(100vw-32px)] max-[991px]:px-3.5 max-[991px]:py-2.75 max-[991px]:text-[10px]"
           style={{
             opacity: hintOpacity,
             animation: "sa-scroll-hint-float 1.8s ease-in-out infinite",
           }}
         >
           Скролни надолу, за да започне процесът
-          <span className="h-2 w-2 rotate-45 border-b-2 border-r-2 border-brand-glow" />
+          <span className="size-2 rotate-45 border-b-2 border-r-2 border-brand-glow" />
         </div>
       </div>
 
       {/* Sticky stage — pinned canvas + step overlays */}
-      <div className="sticky top-0 z-[2] h-screen w-full overflow-hidden">
+      <div className="sticky top-0 z-2 h-screen w-full overflow-hidden">
         <canvas
           ref={canvasRef}
-          className="absolute inset-0 z-[1] block h-full w-full"
+          className="absolute inset-0 z-1 block size-full"
         />
 
         {/* Vignette */}
-        <div className="pointer-events-none absolute inset-0 z-[2] bg-[radial-gradient(ellipse_at_70%_50%,transparent_30%,rgba(0,0,0,0.4)_75%),linear-gradient(180deg,rgba(5,3,2,0.6)_0%,transparent_15%,transparent_85%,rgba(5,3,2,0.7)_100%)] max-[991px]:bg-[radial-gradient(ellipse_at_50%_35%,transparent_30%,rgba(0,0,0,0.45)_80%),linear-gradient(180deg,rgba(5,3,2,0.4)_0%,transparent_12%,transparent_70%,rgba(5,3,2,0.85)_100%)]" />
+        <div className="pointer-events-none absolute inset-0 z-2 bg-[radial-gradient(ellipse_at_70%_50%,transparent_30%,rgba(0,0,0,0.4)_75%),linear-gradient(180deg,rgba(5,3,2,0.6)_0%,transparent_15%,transparent_85%,rgba(5,3,2,0.7)_100%)] max-[991px]:bg-[radial-gradient(ellipse_at_50%_35%,transparent_30%,rgba(0,0,0,0.45)_80%),linear-gradient(180deg,rgba(5,3,2,0.4)_0%,transparent_12%,transparent_70%,rgba(5,3,2,0.85)_100%)]" />
 
         {/* Giant step number watermark — fades in with the stage. */}
         <div
-          className="pointer-events-none absolute left-[-2vw] top-1/2 z-[3] -translate-y-1/2 select-none text-[52vw] font-black leading-[0.8] tracking-[-8px] text-transparent transition-opacity duration-200 [-webkit-text-stroke:1px_rgba(255,138,61,0.06)] max-[991px]:bottom-[28%] max-[991px]:left-[-4vw] max-[991px]:top-auto max-[991px]:translate-y-0 max-[991px]:text-[40vw] max-[991px]:tracking-[-3px]"
+          className="pointer-events-none absolute left-[-2vw] top-1/2 z-3 -translate-y-1/2 select-none text-[52vw] font-black leading-[0.8] tracking-[-8px] text-transparent transition-opacity duration-200 [-webkit-text-stroke:1px_rgba(255,138,61,0.06)] max-[991px]:bottom-[28%] max-[991px]:left-[-4vw] max-[991px]:top-auto max-[991px]:translate-y-0 max-[991px]:text-[40vw] max-[991px]:tracking-[-3px]"
           style={{ opacity: stageOpacity }}
         >
           {`0${activeStep + 1}`}
@@ -880,15 +880,15 @@ export function ParticleProcess() {
 
         {/* Mobile rail (top dots) */}
         <div
-          className="absolute left-1/2 top-6 z-[5] hidden -translate-x-1/2 gap-2 transition-opacity duration-200 max-[991px]:flex"
+          className="absolute left-1/2 top-6 z-5 hidden -translate-x-1/2 gap-2 transition-opacity duration-200 max-[991px]:flex"
           style={{ opacity: stageOpacity }}
         >
           {STEPS.map((_, i) => (
             <span
               key={i}
-              className={`h-[3px] rounded-sm transition-all duration-300 ${
+              className={`h-0.75 rounded-sm transition-all duration-300 ${
                 i === activeStep
-                  ? "w-9 bg-gradient-to-r from-brand-glow to-[#ffb37a] shadow-[0_0_8px_rgba(255,138,61,0.6)]"
+                  ? "w-9 bg-linear-to-r from-brand-glow to-[#ffb37a] shadow-[0_0_8px_rgba(255,138,61,0.6)]"
                   : i < activeStep
                     ? "w-6 bg-brand-glow/40"
                     : "w-6 bg-white/15"
@@ -902,30 +902,30 @@ export function ParticleProcess() {
             header/nav and every Container section); the card sits at its left edge.
             Fades in with the rest of the stage as the intro dissolves. */}
         <div
-          className="pointer-events-none absolute inset-x-0 top-1/2 z-[4] mx-auto w-[min(100%-28px,1280px)] -translate-y-1/2 transition-opacity duration-200 max-[991px]:inset-x-5 max-[991px]:bottom-[100px] max-[991px]:top-auto max-[991px]:mx-0 max-[991px]:w-auto max-[991px]:translate-y-0"
+          className="pointer-events-none absolute inset-x-0 top-1/2 z-4 mx-auto w-[min(100%-28px,1280px)] -translate-y-1/2 transition-opacity duration-200 max-[991px]:inset-x-5 max-[991px]:bottom-25 max-[991px]:top-auto max-[991px]:mx-0 max-[991px]:w-auto max-[991px]:translate-y-0"
           style={{ opacity: stageOpacity }}
         >
-          <div className="relative h-[360px] w-[440px] max-w-[440px] max-[991px]:h-[260px] max-[991px]:w-auto max-[991px]:max-w-none">
+          <div className="relative h-90 w-110 max-w-110 max-[991px]:h-65 max-[991px]:w-auto max-[991px]:max-w-none">
           {STEPS.map((step, i) => (
             <div
               key={step.title}
-              className="absolute inset-0 transition-[opacity,transform] duration-[600ms] ease-[cubic-bezier(.22,.61,.36,1)]"
+              className="absolute inset-0 transition-[opacity,transform] duration-600 ease-[cubic-bezier(.22,.61,.36,1)]"
               style={{
                 opacity: i === activeStep ? 1 : 0,
                 transform: i === activeStep ? "translateY(0)" : "translateY(15px)",
                 visibility: i === activeStep ? "visible" : "hidden",
               }}
             >
-              <div className="mb-[18px] flex items-center gap-3.5 text-sm font-bold uppercase tracking-[4px] text-brand-glow max-[991px]:mb-3 max-[991px]:text-[11px] max-[991px]:tracking-[3px]">
+              <div className="mb-4.5 flex items-center gap-3.5 text-sm font-bold uppercase tracking-[4px] text-brand-glow max-[991px]:mb-3 max-[991px]:text-[11px] max-[991px]:tracking-[3px]">
                 {step.num}
-                <span className="h-px max-w-20 flex-1 bg-gradient-to-r from-brand-glow to-transparent" />
+                <span className="h-px max-w-20 flex-1 bg-linear-to-r from-brand-glow to-transparent" />
               </div>
               {/* Heading width is capped to the left lane so it can't grow into
                   the car's column on the right. */}
-              <h3 className="mb-6 max-w-[440px] text-[clamp(36px,4.6vw,68px)] font-black leading-[0.98] tracking-[-2px] max-[991px]:mb-3 max-[991px]:max-w-none max-[991px]:text-[clamp(36px,11vw,64px)] max-[991px]:tracking-[-1.5px]">
+              <h3 className="mb-6 max-w-110 text-[clamp(36px,4.6vw,68px)] font-black leading-[0.98] tracking-[-2px] max-[991px]:mb-3 max-[991px]:max-w-none max-[991px]:text-[clamp(36px,11vw,64px)] max-[991px]:tracking-[-1.5px]">
                 {step.title}
               </h3>
-              <p className="max-w-[420px] text-lg leading-relaxed text-white/70 max-[991px]:max-w-full max-[991px]:text-sm">
+              <p className="max-w-105 text-lg/relaxed text-white/70 max-[991px]:max-w-full max-[991px]:text-sm">
                 {step.desc}
               </p>
             </div>
@@ -936,7 +936,7 @@ export function ParticleProcess() {
         {/* Desktop rail — pinned to the right edge of the shared page column.
             Fades in with the stage as the intro dissolves. */}
         <div
-          className="pointer-events-none absolute inset-x-0 top-1/2 z-[5] mx-auto flex w-[min(100%-28px,1280px)] -translate-y-1/2 flex-col items-end gap-7 transition-opacity duration-200 max-[991px]:hidden"
+          className="pointer-events-none absolute inset-x-0 top-1/2 z-5 mx-auto flex w-[min(100%-28px,1280px)] -translate-y-1/2 flex-col items-end gap-7 transition-opacity duration-200 max-[991px]:hidden"
           style={{ opacity: stageOpacity }}
         >
           {STEPS.map((step, i) => (
@@ -971,17 +971,17 @@ export function ParticleProcess() {
         {/* Progress spine — label + bar span the shared page column. Fades in
             with the stage as the intro dissolves. */}
         <div
-          className="absolute inset-x-0 bottom-[70px] z-[5] mx-auto w-[min(100%-28px,1280px)] text-[11px] font-bold uppercase tracking-[3px] text-white/40 transition-opacity duration-200 max-[991px]:bottom-[38px] max-[991px]:w-auto max-[991px]:px-5 max-[991px]:text-[9px] max-[991px]:tracking-[2px]"
+          className="absolute inset-x-0 bottom-17.5 z-5 mx-auto w-[min(100%-28px,1280px)] text-[11px] font-bold uppercase tracking-[3px] text-white/40 transition-opacity duration-200 max-[991px]:bottom-9.5 max-[991px]:w-auto max-[991px]:px-5 max-[991px]:text-[9px] max-[991px]:tracking-[2px]"
           style={{ opacity: stageOpacity }}
         >
           <span className="text-brand-glow">{formationPct}%</span> · от заявка до ключ
         </div>
         <div
-          className="absolute inset-x-0 bottom-[60px] z-[5] mx-auto h-px w-[min(100%-28px,1280px)] overflow-hidden bg-white/[0.08] transition-opacity duration-200 max-[991px]:bottom-[30px] max-[991px]:w-[calc(100%-40px)]"
+          className="absolute inset-x-0 bottom-15 z-5 mx-auto h-px w-[min(100%-28px,1280px)] overflow-hidden bg-white/8 transition-opacity duration-200 max-[991px]:bottom-7.5 max-[991px]:w-[calc(100%-40px)]"
           style={{ opacity: stageOpacity }}
         >
           <div
-            className="h-full bg-gradient-to-r from-brand-glow to-[#ffb37a] shadow-[0_0_8px_rgba(255,138,61,0.7)]"
+            className="h-full bg-linear-to-r from-brand-glow to-[#ffb37a] shadow-[0_0_8px_rgba(255,138,61,0.7)]"
             style={{ width: `${formationPct}%` }}
           />
         </div>
@@ -990,22 +990,22 @@ export function ParticleProcess() {
       {/* Outro — fades in during dispersion. Centered on all sizes so there's no
           large empty gap below the CTA. */}
       <div
-        className="absolute inset-x-0 bottom-0 z-[5] flex h-screen flex-col items-center justify-center px-6 pb-8 text-center transition-opacity duration-300"
+        className="absolute inset-x-0 bottom-0 z-5 flex h-screen flex-col items-center justify-center px-6 pb-8 text-center transition-opacity duration-300"
         style={{ opacity: outroOpacity, pointerEvents: outroOpacity > 0.9 ? "auto" : "none" }}
       >
         <div className="mb-5 text-xs font-bold uppercase tracking-[4px] text-brand-glow/90 max-[991px]:mb-4 max-[991px]:text-[10px] max-[991px]:tracking-[3px]">
           Резултат
         </div>
-        <h3 className="mb-7 bg-gradient-to-br from-white to-[#ffb37a] bg-clip-text text-[clamp(34px,8vw,72px)] font-black leading-none tracking-[-1.5px] text-transparent max-[991px]:mb-5">
+        <h3 className="mb-7 bg-linear-to-br from-white to-[#ffb37a] bg-clip-text text-[clamp(34px,8vw,72px)] font-black leading-none tracking-[-1.5px] text-transparent max-[991px]:mb-5">
           Колата ви очаква.
         </h3>
-        <p className="mb-9 max-w-[460px] text-[17px] leading-relaxed text-white/65 max-[991px]:mb-7 max-[991px]:text-[15px]">
+        <p className="mb-9 max-w-115 text-[17px] leading-relaxed text-white/65 max-[991px]:mb-7 max-[991px]:text-[15px]">
           Не каталог. Не обещание. Готов автомобил с изрядна история и документи.
         </p>
         <LinkButton
           href="/kontakti/"
           rippleTheme="light"
-          className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-full bg-gradient-to-br from-brand-glow to-[#e86c20] px-9 py-[18px] text-[15px] font-bold text-white shadow-[0_12px_30px_rgba(232,108,32,0.4)] transition-transform duration-200 hover:-translate-y-0.5 active:scale-[0.97] max-[991px]:px-[30px] max-[991px]:py-4 max-[991px]:text-sm"
+          className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-full bg-linear-to-br from-brand-glow to-[#e86c20] px-9 py-4.5 text-[15px] font-bold text-white shadow-[0_12px_30px_rgba(232,108,32,0.4)] transition-transform duration-200 hover:-translate-y-0.5 active:scale-[0.97] max-[991px]:px-7.5 max-[991px]:py-4 max-[991px]:text-sm"
         >
           Започнете процеса →
         </LinkButton>

@@ -14,10 +14,15 @@ Source: migrations
 [`0011`](../packages/db/migrations/0011_car_listings_archived_indexes.sql),
 [`0012`](../packages/db/migrations/0012_archived_concluded_only.sql),
 [`0014`](../packages/db/migrations/0014_listings_vehicle_body_type.sql) (adds
-`vehicle_type`/`body_type` to both projections + redefines both recompute fns);
+`vehicle_type`/`body_type` to both projections + redefines both recompute fns),
+[`0020`](../packages/db/migrations/0020_listing_fuel_type.sql) (adds `fuel_type` +
+a `fuel` facet),
+[`0022`](../packages/db/migrations/0022_recompute_restore_type_columns.sql) (fixes
+a regression 0020 introduced — see §6),
+[`0023`](../packages/db/migrations/0023_archived_at.sql) (set-once `archived_at` on
+the archived projection);
 backfill [`backfill-car-listings.mjs`](../packages/db/backfill-car-listings.mjs);
 recompute hooks in [`shared/db.ts`](../packages/functions/shared/db.ts).
-The full decision record lives in `apps/web/ALL-CARS-DB-DESIGN.md`.
 
 ---
 
@@ -93,7 +98,14 @@ ORDER BY
   al.sale_date ASC NULLS LAST,                              -- soonest auction
   al.id DESC                                                -- newest listing tiebreak
 ```
-99.3% of multi-lot cars have a usable lot under this rule.
+99.3% of multi-lot cars have a usable lot under this rule. Two live-probed invariants
+keep the pick + channel logic sound: `buy_now = true ⇒ buy_now_price > 0` on **100%** of
+active lots (a BUY-NOW card always has a price; the channel predicate is safe), and
+`car_id` is non-null on **100%** of active image-bearing lots (every listing becomes a
+card — the `car_id`-keyed table never silently drops rows). In practice the pick-strategy
+mostly only disambiguates auction-relisted cars, because channel/market partition the set
+into page tabs (only 45 cars are both buy-now and auction — see
+[08 §3](08-web-all-cars-page.md#3-filters-every-filter--a-single-car_listings-column)).
 
 ### Archived — "most-recent-result" (latest known outcome)
 ```sql
@@ -120,11 +132,14 @@ full column list). The **derived** parts:
   - archived: `COALESCE(NULLIF(final_bid,0), NULLIF(buy_now_price,0), NULLIF(bid_price,0))`
     — for a sold car the realized price is `final_bid`, so it's preferred.
 - Filter columns (`manufacturer_id`, `model_id`, `car_year`, `car_color`,
-  `drive_wheel`, `vehicle_type`, `body_type`, `vin`) come from **`cars`**;
-  lot-derived filter/display columns
+  `drive_wheel`, `vehicle_type`, `body_type`, `fuel_type`, `vin`) come from
+  **`cars`** (`fuel_type` since 0020 — powers the "Гориво" filter); lot-derived
+  filter/display columns
   (`buy_now`, `domain_name`, `location_country`, `lot_number`, prices, image,
   odometer, sale_date, status, condition, damage_main, seller) come from the
   **chosen lot**; `title`/`engine`/`transmission` come from `cars`.
+  `car_listings_archived` additionally carries a **set-once `archived_at`** (0023,
+  see §6) projected from the chosen lot's `archived_at`.
 
 ### Why brand/model NAMES are deliberately absent
 The **daily reference sync** can rename a manufacturer/model **without touching any
@@ -132,8 +147,8 @@ lot** — so a per-lot recompute hook would never refresh a denormalized name,
 leaving it stale forever. The tables store only `manufacturer_id`/`model_id`;
 names are resolved at **read time** via a cached id→name lookup in the app. This
 closes the only staleness gap (everything else recomputes via the two db.ts hooks).
-`engine`/`title`/`transmission`/`vehicle_type`/`body_type` are safe to denormalize
-because they live on `cars` and the reference sync doesn't touch them.
+`engine`/`title`/`transmission`/`vehicle_type`/`body_type`/`fuel_type` are safe to
+denormalize because they live on `cars` and the reference sync doesn't touch them.
 
 ---
 
@@ -159,6 +174,29 @@ Properties (all deliberate):
   car_ids → one `WHERE car_id = ANY($1)` statement.
 - **`CREATE OR REPLACE`** — re-running the migration just refreshes the definition.
 
+### Definition history (why the current bodies look the way they do)
+Because every recompute definition is a `CREATE OR REPLACE` applied in lexical
+migration order, a later migration that rebases on an *older* body silently reverts
+whatever the intervening migrations added. That is exactly what happened once:
+
+- **0020** added `fuel_type`, but rebased both functions on their old **0009/0010**
+  bodies — silently reverting **0014**'s `vehicle_type`/`body_type` columns (so
+  newly-inserted cars landed `NULL` and vanished from the "Тип" facet/filter) **and**
+  **0012**'s archived **concluded-only** filter (`status IN ('sold','not_sold','failed')`),
+  letting non-concluded lots leak back into `car_listings_archived`.
+- **0022** fixes this by redefining both functions as the **union** of 0014
+  (`vehicle_type`/`body_type` + the concluded-only filter) **and** 0020 (`fuel_type`).
+  This is why the live bodies project all of `engine`, `vehicle_type`, `body_type`,
+  `fuel_type` and the archived `chosen` CTE / DELETE both carry the concluded-only
+  `status` clause. Applying 0022 requires a re-populate (chunked backfill via the
+  `_counted` wrappers, or the weekly drift sweep) — see [07](07-operations-runbook.md).
+- **0023** then re-defines only the **archived** function once more, rebasing on
+  0022's corrected body and adding **`archived_at`**: projected from the chosen lot's
+  `auction_lots.archived_at`, stamped on first INSERT and **preserved on conflict**
+  (`archived_at = COALESCE(existing, EXCLUDED)`) while `updated_at` still bumps to
+  `now()` every recompute. It records *when a lot was archived* (the age signal the
+  SEO 410 policy needs), not "last touched by ingestion".
+
 ---
 
 ## 7. How they stay live (the ingestion hooks)
@@ -168,9 +206,22 @@ collect touched car ids during their per-row loop, then call **both** recomputes
 once at the end (set-based, never per-row — the Lambda pool is `max 2`):
 
 ```ts
-await recomputeListings(client, "recompute_car_listings", touchedCarIds);
-await recomputeListings(client, "recompute_archived_car_listings", touchedCarIds);
+// The *_counted wrappers (migrations 0016/0017) — they maintain car_listings /
+// car_listings_archived AND car_listing_counts / car_listing_facets in one txn.
+await recomputeListings(client, "recompute_car_listings_counted", touchedCarIds);
+await recomputeListings(client, "recompute_archived_car_listings_counted", touchedCarIds);
 ```
+
+The `_counted` wrappers call the bare recompute functions above, then maintain
+`car_listing_counts` + `car_listing_facets` in the **same transaction** via a
+before/after snapshot-diff (`n += after − before`). Since **0026** each wrapper first
+takes a transaction-scoped advisory lock (`pg_advisory_xact_lock`, one shared key
+across both wrappers) so overlapping recomputes — e.g. a backfill or off-cycle drift
+sweep racing the live hourly sync under READ COMMITTED — can't both apply a delta for
+the same change. This makes the snapshot → recompute → snapshot → apply sequence
+atomic w.r.t. any other maintenance, so the summaries are **correct by construction**
+with no periodic reseed (details in [02](02-data-model-and-tables.md) /
+[07](07-operations-runbook.md)).
 
 - `upsertCarsAndLots` (Flows 1/2/5): a car re-seen in `/cars` is active → lands in
   `car_listings` and (if present) drops out of `car_listings_archived`.
@@ -180,7 +231,7 @@ await recomputeListings(client, "recompute_archived_car_listings", touchedCarIds
 
 `recomputeListings` is **best-effort**: a recompute failure is logged and
 swallowed — it must **not** fail the page, because the `cars`/`auction_lots` writes
-already succeeded and are the source of truth (the next sync / a nightly drift
+already succeeded and are the source of truth (the next sync / the weekly drift
 sweep re-derives the projections). It also de-dups + filters non-integer ids and
 no-ops on an empty set.
 
@@ -215,7 +266,8 @@ node ... backfill-car-listings.mjs --batch=25000 --start=0 --sleep=50
   order-independent). `SET statement_timeout = 120000` gives cold id-range scans
   room.
 
-Measured backfills: ~931,030 active rows; ~144–146k archived rows (sold-first).
+Measured backfills (2026-07): ~942k active rows; ~429k archived rows (sold-first).
+The archived table grows steadily as auctions conclude (it was ~144k in mid-2026).
 
 ---
 
@@ -281,5 +333,5 @@ on **correctness** (per-car dedupe without a timing-out query), not storage.
   snapshot.
 - **Card parity ~95%** — `seller_type` ("Тип продавач") and image galleries are
   not in Neon yet (noted API follow-ups). The past view is intentionally
-  `noindex` (144k thin sold-car URLs would be a programmatic-SEO liability); the
+  `noindex` (~429k thin sold-car URLs would be a programmatic-SEO liability); the
   indexable SEO play is a future model-level price-stats page using `/statistics`.

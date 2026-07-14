@@ -2,6 +2,7 @@ import { LinkButton } from "@/components/common";
 import { PhoneIcon, ViberIcon } from "@/components/icons";
 import { InquiryButton } from "@/components/inquiry";
 import { CONTACT, SOCIALS } from "@/constants";
+import type { InquiryPrefill } from "@/types";
 
 const VIBER_HREF = SOCIALS.find((s) => s.label === "Viber")?.href ?? "";
 
@@ -11,8 +12,34 @@ const VIBER_HREF = SOCIALS.find((s) => s.label === "Viber")?.href ?? "";
  * + Viber are direct links; "Направете заявка" opens the site-wide inquiry modal
  * (`InquiryButton`, the only client part). Hidden for concluded/sold cars (a sold
  * lot is not a lead) — the page shows a "back to active inventory" CTA instead.
+ *
+ * When the car has a resolved brand + model, the inquiry opens PRE-ANSWERED for
+ * this car (skipping the brand/model quiz steps, starting at budget, with a banner
+ * naming the car). Missing brand/model → the button opens the generic quiz.
  */
-export function CarContactPanel({ title }: { title: string }) {
+export function CarContactPanel({
+  title,
+  brand,
+  model,
+  year,
+  lotNumber,
+}: {
+  title: string;
+  brand?: string;
+  model?: string;
+  year?: number;
+  lotNumber?: string;
+}) {
+  const prefill: InquiryPrefill | undefined =
+    brand && model
+      ? {
+          brand,
+          model,
+          carLabel: `${brand} ${model}${year ? ` (${year})` : ""}`,
+          lotNumber,
+        }
+      : undefined;
+
   return (
     <section className="rounded-2xl border border-line bg-white p-6 shadow-card max-md:p-5">
       <p className="mb-1 text-[13px] font-semibold uppercase tracking-wide text-muted">
@@ -26,13 +53,16 @@ export function CarContactPanel({ title }: { title: string }) {
         <LinkButton
           href={CONTACT.phoneHref}
           rippleTheme="light"
-          className="inline-flex min-h-[52px] items-center justify-center gap-2.5 rounded-full bg-gradient-to-r from-brand-dark to-brand px-5 text-sm font-extrabold uppercase tracking-wide text-white shadow-[0_10px_24px_rgba(216,111,22,0.22)] transition-transform duration-200 hover:-translate-y-0.5"
+          className="inline-flex min-h-13 items-center justify-center gap-2.5 rounded-full bg-linear-to-r from-brand-dark to-brand px-5 text-sm font-extrabold uppercase tracking-wide text-white shadow-[0_10px_24px_rgba(216,111,22,0.22)] transition-transform duration-200 hover:-translate-y-0.5"
         >
-          <PhoneIcon className="h-5 w-5" />
+          <PhoneIcon className="size-5" />
           {CONTACT.phone}
         </LinkButton>
 
-        <InquiryButton className="inline-flex min-h-[52px] items-center justify-center rounded-full border-2 border-brand bg-white px-5 text-sm font-extrabold uppercase tracking-wide text-brand-dark transition-transform duration-200 hover:-translate-y-0.5">
+        <InquiryButton
+          prefill={prefill}
+          className="inline-flex min-h-13 items-center justify-center rounded-full border-2 border-brand bg-white px-5 text-sm font-extrabold uppercase tracking-wide text-brand-dark transition-transform duration-200 hover:-translate-y-0.5"
+        >
           Направете заявка
         </InquiryButton>
 
@@ -42,9 +72,9 @@ export function CarContactPanel({ title }: { title: string }) {
             rippleTheme="light"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-[52px] items-center justify-center gap-2.5 rounded-full bg-[#7360f2] px-5 text-sm font-extrabold uppercase tracking-wide text-white transition-transform duration-200 hover:-translate-y-0.5"
+            className="inline-flex min-h-13 items-center justify-center gap-2.5 rounded-full bg-[#7360f2] px-5 text-sm font-extrabold uppercase tracking-wide text-white transition-transform duration-200 hover:-translate-y-0.5"
           >
-            <ViberIcon className="h-5 w-5" />
+            <ViberIcon className="size-5" />
             Viber група
           </LinkButton>
         ) : null}

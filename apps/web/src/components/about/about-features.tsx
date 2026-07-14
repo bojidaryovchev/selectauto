@@ -4,7 +4,7 @@ import { FeatureCard } from "./feature-card";
 /** The 01 / 15+ / 80+ feature-card row. */
 export function AboutFeatures() {
   return (
-    <section className="py-[88px] max-md:py-[58px]">
+    <section className="py-22 max-md:py-14.5">
       <Container>
         <div className="grid grid-cols-3 gap-6 max-[1100px]:grid-cols-1">
           <Reveal>

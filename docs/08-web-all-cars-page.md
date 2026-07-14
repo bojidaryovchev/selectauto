@@ -3,8 +3,9 @@
 The `apps/web` (Next.js 16, App Router, Cache Components/PPR) page that renders the
 car catalog by reading the computed read models ([05](05-projection-tables-car-listings.md))
 **single-table, zero joins**. This doc covers the page, its filters, the
-active/past views, and how the app consumes the data. Deeper design records:
-`apps/web/ALL-CARS-PLAN.md`, `apps/web/ALL-CARS-DB-DESIGN.md`.
+active/past views, and how the app consumes the data. (The former `ALL-CARS-PLAN.md` /
+`ALL-CARS-DB-DESIGN.md` design records are now folded into this doc +
+[05](05-projection-tables-car-listings.md).)
 
 > **Route slug.** The page lives at **`/vsichki-avtomobili`** (Latin
 > transliteration). It must NOT be the Cyrillic `всички-автомобили` — that folder
@@ -75,7 +76,7 @@ Key files (`apps/web/src/`):
 | `lib/car-mapper.ts` | `carListingToView(row, isPast)` — a projection row → card view-model |
 | `queries/cars/get-cars-page.query.ts` | keyset page (active or past), + search branch; uncached |
 | `queries/cars/get-cars-count.query.ts` | **exact** count — `car_listing_counts` summary (0016) for broad views, live `COUNT` for narrow; uncached |
-| `queries/cars/get-car-facets.query.ts` | dropdown options (brands/models/colors/drives/**types**/years) from the `car_listing_facets` summary (0017); uncached. Also exports `getCarBrands` (homepage, **`"use cache"`**) |
+| `queries/cars/get-car-facets.query.ts` | dropdown options (brands/models/colors/drives/**fuels**/**conditions**/**types**/years) from the `car_listing_facets` summary (0017); uncached. Also exports `getCarBrands` (homepage, **`"use cache"`**) |
 | `mutations/cars/load-more-cars.action.ts` | `"use server"` infinite-scroll loader |
 | `components/cars/all-cars/*` | `AllCarsGrid`, `AuctionCard`, `AuctionCountdown`, `CarFilterBar`, `CarGridSkeleton` |
 
@@ -90,16 +91,36 @@ Key files (`apps/web/src/`):
 | Filter (`CarFilters`) | UI | Predicate |
 |---|---|---|
 | `status` | "Активни \| Приключили" toggle | selects the **table** (past → archived) |
+| `auctionWindow` | auction-timing dropdown (**active view only**) | `sale_date` range vs `now()` (see the design note below): `scheduled` → `sale_date > now()`; `today` → …≤ end of today; `24h`/`3d`/`7d` → …≤ `now()` + that span. Ignored when `status=past` (all concluded) |
 | `channel` | "Само с Buy Now" toggle | `buy-now` → `buy_now=true AND effective_price>0`; `auction` → not-that |
 | `market` | САЩ / Корея / Канада segmented | `location_country` = `USA` / `kr` / `Canada` (**not** `domain_name`) |
 | `brand` / `model` | dropdowns (model brand-scoped) | `manufacturer_id` / `model_id` (external ids) |
 | `color` | dropdown | `car_color` (canonical name) |
 | `drive` | dropdown | `drive_wheel` (front/all/rear) |
+| `fuel` | **"Гориво" dropdown** (0020) | `fuel_type` (gasoline/diesel/electric/hybrid/… — raw taxonomy; see caveat in `car-filters.type.ts` re: `electric` vs `hybrid`) |
 | `condition` | **"Състояние" dropdown** | `condition` IN (raws) — options grouped by BG label (one label can cover several raws, e.g. `run_and_drives,engine_starts` → "Пали и се движи") |
 | `type` | **"Тип" dropdown** (combined) | see §3a |
 | `yearFrom` / `yearTo` | "Година от" / "Година до" inputs | `car_year >= from` / `<= to` (a real range) |
 | `priceMin` / `priceMax` | "Цена от/до" inputs | range on `effective_price` |
 | `search` | "Лот № / VIN" | exact lookup (see §3b) |
+
+> **Why `channel` & `market` are page-level tabs, not per-card dropdowns.** The data
+> partitions cleanly (live probe): a car is effectively **buy-now-only (~210k)** OR
+> **auction-only (~703k)**, with only **45** cars that are *both*; and `location_country`
+> spans multiple countries for only **4 of ~931k** cars. So each belongs as a page tab —
+> and once a channel tab is applied, the projection's pick-strategy only has to
+> disambiguate auction-relisted cars (see [05 §4](05-projection-tables-car-listings.md)).
+
+> **Auction-timing (`auctionWindow`) design notes.** Only **~13.5%** of active cars have a
+> future `sale_date` (the mass is in the 24h–3-day range; ≤1h is empty → buckets are
+> **day-scale**, not hourly). **"Днес" anchors to `America/New_York`, not UTC:** every dated
+> lot is US/CA Copart+IAAI on an ET clock, and Encar/KR is a fixed-price marketplace with
+> **zero** sale_dates (so KR never participates — no US↔KR timezone conflict); ET-anchoring
+> attributes early-UTC-morning lots to the right US day (measured: Sun 2026-07-05 gave **0**
+> cars under UTC vs **115** under ET). The query keeps `ORDER BY sort_id DESC` (~45 ms over
+> `cl_sort`; `sale_date ASC` was 312 ms) and adds **no** index (a `WHERE sale_date > now()`
+> partial index is impossible — `now()` isn't immutable). An empty "Днес" on some
+> evenings/weekends is honest ("no more US auctions today").
 
 ### 3a. The combined "Тип" filter (vehicle_type + body_type)
 
@@ -162,6 +183,9 @@ present), a price row, and a CTA.
   not in ingestion. Enum maps (status/condition/drive/transmission/color/
   vehicle_type/body_type) are complete against the API enums; `damage_main` has a
   curated head + verbatim tail; `engine`/`title`/`seller` are verbatim passthrough.
+  The legacy WP page's ~3,000-line normalizer was **not** ported — ingestion's
+  `normalize.ts` already canonicalizes the values (Korean strings, `MERCEDES BENZ`↔
+  `MERCEDES-BENZ`, `4WD`/`AWD`/`4x4`), so the app only applies BG **labels**, not cleanup.
 - **Title de-duplication:** some upstream titles already start with the year
   (`"2015 Nissan…"`); the mapper only prepends `car_year` when the title doesn't
   already start with `\d{4}` (avoids "2015 2015 Nissan…").

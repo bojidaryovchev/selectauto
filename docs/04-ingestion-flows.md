@@ -31,7 +31,7 @@ the reference upserts. So the recompute hook (read-model maintenance) is exercis
 by 1/2/3/5 automatically. **Flow 6** calls no API — it re-runs the projection
 recompute over every car to repair any best-effort recompute swallowed by 1/2/3/5
 (see [05 §11/§12](05-projection-tables-car-listings.md)); it keeps
-`car_listings_counts`/`_facets` exact too because it uses the same `_counted`
+`car_listing_counts`/`_facets` exact too because it uses the same `_counted`
 wrappers as the backfill.
 
 ---
@@ -77,7 +77,10 @@ same state machine shape; only `mode` + `minutes` differ.
   - `archived` honors the payload but keeps existing state when absent (see
     [03](03-normalization-and-field-mapping.md#the-archived-handling-why-its-nullable-here)).
 - Collect every touched `car_id`, then call **once** (set-based) at end:
-  `recompute_car_listings(ids[])` **and** `recompute_archived_car_listings(ids[])`.
+  `recompute_car_listings_counted(ids[])` **and**
+  `recompute_archived_car_listings_counted(ids[])` — the `_counted` wrappers, which
+  rebuild both projections **and** maintain `car_listing_counts`/`car_listing_facets`
+  in the same transaction (serialized by an advisory lock, migration 0026).
 
 > Lots missing `(domain_id, lot_number)` are skipped with a `skip_lot_missing_key`
 > warning. Cars with a null `external_car_id` still insert (NULLs distinct in the
@@ -102,8 +105,10 @@ identical loop shape, but fetches `/archived-lots` and calls `archiveLots(page.d
   isn't lost — `car_id` resolved via `(SELECT id FROM cars WHERE external_car_id =
   $2)`.
 - `RETURNING car_id` collects the **local** car ids touched, then once at end:
-  `recompute_car_listings(ids[])` (drop/swap the active card) **and**
-  `recompute_archived_car_listings(ids[])` (add/refresh the past card).
+  `recompute_car_listings_counted(ids[])` (drop/swap the active card) **and**
+  `recompute_archived_car_listings_counted(ids[])` (add/refresh the past card) —
+  the `_counted` wrappers, which also keep `car_listing_counts`/`car_listing_facets`
+  exact in the same transaction.
 
 > The `RETURNING car_id` is essential — the archived payload has only the external
 > id, but the recompute functions take local ids. Without it the read models

@@ -308,14 +308,21 @@ export function ParticleHero() {
       const easeInOut = (t: number) =>
         t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 
-      const clock = new THREE.Clock();
+      // Timer replaces the deprecated THREE.Clock (deprecated r183). Unlike
+      // Clock, getDelta()/getElapsed() don't advance time — update() does, once
+      // per frame. connect(document) wires the Page Visibility API so the delta
+      // is forced to 0 while the tab is hidden, which is what our manual
+      // clock.getDelta() "flush" calls used to do by hand.
+      const timer = new THREE.Timer();
+      timer.connect(document);
 
-      function animate() {
+      function animate(timestamp?: number) {
         rafId = requestAnimationFrame(animate);
         if (!isVisible || !models.length) return;
 
-        const dt = Math.min(clock.getDelta(), 0.05);
-        const t = clock.elapsedTime;
+        timer.update(timestamp);
+        const dt = Math.min(timer.getDelta(), 0.05);
+        const t = timer.getElapsed();
         phaseT += dt;
 
         if (phase === "static" && phaseT >= STATIC_DURATION) {
@@ -402,15 +409,19 @@ export function ParticleHero() {
       const observer = new IntersectionObserver(
         (entries) => {
           isVisible = entries[0]?.isIntersecting ?? true;
-          if (isVisible) clock.getDelta();
+          // Reset so the frame after re-entering the viewport doesn't see a
+          // large accumulated delta (IntersectionObserver isn't covered by
+          // Timer's Page Visibility handling — that only tracks tab visibility).
+          if (isVisible) timer.reset();
         },
         { threshold: 0.05 },
       );
       observer.observe(hero);
 
       const onVisibility = () => {
+        // Timer.connect() already zeroes the delta while hidden and resets on
+        // becoming visible; this handler only needs to toggle our render gate.
         isVisible = !document.hidden;
-        if (isVisible) clock.getDelta();
       };
       const onResize = () => {
         renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
@@ -424,6 +435,7 @@ export function ParticleHero() {
         observer.disconnect();
         document.removeEventListener("visibilitychange", onVisibility);
         window.removeEventListener("resize", onResize);
+        timer.dispose();
         controls.dispose();
         renderer.dispose();
         particleGeometry.dispose();
@@ -444,42 +456,32 @@ export function ParticleHero() {
   return (
     <section
       ref={heroRef}
-      className="relative isolate min-h-screen overflow-hidden bg-[radial-gradient(ellipse_at_70%_50%,#2a1a10_0%,#100a06_55%,#050302_100%)] text-white max-[900px]:min-h-[100svh] max-[900px]:bg-[radial-gradient(ellipse_at_60%_80%,#3a1f0a_0%,#1a0d05_50%,#080403_100%)]"
+      className="relative isolate min-h-screen overflow-hidden bg-[radial-gradient(ellipse_at_70%_50%,#2a1a10_0%,#100a06_55%,#050302_100%)] text-white max-[900px]:min-h-svh max-[900px]:bg-[radial-gradient(ellipse_at_60%_80%,#3a1f0a_0%,#1a0d05_50%,#080403_100%)]"
     >
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 z-[1] h-full w-full [touch-action:pan-y] max-[900px]:top-[48%] max-[900px]:h-[52%]"
+        className="absolute inset-0 z-1 size-full [touch-action:pan-y] max-[900px]:top-[48%] max-[900px]:h-[52%]"
       />
 
       {/* Vignette */}
-      <div className="pointer-events-none absolute inset-0 z-[2] bg-[linear-gradient(90deg,rgba(0,0,0,0.62)_0%,rgba(0,0,0,0.28)_42%,rgba(0,0,0,0.05)_100%),radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.58)_100%)]" />
+      <div className="pointer-events-none absolute inset-0 z-2 bg-[linear-gradient(90deg,rgba(0,0,0,0.62)_0%,rgba(0,0,0,0.28)_42%,rgba(0,0,0,0.05)_100%),radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.58)_100%)]" />
 
       {/* Copy — aligned to the shared 1280px page column (matches the header/nav
           and every Container section) instead of a fixed viewport inset. */}
-      <div className="pointer-events-none relative z-[5] mx-auto flex min-h-screen w-[min(100%-28px,1280px)] flex-col items-start justify-center pb-[90px] pt-[clamp(110px,12vh,150px)] [&>*]:pointer-events-auto max-[900px]:min-h-fit max-[900px]:justify-start max-[900px]:pb-0 max-[900px]:pt-[52px]">
-        <div
-          className="mb-6 inline-flex w-fit items-center gap-2.5 rounded-full border border-[#e86c20]/50 bg-[#e86c20]/[0.12] px-5 py-2.5 text-xs font-extrabold tracking-[2px] text-[#ffb37a] backdrop-blur-md max-[900px]:mb-[18px] max-[900px]:px-3.5 max-[900px]:py-2 max-[900px]:text-[10px] max-[900px]:tracking-[1.4px]"
-        >
-          <span
-            className="h-2 w-2 rounded-full bg-brand-glow"
-            style={{ animation: "sa-pulse 2s infinite" }}
-          />
-          SELECTAUTO · AUCTION · ENCAR · IMPORT
-        </div>
-
-        <h1 className="mb-6 max-w-[680px] text-[clamp(46px,6vw,88px)] font-black leading-[0.95] tracking-[-2px] text-white max-[900px]:mb-3.5 max-[900px]:max-w-full max-[900px]:text-[clamp(34px,11vw,46px)] max-[900px]:leading-none max-[900px]:tracking-[-1.4px]">
+      <div className="pointer-events-none relative z-5 mx-auto flex min-h-screen w-[min(100%-28px,1280px)] flex-col items-start justify-center pb-22.5 pt-[clamp(110px,12vh,150px)] *:pointer-events-auto max-[900px]:min-h-fit max-[900px]:justify-start max-[900px]:pb-0 max-[900px]:pt-13">
+        <h1 className="mb-6 max-w-170 text-[clamp(46px,6vw,88px)] font-black leading-[0.95] tracking-[-2px] text-white max-[900px]:mb-3.5 max-[900px]:max-w-full max-[900px]:text-[clamp(34px,11vw,46px)] max-[900px]:leading-none max-[900px]:tracking-[-1.4px]">
           Намираме{" "}
-          <span className="bg-gradient-to-br from-brand-glow to-[#ffb37a] bg-clip-text text-transparent">
+          <span className="bg-linear-to-br from-brand-glow to-[#ffb37a] bg-clip-text text-transparent">
             точните
           </span>{" "}
           автомобили за{" "}
-          <span className="bg-gradient-to-br from-brand-glow to-[#ffb37a] bg-clip-text text-transparent">
+          <span className="bg-linear-to-br from-brand-glow to-[#ffb37a] bg-clip-text text-transparent">
             точните
           </span>{" "}
           хора
         </h1>
 
-        <p className="mb-9 max-w-[520px] text-lg leading-relaxed text-white/70 max-[900px]:mb-[22px] max-[900px]:max-w-full max-[900px]:text-sm max-[900px]:text-white/85">
+        <p className="mb-9 max-w-130 text-lg/relaxed text-white/70 max-[900px]:mb-5.5 max-[900px]:max-w-full max-[900px]:text-sm max-[900px]:text-white/85">
           SelectAuto не е просто каталог. Това е процес, опит и реално
           съдействие — от подбора и участието в търг до логистиката и предаването
           на ключ.
@@ -489,14 +491,14 @@ export function ParticleHero() {
           <LinkButton
             href="/vsichki-avtomobili/"
             rippleTheme="light"
-            className="inline-flex min-h-[54px] items-center justify-center rounded-full bg-gradient-to-br from-brand-glow to-[#e86c20] px-[30px] text-[15px] font-extrabold text-white shadow-[0_12px_40px_rgba(232,108,32,0.4)] transition-transform duration-200 hover:-translate-y-[3px] max-[900px]:w-full"
+            className="inline-flex min-h-13.5 items-center justify-center rounded-full bg-linear-to-br from-brand-glow to-[#e86c20] px-7.5 text-[15px] font-extrabold text-white shadow-[0_12px_40px_rgba(232,108,32,0.4)] transition-transform duration-200 hover:-translate-y-0.75 max-[900px]:w-full"
           >
             Разгледай автомобилите
           </LinkButton>
           <Button
-            onClick={openInquiry}
+            onClick={() => openInquiry()}
             rippleTheme="light"
-            className="inline-flex min-h-[54px] items-center justify-center rounded-full border border-white/[0.18] bg-white/[0.08] px-[30px] text-[15px] font-extrabold text-white backdrop-blur-md transition-colors hover:bg-white/[0.14] max-[900px]:w-full"
+            className="inline-flex min-h-13.5 items-center justify-center rounded-full border border-white/18 bg-white/8 px-7.5 text-[15px] font-extrabold text-white backdrop-blur-md transition-colors hover:bg-white/[0.14] max-[900px]:w-full"
           >
             Направете запитване
           </Button>
@@ -504,13 +506,13 @@ export function ParticleHero() {
       </div>
 
       {/* Model label — pinned to the right edge of the shared page column. */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-[58px] z-[5] max-[900px]:bottom-5 max-[900px]:z-[8]">
+      <div className="pointer-events-none absolute inset-x-0 bottom-14.5 z-5 max-[900px]:bottom-5 max-[900px]:z-8">
         <div className="mx-auto w-[min(100%-28px,1280px)] text-right">
           <div className="mb-2 text-[11px] font-extrabold uppercase tracking-[3px] text-white/40 max-[900px]:hidden">
             Подбор · Внос · Доставка
           </div>
           <div
-            className="bg-gradient-to-br from-brand-glow to-[#ffb37a] bg-clip-text text-[56px] font-black leading-none tracking-[-1px] text-transparent transition-opacity duration-300 max-[900px]:text-[36px] max-[900px]:tracking-[-0.5px]"
+            className="bg-linear-to-br from-brand-glow to-[#ffb37a] bg-clip-text text-[56px] font-black leading-none tracking-[-1px] text-transparent transition-opacity duration-300 max-[900px]:text-[36px] max-[900px]:tracking-[-0.5px]"
             style={{ opacity: infoVisible ? 1 : 0 }}
           >
             {modelName}
@@ -525,13 +527,13 @@ export function ParticleHero() {
       </div>
 
       {/* Progress dots */}
-      <div className="pointer-events-none absolute bottom-[30px] left-1/2 z-[5] flex -translate-x-1/2 gap-3 max-[900px]:hidden">
+      <div className="pointer-events-none absolute bottom-7.5 left-1/2 z-5 flex -translate-x-1/2 gap-3 max-[900px]:hidden">
         {HERO_MODELS.map((_, i) => (
           <div
             key={i}
-            className={`h-[3px] w-8 rounded-sm transition-colors duration-300 ${
+            className={`h-0.75 w-8 rounded-sm transition-colors duration-300 ${
               activeDot === i
-                ? "bg-gradient-to-r from-brand-glow to-[#ffb37a]"
+                ? "bg-linear-to-r from-brand-glow to-[#ffb37a]"
                 : "bg-white/15"
             }`}
           />

@@ -23,7 +23,7 @@ export function SocialLink({
       rippleTheme="light"
       target={external ? "_blank" : undefined}
       rel={external ? "noopener noreferrer" : undefined}
-      className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.14] bg-white/[0.06] text-white transition-all duration-200 hover:-translate-y-0.5 hover:border-brand/55 hover:bg-brand/15 [&_svg]:block [&_svg]:h-5 [&_svg]:w-5"
+      className="inline-flex size-12 items-center justify-center rounded-2xl border border-white/[0.14] bg-white/6 text-white transition-all duration-200 hover:-translate-y-0.5 hover:border-brand/55 hover:bg-brand/15 [&_svg]:block [&_svg]:size-5"
     >
       {children}
     </LinkButton>

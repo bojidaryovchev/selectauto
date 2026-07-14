@@ -4,7 +4,7 @@ import type { ComponentType } from "react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/common";
-import { FlagCaIcon, FlagKrIcon, FlagUsIcon } from "@/components/icons";
+import { ChevronDownIcon, FlagCaIcon, FlagKrIcon, FlagUsIcon } from "@/components/icons";
 import { serializeCarFilters } from "@/lib/car-filters";
 import type { CarFilters, FacetOptions } from "@/types/car-filters.type";
 
@@ -19,6 +19,21 @@ const MARKETS: { value: CarFilters["market"]; label: string; Icon?: ComponentTyp
   { value: "ca", label: "Канада", Icon: FlagCaIcon },
 ];
 
+/**
+ * Auction-timing windows (ACTIVE view only). `undefined` = "Всички" (no
+ * predicate). Day-scale, not hours: only ~13.5% of active cars have a future
+ * auction date and 0 auction within an hour, so hour buckets would be empty —
+ * see docs/08-web-all-cars-page.md §3.
+ */
+const AUCTION_WINDOWS: { value: CarFilters["auctionWindow"]; label: string }[] = [
+  { value: undefined, label: "Всички" },
+  { value: "scheduled", label: "С насрочен търг" },
+  { value: "today", label: "Днес" },
+  { value: "24h", label: "24 часа" },
+  { value: "3d", label: "До 3 дни" },
+  { value: "7d", label: "До 7 дни" },
+];
+
 /** Text inputs apply after the user stops typing (the rest apply instantly). */
 const TEXT_DEBOUNCE_MS = 1500;
 
@@ -29,8 +44,19 @@ const inputCls =
 const labelCls = "mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted";
 
 /**
+ * Pill / chip styling for the segmented scope controls (market + auction window).
+ * These used to be a fixed `inline-flex overflow-hidden` bar that clipped its
+ * later options on narrow phones; wrapping pills (`flex flex-wrap gap-2`) grow to
+ * as many rows as they need without ever cutting a label off.
+ */
+const pillBase =
+  "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-bold transition";
+const pillActive = "border-brand bg-brand text-white";
+const pillIdle = "border-[#ddd] bg-white text-ink hover:border-[#bbb] hover:bg-[#f6f6f6]";
+
+/**
  * The catalog filter bar. **No submit button** — filters apply automatically:
- *  - Dropdowns, the market segmented control, and the status/buy-now toggles
+ *  - Dropdowns, the market/auction pill controls, and the status/buy-now toggles
  *    apply **instantly** on change.
  *  - The text inputs (year from/to, price from/to, lot/VIN) apply after a
  *    ~1.5s **debounce** (so we don't navigate on every keystroke).
@@ -39,12 +65,21 @@ const labelCls = "mb-1.5 block text-xs font-semibold uppercase tracking-wide tex
  * not push, so rapid changes don't flood browser history). The page re-renders
  * SSR for the new filters and `AllCarsGrid` resets via its key. `current` seeds
  * the controls from the URL-parsed filters.
+ *
+ * Layout (top → bottom): mode toggle + clear · lot/VIN lookup · primary filters
+ * (make/model/type + price/year) · scope (market/buy-now/auction) · secondary
+ * attributes (fuel/drive/condition/colour). The secondary block collapses behind
+ * an "Още филтри" toggle on phones (`lg` and up it's always expanded) so the
+ * results grid sits higher on small screens.
  */
 export function CarFilterBar({ facets, current }: { facets: FacetOptions; current: CarFilters }) {
   const router = useRouter();
   // `draft` mirrors the controls (so typing is responsive); the URL is the
   // source of truth and is updated instantly or debounced per control.
   const [draft, setDraft] = useState<CarFilters>(current);
+  // Secondary attributes are collapsed by default on mobile; this drives that
+  // disclosure (ignored at `lg`+, where the panel is forced open via CSS).
+  const [moreOpen, setMoreOpen] = useState(false);
 
   // Keep the controls in sync when the URL changes from elsewhere (back/forward,
   // a card link, Clear). React's "adjust state during render" pattern — no effect,
@@ -72,6 +107,9 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
     const next = { ...d, [key]: value };
     if (value === undefined || value === "" || (typeof value === "number" && Number.isNaN(value))) delete next[key];
     if (key === "brand") delete next.model;
+    // Auction window is active-only; switching to the past tab clears it (and the
+    // control is hidden there) so it can't linger in the URL or draft.
+    if (key === "status" && value === "past") delete next.auctionWindow;
     return next;
   };
 
@@ -104,11 +142,14 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
   };
 
   const isPast = draft.status === "past";
+  // Count of the collapsible secondary attributes currently applied — surfaced on
+  // the "Още филтри" toggle so users know filters are hidden while it's collapsed.
+  const secondaryCount = [draft.fuel, draft.drive, draft.condition, draft.color].filter(Boolean).length;
 
   return (
-    <div className="rounded-2xl border border-[#e8e8e8] bg-white p-5 shadow-sm">
-      {/* Active vs Past + Clear (top row) */}
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+    <div className="rounded-2xl border border-line bg-white p-5 shadow-sm max-md:p-4">
+      {/* ── Mode toggle (Active vs Past) + Clear ── */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="inline-flex overflow-hidden rounded-[10px] border border-[#ddd]">
           <Button
             onClick={() => setInstant("status", undefined)}
@@ -131,8 +172,21 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
         </Button>
       </div>
 
-      {/* Attribute dropdowns — instant */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      {/* ── Lot № / VIN lookup — a direct find, kept apart from the browse filters
+          (debounced). ── */}
+      <div className="mt-5">
+        <label className={labelCls}>Търсене по лот № / VIN</label>
+        <input
+          className={`${inputCls} lg:max-w-md`}
+          type="text"
+          placeholder="Въведи лот номер или VIN…"
+          value={draft.search ?? ""}
+          onChange={(e) => setDebounced("search", e.target.value || undefined)}
+        />
+      </div>
+
+      {/* ── Primary filters (always visible): make/model/type + price/year ── */}
+      <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div>
           <label className={labelCls}>Марка</label>
           <select className={selectCls} value={draft.brand ?? ""} onChange={(e) => setInstant("brand", numOrUndef(e.target.value))}>
@@ -172,70 +226,10 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
             ))}
           </select>
         </div>
-        <div>
-          <label className={labelCls}>Състояние</label>
-          <select
-            className={selectCls}
-            value={draft.condition ?? ""}
-            onChange={(e) => setInstant("condition", e.target.value || undefined)}
-          >
-            <option value="">Всички състояния</option>
-            {facets.conditions.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-                {c.count !== undefined ? ` (${c.count})` : ""}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className={labelCls}>Цвят</label>
-          <select className={selectCls} value={draft.color ?? ""} onChange={(e) => setInstant("color", e.target.value || undefined)}>
-            <option value="">Всички цветове</option>
-            {facets.colors.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className={labelCls}>Задвижване</label>
-          <select className={selectCls} value={draft.drive ?? ""} onChange={(e) => setInstant("drive", e.target.value || undefined)}>
-            <option value="">Всички</option>
-            {facets.drives.map((d) => (
-              <option key={d.value} value={d.value}>
-                {d.label}
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
 
-      {/* Year + price ranges — debounced */}
+      {/* Price + year ranges — debounced */}
       <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div>
-          <label className={labelCls}>Година от</label>
-          <input
-            className={inputCls}
-            type="number"
-            inputMode="numeric"
-            placeholder="1990"
-            value={draft.yearFrom ?? ""}
-            onChange={(e) => setDebounced("yearFrom", numOrUndef(e.target.value))}
-          />
-        </div>
-        <div>
-          <label className={labelCls}>Година до</label>
-          <input
-            className={inputCls}
-            type="number"
-            inputMode="numeric"
-            placeholder="2027"
-            value={draft.yearTo ?? ""}
-            onChange={(e) => setDebounced("yearTo", numOrUndef(e.target.value))}
-          />
-        </div>
         <div>
           <label className={labelCls}>Цена от ($)</label>
           <input
@@ -258,58 +252,165 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
             onChange={(e) => setDebounced("priceMax", numOrUndef(e.target.value))}
           />
         </div>
-      </div>
-
-      {/* Search (debounced) + market (instant) + buy-now (instant) */}
-      <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="lg:max-w-md lg:flex-1">
-          <label className={labelCls}>Лот № / VIN</label>
+        <div>
+          <label className={labelCls}>Година от</label>
           <input
             className={inputCls}
-            type="text"
-            placeholder="Въведи лот номер или VIN…"
-            value={draft.search ?? ""}
-            onChange={(e) => setDebounced("search", e.target.value || undefined)}
+            type="number"
+            inputMode="numeric"
+            placeholder="1990"
+            value={draft.yearFrom ?? ""}
+            onChange={(e) => setDebounced("yearFrom", numOrUndef(e.target.value))}
           />
         </div>
+        <div>
+          <label className={labelCls}>Година до</label>
+          <input
+            className={inputCls}
+            type="number"
+            inputMode="numeric"
+            placeholder="2027"
+            value={draft.yearTo ?? ""}
+            onChange={(e) => setDebounced("yearTo", numOrUndef(e.target.value))}
+          />
+        </div>
+      </div>
 
-        <div className="flex flex-wrap items-end gap-4">
-          <div>
-            <label className={labelCls}>Пазар</label>
-            <div className="inline-flex overflow-hidden rounded-[10px] border border-[#ddd]">
-              {MARKETS.map((m) => {
-                const active = draft.market === m.value;
-                const Icon = m.Icon;
-                return (
-                  <Button
-                    key={m.label}
-                    onClick={() => setInstant("market", m.value)}
-                    className={`inline-flex items-center gap-1.5 px-3.5 py-2.5 text-sm font-bold transition ${active ? "bg-brand text-white" : "bg-white text-ink hover:bg-[#f6f6f6]"}`}
-                  >
-                    {Icon ? (
-                      <Icon className="h-3.5 w-5.25 overflow-hidden rounded-xs shadow-[0_0_0_1px_rgba(0,0,0,0.08)]" />
-                    ) : (
-                      // Animated earth (animated WebP — rendered via <img>; Next's
-                      // optimizer would strip the animation, so a plain <img> is used).
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src="/icons/earth-spinning.webp" alt="" width={48} height={48} className="h-5 w-5" />
-                    )}
-                    {m.label}
-                  </Button>
-                );
-              })}
+      {/* ── Scope: market + buy-now (instant) ── */}
+      <div className="mt-5 flex flex-wrap items-end gap-x-6 gap-y-4">
+        <div>
+          <label className={labelCls}>Пазар</label>
+          <div className="flex flex-wrap gap-2">
+            {MARKETS.map((m) => {
+              const active = draft.market === m.value;
+              const Icon = m.Icon;
+              return (
+                <Button
+                  key={m.label}
+                  onClick={() => setInstant("market", m.value)}
+                  className={`${pillBase} ${active ? pillActive : pillIdle}`}
+                >
+                  {Icon ? (
+                    <Icon className="h-3.5 w-5.25 overflow-hidden rounded-xs shadow-[0_0_0_1px_rgba(0,0,0,0.08)]" />
+                  ) : (
+                    // Animated earth (animated WebP — rendered via <img>; Next's
+                    // optimizer would strip the animation, so a plain <img> is used).
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src="/icons/earth-spinning.webp" alt="" width={48} height={48} className="size-5" />
+                  )}
+                  {m.label}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+
+        <label className="flex h-11 cursor-pointer items-center gap-2.5 text-sm font-semibold text-ink">
+          <input
+            type="checkbox"
+            className="size-5 accent-brand"
+            checked={draft.channel === "buy-now"}
+            onChange={(e) => setInstant("channel", e.target.checked ? "buy-now" : undefined)}
+          />
+          Само с Buy Now
+        </label>
+      </div>
+
+      {/* Auction-timing window (instant) — ACTIVE view only. Hidden on the past
+          tab, where every lot has concluded and a future-date window is moot. */}
+      {!isPast ? (
+        <div className="mt-4">
+          <label className={labelCls}>Търг</label>
+          <div className="flex flex-wrap gap-2">
+            {AUCTION_WINDOWS.map((w) => {
+              const active = draft.auctionWindow === w.value;
+              return (
+                <Button
+                  key={w.label}
+                  onClick={() => setInstant("auctionWindow", w.value)}
+                  className={`${pillBase} ${active ? pillActive : pillIdle}`}
+                >
+                  {w.label}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      {/* ── Secondary attributes — collapsible on mobile, always shown at lg+ ── */}
+      <div className="mt-5 border-t border-line pt-4">
+        <Button
+          onClick={() => setMoreOpen((v) => !v)}
+          aria-expanded={moreOpen}
+          className="flex w-full items-center justify-between gap-3 text-sm font-bold text-ink lg:hidden"
+        >
+          <span>
+            Още филтри
+            {secondaryCount ? <span className="ml-1.5 text-brand">({secondaryCount})</span> : null}
+          </span>
+          <ChevronDownIcon className={`size-4 shrink-0 text-brand transition-transform ${moreOpen ? "rotate-180" : ""}`} />
+        </Button>
+
+        {/* CSS-only disclosure: animate grid-template-rows 0fr→1fr on mobile; at lg+
+            it's forced open (and the toggle above is hidden). No JS height measuring. */}
+        <div
+          className={`grid transition-[grid-template-rows] duration-300 ease-out lg:grid-rows-[1fr] ${moreOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+        >
+          <div className="overflow-hidden">
+            <div className="grid grid-cols-1 gap-4 pt-4 sm:grid-cols-2 lg:grid-cols-4 lg:pt-0">
+              <div>
+                <label className={labelCls}>Гориво</label>
+                <select className={selectCls} value={draft.fuel ?? ""} onChange={(e) => setInstant("fuel", e.target.value || undefined)}>
+                  <option value="">Всички</option>
+                  {facets.fuels.map((f) => (
+                    <option key={f.value} value={f.value}>
+                      {f.label}
+                      {f.count !== undefined ? ` (${f.count})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Задвижване</label>
+                <select className={selectCls} value={draft.drive ?? ""} onChange={(e) => setInstant("drive", e.target.value || undefined)}>
+                  <option value="">Всички</option>
+                  {facets.drives.map((d) => (
+                    <option key={d.value} value={d.value}>
+                      {d.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Състояние</label>
+                <select
+                  className={selectCls}
+                  value={draft.condition ?? ""}
+                  onChange={(e) => setInstant("condition", e.target.value || undefined)}
+                >
+                  <option value="">Всички състояния</option>
+                  {facets.conditions.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                      {c.count !== undefined ? ` (${c.count})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Цвят</label>
+                <select className={selectCls} value={draft.color ?? ""} onChange={(e) => setInstant("color", e.target.value || undefined)}>
+                  <option value="">Всички цветове</option>
+                  {facets.colors.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
-
-          <label className="flex h-11 cursor-pointer items-center gap-2.5 text-sm font-semibold text-ink">
-            <input
-              type="checkbox"
-              className="h-5 w-5 accent-brand"
-              checked={draft.channel === "buy-now"}
-              onChange={(e) => setInstant("channel", e.target.checked ? "buy-now" : undefined)}
-            />
-            Само с Buy Now
-          </label>
         </div>
       </div>
     </div>

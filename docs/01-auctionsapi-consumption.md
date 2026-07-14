@@ -251,8 +251,10 @@ wrapper. See [03](03-normalization-and-field-mapping.md#coercion-helpers).
   "from_year": 2002, "to_year": 2010, "manufacturer_id": 16, "model_id": 94 }
 ```
 
-Catalog scale: ~424 manufacturers, ~5.5k models. ~3/4 of manufacturers have
-`cars_qty = 0`; the reference sync skips those by default (saves the rate budget).
+Catalog scale: ~424 manufacturers, ~5.5k models upstream. ~3/4 of manufacturers
+have `cars_qty = 0`; the reference sync skips those by default (saves the rate
+budget), so we store **~3,462 models** in `vehicle_models` — fewer than the
+upstream ~5.5k. See [02](02-data-model-and-tables.md).
 
 ---
 
@@ -278,9 +280,12 @@ the `status` precedence in the recompute functions.
 | 3 | sale | | 7 | failed |
 | 4 | on_approval | | 8 | not_sold |
 
-> Also observed in practice/UI: `future`, `upcoming`. The "actionable" set used
-> by the active read model is `sale, upcoming, future, on_approval, new_auction`;
-> the "concluded" set used by the archived read model is `sold, not_sold, failed`.
+> Also observed in practice/UI: `future` and `upcoming`. Although the PHP
+> `PriceStatusEnum` stops at `not_sold = 8`, these two appear as additional
+> **status ids `9` (`future`) and `10` (`upcoming`)** in the `/cars` `status`
+> filter. The "actionable" set used by the active read model is
+> `sale, upcoming, future, on_approval, new_auction`; the "concluded" set used by
+> the archived read model is `sold, not_sold, failed`.
 > See [05](05-projection-tables-car-listings.md).
 
 ### Vehicle types — `vehicle_type` (`VehicleTypeEnum`)

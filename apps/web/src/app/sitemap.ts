@@ -1,0 +1,50 @@
+import type { MetadataRoute } from "next";
+import { SITE_URL } from "@/constants";
+
+/**
+ * Root sitemap (`/sitemap.xml`) — the indexable STATIC pages only. The ~945k car
+ * listings are split into 50k-URL chunks served from `app/avtomobil/sitemap.ts`
+ * (`/avtomobil/sitemap/{id}.xml`); robots.txt references both this file and those
+ * chunks. (Next 16 does NOT auto-emit a `<sitemapindex>` when `generateSitemaps`
+ * is used — verified in next-metadata-route-loader — so we enumerate the chunk
+ * URLs in robots.ts instead of relying on an auto-generated index.)
+ *
+ * URLs are the canonical SLASHLESS form (the app runs `trailingSlash: false`, so
+ * a trailing-slash URL 308-redirects to slashless — the slashless form is what we
+ * want indexed). Excluded: `/lyubimi` + the auth/account pages (`/sign-in`,
+ * `/registratsiya`, `/verify`, `/zabravena-parola`, `/nova-parola` — all
+ * noindex) and the `?status=past` view (noindex). Static — no request-time API,
+ * no DB.
+ */
+export default function sitemap(): MetadataRoute.Sitemap {
+  const now = new Date();
+  const entry = (
+    path: string,
+    changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"],
+    priority: number,
+  ): MetadataRoute.Sitemap[number] => ({
+    url: `${SITE_URL}${path}`,
+    lastModified: now,
+    changeFrequency,
+    priority,
+  });
+
+  return [
+    entry("", "daily", 1), // home
+    entry("/vsichki-avtomobili", "hourly", 0.9), // catalog (active)
+    entry("/proces", "monthly", 0.6),
+    entry("/carfax", "monthly", 0.7),
+    entry("/za-nas", "monthly", 0.6),
+    entry("/otzivi", "monthly", 0.6), // customer reviews
+    entry("/kontakti", "yearly", 0.6),
+    entry("/kalkulator", "monthly", 0.8), // import-cost calculator
+    entry("/proverka-vin", "monthly", 0.8), // VIN / Carfax availability checker
+    entry("/chesto-zadavani-vaprosi", "monthly", 0.7), // FAQ hub
+    entry("/vnos-na-koli-ot-korea", "weekly", 0.9), // Korea country hub (flagship money page)
+    entry("/vnos-na-koli-ot-sasht", "weekly", 0.9), // USA country hub
+    entry("/vnos-na-koli-ot-kanada", "weekly", 0.9), // Canada country hub
+    entry("/obshti-usloviya", "yearly", 0.2), // Terms & Conditions (ЗЕТ/ЗЗП)
+    entry("/politika-za-poveritelnost", "yearly", 0.2),
+    entry("/politika-za-biskvitki", "yearly", 0.2), // Cookie Policy (ePrivacy)
+  ];
+}

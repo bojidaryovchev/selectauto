@@ -13,11 +13,11 @@ const BENEFITS = [
 /** Wide media card beside the 5+ card and the "С SelectAuto получаваш" list. */
 export function AboutMedia() {
   return (
-    <section className="py-[88px] max-md:py-[58px]">
+    <section className="py-22 max-md:py-14.5">
       <Container>
         <div className="grid grid-cols-[1.15fr_0.85fr] items-stretch gap-6 max-[1100px]:grid-cols-1">
           <Reveal>
-            <div className="group relative min-h-[540px] overflow-hidden rounded-[30px] shadow-[0_18px_50px_rgba(0,0,0,0.14)] max-[1100px]:min-h-[420px] max-md:min-h-[280px]">
+            <div className="group relative min-h-135 overflow-hidden rounded-[30px] shadow-[0_18px_50px_rgba(0,0,0,0.14)] max-[1100px]:min-h-105 max-md:min-h-70">
               <CanvasVideo
                 src={ABOUT_VIDEO_SRC}
                 poster={ABOUT_VIDEO_POSTER}
@@ -35,11 +35,11 @@ export function AboutMedia() {
               </FeatureCard>
             </Reveal>
             <Reveal delay={0.16}>
-              <article className="overflow-hidden rounded-[28px] bg-[linear-gradient(135deg,#0c0d10,#15171c)] p-[30px] text-white shadow-[0_18px_50px_rgba(0,0,0,0.14)] max-md:p-6">
+              <article className="overflow-hidden rounded-[28px] bg-[linear-gradient(135deg,#0c0d10,#15171c)] p-7.5 text-white shadow-[0_18px_50px_rgba(0,0,0,0.14)] max-md:p-6">
                 <h3 className="mb-4 text-[32px] font-black leading-[1.05] max-md:text-[28px]">
                   С SelectAuto получаваш
                 </h3>
-                <ul className="m-0 list-disc pl-[22px]">
+                <ul className="m-0 list-disc pl-5.5">
                   {BENEFITS.map((item) => (
                     <li
                       key={item}

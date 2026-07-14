@@ -55,9 +55,11 @@ export async function createInquiry(input: unknown): Promise<ActionResult> {
         specificModel: data.specific_model || null,
         brand: data.brand || null,
         model: data.model || null,
-        budget: data.budget || null,
-        time: data.time || null,
-        finance: data.finance || null,
+        // DB columns renamed in 0025; the zod/form field names (budget/time/finance)
+        // stay as the client contract and are mapped to the new columns here.
+        budgetRange: data.budget || null,
+        purchaseTimeframe: data.time || null,
+        financingOption: data.finance || null,
         pageUrl: data.page_url || null,
         userIp,
       })

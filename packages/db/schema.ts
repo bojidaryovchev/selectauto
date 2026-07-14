@@ -247,9 +247,11 @@ export const inquiries = pgTable(
     specificModel: text("specific_model"),
     brand: text("brand"),
     model: text("model"),
-    budget: text("budget"),
-    time: text("time"),
-    finance: text("finance"),
+    // Renamed from budget/time/finance (migration 0025) — the old names were
+    // misleading (`time` read as a timestamp). These hold free-text quiz answers.
+    budgetRange: text("budget_range"),
+    purchaseTimeframe: text("purchase_timeframe"),
+    financingOption: text("financing_option"),
     pageUrl: text("page_url"),
     userIp: text("user_ip"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -257,6 +259,116 @@ export const inquiries = pgTable(
   (t) => ({
     createdAtIdx: index("inquiries_created_at_idx").on(t.createdAt),
   }),
+);
+
+/**
+ * Auth.js (NextAuth v5) tables — self-hosted auth (Google + email/password, JWT
+ * sessions). Shapes for users/accounts/verificationTokens match what
+ * @auth/drizzle-adapter expects (verified against its lib/pg.d.ts). JWT sessions
+ * → no `sessions` table needed. Keep in sync with migrations/0019_auth.sql.
+ */
+
+/**
+ * users — Auth.js user. `id` is a generated uuid string (TEXT). `passwordHash`
+ * is OUR addition for the Credentials (email/password) provider — NULL for
+ * Google-only users. `emailVerified` gates email/password sign-in (set when the
+ * user clicks the verification link).
+ */
+export const users = pgTable("users", {
+  id: text("id").primaryKey(),
+  name: text("name"),
+  email: text("email").notNull(),
+  emailVerified: timestamp("email_verified", { withTimezone: true }),
+  image: text("image"),
+  passwordHash: text("password_hash"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/**
+ * accounts — OAuth provider links (Google). Adapter shape; composite PK
+ * (provider, providerAccountId).
+ */
+export const accounts = pgTable(
+  "accounts",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    provider: text("provider").notNull(),
+    providerAccountId: text("provider_account_id").notNull(),
+    // NB: these property names are snake_case ON PURPOSE — the @auth/drizzle-adapter
+    // types require the accounts table to expose exactly these keys
+    // (refresh_token, access_token, expires_at, token_type, id_token,
+    // session_state). Renaming them to camelCase fails the adapter's type check.
+    refresh_token: text("refresh_token"),
+    access_token: text("access_token"),
+    expires_at: integer("expires_at"),
+    token_type: text("token_type"),
+    scope: text("scope"),
+    id_token: text("id_token"),
+    session_state: text("session_state"),
+  },
+  (t) => [
+    primaryKey({ columns: [t.provider, t.providerAccountId] }),
+    index("accounts_user_id_idx").on(t.userId),
+  ],
+);
+
+/**
+ * verification_tokens — Auth.js token table; used here to verify a new
+ * email/password sign-up (identifier = email). Composite PK (identifier, token).
+ */
+export const verificationTokens = pgTable(
+  "verification_tokens",
+  {
+    identifier: text("identifier").notNull(),
+    token: text("token").notNull(),
+    expires: timestamp("expires", { withTimezone: true }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.identifier, t.token] })],
+);
+
+/**
+ * password_reset_tokens — OUR forgot-password flow (Auth.js doesn't provide one
+ * for Credentials). Single-use, expiring; one row per outstanding reset request.
+ */
+export const passwordResetTokens = pgTable(
+  "password_reset_tokens",
+  {
+    token: text("token").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expires: timestamp("expires", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("password_reset_tokens_user_idx").on(t.userId)],
+);
+
+/**
+ * favorites — user favourites (one row per user × physical car saved from the
+ * website). The owner is an Auth.js user id (opaque text). `car_id` references
+ * cars(id) — the stable car identity used across car_listings / CarView.id /
+ * /avtomobil/[id] — so a favourite survives a lot being relisted or archived.
+ * Composite PK makes the favourite a set membership (idempotent toggle, no dup).
+ * Created in its current `user_id` shape by migration 0019_auth.sql (which drops
+ * and recreates the original 0018 favourites table, previously keyed on the old
+ * auth provider's user id). Keep in sync with 0019.
+ */
+export const favorites = pgTable(
+  "favorites",
+  {
+    userId: text("user_id").notNull(),
+    carId: integer("car_id")
+      .notNull()
+      .references(() => cars.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.carId] }),
+    index("favorites_user_idx").on(t.userId, t.createdAt),
+  ],
 );
 
 /**
@@ -272,7 +384,7 @@ export const inquiries = pgTable(
  * post-backfill (a later migration), so none are declared here yet.
  * Brand/model NAMES are intentionally absent (resolved by id at read time —
  * the daily reference sync can change them without touching a lot). See
- * apps/web/ALL-CARS-DB-DESIGN.md §4/§7.
+ * docs/05-projection-tables-car-listings.md §4/§7.
  */
 export const carListings = pgTable("car_listings", {
   carId: integer("car_id")
@@ -303,6 +415,9 @@ export const carListings = pgTable("car_listings", {
   // display columns
   title: text("title"),
   engine: text("engine"),
+  // Denormalized from cars.fuel_type (stable — the reference sync doesn't touch
+  // it). Powers the catalog "Гориво" filter single-table (migration 0020).
+  fuelType: text("fuel_type"),
   imageUrl: text("image_url"),
   odometerKm: bigint("odometer_km", { mode: "number" }),
   saleDate: timestamp("sale_date", { withTimezone: true }),
@@ -348,6 +463,7 @@ export const carListingsArchived = pgTable("car_listings_archived", {
   sortId: integer("sort_id").notNull(),
   title: text("title"),
   engine: text("engine"),
+  fuelType: text("fuel_type"),
   imageUrl: text("image_url"),
   odometerKm: bigint("odometer_km", { mode: "number" }),
   saleDate: timestamp("sale_date", { withTimezone: true }),
@@ -360,6 +476,10 @@ export const carListingsArchived = pgTable("car_listings_archived", {
   bidPrice: numeric("bid_price", { precision: 14, scale: 4 }),
   finalBid: numeric("final_bid", { precision: 14, scale: 4 }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  // SET-ONCE first-seen-archived time (migration 0023). Unlike updated_at (bumped
+  // every recompute), this is preserved on conflict — the stable "how long archived"
+  // signal the SEO 410 proxy uses to de-index long-dead lots.
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
 });
 
 /**
@@ -401,9 +521,10 @@ export const carListingCounts = pgTable(
  * migrations/0017_listing_facets.sql.
  *
  *   table_kind: 'active' | 'past'
- *   dim:        'brand'|'model'|'color'|'drive'|'condition'|'year'|'vtype'|'btype'
+ *   dim:        'brand'|'model'|'color'|'drive'|'condition'|'year'|'vtype'|'btype'|'fuel'
+ *               ('fuel' added by migration 0020)
  *   val:        the facet value (manufacturer/model id as text for brand/model;
- *               raw string for color/drive/condition/year/vtype/btype)
+ *               raw string for color/drive/condition/year/vtype/btype/fuel)
  *   val2:       parent brand id for 'model' (the dropdown groups models by brand);
  *               '' for every other dimension
  */
@@ -437,6 +558,13 @@ export type CarListingCount = typeof carListingCounts.$inferSelect;
 export type CarListingFacet = typeof carListingFacets.$inferSelect;
 export type Inquiry = typeof inquiries.$inferSelect;
 export type NewInquiry = typeof inquiries.$inferInsert;
+export type Favorite = typeof favorites.$inferSelect;
+export type NewFavorite = typeof favorites.$inferInsert;
+export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;
+export type Account = typeof accounts.$inferSelect;
+export type VerificationToken = typeof verificationTokens.$inferSelect;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type CarListing = typeof carListings.$inferSelect;
 export type NewCarListing = typeof carListings.$inferInsert;
 export type CarListingArchived = typeof carListingsArchived.$inferSelect;

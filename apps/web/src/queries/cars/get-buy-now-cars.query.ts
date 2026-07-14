@@ -13,7 +13,7 @@ const DEFAULT_LIMIT = 6;
  * newest first.
  *
  * Reads the `car_listings` projection (one row per physical car, already
- * active-only and pre-joined — see ALL-CARS-DB-DESIGN.md) the same way the catalog
+ * active-only and pre-joined — see docs/05-projection-tables-car-listings.md) the same way the catalog
  * + `getAuctionCars` do: zero joins, keyset order on `sort_id DESC` (indexed via
  * `cl_buynow_sort`). The previous version scanned raw `auction_lots` and
  * `ORDER BY sale_date` (unindexed) — ~3.4s on the 1M-row table, which

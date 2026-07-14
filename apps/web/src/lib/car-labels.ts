@@ -2,7 +2,7 @@
  * Bulgarian display labels for the canonical (English/code) values stored in
  * `car_listings`. Translation happens HERE, at render — we store raw canonical
  * values in the DB (so facets group correctly and re-labelling never needs a
- * backfill) and localize on the way out. See apps/web/ALL-CARS-DB-DESIGN.md §1a.
+ * backfill) and localize on the way out. See docs/03-normalization-and-field-mapping.md.
  *
  * The enum maps (status/condition/drive/transmission/color) are COMPLETE against
  * the AuctionsAPI enum tables (verified): every possible value has a label, with
@@ -267,14 +267,34 @@ export const titleDocLabel = (v: string | null | undefined): string => {
 export const keysLabel = (v: boolean | null | undefined): string =>
   v === true ? "Да" : v === false ? "Не" : "";
 
-/** raw_json.airbags.name → BG (intact / deployed). */
+/**
+ * raw_json.airbags.name → BG. Full AirbagEnum (intact/deployed/missing/none) per the
+ * AuctionsAPI enum reference; `not_deployed` kept as a harmless legacy alias.
+ */
 const AIRBAGS_BG: Record<string, string> = {
   intact: "Налични",
   deployed: "Сработили",
   not_deployed: "Не са сработили",
   missing: "Липсват",
+  none: "Няма еърбегове",
 };
 export const airbagsLabel = (v: string | null | undefined) => lookup(AIRBAGS_BG, v, "");
+
+/**
+ * lot.odometer.status.name → BG. Full OdometerStatusEnum (actual/not_actual/exempt/
+ * exceeds_mechanical_limits/hours). Drives the mileage-authenticity badge; "hours" is
+ * for equipment/boats metered in hours rather than distance.
+ */
+const ODOMETER_STATUS_BG: Record<string, string> = {
+  actual: "Реален километраж",
+  not_actual: "Непотвърден километраж",
+  exempt: "Освободен от деклариране",
+  exceeds_mechanical_limits: "Над механичния лимит",
+  hours: "Измерен в моточасове",
+};
+export const odometerStatusLabel = (v: string | null | undefined) => lookup(ODOMETER_STATUS_BG, v, "");
+/** True only for a CONFIRMED-actual reading (green badge); anything else is cautionary. */
+export const odometerIsActual = (v: string | null | undefined) => (v ? v.toLowerCase() === "actual" : false);
 
 /** cars.fuel_type → BG. */
 const FUEL_BG: Record<string, string> = {
@@ -290,3 +310,166 @@ const FUEL_BG: Record<string, string> = {
   hydrogen: "Водород",
 };
 export const fuelLabel = (v: string | null | undefined) => lookup(FUEL_BG, v, v ?? "");
+
+/* ---------------------------------------------------------------------------
+ * ENCAR (Korea) detail labels. These map values that live ONLY in an ENCAR lot's
+ * `raw_json.details.*` tree (history / insurance / inspection) and are surfaced on
+ * the KR detail template. Same store-canonical/translate-on-render rule as above;
+ * the vocabularies were extracted from a 60-lot ENCAR sample (see the analysis).
+ * ------------------------------------------------------------------------ */
+
+/** details.history[].content[].flag → BG (the coloured timeline pills). */
+const KR_HISTORY_FLAG_BG: Record<string, string> = {
+  individual: "Частно лице",
+  corporation: "Юридическо лице",
+  dealer: "Дилър",
+  direct: "Директна сделка",
+  property_damage: "Имуществена щета",
+  use_my_insurance: "Собствена застраховка",
+  use_other_insurance: "Чужда застраховка",
+  "recall completed": "Отзоваване (изпълнено)",
+  "recall required": "Отзоваване (необходимо)",
+};
+export const historyFlagLabel = (v: string | null | undefined) => lookup(KR_HISTORY_FLAG_BG, v, v ?? "");
+
+/**
+ * details.inspect.inner.* VALUE → BG. Each mechanical check reads `good`/`proper`
+ * (fine), `doesn't exist` (no leak/defect → also fine) or `exist`/`bad` (a problem).
+ */
+const KR_INSPECT_STATUS_BG: Record<string, string> = {
+  good: "Изправно",
+  proper: "В норма",
+  appropriate: "В норма",
+  normal: "В норма",
+  "doesn't exist": "Няма",
+  none: "Няма",
+  exist: "Има",
+  exists: "Има",
+  bad: "Неизправно",
+  poor: "Лошо",
+};
+export const inspectStatusLabel = (v: string | null | undefined) => lookup(KR_INSPECT_STATUS_BG, v, v ?? "");
+/**
+ * Tone for the inspection dot: "ok" (green) vs "warn" (amber). Only an explicit
+ * problem value warns — note "doesn't exist" (no leak) is OK, "exist" (a leak) warns.
+ */
+export const inspectStatusTone = (v: string | null | undefined): "ok" | "warn" => {
+  if (!v) return "ok";
+  const k = v.toLowerCase().trim();
+  if (k === "doesn't exist" || k === "none") return "ok";
+  if (k === "exist" || k === "exists" || k === "bad" || k === "poor") return "warn";
+  return "ok";
+};
+
+/** details.inspect.inner KEY → BG (the mechanical-inspection grid labels; 35 keys). */
+const KR_INSPECT_MECHANIC_BG: Record<string, string> = {
+  brake_master_cylinder_oil_leakage: "Спирачен цилиндър – теч",
+  brake_oil_leakage: "Спирачна течност – теч",
+  brake_system_status: "Спирачна система",
+  electric_generator_output: "Генератор (алтернатор)",
+  electric_indoor_blower_motor: "Вентилатор на купето",
+  electric_radiator_fan_motor: "Вентилатор на радиатора",
+  electric_starter_motor: "Стартер",
+  electric_window_motor: "Ел. стъкла (мотор)",
+  electric_wiper_motor_function: "Чистачки (мотор)",
+  motor_high_pressure_pump: "Помпа високо налягане",
+  motor_oil_flow_rate: "Дебит на маслото",
+  motor_oil_leak_cylinder_header_gasket: "Теч на масло – гарнитура глава",
+  motor_oil_leak_locker_arm_cover: "Теч на масло – капак клапани",
+  motor_oil_leak_oil_fan: "Теч на масло – маслен картер",
+  motor_operation_status: "Работа на двигателя",
+  motor_water_leak_cooling_rate: "Охлаждане (дебит)",
+  motor_water_leak_cylinder_header_gasket: "Теч охл. течност – глава",
+  motor_water_leak_pump: "Водна помпа – теч",
+  motor_water_leak_radiator: "Радиатор – теч",
+  other_fuel_leaks: "Теч на гориво",
+  power_clutch_assembly: "Съединител",
+  power_constant_velocity_joint: "Каре (ШРУС)",
+  power_differential_gear: "Диференциал",
+  power_weighted_shaft_and_bearing: "Полуоска и лагер",
+  self_check_motor: "Самодиагностика – двигател",
+  self_check_transmission: "Самодиагностика – скорости",
+  steering_gear: "Кормилна рейка",
+  steering_joint: "Кормилни съединения",
+  steering_power_high_pressure_hose: "Хидравлика – маркуч",
+  steering_power_oil_leakage: "Хидравлика – теч",
+  steering_pump: "Хидравлична помпа",
+  steering_tie_rod_end_and_ball_joint: "Накрайници и шарнири",
+  trans_auto_oil_flow_and_condition: "Масло скорости – състояние",
+  trans_auto_oil_leakage: "Скоростна кутия – теч",
+  trans_auto_status: "Скоростна кутия",
+};
+/** BG label for a mechanic key, or a spaced-out fallback for an unmapped one. */
+export const inspectMechanicLabel = (key: string): string =>
+  KR_INSPECT_MECHANIC_BG[key] ?? key.replace(/_/g, " ");
+
+/**
+ * details.inspect.outer.<panel>[] VALUE → BG (the body-panel repair state). `change`
+ * = replaced, `metal` = sheet-metal work, `welding` = welded. Anything else passes
+ * through. A present entry always means the panel is NOT original.
+ */
+const KR_PANEL_STATUS_BG: Record<string, string> = {
+  change: "Смяна",
+  exchange: "Смяна",
+  metal: "Ламарина",
+  welding: "Заварка",
+  corrosion: "Корозия",
+  scratch: "Драскотина",
+  damage: "Щета",
+};
+export const panelStatusLabel = (v: string | null | undefined) => lookup(KR_PANEL_STATUS_BG, v, v ?? "");
+
+/**
+ * details.inspect.outer KEY → BG (body-panel names). Only the panel keys observed in
+ * the sample are mapped; any other key humanizes its raw form (never guessed).
+ */
+const KR_PANEL_NAME_BG: Record<string, string> = {
+  hood: "Преден капак",
+  front_fender_left: "Преден калник (ляв)",
+  front_fender_right: "Преден калник (десен)",
+  quarter_panel_left: "Заден калник (ляв)",
+  quarter_panel_right: "Заден калник (десен)",
+  radiator_support: "Носач на радиатора",
+  roof_panel: "Покрив",
+  trunk_lid: "Заден капак",
+  front_door_left: "Предна врата (лява)",
+  front_door_right: "Предна врата (дясна)",
+  rear_door_left: "Задна врата (лява)",
+  rear_door_right: "Задна врата (дясна)",
+  side_sill_panel_left: "Праг (ляв)",
+  side_sill_panel_right: "Праг (десен)",
+};
+export const panelNameLabel = (key: string): string => KR_PANEL_NAME_BG[key] ?? key.replace(/_/g, " ");
+
+/**
+ * details.usage_types[].title → BG (prior-use flag). Rental/business/government use
+ * is a value-relevant history signal, so it's surfaced as a caution badge, not buried.
+ */
+const KR_USAGE_BG: Record<string, string> = {
+  rent: "Бивша под наем",
+  rental: "Бивша под наем",
+  business: "Служебна употреба",
+  lease: "Бивша на лизинг",
+  government: "Държавна употреба",
+  taxi: "Бивше такси",
+  commercial: "Търговска употреба",
+};
+export const usageTypeLabel = (v: string | null | undefined) => lookup(KR_USAGE_BG, v, "");
+
+/** details.inspect.accident_summary KEY → BG (the headline body verdicts). */
+const KR_ACCIDENT_SUMMARY_BG: Record<string, string> = {
+  accident: "Произшествие",
+  simple_repair: "Козметична поправка",
+  exterior1rank: "Външни панели (ранг 1)",
+  exterior2rank: "Външни панели (ранг 2)",
+  main_framework: "Носеща конструкция",
+};
+export const accidentSummaryLabel = (key: string): string => KR_ACCIDENT_SUMMARY_BG[key] ?? key.replace(/_/g, " ");
+/** ENCAR accident-summary VALUE → BG Да/Не ("yes"/"exist" → Да; "doesn't exist" → Не). */
+export const krYesNo = (v: string | null | undefined): string => {
+  if (v == null) return "";
+  const k = v.toLowerCase().trim();
+  if (k === "yes" || k === "exist" || k === "exists" || k === "true") return "Да";
+  if (k === "doesn't exist" || k === "no" || k === "none" || k === "false") return "Не";
+  return v;
+};

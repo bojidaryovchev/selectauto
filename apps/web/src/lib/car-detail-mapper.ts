@@ -9,14 +9,48 @@ import {
   driveLabel,
   fuelLabel,
   keysLabel,
+  odometerIsActual,
   sellerTypeLabel,
   sourceBadge,
   statusLabel,
   titleDocLabel,
   transmissionLabel,
+  usageTypeLabel,
   vehicleTypeLabel,
 } from "@/lib/car-labels";
-import type { CarDetail, CarDetailPrice, CarDetailSpec } from "@/types/car-detail.type";
+import {
+  buildEncarFactoryOptions,
+  buildEncarHistory,
+  buildEncarInspection,
+  buildEncarInsurance,
+  buildEncarSellerNote,
+  usdFromKrw,
+} from "@/lib/car-detail-encar";
+import { collapseLeadingDuplicate } from "@/lib/title-clean";
+import type { CarDetail, CarDetailPrice, CarDetailSpec, CarMarket } from "@/types/car-detail.type";
+
+/** Auction source domain → market render mode. */
+function deriveMarket(domainName: string | null | undefined): CarMarket {
+  const d = domainName?.toLowerCase();
+  if (d === "encar_com") return "kr";
+  if (d === "copart_com" || d === "iaai_com") return "us";
+  return "other";
+}
+
+/**
+ * BG country name for the „внос от …" metadata phrasing. KR market is always
+ * Korea (ENCAR sends no location); US-market lots are split by the lot's
+ * `location_country` because Copart/IAAI operate branches in BOTH the USA and
+ * Canada — naming the wrong country in a listing title would be worse than
+ * naming none, so unknown values return undefined.
+ */
+function deriveSourceCountry(market: CarMarket, locationCountry: string | null | undefined): string | undefined {
+  if (market === "kr") return "Корея";
+  const c = locationCountry?.trim().toLowerCase();
+  if (c === "usa" || c === "us" || c === "united states") return "САЩ";
+  if (c === "canada" || c === "can" || c === "ca") return "Канада";
+  return undefined;
+}
 
 /**
  * Builds the rich `CarDetail` view-model for `/avtomobil/[id]` from the `cars` row
@@ -163,22 +197,31 @@ export function carDetailFromRows(opts: {
     | "rawJson"
   >;
   brand?: string;
+  brandLogo?: string;
   model?: string;
+  generation?: { name?: string; fromYear?: number; toYear?: number };
+  /** Archive avg sale price for this model+year (market benchmark), when available. */
+  marketAvg?: { avg: number; count: number };
   isPast: boolean;
   effectivePrice?: number;
 }): CarDetail {
   const { car, lot, isPast } = opts;
   const rawLot = lot.rawJson;
   const rawCar = car.rawJson;
+  const market = deriveMarket(lot.domainName);
+  const sourceCountry = deriveSourceCountry(market, lot.locationCountry);
 
   const buyNowPrice = posNum(lot.buyNowPrice);
   const hasBuyNow = lot.buyNow === true && !!buyNowPrice;
   const isAuction = !hasBuyNow;
 
+  // Same upstream-title hygiene as the card mapper (see lib/title-clean.ts) so
+  // the <h1>, metadata <title> and JSON-LD never carry the duplicated block.
+  const cleanTitle = collapseLeadingDuplicate(car.title?.trim() ?? "");
   const title =
-    (car.title?.trim() && car.year && !/^\d{4}\b/.test(car.title.trim())
-      ? `${car.year} ${car.title.trim()}`
-      : car.title?.trim()) || `Лот ${lot.lotNumber ?? opts.carId}`;
+    (cleanTitle && car.year && !/^\d{4}\b/.test(cleanTitle)
+      ? `${car.year} ${cleanTitle}`
+      : cleanTitle) || `Лот ${lot.lotNumber ?? opts.carId}`;
 
   const images = buildGallery(rawLot, lot.imageUrl);
 
@@ -212,12 +255,34 @@ export function carDetailFromRows(opts: {
       ? vehicleTypeLabel(car.vehicleType)
       : bodyTypeLabel(car.bodyType);
   pushSpec("Тип", typeLabel || undefined);
+  // Generation (name + year range) — resolved from vehicle_generations upstream.
+  const gen = opts.generation;
+  const genLabel = gen
+    ? [gen.name, gen.fromYear ? `(${gen.fromYear}–${gen.toYear ?? "…"})` : undefined].filter(Boolean).join(" ")
+    : "";
+  pushSpec("Поколение", genLabel || undefined);
   pushSpec("Двигател", car.engine ?? undefined);
+  const hp = posNum(get(rawCar, "hp"));
+  pushSpec("Мощност", hp ? `${hp} к.с.` : undefined);
   const cylinders = posNum(get(rawCar, "cylinders"));
   pushSpec("Цилиндри", cylinders ? String(cylinders) : undefined);
   pushSpec("Скоростна кутия", transmissionLabel(car.transmission) || undefined);
   pushSpec("Задвижване", driveLabel(car.driveWheel) || undefined);
   pushSpec("Цвят", colorLabel(car.color) || undefined);
+
+  // ENCAR "basic info" extras — all live in details.* (US lots leave them null). The
+  // engine field is a bare code (e.g. "G4KN") for Encar, so the displacement/seat/
+  // first-registration numbers are the readable specs a KR buyer actually wants.
+  if (market === "kr") {
+    const cc = posNum(get(rawLot, "details.engine_volume"));
+    pushSpec("Обем на двигателя", cc ? `${cc.toLocaleString("bg-BG").replace(/ /g, " ")} куб.см` : undefined);
+    const seats = posNum(get(rawLot, "details.seats_count"));
+    pushSpec("Брой места", seats ? String(seats) : undefined);
+    const frY = posNum(get(rawLot, "details.first_registration.year"));
+    const frM = posNum(get(rawLot, "details.first_registration.month"));
+    pushSpec("Първа регистрация", frY ? (frM ? `${String(frM).padStart(2, "0")}.${frY}` : String(frY)) : undefined);
+    pushSpec("Цена като нов", usdFromKrw(get(rawLot, "details.original_price")));
+  }
 
   // Damage (primary + secondary from raw_json)
   pushSpec("Първична щета", damageLabel(lot.damageMain) || undefined);
@@ -233,13 +298,10 @@ export function carDetailFromRows(opts: {
   pushSpec("Ключове", keysLabel(typeof keysAvail === "boolean" ? keysAvail : undefined) || undefined);
   pushSpec("Еърбегове", airbagsLabel(s(get(rawLot, "airbags.name"))) || undefined);
 
-  // Selling context
-  pushSpec("Продавач", lot.seller ?? undefined);
+  // Selling context (the seller NAME is surfaced as its own card — see `seller` below)
   pushSpec("Тип продавач", sellerTypeLabel(s(get(rawLot, "seller_type.name"))) || undefined);
   pushSpec("Вид търг", auctionTypeLabel(s(get(rawLot, "auction_type.name"))) || undefined);
   pushSpec("Локация (склад)", s(get(rawLot, "selling_branch.name")));
-  const grade = s(get(rawLot, "grade_iaai"));
-  pushSpec("IAAI оценка", grade);
   pushSpec("Лот №", lot.lotNumber ?? undefined);
   pushSpec("VIN", car.vin ?? undefined);
 
@@ -249,14 +311,95 @@ export function carDetailFromRows(opts: {
     .filter(Boolean) as string[];
   const location = locParts.length > 0 ? titleCaseLoose(locParts.join(", ")) : undefined;
 
+  // Lot coordinates → map. Present on US Copart/IAAI branches (ENCAR sends null).
+  // Validate range and reject a null-island (0,0) so we never map the Atlantic.
+  const latRaw = get(rawLot, "location.latitude");
+  const lngRaw = get(rawLot, "location.longitude");
+  const lat = typeof latRaw === "number" ? latRaw : Number(latRaw);
+  const lng = typeof lngRaw === "number" ? lngRaw : Number(lngRaw);
+  const geo =
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    Math.abs(lat) <= 90 &&
+    Math.abs(lng) <= 180 &&
+    (lat !== 0 || lng !== 0)
+      ? { lat, lng }
+      : undefined;
+
+  // ── Media beyond the still gallery (both markets) ──
+  const hiRes: string[] = [];
+  const bigImgs = get(rawLot, "images.big");
+  if (Array.isArray(bigImgs)) for (const u of bigImgs) { const url = s(u); if (url) hiRes.push(url); }
+  const panorama360 = s(get(rawLot, "images.external_panorama_url"));
+  const engineVideo = s(get(rawLot, "images.video"));
+  const media =
+    panorama360 || engineVideo || hiRes.length > 0 ? { panorama360, engineVideo, hiRes } : undefined;
+
+  // ── US-market extras (Copart/IAAI) ──
+  // `tags` is USUALLY an array but the API can send a scalar — coerce defensively.
+  const rawTags = get(rawLot, "tags");
+  const usTags =
+    market === "us" && Array.isArray(rawTags)
+      ? (rawTags.map((t) => s(t)).filter(Boolean) as string[])
+      : undefined;
+
+  // Live current bid + freshness — only meaningful on an active US auction lot.
+  const bidVal = posNum(get(rawLot, "bid"));
+  const liveBid =
+    market === "us" && !isPast && isAuction && bidVal
+      ? { value: eur(bidVal)!, updatedAt: s(get(rawLot, "bid_updated_at")) }
+      : undefined;
+
+  // Selling party (+ insurer logo for IAAI). Only surface a card when a name exists.
+  const sellerName = s(lot.seller);
+  const sellerLogo = market === "us" ? s(get(rawLot, "seller.logo")) : undefined;
+  const seller = sellerName || sellerLogo ? { name: sellerName, logo: sellerLogo } : undefined;
+
+  // Mileage authenticity — flag ONLY the exception (a confirmed non-actual reading);
+  // "actual" and unknown stay silent so the common case adds no noise.
+  const odoStatus = s(get(rawLot, "odometer.status.name"));
+  const odometerNotActual = market === "us" && !!odoStatus && !odometerIsActual(odoStatus);
+
+  // IAA Vehicle Score — an IAAI-only native 0–50 AI damage rating in raw_json,
+  // surfaced as its own visual meter (CarIaaScore) rather than a spec-sheet row.
+  // Guard hard on BOTH conditions or the card renders a false "non-repairable":
+  //   1. Source is IAAI. Copart/Encar lots ALSO carry a `grade_iaai` key, but it's
+  //      always null (the score is an IAAI product), so the card must never leak
+  //      onto them.
+  //   2. The value is a real number. An unscored lot stores `grade_iaai: null`
+  //      (~13% of IAAI lots) — and `Number(null) === 0` would otherwise coerce it
+  //      into a bogus "0 / 50 — non-repairable". `typeof … === "number"` rejects
+  //      null/strings without coercion. A genuine numeric 0 IS a valid score (real
+  //      non-repairable), so it stays; and we never divide by 10 (`37` = 37 / 50).
+  const gradeRaw = lot.domainName?.toLowerCase() === "iaai_com" ? get(rawLot, "grade_iaai") : undefined;
+  const iaaScore =
+    typeof gradeRaw === "number" && Number.isFinite(gradeRaw) && gradeRaw >= 0 && gradeRaw <= 50
+      ? Math.round(gradeRaw)
+      : undefined;
+
+  // ── KR-market blocks (ENCAR). `details` is null on US lots and on ARCHIVED encar
+  //    lots (stripped to price-only), so every builder no-ops off-market/when absent. ──
+  const rawDetails = market === "kr" ? get(rawLot, "details") : undefined;
+  // Prior-use caution flag (ex-rental / business), when Encar records one.
+  const usageFlag = rawDetails ? usageTypeLabel(s(get(rawLot, "details.usage_types.0.title"))) || undefined : undefined;
+  const history = rawDetails ? buildEncarHistory(rawDetails) : undefined;
+  const insurance = rawDetails ? buildEncarInsurance(rawDetails) : undefined;
+  const inspection = rawDetails ? buildEncarInspection(rawDetails) : undefined;
+  const factoryOptions = rawDetails ? buildEncarFactoryOptions(rawDetails) : undefined;
+  const sellerNote = rawDetails ? buildEncarSellerNote(rawDetails) : undefined;
+
   return {
     id: opts.carId,
     title,
     brand: opts.brand,
+    brandLogo: opts.brandLogo,
     model: opts.model,
+    generation: opts.generation,
     year: car.year ?? undefined,
     vin: car.vin ?? undefined,
     source: sourceBadge(lot.domainName),
+    market,
+    sourceCountry,
     lotNumber: lot.lotNumber ?? undefined,
     status: statusLabel(lot.status),
     isPast,
@@ -265,9 +408,23 @@ export function carDetailFromRows(opts: {
     saleDate: lot.saleDate ? lot.saleDate.toISOString() : undefined,
     images,
     prices,
+    marketAvg: opts.marketAvg ? { value: eur(opts.marketAvg.avg)!, count: opts.marketAvg.count } : undefined,
     highlights,
     specs,
     location,
+    geo,
+    media,
+    usTags,
+    iaaScore,
+    liveBid,
+    seller,
+    odometerNotActual: odometerNotActual || undefined,
+    usageFlag,
+    history: history && history.length > 0 ? history : undefined,
+    insurance,
+    inspection,
+    factoryOptions,
+    sellerNote,
   };
 }
 

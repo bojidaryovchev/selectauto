@@ -9,7 +9,7 @@ import type { CarView } from "./car.type";
 /**
  * The user's current filter selection. Mirrors the legacy `[mixed_cars_grid]`
  * filter set; every field maps 1:1 to a `car_listings` column (see
- * apps/web/ALL-CARS-DB-DESIGN.md §5). All optional — an empty object = "all cars".
+ * docs/05-projection-tables-car-listings.md §5). All optional — an empty object = "all cars".
  */
 export type CarFilters = {
   /**
@@ -18,6 +18,18 @@ export type CarFilters = {
    * "Приключили" toggle. Drives which read model the queries hit.
    */
   status?: "active" | "past";
+  /**
+   * Auction-timing window (ACTIVE view only) → a sale_date range relative to the
+   * request time. undefined = "Всички" (no predicate). Only ~13.5% of active cars
+   * have a future sale_date, so this narrows to scheduled auctions; the windows
+   * are day-scale (hour buckets are empty on real data). See
+   * docs/08-web-all-cars-page.md §3.
+   *  - scheduled → sale_date > now() (any future auction)
+   *  - today     → … and ≤ end of today
+   *  - 24h/3d/7d → … and ≤ now() + that span
+   * Ignored when status === "past" (archived lots have all concluded).
+   */
+  auctionWindow?: "scheduled" | "today" | "24h" | "3d" | "7d";
   /** Channel tab/toggle → buy_now predicate. undefined = "Всички". */
   channel?: "buy-now" | "auction";
   /** Market segmented control → location_country (us=USA, kr=kr, ca=Canada). */
@@ -30,6 +42,13 @@ export type CarFilters = {
   color?: string;
   /** Drivetrain canonical name (front/all/rear). */
   drive?: string;
+  /**
+   * Fuel type canonical name (gasoline/diesel/electric/hybrid/flexible/gas/
+   * hydrogen); matches car_listings.fuel_type. NB: upstream 'electric' is a
+   * drivetrain tag that also covers many hybrids, and 'hybrid' is a separate
+   * value — the dropdown exposes the raw taxonomy (see car-labels FUEL_BG).
+   */
+  fuel?: string;
   /**
    * Condition: one or more canonical raws, comma-joined. Some BG labels cover
    * several raws (e.g. `run_and_drives,engine_starts` → "Пали и се движи"), so the
@@ -74,6 +93,7 @@ export type FacetOptions = {
   modelsByBrand: Record<string, FacetOption[]>;
   colors: FacetOption[];
   drives: FacetOption[];
+  fuels: FacetOption[];
   conditions: FacetOption[];
   /** Combined vehicle/body type options; values are `vt:*` / `bt:*` (see CarFilters.type). */
   types: FacetOption[];
@@ -81,10 +101,18 @@ export type FacetOptions = {
 };
 
 /**
- * A page of catalog results plus the opaque keyset cursor for the next page.
- * `nextCursor === null` means there are no more results (stop infinite scroll).
+ * A page of catalog results plus the opaque keyset cursors for paging in both
+ * directions.
+ *  - `nextCursor` — page DOWN (older, `sort_id < it`). `null` = bottom reached.
+ *  - `prevCursor` — page UP (newer, `sort_id > it`). `null`/absent = top reached.
+ *
+ * The forward-only first paint (page 1 from the top) omits `prevCursor` (it IS
+ * the top). A window seeded around a shared `?after=` pointer sets both, so the
+ * grid can reverse-scroll up as well as infinite-scroll down. Cursors are the
+ * boundary rows' `sort_id` as strings — see get-cars-page.query.ts.
  */
 export type CarsPage = {
   cars: CarView[];
   nextCursor: string | null;
+  prevCursor?: string | null;
 };

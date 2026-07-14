@@ -1,6 +1,15 @@
 export { CarContactPanel } from "./car-contact-panel";
+export { CarFactoryOptions } from "./car-factory-options";
 export { CarGallery } from "./car-gallery";
 export { CarHighlights } from "./car-highlights";
+export { CarHistoryTimeline } from "./car-history-timeline";
+export { CarIaaScore } from "./car-iaa-score";
+export { CarInspection } from "./car-inspection";
+export { CarInsuranceSummary } from "./car-insurance-summary";
+export { CarLocationMap } from "./car-location-map";
+export { CarMediaStrip } from "./car-media-strip";
 export { CarPricePanel } from "./car-price-panel";
+export { CarSellerNote } from "./car-seller-note";
 export { CarSpecSheet } from "./car-spec-sheet";
+export { CarTagChips } from "./car-tag-chips";
 export { RelatedCars } from "./related-cars";

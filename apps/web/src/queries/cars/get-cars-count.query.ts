@@ -23,10 +23,15 @@ const clc = schema.carListingCounts;
 async function getBroadCount(filters: CarFilters): Promise<number | null> {
   // Any narrow filter present → not a broad combo; caller does a live COUNT.
   const hasNarrow =
+    // Auction window is a sale_date range with no precomputed bucket in the
+    // summary table → treat as narrow so the live COUNT path handles it (fast
+    // over the ≤13.5% future-dated subset).
+    filters.auctionWindow !== undefined ||
     filters.brand !== undefined ||
     filters.model !== undefined ||
     filters.color !== undefined ||
     filters.drive !== undefined ||
+    filters.fuel !== undefined ||
     filters.condition !== undefined ||
     filters.type !== undefined ||
     filters.yearFrom !== undefined ||
@@ -84,10 +89,23 @@ function buildConditions(filters: CarFilters, t: ListingTable = cl) {
   if (filters.market === "us") conds.push(eq(t.locationCountry, "USA"));
   else if (filters.market === "kr") conds.push(eq(t.locationCountry, "kr"));
   else if (filters.market === "ca") conds.push(eq(t.locationCountry, "Canada"));
+  // Auction-timing window (active view only) — mirror the page query's predicate
+  // so the count matches the grid. See docs/08-web-all-cars-page.md §3.
+  if (filters.status !== "past" && filters.auctionWindow) {
+    conds.push(sql`${t.saleDate} > now()`);
+    if (filters.auctionWindow === "today")
+      // Mirror the page query: "Днес" = end of the current US-Eastern auction day
+      // (the only dated lots are US/CA Copart+IAAI). See get-cars-page.query.ts.
+      conds.push(sql`${t.saleDate} < date_trunc('day', now() AT TIME ZONE 'America/New_York') AT TIME ZONE 'America/New_York' + interval '1 day'`);
+    else if (filters.auctionWindow === "24h") conds.push(sql`${t.saleDate} <= now() + interval '24 hours'`);
+    else if (filters.auctionWindow === "3d") conds.push(sql`${t.saleDate} <= now() + interval '3 days'`);
+    else if (filters.auctionWindow === "7d") conds.push(sql`${t.saleDate} <= now() + interval '7 days'`);
+  }
   if (filters.brand !== undefined) conds.push(eq(t.manufacturerId, filters.brand));
   if (filters.model !== undefined) conds.push(eq(t.modelId, filters.model));
   if (filters.color) conds.push(eq(t.carColor, filters.color));
   if (filters.drive) conds.push(eq(t.driveWheel, filters.drive));
+  if (filters.fuel) conds.push(eq(t.fuelType, filters.fuel));
   if (filters.condition) {
     // Mirror the page query: the facet value is one or more raws (a BG label can
     // cover several, e.g. run_and_drives,engine_starts), so match the whole set.

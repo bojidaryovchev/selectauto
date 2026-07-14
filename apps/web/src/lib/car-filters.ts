@@ -9,15 +9,27 @@
  */
 import type { CarFilters } from "@/types/car-filters.type";
 
+/**
+ * The catalog scroll page-pointer's URL key. `?after=<sortId>` records which page
+ * is at the top of the viewport (a keyset `sort_id`, seekable in one query — the
+ * DB has no page numbers). It is NOT a filter: it's excluded from parse/serialize
+ * so it never affects the grid's remount key or the canonical URL. The page reads
+ * it to server-seed a window; the grid rewrites it (history.replaceState) as the
+ * top card crosses page boundaries. Shared by the page and the client grid.
+ */
+export const AFTER_PARAM = "after";
+
 /** URL param keys (kept short; mirror the legacy `saa_*` intent without the prefix). */
 const KEYS = {
   status: "status",
+  auctionWindow: "auction",
   channel: "channel",
   market: "market",
   brand: "brand",
   model: "model",
   color: "color",
   drive: "drive",
+  fuel: "fuel",
   condition: "condition",
   type: "type",
   yearFrom: "year_from",
@@ -52,6 +64,20 @@ export function parseCarFilters(input: URLSearchParams | Record<string, string |
   const status = get(KEYS.status);
   if (status === "past") filters.status = "past";
 
+  // Auction-timing window (active view only). Dropped on the past tab — archived
+  // lots have all concluded, so a future-date window is meaningless there.
+  const auctionWindow = get(KEYS.auctionWindow);
+  if (
+    filters.status !== "past" &&
+    (auctionWindow === "scheduled" ||
+      auctionWindow === "today" ||
+      auctionWindow === "24h" ||
+      auctionWindow === "3d" ||
+      auctionWindow === "7d")
+  ) {
+    filters.auctionWindow = auctionWindow;
+  }
+
   const channel = get(KEYS.channel);
   if (channel === "buy-now" || channel === "auction") filters.channel = channel;
 
@@ -69,6 +95,21 @@ export function parseCarFilters(input: URLSearchParams | Record<string, string |
 
   const drive = get(KEYS.drive);
   if (drive === "front" || drive === "all" || drive === "rear") filters.drive = drive;
+
+  // Fuel type — one of the canonical AuctionsAPI fuel values. Validated against the
+  // known set here; the facet list (getCarFacets) reflects what actually appears.
+  const fuel = get(KEYS.fuel);
+  if (
+    fuel === "gasoline" ||
+    fuel === "diesel" ||
+    fuel === "electric" ||
+    fuel === "hybrid" ||
+    fuel === "flexible" ||
+    fuel === "gas" ||
+    fuel === "hydrogen"
+  ) {
+    filters.fuel = fuel;
+  }
 
   // Condition is one or more canonical enum values (some BG labels cover several
   // raws, e.g. run_and_drives,engine_starts), comma-joined. The exact set is
@@ -107,12 +148,15 @@ export function parseCarFilters(input: URLSearchParams | Record<string, string |
 export function serializeCarFilters(filters: CarFilters): URLSearchParams {
   const params = new URLSearchParams();
   if (filters.status === "past") params.set(KEYS.status, "past");
+  // Auction window is active-only; never serialize it alongside the past tab.
+  if (filters.status !== "past" && filters.auctionWindow) params.set(KEYS.auctionWindow, filters.auctionWindow);
   if (filters.channel) params.set(KEYS.channel, filters.channel);
   if (filters.market) params.set(KEYS.market, filters.market);
   if (filters.brand !== undefined) params.set(KEYS.brand, String(filters.brand));
   if (filters.model !== undefined) params.set(KEYS.model, String(filters.model));
   if (filters.color) params.set(KEYS.color, filters.color);
   if (filters.drive) params.set(KEYS.drive, filters.drive);
+  if (filters.fuel) params.set(KEYS.fuel, filters.fuel);
   if (filters.condition) params.set(KEYS.condition, filters.condition);
   if (filters.type) params.set(KEYS.type, filters.type);
   if (filters.yearFrom !== undefined) params.set(KEYS.yearFrom, String(filters.yearFrom));

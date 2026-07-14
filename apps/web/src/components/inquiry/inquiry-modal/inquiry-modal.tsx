@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/common";
+import { ChevronLeftIcon, CloseIcon } from "@/components/icons";
 import {
   INQUIRY_BRANDS,
   INQUIRY_BUDGETS,
@@ -11,6 +12,7 @@ import {
 } from "@/data/inquiry-brands";
 import { isValidPhone, normalizePhone } from "@/lib/phone";
 import { createInquiry } from "@/mutations/inquiries";
+import type { InquiryPrefill } from "@/types";
 import { MainButton } from "./main-button";
 import { QuizOption } from "./quiz-option";
 import { QuizStep } from "./quiz-step";
@@ -25,6 +27,10 @@ import { QuizStep } from "./quiz-step";
  * budget → time → finance → name/phone) → a success step that auto-closes.
  * Answering "Не" to the first question skips the brand/model steps and jumps
  * straight to budget, exactly like the original `data-skip="1"` branch.
+ *
+ * Opened from a car page with a `prefill` (brand+model), it pre-answers the
+ * specific-model/brand/model steps and starts at the budget step, showing a banner
+ * that names the car — the buyer only fills in budget/time/finance + name/phone.
  *
  * Quiz option data lives in `@/data/inquiry-brands`; phone helpers in
  * `@/lib/phone`.
@@ -45,12 +51,17 @@ type QuizData = {
   phone?: string;
 };
 
+/** Budget is step 3 — the first step a car prefill leaves for the buyer to answer. */
+const BUDGET_STEP = 3;
+
 export function InquiryModal({
   isOpen,
   onClose,
+  prefill,
 }: {
   isOpen: boolean;
   onClose: () => void;
+  prefill?: InquiryPrefill;
 }) {
   const [screen, setScreen] = useState<Screen>("start");
   const [step, setStep] = useState(0); // 0..7 within the quiz
@@ -60,21 +71,42 @@ export function InquiryModal({
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
 
-  const reset = useCallback(() => {
-    setScreen("start");
-    setStep(0);
-    setData({});
-    setName("");
-    setPhone("");
-    setError("");
-    setSending(false);
-  }, []);
+  // A car page opens the modal knowing the brand+model → pre-answer those steps.
+  const isCarPrefill = Boolean(prefill?.brand && prefill?.model);
+  // The earliest reachable step: a prefill can't go back past budget (brand/model
+  // are fixed), so its back button floors at BUDGET_STEP.
+  const floorStep = isCarPrefill ? BUDGET_STEP : 0;
+  const bannerLabel =
+    prefill?.carLabel ?? [prefill?.brand, prefill?.model].filter(Boolean).join(" ");
+
+  // Seed the modal on the open transition (setState-during-render — React's
+  // "adjust state when a prop changes" pattern, so there's no flash of the wrong
+  // screen). A car prefill jumps straight to the budget step with brand/model
+  // pre-answered; otherwise it's the generic start screen. This also resets any
+  // leftover state from a previous open, so `close()` needn't reset.
+  const [prevOpen, setPrevOpen] = useState(false);
+  if (isOpen !== prevOpen) {
+    setPrevOpen(isOpen);
+    if (isOpen) {
+      setName("");
+      setPhone("");
+      setError("");
+      setSending(false);
+      if (isCarPrefill) {
+        setScreen("quiz");
+        setStep(BUDGET_STEP);
+        setData({ specific_model: "Да", brand: prefill!.brand, model: prefill!.model });
+      } else {
+        setScreen("start");
+        setStep(0);
+        setData({});
+      }
+    }
+  }
 
   const close = useCallback(() => {
     onClose();
-    // Defer reset so the close transition doesn't show a flash of step 0.
-    reset();
-  }, [onClose, reset]);
+  }, [onClose]);
 
   // Lock body scroll + close on Escape while open.
   useEffect(() => {
@@ -123,6 +155,12 @@ export function InquiryModal({
 
   function back() {
     setError("");
+    // Car prefill: brand/model are fixed, so back never leaves the qualification
+    // steps — it floors at the budget step.
+    if (isCarPrefill) {
+      setStep((s) => Math.max(floorStep, s - 1));
+      return;
+    }
     if (step === 0) {
       setScreen("start");
       return;
@@ -173,13 +211,26 @@ export function InquiryModal({
     }
   }
 
-  // The back arrow shows on quiz steps 1..6 (not on the first question or the
-  // success step), matching theme.js `showStep`.
-  const showBack = screen === "quiz" && step > 0 && step < 7;
+  // The back arrow shows on quiz steps beyond the floor (not on the first reachable
+  // step or the success step) — matching theme.js `showStep`, with a car prefill's
+  // budget step treated as its floor.
+  const showBack = screen === "quiz" && step > floorStep && step < 7;
+
+  // The ordered steps for the current path — drives the "Стъпка N от M" progress.
+  // Full quiz vs. the "Не" skip vs. a car prefill (brand/model pre-answered).
+  const stepFlow = isCarPrefill
+    ? [3, 4, 5, 6]
+    : data.specific_model === "Не"
+      ? [0, 3, 4, 5, 6]
+      : [0, 1, 2, 3, 4, 5, 6];
+  const stepIndex = stepFlow.indexOf(step);
+  // Progress is shown on the quiz screen for the answered steps (not on success).
+  const showProgress = screen === "quiz" && step < 7 && stepIndex >= 0;
+  const progressPct = ((stepIndex + 1) / stepFlow.length) * 100;
 
   return (
     <div
-      className="fixed inset-0 z-[99999]"
+      className="fixed inset-0 z-99999"
       role="dialog"
       aria-modal="true"
       aria-labelledby="sa-inquiry-title"
@@ -190,16 +241,67 @@ export function InquiryModal({
         className="absolute inset-0 bg-[rgba(8,10,14,0.72)] backdrop-blur-lg"
       />
 
-      {/* Dialog */}
-      <div className="relative z-[2] mx-auto mt-[5vh] max-h-[min(88vh,820px)] w-[min(100%-24px,520px)] overflow-y-auto rounded-[30px] bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(248,248,250,0.98)_100%)] px-7 pb-[26px] pt-7 shadow-[0_30px_80px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-md max-[640px]:mt-[3vh] max-[640px]:max-h-[92vh] max-[640px]:w-[min(100%-16px,460px)] max-[640px]:rounded-[22px] max-[640px]:px-[18px] max-[640px]:pb-[18px] max-[640px]:pt-[22px]">
-        <Button
-          aria-label="Затвори"
-          onClick={close}
-          className="absolute right-3.5 top-3 inline-flex h-11 w-11 items-center justify-center rounded-[14px] bg-[#f1f2f4] text-2xl leading-none text-[#6f747c] transition-all duration-200 hover:-translate-y-px hover:bg-[#e8eaee] hover:text-[#17181b]"
-        >
-          ×
-        </Button>
+      {/* Dialog — a flex column: a PINNED header (back + close + progress + car
+          banner) that never scrolls, over a scrollable body. The scroll used to
+          live on this whole box with the close button `absolute` inside it, so on
+          tall steps (the brand/model lists) the header scrolled out of view. */}
+      <div className="relative z-2 mx-auto mt-[5vh] flex max-h-[min(88vh,820px)] w-[min(100%-24px,520px)] flex-col overflow-hidden rounded-[30px] bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(248,248,250,0.98)_100%)] shadow-[0_30px_80px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-md max-[640px]:mt-[3vh] max-[640px]:max-h-[92vh] max-[640px]:w-[min(100%-16px,460px)] max-[640px]:rounded-[22px]">
+        {/* Pinned header */}
+        <div className="shrink-0 px-7 pt-5 max-[640px]:px-4.5 max-[640px]:pt-4">
+          <div className="flex items-center justify-between gap-2">
+            {showBack ? (
+              <Button
+                onClick={back}
+                aria-label="Назад"
+                className="inline-flex size-11 items-center justify-center rounded-[14px] bg-[#f1f2f4] text-[#6f747c] transition-all duration-200 hover:-translate-y-px hover:bg-[#e8eaee] hover:text-[#17181b]"
+              >
+                <ChevronLeftIcon className="size-5" />
+              </Button>
+            ) : (
+              <span />
+            )}
+            <Button
+              aria-label="Затвори"
+              onClick={close}
+              className="inline-flex size-11 items-center justify-center rounded-[14px] bg-[#f1f2f4] text-[#6f747c] transition-all duration-200 hover:-translate-y-px hover:bg-[#e8eaee] hover:text-[#17181b]"
+            >
+              <CloseIcon className="size-4.5" />
+            </Button>
+          </div>
 
+          {/* Step progress */}
+          {showProgress && (
+            <div className="mt-3">
+              <p className="mb-1.5 text-[12px] font-semibold text-[#8a8f98]">
+                Стъпка {stepIndex + 1} от {stepFlow.length}
+              </p>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#ececef]">
+                <div
+                  className="h-full rounded-full bg-[linear-gradient(90deg,#b95200,#d86f16)] transition-[width] duration-300 ease-out"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Car context banner (prefill only) */}
+          {isCarPrefill && bannerLabel && (
+            <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-0.5 rounded-[14px] bg-brand/8 px-3.5 py-2.5 ring-1 ring-brand/15">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-[#a5641f]">
+                Запитване за
+              </span>
+              <span className="text-[14px] font-extrabold text-[#17181b]">{bannerLabel}</span>
+              {prefill?.lotNumber ? (
+                <span className="text-[12px] font-semibold text-[#8a8f98]">
+                  · Лот № {prefill.lotNumber}
+                </span>
+              ) : null}
+            </div>
+          )}
+        </div>
+
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto px-7 pb-6.5 pt-4 max-[640px]:px-4.5 max-[640px]:pb-4.5">
         {/* Start screen */}
         {screen === "start" && (
           <div>
@@ -209,7 +311,7 @@ export function InquiryModal({
               width={150}
               height={62}
               unoptimized
-              className="mx-auto mb-3.5 block max-w-[150px] rounded-[10px] max-[640px]:max-w-[130px]"
+              className="mx-auto mb-3.5 block max-w-37.5 rounded-[10px] max-[640px]:max-w-32.5"
             />
             <h2
               id="sa-inquiry-title"
@@ -217,7 +319,7 @@ export function InquiryModal({
             >
               Безплатна консултация
             </h2>
-            <p className="mx-auto mb-[18px] text-center text-[15px] leading-[1.65] text-[#555962]">
+            <p className="mx-auto mb-4.5 text-center text-[15px] leading-[1.65] text-[#555962]">
               SelectAuto е вашият надежден партньор при избора, закупуването и
               доставката на мечтания автомобил от Европа, САЩ и Канада.
             </p>
@@ -230,20 +332,6 @@ export function InquiryModal({
         {/* Quiz */}
         {screen === "quiz" && (
           <div>
-            <div className="mb-2.5 flex items-center justify-between">
-              {showBack ? (
-                <Button
-                  onClick={back}
-                  aria-label="Назад"
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-[14px] bg-[#f1f2f4] text-2xl leading-none text-[#6f747c] transition-all duration-200 hover:-translate-y-px hover:bg-[#e8eaee] hover:text-[#17181b]"
-                >
-                  ←
-                </Button>
-              ) : (
-                <span />
-              )}
-            </div>
-
             {/* Step 0 — specific model? */}
             {step === 0 && (
               <QuizStep title="Търсите ли конкретен модел?">
@@ -327,7 +415,7 @@ export function InquiryModal({
                     placeholder="Име"
                     autoComplete="name"
                     enterKeyHint="next"
-                    className="mb-4 min-h-[56px] w-full rounded-[14px] border border-[#d9dde4] bg-white px-4 text-[15px] font-semibold text-[#17181b] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] outline-none transition-all duration-200 placeholder:font-medium placeholder:text-[#9aa0aa] focus:-translate-y-px focus:border-brand focus:shadow-[0_0_0_4px_rgba(216,111,22,0.12)]"
+                    className="mb-4 min-h-14 w-full rounded-[14px] border border-[#d9dde4] bg-white px-4 text-[15px] font-semibold text-[#17181b] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] outline-none transition-all duration-200 placeholder:font-medium placeholder:text-[#9aa0aa] focus:-translate-y-px focus:border-brand focus:shadow-[0_0_0_4px_rgba(216,111,22,0.12)]"
                   />
                 </div>
                 <div className="mb-3.5">
@@ -346,18 +434,12 @@ export function InquiryModal({
                     inputMode="tel"
                     autoComplete="tel"
                     enterKeyHint="done"
-                    className="mb-4 min-h-[56px] w-full rounded-[14px] border border-[#d9dde4] bg-white px-4 text-[15px] font-semibold text-[#17181b] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] outline-none transition-all duration-200 placeholder:font-medium placeholder:text-[#9aa0aa] focus:-translate-y-px focus:border-brand focus:shadow-[0_0_0_4px_rgba(216,111,22,0.12)]"
+                    className="mb-4 min-h-14 w-full rounded-[14px] border border-[#d9dde4] bg-white px-4 text-[15px] font-semibold text-[#17181b] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] outline-none transition-all duration-200 placeholder:font-medium placeholder:text-[#9aa0aa] focus:-translate-y-px focus:border-brand focus:shadow-[0_0_0_4px_rgba(216,111,22,0.12)]"
                   />
                 </div>
 
                 <MainButton onClick={submit} disabled={sending}>
-                  {sending ? (
-                    <>
-                      <span className="mr-1">🚗</span> Изпращаме заявката...
-                    </>
-                  ) : (
-                    "Изпрати"
-                  )}
+                  {sending ? "Изпращаме заявката..." : "Изпрати"}
                 </MainButton>
 
                 {error && (
@@ -371,7 +453,7 @@ export function InquiryModal({
             {/* Step 7 — success */}
             {step === 7 && (
               <div className="animate-[saFadeIn_0.28s_ease] py-1 text-center">
-                <div className="mx-auto mb-3.5 flex h-16 w-16 items-center justify-center rounded-full bg-brand/[0.12] text-3xl font-black text-brand">
+                <div className="mx-auto mb-3.5 flex size-16 items-center justify-center rounded-full bg-brand/12 text-3xl font-black text-brand">
                   ✓
                 </div>
                 <h3 className="mb-2.5 text-center text-[17px] font-extrabold text-[#17181b]">
@@ -384,6 +466,7 @@ export function InquiryModal({
             )}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

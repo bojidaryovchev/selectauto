@@ -12,15 +12,12 @@ export function ContactHero() {
         backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.58) 60%, rgba(0,0,0,0.82) 100%), radial-gradient(circle at 20% 16%, rgba(216,111,22,0.20), transparent 24%), radial-gradient(circle at 78% 78%, rgba(216,111,22,0.15), transparent 28%), url('${HERO_BG}')`,
       }}
     >
-      <Container className="pb-[70px] max-md:pb-[38px]">
+      <Container className="pb-17.5 max-md:pb-9.5">
         <Reveal>
-          <span className="inline-flex items-center justify-center rounded-full border border-white/[0.14] bg-white/10 px-[18px] py-2.5 text-xs font-extrabold uppercase tracking-[0.12em] text-white">
-            SelectAuto • Контакти
-          </span>
-          <h1 className="mb-4 mt-[18px] max-w-[920px] text-[clamp(44px,7vw,88px)] font-black leading-[0.94] tracking-[-0.04em] text-white">
+          <h1 className="mb-4 max-w-230 text-[clamp(44px,7vw,88px)] font-black leading-[0.94] tracking-[-0.04em] text-white">
             Контакти
           </h1>
-          <p className="mb-0 max-w-[760px] text-xl font-medium leading-[1.75] text-white/[0.88]">
+          <p className="mb-0 max-w-190 text-xl font-medium leading-[1.75] text-white/88">
             Свържете се с нас бързо и лесно – ние сме тук, за да ви съдействаме!
           </p>
         </Reveal>

@@ -1,25 +1,31 @@
+import { memo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { LinkButton } from "@/components/common";
 import { PhoneIcon, ViberIcon } from "@/components/icons";
+import { FavoriteButton } from "@/components/cars/favorite-button";
 import { AuctionCountdown } from "@/components/cars/all-cars/auction-countdown";
 import { CONTACT, SOCIALS } from "@/constants";
 import type { CarView } from "@/types/car.type";
 
 const VIBER_HREF = SOCIALS.find((s) => s.label === "Viber")?.href ?? "";
 
-/** One labelled cell in the 2-col info grid; renders nothing when empty. Long
- *  values truncate to one line with `…`; the full text shows on hover (`title`). */
+/** One labelled cell in the 2-col info grid. ALWAYS renders — a missing value
+ *  shows "—" — so every card has the same number of grid rows and therefore a
+ *  DETERMINISTIC height. The virtualized catalog depends on uniform rows:
+ *  variable card heights force per-row scroll corrections that read as
+ *  micro-jumps while paging (esp. scrolling up). Labels and values are each
+ *  locked to one line (truncate); full value on hover (`title`). */
 function InfoCell({ label, value, accent }: { label: string; value?: string; accent?: boolean }) {
-  if (!value) return null;
+  const shown = value || "—";
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">{label}</span>
+      <span className="truncate text-[11px] font-semibold uppercase tracking-wide text-muted">{label}</span>
       <span
-        title={value}
-        className={`truncate text-sm font-semibold ${accent ? "text-brand" : "text-ink"}`}
+        title={shown}
+        className={`truncate text-sm font-semibold ${accent && value ? "text-brand" : "text-ink"}`}
       >
-        {value}
+        {shown}
       </span>
     </div>
   );
@@ -45,7 +51,7 @@ function InfoCell({ label, value, accent }: { label: string; value?: string; acc
  */
 const CARD_IMAGE_SIZES = "(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 560px) 50vw, 100vw";
 
-export function AuctionCard({ car, priority = false }: { car: CarView; priority?: boolean }) {
+function AuctionCardImpl({ car, priority = false }: { car: CarView; priority?: boolean }) {
   const phoneHref = CONTACT.phoneHref;
   const isPast = car.isPast ?? false;
 
@@ -67,26 +73,34 @@ export function AuctionCard({ car, priority = false }: { car: CarView; priority?
               // underlying loading/fetchPriority hints directly.
               loading={priority ? "eager" : "lazy"}
               fetchPriority={priority ? "high" : "auto"}
-              className="block aspect-[40/26] w-full object-cover"
+              className="block aspect-40/26 w-full object-cover"
             />
           ) : (
-            <div className="flex aspect-[40/26] w-full items-center justify-center bg-gradient-to-br from-[#2a2d33] to-[#15171b] text-xs font-semibold uppercase tracking-wider text-white/35">
+            <div className="flex aspect-40/26 w-full items-center justify-center bg-linear-to-br from-[#2a2d33] to-[#15171b] text-xs font-semibold uppercase tracking-wider text-white/35">
               Снимка при поискване
             </div>
           )}
         </Link>
 
+        {/* Favourite heart (top-right). Shown for every real listing (needs a
+            stable car id); a past/sold car can still be saved for price research. */}
+        {car.id !== undefined ? (
+          <div className="absolute right-3 top-3 z-3">
+            <FavoriteButton carId={car.id} size="md" variant="overlay" />
+          </div>
+        ) : null}
+
         {/* Source + status badges (top-left) */}
-        <div className="absolute left-3 top-3 z-[2] flex flex-wrap gap-1.5">
-          <span className="inline-flex min-h-[28px] items-center rounded-full bg-[#163b66] px-3 text-[11px] font-black uppercase tracking-[0.05em] text-white">
+        <div className="absolute left-3 top-3 z-2 flex flex-wrap gap-1.5">
+          <span className="inline-flex min-h-7 items-center rounded-full bg-[#163b66] px-3 text-[11px] font-black uppercase tracking-wider text-white">
             {car.source}
           </span>
           {isPast ? (
-            <span className="inline-flex min-h-[28px] items-center rounded-full bg-[#3a3f47] px-3 text-[11px] font-black uppercase tracking-[0.05em] text-white">
+            <span className="inline-flex min-h-7 items-center rounded-full bg-[#3a3f47] px-3 text-[11px] font-black uppercase tracking-wider text-white">
               ПРОДАДЕН
             </span>
           ) : car.hasBuyNow ? (
-            <span className="inline-flex min-h-[28px] items-center rounded-full bg-gradient-to-r from-brand-dark to-brand px-3 text-[11px] font-black uppercase tracking-[0.05em] text-white">
+            <span className="inline-flex min-h-7 items-center rounded-full bg-linear-to-r from-brand-dark to-brand px-3 text-[11px] font-black uppercase tracking-wider text-white">
               BUY NOW
             </span>
           ) : null}
@@ -95,15 +109,15 @@ export function AuctionCard({ car, priority = false }: { car: CarView; priority?
         {/* Phone / Viber — active listings only (a sold car is not a lead).
             Centered along the bottom edge of the photo, larger touch targets. */}
         {!isPast ? (
-          <div className="absolute inset-x-0 bottom-3 z-[2] flex justify-center gap-3">
+          <div className="absolute inset-x-0 bottom-3 z-2 flex justify-center gap-3">
             {phoneHref ? (
               <LinkButton
                 href={phoneHref}
                 rippleTheme="light"
                 aria-label="Обади се"
-                className="grid h-12 w-12 place-items-center rounded-full bg-brand text-white shadow-lg ring-2 ring-white/70 transition-transform duration-150 hover:scale-110"
+                className="grid size-12 place-items-center rounded-full bg-brand text-white shadow-lg ring-2 ring-white/70 transition-transform duration-150 hover:scale-110"
               >
-                <PhoneIcon className="h-6 w-6" />
+                <PhoneIcon className="size-6" />
               </LinkButton>
             ) : null}
             {VIBER_HREF ? (
@@ -113,9 +127,9 @@ export function AuctionCard({ car, priority = false }: { car: CarView; priority?
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Viber"
-                className="grid h-12 w-12 place-items-center rounded-full bg-[#7360f2] text-white shadow-lg ring-2 ring-white/70 transition-transform duration-150 hover:scale-110"
+                className="grid size-12 place-items-center rounded-full bg-[#7360f2] text-white shadow-lg ring-2 ring-white/70 transition-transform duration-150 hover:scale-110"
               >
-                <ViberIcon className="h-6 w-6" />
+                <ViberIcon className="size-6" />
               </LinkButton>
             ) : null}
           </div>
@@ -130,8 +144,8 @@ export function AuctionCard({ car, priority = false }: { car: CarView; priority?
       <div className="flex items-center justify-between gap-2 bg-[#2f343c] px-4 py-2">
         {isPast ? (
           <>
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Статус</span>
-            <span className="text-sm font-bold text-white/90">{car.status ?? "—"}</span>
+            <span className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-white/55">Статус</span>
+            <span className="truncate whitespace-nowrap text-sm font-bold text-white/90">{car.status ?? "—"}</span>
           </>
         ) : (
           <AuctionCountdown saleDate={car.saleDate} status={car.status} />
@@ -140,9 +154,12 @@ export function AuctionCard({ car, priority = false }: { car: CarView; priority?
 
       {/* ---- Content ---- */}
       <div className="flex flex-1 flex-col px-4 pb-4 pt-3.5">
+        {/* min-h-10 reserves BOTH clamp lines (2 × 20px at text-base/tight) so a
+            one-line title doesn't make this card shorter — heights must be
+            deterministic for the virtualized grid (see InfoCell). */}
         <h3
           title={car.title}
-          className="mb-3 line-clamp-2 text-base font-black uppercase leading-tight text-[#153f6b]"
+          className="mb-3 line-clamp-2 min-h-10 text-base/tight font-black uppercase text-[#153f6b]"
         >
           <Link href={car.href}>{car.title}</Link>
         </h3>
@@ -166,14 +183,14 @@ export function AuctionCard({ car, priority = false }: { car: CarView; priority?
             "Buy Now"/price line always sits directly above the button regardless
             of how many info cells the card has. */}
         <div className="mt-auto">
-          {car.price ? (
-            <div className="mb-3.5 flex items-baseline justify-between border-t border-line pt-3">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-                {isPast ? "Продаден за" : car.hasBuyNow ? "Buy Now" : "Цена"}
-              </span>
-              <span className="text-xl font-black leading-none text-brand">{car.price}</span>
-            </div>
-          ) : null}
+          {/* The price row ALWAYS renders ("—" for auction-only lots where the
+              price is decided at the sale) — deterministic card height again. */}
+          <div className="mb-3.5 flex items-baseline justify-between border-t border-line pt-3">
+            <span className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-muted">
+              {isPast ? "Продаден за" : car.hasBuyNow ? "Buy Now" : "Цена"}
+            </span>
+            <span className="text-xl font-black leading-none text-brand">{car.price || "—"}</span>
+          </div>
 
           {isPast ? (
             // Past cards aren't actionable — they're price-research. Offer a path
@@ -181,7 +198,7 @@ export function AuctionCard({ car, priority = false }: { car: CarView; priority?
             <LinkButton
               href="/vsichki-avtomobili/"
               rippleTheme="dark"
-              className="inline-flex min-h-[46px] w-full items-center justify-center rounded-full border border-line bg-white px-5 text-sm font-extrabold uppercase tracking-wide text-[#333] transition-transform duration-200 hover:-translate-y-0.5 hover:text-brand-dark"
+              className="inline-flex min-h-11.5 w-full items-center justify-center rounded-full border border-line bg-white px-5 text-sm font-extrabold uppercase tracking-wide text-[#333] transition-transform duration-200 hover:-translate-y-0.5 hover:text-brand-dark"
             >
               Виж активни обяви
             </LinkButton>
@@ -189,7 +206,7 @@ export function AuctionCard({ car, priority = false }: { car: CarView; priority?
             <LinkButton
               href={car.href}
               rippleTheme="light"
-              className="inline-flex min-h-[46px] w-full items-center justify-center rounded-full bg-gradient-to-r from-brand-dark to-brand px-5 text-sm font-extrabold uppercase tracking-wide text-white shadow-[0_10px_24px_rgba(216,111,22,0.22)] transition-transform duration-200 hover:-translate-y-0.5"
+              className="inline-flex min-h-11.5 w-full items-center justify-center rounded-full bg-linear-to-r from-brand-dark to-brand px-5 text-sm font-extrabold uppercase tracking-wide text-white shadow-[0_10px_24px_rgba(216,111,22,0.22)] transition-transform duration-200 hover:-translate-y-0.5"
             >
               Подробности
             </LinkButton>
@@ -199,3 +216,13 @@ export function AuctionCard({ car, priority = false }: { car: CarView; priority?
     </article>
   );
 }
+
+/**
+ * Memoized so the virtualized grid — which re-renders on every scroll frame as the
+ * visible row window shifts — does not reconcile each card's heavy subtree (image,
+ * live countdown, favourite button) unless its `car`/`priority` props actually
+ * change. Card `car` objects keep a stable identity across renders (the `cars`
+ * array is only spread on append/prepend; the objects themselves are reused), so
+ * the default shallow prop compare is correct and effective.
+ */
+export const AuctionCard = memo(AuctionCardImpl);

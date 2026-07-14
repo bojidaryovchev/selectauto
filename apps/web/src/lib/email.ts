@@ -1,12 +1,21 @@
 import { Resend } from "resend";
+import {
+  CarfaxNotificationEmail,
+  InquiryNotificationEmail,
+  PasswordResetEmail,
+  VerificationEmail,
+} from "@/emails";
 
 /**
- * Resend client + Carfax notification email. Mirrors the old WordPress
- * handler's `wp_mail` to info@selectauto.bg: a plain-text summary of the
- * submission, subject "Ново Carfax запитване - {name}".
+ * Resend client + the app's transactional/notification emails. Each send passes
+ * a branded React email template (see `@/emails`, rendered by Resend via the
+ * `react` prop) AND a plain-text version — the two form a multipart message so
+ * clients that block HTML still get a readable fallback (and it helps
+ * deliverability).
  *
- * Sending is best-effort at the call site — the API route logs failures but does
- * not fail the submission on an email error.
+ * The two info@selectauto.bg notifications (Carfax + inquiry) mirror the old
+ * WordPress `wp_mail` summaries. Sending is best-effort at the call site — the
+ * routes/actions log failures but never fail the submission on an email error.
  */
 
 const FROM = "SelectAuto <noreply@selectauto.bg>";
@@ -56,6 +65,7 @@ export async function sendCarfaxNotification(data: CarfaxNotification) {
     to: TO,
     replyTo: data.email || undefined,
     subject: `Ново Carfax запитване - ${data.fullName}`,
+    react: CarfaxNotificationEmail(data),
     text: lines.join("\n"),
   });
 }
@@ -98,6 +108,70 @@ export async function sendInquiryNotification(data: InquiryNotification) {
     from: FROM,
     to: TO,
     subject: `Ново запитване - ${data.name}`,
+    react: InquiryNotificationEmail(data),
+    text: lines.join("\n"),
+  });
+}
+
+/**
+ * Auth emails — sent to the USER (not the info@ inbox) for the self-hosted
+ * Auth.js email/password flows. We send them ourselves via Resend (the same client
+ * + verified `noreply@selectauto.bg` sender). The link is built from APP_URL.
+ */
+
+/** Base URL for links in auth emails. Falls back to the production domain. */
+function appUrl(): string {
+  return (
+    process.env.APP_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "https://selectauto.bg"
+  ).replace(/\/$/, "");
+}
+
+/** Sends the email-verification link to a newly registered user. */
+export async function sendVerificationEmail(to: string, token: string, name?: string) {
+  const link = `${appUrl()}/verify?token=${encodeURIComponent(token)}`;
+  const lines = [
+    `Здравейте${name ? ` ${name}` : ""},`,
+    "",
+    "Благодарим за регистрацията в SelectAuto. За да активирате профила си, потвърдете имейл адреса си през следния линк:",
+    "",
+    link,
+    "",
+    "Линкът е валиден 24 часа. Ако не сте се регистрирали, игнорирайте този имейл.",
+    "",
+    "Поздрави,",
+    "Екипът на SelectAuto",
+  ];
+  return getResend().emails.send({
+    from: FROM,
+    to,
+    subject: "Потвърдете имейла си — SelectAuto",
+    react: VerificationEmail({ name, verifyUrl: link }),
+    text: lines.join("\n"),
+  });
+}
+
+/** Sends the password-reset link to a user who requested it. */
+export async function sendPasswordResetEmail(to: string, token: string, name?: string) {
+  const link = `${appUrl()}/nova-parola?token=${encodeURIComponent(token)}`;
+  const lines = [
+    `Здравейте${name ? ` ${name}` : ""},`,
+    "",
+    "Получихме заявка за смяна на паролата за профила ви в SelectAuto. За да зададете нова парола, отворете следния линк:",
+    "",
+    link,
+    "",
+    "Линкът е валиден 1 час. Ако не сте поискали смяна на паролата, игнорирайте този имейл — профилът ви остава непроменен.",
+    "",
+    "Поздрави,",
+    "Екипът на SelectAuto",
+  ];
+  return getResend().emails.send({
+    from: FROM,
+    to,
+    subject: "Смяна на парола — SelectAuto",
+    react: PasswordResetEmail({ name, resetUrl: link }),
     text: lines.join("\n"),
   });
 }

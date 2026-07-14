@@ -21,7 +21,7 @@ export function FeatureCard({
 
   return (
     <article
-      className={`relative flex h-full min-h-[300px] flex-col overflow-hidden rounded-[28px] px-[26px] py-[30px] shadow-[0_18px_50px_rgba(0,0,0,0.14)] transition-transform duration-300 hover:-translate-y-1.5 max-md:min-h-0 ${surface}`}
+      className={`relative flex h-full min-h-75 flex-col overflow-hidden rounded-[28px] px-6.5 py-7.5 shadow-[0_18px_50px_rgba(0,0,0,0.14)] transition-transform duration-300 hover:-translate-y-1.5 max-md:min-h-0 ${surface}`}
     >
       {number && (
         <span className="mb-5 block text-[54px] font-black leading-none max-md:text-[44px]">

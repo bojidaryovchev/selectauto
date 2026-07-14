@@ -5,20 +5,31 @@ import { notFound } from "next/navigation";
 import { Container, LinkButton } from "@/components/common";
 import {
   CarContactPanel,
+  CarFactoryOptions,
   CarGallery,
   CarHighlights,
+  CarHistoryTimeline,
+  CarIaaScore,
+  CarInspection,
+  CarInsuranceSummary,
+  CarLocationMap,
+  CarMediaStrip,
   CarPricePanel,
+  CarSellerNote,
   CarSpecSheet,
+  CarTagChips,
   RelatedCars,
 } from "@/components/cars/car-detail";
 import { AuctionCountdown } from "@/components/cars/all-cars";
+import { FavoriteButton } from "@/components/cars/favorite-button";
 import { SiteFooter, SiteHeader } from "@/components/layout";
+import { SITE_URL } from "@/constants";
 import { buildCarJsonLd } from "@/lib/car-detail-jsonld";
+import { modelHubPath } from "@/lib/car-slug";
+import { buildBreadcrumbJsonLd, type Breadcrumb } from "@/lib/site-jsonld";
 import { getCarDetail } from "@/queries/cars";
 
 type Params = Promise<{ id: string }>;
-
-const SITE_URL = "https://selectauto.bg";
 
 /** Parse the `[id]` route param to a positive integer car id (else NaN). */
 function parseId(raw: string): number {
@@ -44,6 +55,20 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const canonical = `${SITE_URL}/avtomobil/${id}`;
   const priceStr = detail.prices.find((p) => p.primary)?.value;
 
+  // Enriched title: price + „внос от {държава}" out-informs the field's uniformly
+  // thin listing titles ("2018 BMW X5 - Brand") — a snippet-CTR edge at catalog
+  // scale (docs/13-seo-action-plan.md Phase A). Price only for ACTIVE cars — a
+  // sold price in the title of a noindexed page would only mislead sharers.
+  // Country only when the mapper could state it confidently (see sourceCountry).
+  const titleBits = [
+    !detail.isPast && priceStr ? priceStr : null,
+    detail.sourceCountry ? `внос от ${detail.sourceCountry}` : null,
+  ].filter(Boolean);
+  const title =
+    titleBits.length > 0
+      ? `${detail.title} — ${titleBits.join(", ")} | SelectAuto`
+      : `${detail.title} | SelectAuto`;
+
   const descBits = [
     detail.source,
     detail.highlights.find((h) => h.label === "Пробег")?.value,
@@ -52,8 +77,8 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   ].filter(Boolean);
 
   return {
-    title: `${detail.title} | SelectAuto`,
-    description: `${detail.title} — внос от ${detail.source}. ${descBits.join(" · ")}. Свържи се със SelectAuto за оферта и внос.`,
+    title,
+    description: `${detail.title} — внос от ${detail.sourceCountry ? `${detail.sourceCountry} (${detail.source})` : detail.source}. ${descBits.join(" · ")}. Свържи се със SelectAuto за оферта и внос.`,
     alternates: { canonical },
     robots: detail.isPast ? { index: false, follow: true } : undefined,
     openGraph: {
@@ -66,11 +91,19 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 }
 
 /**
- * /avtomobil/[id] — the single-car detail page. A static shell (header/footer)
- * renders immediately; the data-dependent body streams inside a `<Suspense>`
- * boundary (required by PPR / Cache Components — `params` is uncached request data,
- * so awaiting it at the page root blocks the whole route and the build rejects it;
- * the catalog page suspends its grid the same way).
+ * /avtomobil/[id] — the single-car detail page. The static shell (skeleton main +
+ * footer) renders immediately; the data-dependent body streams inside a
+ * `<Suspense>` boundary (required by PPR / Cache Components — `params` is uncached
+ * request data, so awaiting it at the page root blocks the whole route and the
+ * build rejects it; the catalog page suspends its grid the same way).
+ *
+ * The HEADER gets its own boundary: `SiteHeader` (and its `MobileBottomNav`) read
+ * `usePathname()` for active-nav state, and on a dynamic-param route the pathname
+ * is unknown while the fallback shell prerenders — rendering it unwrapped fails
+ * the build with "Uncached data was accessed outside of <Suspense>" (same
+ * constraint the root layout documents for `<ScrollToTop>`; static routes are
+ * unaffected because their pathname is known at build time). It has no data
+ * reads, so at request time it streams in the first flush — effectively instant.
  *
  * 404 handling: `notFound()` runs inside the suspended body, so a missing/invalid
  * id renders the not-found UI AFTER the shell has begun streaming (HTTP 200 with a
@@ -81,7 +114,9 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 export default function CarDetailPage({ params }: { params: Params }) {
   return (
     <>
-      <SiteHeader />
+      <Suspense fallback={null}>
+        <SiteHeader />
+      </Suspense>
       <main className="flex-1 bg-[#fafafa] pt-(--header-h) text-ink">
         <Suspense fallback={<CarDetailSkeleton />}>
           <CarDetailBody params={params} />
@@ -107,6 +142,26 @@ async function CarDetailBody({ params }: { params: Params }) {
   const { detail, related } = payload;
   const jsonLd = buildCarJsonLd(detail, `${SITE_URL}/avtomobil/${id}`);
 
+  // Model-hub crumb — the contextual internal link INTO the SEO hub
+  // (`/avtomobili/marka/{make}/{model}`). Inserted only when the car has resolvable
+  // brand+model names (so the target hub URL actually resolves). This is the
+  // highest-value hub link: it flows authority from every car-detail page into the
+  // relevant hub and mirrors the JSON-LD trail. `label` is the make+model, or a
+  // trimmed title fallback.
+  const hubHref = modelHubPath(detail.brand, detail.model);
+  const hubLabel = detail.brand && detail.model ? `${detail.brand} ${detail.model}` : null;
+
+  // Breadcrumb matching the visible nav (Home → Catalog → [model hub] → this car).
+  // Emitted for both active and past cars (a breadcrumb is fine on a noindexed page —
+  // it just won't surface; harmless and keeps the trail consistent).
+  const crumbs: Breadcrumb[] = [
+    { name: "Начало", url: "/" },
+    { name: "Всички автомобили", url: "/vsichki-avtomobili" },
+    ...(hubHref && hubLabel ? [{ name: hubLabel, url: hubHref }] : []),
+    { name: detail.title, url: `/avtomobil/${id}` },
+  ];
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd(crumbs);
+
   return (
     <>
       {jsonLd ? (
@@ -115,14 +170,27 @@ async function CarDetailBody({ params }: { params: Params }) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       ) : null}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
 
       <Container>
         <div className="py-8 max-md:py-6">
-            {/* Breadcrumb */}
+            {/* Breadcrumb (Home → Catalog → [model hub] → this car). The model-hub
+                link is shown only when it resolves — see `hubHref` above. */}
             <nav className="mb-5 text-sm text-muted">
               <Link href="/vsichki-avtomobili/" className="hover:text-brand-dark">
                 Всички автомобили
               </Link>
+              {hubHref && hubLabel ? (
+                <>
+                  <span className="px-2">/</span>
+                  <Link href={hubHref} className="hover:text-brand-dark">
+                    {hubLabel}
+                  </Link>
+                </>
+              ) : null}
               <span className="px-2">/</span>
               <span className="text-ink">{detail.title}</span>
             </nav>
@@ -130,19 +198,34 @@ async function CarDetailBody({ params }: { params: Params }) {
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
               {/* ── Left column: gallery + heading + specs ── */}
               <div className="flex flex-col gap-6">
-                <CarGallery images={detail.images} alt={detail.title} />
+                <div className="flex flex-col gap-3">
+                  <CarGallery images={detail.images} alt={detail.title} />
+                  {detail.media ? <CarMediaStrip media={detail.media} /> : null}
+                </div>
 
                 <div>
                   <div className="mb-3 flex flex-wrap items-center gap-2">
-                    <span className="inline-flex items-center rounded-full bg-[#163b66] px-3 py-1 text-[11px] font-black uppercase tracking-[0.05em] text-white">
+                    {detail.brandLogo ? (
+                      // Brand logo (SVG on auctionsapi.com). Plain <img> — next/image
+                      // blocks SVG without dangerouslyAllowSVG; this is a small mark.
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={detail.brandLogo}
+                        alt={detail.brand ? `${detail.brand} лого` : ""}
+                        width={28}
+                        height={28}
+                        className="inline-flex size-7 items-center justify-center rounded-full bg-white p-1 shadow-card ring-1 ring-line"
+                      />
+                    ) : null}
+                    <span className="inline-flex items-center rounded-full bg-[#163b66] px-3 py-1 text-[11px] font-black uppercase tracking-wider text-white">
                       {detail.source}
                     </span>
                     {detail.isPast ? (
-                      <span className="inline-flex items-center rounded-full bg-[#3a3f47] px-3 py-1 text-[11px] font-black uppercase tracking-[0.05em] text-white">
+                      <span className="inline-flex items-center rounded-full bg-[#3a3f47] px-3 py-1 text-[11px] font-black uppercase tracking-wider text-white">
                         ПРОДАДЕН
                       </span>
                     ) : detail.hasBuyNow ? (
-                      <span className="inline-flex items-center rounded-full bg-gradient-to-r from-brand-dark to-brand px-3 py-1 text-[11px] font-black uppercase tracking-[0.05em] text-white">
+                      <span className="inline-flex items-center rounded-full bg-linear-to-r from-brand-dark to-brand px-3 py-1 text-[11px] font-black uppercase tracking-wider text-white">
                         BUY NOW
                       </span>
                     ) : null}
@@ -151,12 +234,44 @@ async function CarDetailBody({ params }: { params: Params }) {
                     ) : null}
                   </div>
 
-                  <h1 className="mb-4 text-3xl font-black uppercase leading-tight text-[#153f6b] max-md:text-2xl">
-                    {detail.title}
-                  </h1>
+                  <div className="mb-4 flex items-start justify-between gap-4">
+                    <h1 className="text-3xl/tight font-black uppercase text-[#153f6b] max-md:text-2xl">
+                      {detail.title}
+                    </h1>
+                    {/* Favourite toggle — solid style to sit on the light page.
+                        Past/sold cars can still be saved for price research. */}
+                    <div className="shrink-0">
+                      <FavoriteButton carId={id} size="lg" variant="solid" />
+                    </div>
+                  </div>
 
                   <CarHighlights highlights={detail.highlights} />
+
+                  {detail.odometerNotActual || detail.usageFlag ? (
+                    <div className="mt-2.5 flex flex-wrap gap-2">
+                      {detail.odometerNotActual ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fff4e5] px-3.5 py-1.5 text-[13px] font-bold text-[#9a5b00] ring-1 ring-[#f5d9ac]">
+                          ⚠ Непотвърден километраж
+                        </span>
+                      ) : null}
+                      {detail.usageFlag ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fff4e5] px-3.5 py-1.5 text-[13px] font-bold text-[#9a5b00] ring-1 ring-[#f5d9ac]">
+                          ⚠ {detail.usageFlag}
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {detail.usTags && detail.usTags.length > 0 ? (
+                    <div className="mt-3">
+                      <CarTagChips tags={detail.usTags} />
+                    </div>
+                  ) : null}
                 </div>
+
+                {/* IAA Vehicle Score meter (IAAI-only; self-hides otherwise).
+                    `!= null` because 0 is a valid score (non-repairable). */}
+                {detail.iaaScore != null ? <CarIaaScore value={detail.iaaScore} /> : null}
 
                 {/* Spec sheet (desktop reads it here under the heading) */}
                 <CarSpecSheet specs={detail.specs} />
@@ -179,9 +294,33 @@ async function CarDetailBody({ params }: { params: Params }) {
                   )}
                 </div>
 
-                <CarPricePanel prices={detail.prices} />
+                <CarPricePanel prices={detail.prices} liveBid={detail.liveBid} marketAvg={detail.marketAvg} />
 
-                {detail.location ? (
+                {detail.seller?.name || detail.seller?.logo ? (
+                  <div className="flex items-center gap-3 rounded-2xl border border-line bg-white px-5 py-4 shadow-card">
+                    {detail.seller.logo ? (
+                      // Insurer/seller logo (IAAI). Plain <img>: remote logo, may be SVG.
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={detail.seller.logo}
+                        alt={detail.seller.name ? `${detail.seller.name} лого` : ""}
+                        className="h-8 w-auto max-w-24 object-contain"
+                      />
+                    ) : null}
+                    <div>
+                      <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted">
+                        Продавач
+                      </span>
+                      {detail.seller.name ? (
+                        <span className="text-sm font-bold text-ink">{detail.seller.name}</span>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+
+                {detail.geo ? (
+                  <CarLocationMap lat={detail.geo.lat} lng={detail.geo.lng} location={detail.location} />
+                ) : detail.location ? (
                   <div className="rounded-2xl border border-line bg-white px-5 py-4 shadow-card">
                     <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted">
                       Локация
@@ -194,15 +333,36 @@ async function CarDetailBody({ params }: { params: Params }) {
                   <LinkButton
                     href="/vsichki-avtomobili/"
                     rippleTheme="dark"
-                    className="inline-flex min-h-[52px] w-full items-center justify-center rounded-full border border-line bg-white px-5 text-sm font-extrabold uppercase tracking-wide text-[#333] transition-transform duration-200 hover:-translate-y-0.5 hover:text-brand-dark"
+                    className="inline-flex min-h-13 w-full items-center justify-center rounded-full border border-line bg-white px-5 text-sm font-extrabold uppercase tracking-wide text-[#333] transition-transform duration-200 hover:-translate-y-0.5 hover:text-brand-dark"
                   >
                     Виж активни обяви
                   </LinkButton>
                 ) : (
-                  <CarContactPanel title={detail.title} />
+                  <CarContactPanel
+                    title={detail.title}
+                    brand={detail.brand}
+                    model={detail.model}
+                    year={detail.year}
+                    lotNumber={detail.lotNumber}
+                  />
                 )}
               </aside>
             </div>
+
+            {/* ── ENCAR (Korea) retail sections — full-width, below the two-column
+                summary. All data is parsed into the view-model in the mapper; each
+                section self-hides when its block is absent (also true of archived
+                ENCAR lots, whose details tree is stripped to price-only). ── */}
+            {detail.market === "kr" &&
+            (detail.inspection || detail.insurance || detail.factoryOptions || detail.history || detail.sellerNote) ? (
+              <div className="mt-8 flex flex-col gap-6">
+                {detail.inspection ? <CarInspection inspection={detail.inspection} /> : null}
+                {detail.insurance ? <CarInsuranceSummary insurance={detail.insurance} /> : null}
+                {detail.factoryOptions ? <CarFactoryOptions options={detail.factoryOptions} /> : null}
+                {detail.history ? <CarHistoryTimeline history={detail.history} /> : null}
+                {detail.sellerNote ? <CarSellerNote note={detail.sellerNote} /> : null}
+              </div>
+            ) : null}
 
             <RelatedCars cars={related} />
           </div>
@@ -211,22 +371,78 @@ async function CarDetailBody({ params }: { params: Params }) {
   );
 }
 
-/** Lightweight placeholder shown while the detail body streams in. */
+// Stable keys for the skeleton's repeated placeholders (no array-index keys).
+const SKELETON_THUMBS = ["t1", "t2", "t3", "t4", "t5", "t6", "t7"];
+const SKELETON_CHIPS = [
+  { k: "chip-1", w: "w-24" },
+  { k: "chip-2", w: "w-28" },
+  { k: "chip-3", w: "w-20" },
+  { k: "chip-4", w: "w-24" },
+];
+const SKELETON_RELATED = ["r1", "r2", "r3", "r4"];
+
+/**
+ * Placeholder shown while the detail body streams in — the single Suspense fallback
+ * for the whole page body, so it mirrors the real layout end-to-end to keep the swap
+ * near shift-free: breadcrumb → two columns (gallery + thumbnail strip + heading +
+ * highlight chips + spec-sheet card | status strip + price panel + contact panel) →
+ * the "Подобни автомобили" carousel row.
+ *
+ * The IAAI score card is deliberately NOT placeholdered: it's IAAI-scored-only, so a
+ * block here would flash empty for the Copart/Encar/unscored majority.
+ */
 function CarDetailSkeleton() {
   return (
     <Container>
       <div className="py-8 max-md:py-6">
-        <div className="mb-5 h-4 w-64 animate-pulse rounded bg-line" />
+        {/* Breadcrumb */}
+        <div className="mb-5 h-4 w-64 animate-pulse rounded-sm bg-line" />
+
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+          {/* Left column: gallery + heading + spec sheet */}
           <div className="flex flex-col gap-6">
-            <div className="aspect-[4/3] w-full animate-pulse rounded-2xl bg-line" />
-            <div className="h-8 w-3/4 animate-pulse rounded bg-line" />
-            <div className="h-40 w-full animate-pulse rounded-2xl bg-line" />
+            {/* Gallery — main image + thumbnail strip */}
+            <div className="flex flex-col gap-3">
+              <div className="aspect-4/3 w-full animate-pulse rounded-2xl bg-line" />
+              <div className="flex gap-2 overflow-hidden">
+                {SKELETON_THUMBS.map((k) => (
+                  <div key={k} className="aspect-4/3 w-22 shrink-0 animate-pulse rounded-lg bg-line" />
+                ))}
+              </div>
+            </div>
+
+            {/* Heading — title + highlight chips */}
+            <div className="flex flex-col gap-3">
+              <div className="h-8 w-3/4 animate-pulse rounded-sm bg-line" />
+              <div className="flex flex-wrap gap-2.5">
+                {SKELETON_CHIPS.map(({ k, w }) => (
+                  <div key={k} className={`h-8 ${w} animate-pulse rounded-full bg-line`} />
+                ))}
+              </div>
+            </div>
+
+            {/* Spec-sheet card */}
+            <div className="h-72 w-full animate-pulse rounded-2xl bg-line" />
           </div>
+
+          {/* Right column: status strip + price panel + contact panel */}
           <div className="flex flex-col gap-5">
             <div className="h-12 w-full animate-pulse rounded-2xl bg-line" />
-            <div className="h-28 w-full animate-pulse rounded-2xl bg-line" />
-            <div className="h-48 w-full animate-pulse rounded-2xl bg-line" />
+            <div className="h-40 w-full animate-pulse rounded-2xl bg-line" />
+            <div className="h-60 w-full animate-pulse rounded-2xl bg-line" />
+          </div>
+        </div>
+
+        {/* Related cars ("Подобни автомобили") — heading + a peeking carousel row */}
+        <div className="mt-12">
+          <div className="mb-5 h-7 w-56 animate-pulse rounded-sm bg-line" />
+          <div className="flex gap-5 overflow-hidden">
+            {SKELETON_RELATED.map((k) => (
+              <div
+                key={k}
+                className="h-72 w-[70%] shrink-0 animate-pulse rounded-2xl bg-line sm:w-[45%] lg:w-[30%]"
+              />
+            ))}
           </div>
         </div>
       </div>

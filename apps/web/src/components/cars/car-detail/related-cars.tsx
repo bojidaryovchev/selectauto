@@ -1,15 +1,15 @@
 "use client";
 
 import { useRef } from "react";
-import { FreeMode, Navigation } from "swiper/modules";
+import { Autoplay, FreeMode, Navigation } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
 import type { Swiper as SwiperClass } from "swiper/types";
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/free-mode";
 import { AuctionCard } from "@/components/cars/all-cars/auction-card";
-import { Button } from "@/components/common";
-import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
+import { CarouselNav } from "@/components/common";
+import { useMounted } from "@/hooks/use-mounted";
 import type { CarView } from "@/types/car.type";
 
 /**
@@ -26,6 +26,13 @@ export function RelatedCars({ cars }: { cars: CarView[] }) {
   const prevRef = useRef<HTMLButtonElement | null>(null);
   const nextRef = useRef<HTMLButtonElement | null>(null);
 
+  // Swiper's Autoplay module calls `new Date()` at construction, which Next's
+  // cacheComponents (PPR) forbids during the static-shell prerender of a client
+  // component — so we exclude the module during SSR and remount (via `key`) with
+  // it on the client (see CarsCarousel for the full rationale). Cards still SSR;
+  // autoplay starts post-hydration.
+  const mounted = useMounted();
+
   if (cars.length === 0) return null;
 
   return (
@@ -35,7 +42,7 @@ export function RelatedCars({ cars }: { cars: CarView[] }) {
         <h2 className="text-2xl font-black uppercase tracking-tight text-ink max-md:text-xl">
           Подобни автомобили
         </h2>
-        <div className="flex flex-shrink-0 gap-2.5">
+        <div className="flex shrink-0 gap-2.5">
           <CarouselNav ref={prevRef} side="left" />
           <CarouselNav ref={nextRef} side="right" />
         </div>
@@ -45,12 +52,15 @@ export function RelatedCars({ cars }: { cars: CarView[] }) {
           shared AuctionCard's wide/orange shadows bleed in this tight layout, so we
           drop them here ([&_article]/CTA shadow-none) — the card border delineates. */}
       <Swiper
-        modules={[FreeMode, Navigation]}
+        key={mounted ? "client" : "ssr"}
+        modules={mounted ? [Autoplay, FreeMode, Navigation] : [FreeMode, Navigation]}
         slidesPerView={1.15}
         spaceBetween={20}
         freeMode
         grabCursor
         watchOverflow
+        rewind
+        autoplay={mounted ? { delay: 2000, disableOnInteraction: false, pauseOnMouseEnter: true } : undefined}
         breakpoints={{
           560: { slidesPerView: 2.2, spaceBetween: 20 },
           1024: { slidesPerView: 3.3, spaceBetween: 20 },
@@ -77,22 +87,5 @@ export function RelatedCars({ cars }: { cars: CarView[] }) {
         ))}
       </Swiper>
     </section>
-  );
-}
-
-/**
- * A circular prev/next nav button for the carousel (legacy related-swiper-prev/
- * next). The chevron is centered via `grid place-items-center`. Swiper toggles
- * `swiper-button-disabled` at the track ends — we style that to fade + disable it.
- */
-function CarouselNav({ ref, side }: { ref: React.Ref<HTMLButtonElement>; side: "left" | "right" }) {
-  return (
-    <Button
-      ref={ref}
-      aria-label={side === "left" ? "Назад" : "Напред"}
-      className="grid h-11 w-11 place-items-center rounded-full border border-line bg-white text-ink shadow-card transition hover:-translate-y-0.5 hover:border-brand hover:text-brand-dark [&.swiper-button-disabled]:pointer-events-none [&.swiper-button-disabled]:opacity-40"
-    >
-      {side === "left" ? <ChevronLeftIcon className="h-5 w-5" /> : <ChevronRightIcon className="h-5 w-5" />}
-    </Button>
   );
 }

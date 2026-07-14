@@ -11,12 +11,12 @@ import { SocialLink } from "./social-link";
 /** "Визуално проследяване" + "Следвайте ни" cards beside the logo card. */
 export function AboutSocial() {
   return (
-    <section className="py-[88px] max-md:py-[58px]">
+    <section className="py-22 max-md:py-14.5">
       <Container>
         <div className="grid grid-cols-[1.15fr_0.85fr] items-stretch gap-6 max-[1100px]:grid-cols-1">
           <div className="grid gap-6">
             <Reveal>
-              <article className="overflow-hidden rounded-[28px] bg-[linear-gradient(135deg,#0c0d10,#15171c)] p-[30px] text-white shadow-[0_18px_50px_rgba(0,0,0,0.14)] max-md:p-6">
+              <article className="overflow-hidden rounded-[28px] bg-[linear-gradient(135deg,#0c0d10,#15171c)] p-7.5 text-white shadow-[0_18px_50px_rgba(0,0,0,0.14)] max-md:p-6">
                 <h3 className="mb-4 text-[32px] font-black leading-[1.05] max-md:text-[28px]">
                   Визуално проследяване
                 </h3>
@@ -32,7 +32,7 @@ export function AboutSocial() {
                 <h3 className="mb-4 text-[34px] font-black leading-[1.05] max-md:text-[28px]">
                   Следвайте ни
                 </h3>
-                <p className="mb-5 text-[17px] leading-[1.8] text-white/[0.78] max-md:text-base">
+                <p className="mb-5 text-[17px] leading-[1.8] text-white/78 max-md:text-base">
                   Бъди близо до нас и виж най-новите автомобили, процеси и реални
                   резултати.
                 </p>
@@ -66,7 +66,7 @@ export function AboutSocial() {
 
           {/* Logo card */}
           <Reveal delay={0.16}>
-            <div className="flex min-h-[258px] items-center justify-center rounded-[30px] bg-[linear-gradient(135deg,#0c0d10,#15171c)] p-7 shadow-[0_18px_50px_rgba(0,0,0,0.14)] max-md:min-h-[240px]">
+            <div className="flex min-h-64.5 items-center justify-center rounded-[30px] bg-[linear-gradient(135deg,#0c0d10,#15171c)] p-7 shadow-[0_18px_50px_rgba(0,0,0,0.14)] max-md:min-h-60">
               <Image
                 src="/autoselect.jpg"
                 alt="SelectAuto About"

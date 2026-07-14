@@ -1,4 +1,6 @@
 export { BrandsGrid } from "./brands-grid";
-export { CarCard } from "./car-card";
+export { FavoriteButton } from "./favorite-button";
+export { FavoritesGrid } from "./favorites-grid";
 export { CarsCarousel } from "./cars-carousel";
 export { CarsSection } from "./cars-section";
+export { ModelSoldPrices } from "./model-sold-prices";

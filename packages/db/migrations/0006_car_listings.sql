@@ -7,7 +7,7 @@
 --
 -- Maintained incrementally by ingestion via recompute_car_listings(car_ids[])
 -- (NOT a Postgres MATERIALIZED VIEW — a full REFRESH would re-run the timeout-
--- prone collapse wholesale). See apps/web/ALL-CARS-DB-DESIGN.md §4/§7.
+-- prone collapse wholesale). See docs/05-projection-tables-car-listings.md §4/§7.
 --
 -- This migration creates the TABLE ONLY. Indexes are added in a later step
 -- AFTER the one-time backfill, so the bulk load isn't index-maintained per row.

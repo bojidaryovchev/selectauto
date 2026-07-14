@@ -10,14 +10,20 @@
     }
   },
   "scripts": {
+    "dev:web": "pnpm --filter @auctions-ingestion/web run dev",
+    "build:web": "pnpm --filter @auctions-ingestion/web run build",
     "build:functions": "pnpm --filter @auctions-ingestion/functions run build",
+    "clean:functions": "pnpm --filter @auctions-ingestion/functions run clean",
     "migrate": "pnpm --filter @auctions-ingestion/db run migrate",
     "migrate:status": "pnpm --filter @auctions-ingestion/db run migrate:status",
-    "deploy": "pnpm run build:functions && pnpm --filter @auctions-ingestion/infra run up",
-    "preview": "pnpm run build:functions && pnpm --filter @auctions-ingestion/infra run preview",
-    "type-check": "pnpm --filter @auctions-ingestion/functions --filter @auctions-ingestion/infra --filter @auctions-ingestion/db run type-check",
+    "db:generate": "pnpm --filter @auctions-ingestion/db exec drizzle-kit generate",
+    "db:studio": "pnpm --filter @auctions-ingestion/db run db:studio",
+    "deploy": "pnpm run build:functions && pnpm --filter @auctions-ingestion/infra run pulumi:up",
+    "preview": "pnpm run build:functions && pnpm --filter @auctions-ingestion/infra run pulumi:preview",
+    "destroy": "pnpm --filter @auctions-ingestion/infra run pulumi:destroy",
+    "type-check": "pnpm --filter @auctions-ingestion/web --filter @auctions-ingestion/functions --filter @auctions-ingestion/infra --filter @auctions-ingestion/db run type-check",
     "lint": "eslint .",
-    "format": "prettier --write \"**/*.{ts,mjs,json}\"",
+    "format": "prettier --write \"**/*.{ts,tsx,mjs,json}\"",
     "check": "pnpm run type-check && pnpm run lint"
   },
   "devDependencies": {
@@ -26,6 +32,7 @@
     "globals": "15.14.0",
     "prettier": "3.4.2",
     "prettier-plugin-organize-imports": "4.1.0",
+    "prettier-plugin-tailwindcss": "^0.8.0",
     "typescript": "5.9.3",
     "typescript-eslint": "8.44.0"
   }

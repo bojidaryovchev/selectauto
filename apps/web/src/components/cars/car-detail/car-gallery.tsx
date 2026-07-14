@@ -55,7 +55,7 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
 
   if (count === 0) {
     return (
-      <div className="flex aspect-[4/3] w-full items-center justify-center rounded-2xl bg-gradient-to-br from-[#2a2d33] to-[#15171b] text-sm font-semibold uppercase tracking-wider text-white/35">
+      <div className="flex aspect-4/3 w-full items-center justify-center rounded-2xl bg-linear-to-br from-[#2a2d33] to-[#15171b] text-sm font-semibold uppercase tracking-wider text-white/35">
         Снимка при поискване
       </div>
     );
@@ -82,7 +82,7 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
           sizes={MAIN_SIZES}
           loading="eager"
           fetchPriority="high"
-          className={`block aspect-[4/3] w-full object-cover transition-opacity duration-200 ${
+          className={`block aspect-4/3 w-full object-cover transition-opacity duration-200 ${
             zooming ? "opacity-0" : "opacity-100"
           }`}
         />
@@ -91,7 +91,7 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
             cursor. Hidden on touch (no hover) and faded in only while zooming. */}
         <div
           aria-hidden="true"
-          className={`pointer-events-none absolute inset-0 hidden bg-no-repeat transition-opacity duration-200 [@media(pointer:fine)]:block ${
+          className={`pointer-events-none absolute inset-0 hidden bg-no-repeat transition-opacity duration-200 pointer-fine:block ${
             zooming ? "opacity-100" : "opacity-0"
           }`}
           style={{
@@ -101,13 +101,27 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
           }}
         />
 
-        {/* Prev/next arrows (only with >1 image). Hidden while zooming so they
-            don't sit over the magnified view. */}
+        {/* Prev/next arrows (only with >1 image). Kept visible DURING zoom: on a
+            fine pointer the main image is only reachable while hovering — which is
+            exactly when zoom is active — so fading them out made them unclickable
+            by mouse. They render above the zoom layer (z-2, and that layer is
+            pointer-events-none) on a translucent, ringed backdrop, so they stay
+            legible and clickable over the magnified photo. */}
         {count > 1 ? (
-          <div className={zooming ? "opacity-0 transition-opacity" : "opacity-100 transition-opacity"}>
-            <GalleryArrow side="left" onClick={prev} />
-            <GalleryArrow side="right" onClick={next} />
-          </div>
+          <>
+            <GalleryArrow
+              side="left"
+              onClick={prev}
+              onMouseEnter={() => setZooming(false)}
+              onMouseLeave={() => setZooming(true)}
+            />
+            <GalleryArrow
+              side="right"
+              onClick={next}
+              onMouseEnter={() => setZooming(false)}
+              onMouseLeave={() => setZooming(true)}
+            />
+          </>
         ) : null}
 
         {/* Image counter */}
@@ -118,14 +132,14 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
         ) : null}
 
         {/* Hover hint (desktop only, fades out on hover) */}
-        <span className="pointer-events-none absolute bottom-3 left-3 hidden rounded-full bg-black/55 px-3 py-1 text-[11px] font-semibold text-white/90 transition-opacity duration-200 group-hover:opacity-0 [@media(pointer:fine)]:block">
+        <span className="pointer-events-none absolute bottom-3 left-3 hidden rounded-full bg-black/55 px-3 py-1 text-[11px] font-semibold text-white/90 transition-opacity duration-200 group-hover:opacity-0 pointer-fine:block">
           Задръж за увеличение
         </span>
       </div>
 
       {/* Thumbnail strip */}
       {count > 1 ? (
-        <div className="grid grid-flow-col auto-cols-[88px] gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
+        <div className="grid grid-flow-col auto-cols-[88px] gap-2 overflow-x-auto pb-1 scrollbar-thin">
           {images.map((thumb, i) => (
             <Button
               key={thumb}
@@ -143,7 +157,7 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
                 height={66}
                 sizes="88px"
                 loading="lazy"
-                className="block aspect-[4/3] w-[88px] object-cover"
+                className="block aspect-4/3 w-22 object-cover"
               />
             </Button>
           ))}
@@ -157,24 +171,49 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
  * A circular prev/next control overlaid on the gallery. The chevron icon is
  * centered via `grid place-items-center` so it sits dead-center in the button.
  */
-function GalleryArrow({ side, onClick }: { side: "left" | "right"; onClick: () => void }) {
+function GalleryArrow({
+  side,
+  onClick,
+  onMouseEnter,
+  onMouseLeave,
+}: {
+  side: "left" | "right";
+  onClick: () => void;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
+}) {
+  // Positioning lives on a wrapper, NOT on the Button. The shared <Button> hardcodes
+  // `relative` (its ripple needs a positioned host); since Tailwind emits `.relative`
+  // AFTER `.absolute`, an `absolute` passed straight to Button loses the cascade tie
+  // and the control collapses into normal flow. The wrapper owns the absolute
+  // placement; the Button stays purely the circular hit-target.
+  //
+  // The wrapper also owns the hover handlers: while the cursor is over an arrow we
+  // drop the image zoom (like leaving the picture) so the magnified lens isn't panning
+  // under the control you're aiming at; moving back onto the image re-arms it. Relies
+  // on React firing leave inner→outer / enter outer→inner, so an arrow↔frame crossing
+  // settles on the correct final state.
   return (
-    <Button
-      rippleTheme="light"
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-      aria-label={side === "left" ? "Предишна снимка" : "Следваща снимка"}
-      className={`absolute top-1/2 z-[2] grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-black/45 text-white backdrop-blur transition hover:bg-black/70 ${
-        side === "left" ? "left-3" : "right-3"
-      }`}
+    <div
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      className={`absolute top-1/2 z-2 -translate-y-1/2 ${side === "left" ? "left-3" : "right-3"}`}
     >
-      {side === "left" ? (
-        <ChevronLeftIcon className="h-5 w-5" />
-      ) : (
-        <ChevronRightIcon className="h-5 w-5" />
-      )}
-    </Button>
+      <Button
+        rippleTheme="light"
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick();
+        }}
+        aria-label={side === "left" ? "Предишна снимка" : "Следваща снимка"}
+        className="grid size-10 place-items-center rounded-full bg-black/55 text-white ring-1 ring-white/15 backdrop-blur-sm transition hover:bg-black/75"
+      >
+        {side === "left" ? (
+          <ChevronLeftIcon className="size-5" />
+        ) : (
+          <ChevronRightIcon className="size-5" />
+        )}
+      </Button>
+    </div>
   );
 }

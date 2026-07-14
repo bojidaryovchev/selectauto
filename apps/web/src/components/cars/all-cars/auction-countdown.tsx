@@ -46,8 +46,10 @@ export function AuctionCountdown({ saleDate, status }: { saleDate?: string; stat
   if (!isLive) {
     return (
       <>
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Статус</span>
-        <span className="whitespace-nowrap text-sm font-bold text-white/90">{statusFallback}</span>
+        {/* Both sides single-line, always: the bar's height must never change
+            (uniform card heights keep the virtualized grid jump-free). */}
+        <span className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-white/55">Статус</span>
+        <span className="truncate whitespace-nowrap text-sm font-bold text-white/90">{statusFallback}</span>
       </>
     );
   }
@@ -64,7 +66,7 @@ export function AuctionCountdown({ saleDate, status }: { saleDate?: string; stat
 
   return (
     <>
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Време до търга</span>
+      <span className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-white/55">Време до търга</span>
       <span className="whitespace-nowrap text-sm font-bold text-white tabular-nums">{parts}</span>
     </>
   );

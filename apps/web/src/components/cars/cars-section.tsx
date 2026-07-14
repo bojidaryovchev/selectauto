@@ -26,7 +26,7 @@ export function CarsSection({
   tinted?: boolean;
 }) {
   return (
-    <section className={`py-[78px] max-md:py-14 ${tinted ? "bg-[#fafafa]" : ""}`}>
+    <section className={`py-19.5 max-md:py-14 ${tinted ? "bg-[#fafafa]" : ""}`}>
       <Container>
         <SectionHeader eyebrow={eyebrow} title={title} subtitle={subtitle} />
 
@@ -36,7 +36,7 @@ export function CarsSection({
           <LinkButton
             href={ctaHref}
             rippleTheme="dark"
-            className="inline-flex min-h-[54px] items-center justify-center rounded-full border border-[#ddd] bg-white px-7 text-[15px] font-extrabold text-[#333] transition-transform duration-200 hover:-translate-y-0.5 hover:text-brand-dark"
+            className="inline-flex min-h-13.5 items-center justify-center rounded-full border border-[#ddd] bg-white px-7 text-[15px] font-extrabold text-[#333] transition-transform duration-200 hover:-translate-y-0.5 hover:text-brand-dark"
           >
             {ctaLabel}
           </LinkButton>

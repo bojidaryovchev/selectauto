@@ -134,6 +134,36 @@ Safe to run against prod while ingestion runs (idempotent, write-isolated to the
 projection, reads only cars/auction_lots). Run **both** functions to keep the
 tables disjoint + complete.
 
+### 5.1 Repairing the summary tables (`car_listing_counts` / `car_listing_facets`)
+
+Since `0026` the `_counted` wrappers serialize summary maintenance under an advisory
+lock, so the snapshot-diff can't race a concurrent recompute and the summaries
+**can't drift from the projections** under normal *or* bulk operation. You therefore
+reseed only after a **deliberate `recompute_*` logic change** (the function-only
+migration doesn't touch existing rows, and re-running recompute on an already-written
+row diffs to Δ0) — or after a manual projection edit. `reseed-summaries.mjs`
+re-derives both summary tables from the current projection state:
+
+```bash
+# from packages/db/
+node --env-file-if-exists=../../.env reseed-summaries.mjs           # reseed both, then report
+node --env-file-if-exists=../../.env reseed-summaries.mjs --check   # report only (no writes)
+node --env-file-if-exists=../../.env reseed-summaries.mjs --counts  # or --facets (one table)
+```
+
+`--check` reports any negative `n` (`apply_*_delta` has no `n≥0` guard) and compares
+each `total` counter against a live `COUNT` of the projection. Each table is
+reseeded in one transaction (a brief `TRUNCATE` + re-aggregate — concurrent reads
+block, never see empty), so prefer a low-traffic window.
+
+**After changing a recompute function** (a new `00NN_*.sql` that `CREATE OR REPLACE`s
+`recompute_*`), the function-only migration doesn't touch existing rows — repair in
+order: **(1)** `backfill-car-listings.mjs` for **both** tables (rebuilds the
+projections + updates the summaries incrementally), then **(2)** `reseed-summaries.mjs`
+(authoritative summary state). This is exactly the `0022` repair (2026-07-11):
+backfill re-populated `vehicle_type`/`body_type` and pruned the non-concluded
+archived rows; the reseed made counts/facets exact (verified drift-free).
+
 ---
 
 ## 6. Resume a failed run
@@ -188,6 +218,8 @@ is order-independent, so an overlapping resume produces no duplicates.
 | node-postgres `SECURITY WARNING ... sslmode` | redundant `sslmode` in the URL | `db.ts`/`migrate.mjs` strip `sslmode` and configure TLS via the `ssl` object. Harmless. |
 | Reference catalog half-synced | legacy single-Lambda timed out / skip gate returned early | Run the `reference-sync` state machine (or legacy with `{force:true}`). |
 | `car_listings` stale / a sold car still shows active | recompute hooks not deployed, or a swallowed best-effort recompute | `pulumi up` to deploy hooks. For a one-off fix, start the `drift-sweep` machine (§4) or re-run `backfill-car-listings.mjs` (both fns); the weekly `drift-sweep` schedule mops this up automatically. |
+| "Намерени: N" header or a filter-dropdown count looks wrong | a summary counter drifted (race / swallowed apply / a recompute-fn change without reseed) | `reseed-summaries.mjs --check` to confirm, then `reseed-summaries.mjs` (§5.1). The drift sweep alone will **not** fix an already-drifted summary. |
+| A newly-listed car is missing from the "Тип"/"Гориво" filter | a recompute fn stopped populating `vehicle_type`/`body_type`/`fuel_type` (see `0022` regression) | Confirm the live fn body (`\df+ recompute_car_listings`), ship a fixed `CREATE OR REPLACE`, then repair via §5.1. |
 | Detail refreshes overwhelming the API | concurrency/pacing misconfigured | Confirm `refreshListingDetail` `reservedConcurrency = 1` and `DETAIL_REFRESH_PACE_MS`. |
 | AuctionsApiError 4xx (not 429) failing a run | terminal upstream error (bad key/param) | Check the key/params; 4xx is non-retryable by design. |
 

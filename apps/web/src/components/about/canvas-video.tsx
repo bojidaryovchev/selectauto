@@ -174,7 +174,7 @@ export function CanvasVideo({
           src={poster}
           alt=""
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ease-out"
+          className="pointer-events-none absolute inset-0 size-full object-cover transition-opacity duration-700 ease-out"
           style={{ opacity: isReady ? 0 : 1 }}
         />
       )}
@@ -182,7 +182,7 @@ export function CanvasVideo({
       <canvas
         ref={canvasRef}
         aria-hidden="true"
-        className="absolute inset-0 h-full w-full transition-opacity duration-700 ease-out"
+        className="absolute inset-0 size-full transition-opacity duration-700 ease-out"
         style={{ opacity: isReady ? 1 : 0 }}
       />
     </div>

@@ -14,7 +14,7 @@ const DEFAULT_LIMIT = 6;
  * a photo are skipped rather than shown with a placeholder.
  *
  * Reads the `car_listings` projection (one row per physical car, already
- * active-only and pre-joined — see ALL-CARS-DB-DESIGN.md) the same way the
+ * active-only and pre-joined — see docs/05-projection-tables-car-listings.md) the same way the
  * all-cars catalog does: zero joins, keyset order on `sort_id DESC` (indexed).
  * Querying raw `auction_lots` here used to `ORDER BY sale_date` (unindexed) and
  * statement-timeout under load — the projection makes this a flat, fast read.

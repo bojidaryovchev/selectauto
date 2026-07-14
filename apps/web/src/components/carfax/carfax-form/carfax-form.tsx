@@ -197,7 +197,7 @@ export function CarfaxForm() {
         <textarea
           id="saCarfaxMessage"
           placeholder="По желание: година, линк към обява, допълнителни детайли..."
-          className="min-h-[140px] w-full resize-y appearance-none rounded-[14px] border border-[#d9dde4] bg-white px-4 py-3.5 text-base font-semibold text-[#17181b] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-[border-color,box-shadow,transform] duration-200 placeholder:font-medium placeholder:text-[#9aa0aa] focus:-translate-y-px focus:border-brand focus:shadow-[0_0_0_4px_rgba(216,111,22,0.12)] focus:outline-none"
+          className="min-h-35 w-full resize-y appearance-none rounded-[14px] border border-[#d9dde4] bg-white px-4 py-3.5 text-base font-semibold text-[#17181b] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-[border-color,box-shadow,transform] duration-200 placeholder:font-medium placeholder:text-[#9aa0aa] focus:-translate-y-px focus:border-brand focus:shadow-[0_0_0_4px_rgba(216,111,22,0.12)] focus:outline-none"
           {...register("message")}
         />
       </FormField>
@@ -218,7 +218,7 @@ export function CarfaxForm() {
         type="submit"
         disabled={isSubmitting}
         rippleTheme="light"
-        className="min-h-[58px] w-full rounded-[18px] border-0 bg-[linear-gradient(90deg,#b95200_0%,#d86f16_55%,#f08a1f_100%)] text-[17px] font-extrabold text-white shadow-[0_16px_30px_rgba(216,111,22,0.26)] transition-transform duration-200 hover:-translate-y-0.5 disabled:opacity-70"
+        className="min-h-14.5 w-full rounded-[18px] border-0 bg-[linear-gradient(90deg,#b95200_0%,#d86f16_55%,#f08a1f_100%)] text-[17px] font-extrabold text-white shadow-[0_16px_30px_rgba(216,111,22,0.26)] transition-transform duration-200 hover:-translate-y-0.5 disabled:opacity-70"
       >
         Изпрати запитването
       </Button>

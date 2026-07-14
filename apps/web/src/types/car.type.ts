@@ -18,11 +18,20 @@ export type CarView = {
   /** Buy-now listings show "BUY NOW"; auction listings show an end time. */
   badge: { kind: "buy" } | { kind: "time"; label: string };
 
-  // ── Rich fields for the /vsichki-avtomobili AuctionCard (optional so the
-  //    homepage CarCard + static FALLBACK_* arrays keep compiling unchanged).
-  //    The all-cars mapper (`carListingToView`) always populates these. ──
+  // ── Rich fields for the AuctionCard (now used everywhere cards appear —
+  //    catalog, homepage, vnos hubs, related, favourites). Optional so the static
+  //    FALLBACK_* arrays (DB-miss fallback) keep compiling unchanged; the all-cars
+  //    mapper (`carListingToView`) always populates these. ──
   /** car_listings.car_id — stable key for virtualization + the detail link. */
   id?: number;
+  /**
+   * car_listings.sort_id — the keyset value this row was ordered by. The catalog
+   * grid uses it as the bidirectional infinite-scroll cursor (the lowest loaded
+   * sort_id pages DOWN, the highest pages UP) and as the shareable `?after=`
+   * page-pointer written to the URL as the top card scrolls. Only the all-cars
+   * mapper populates it; the static FALLBACK_* arrays omit it.
+   */
+  sortId?: number;
   /** Lot number → "Търг №" row. */
   lotNumber?: string;
   /** Production year → "Година" row (also in the title, shown as its own field). */

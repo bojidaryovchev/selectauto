@@ -4,7 +4,7 @@ import { Container, Reveal, SectionHeader } from "@/components/common";
 /** "Популярни марки" — section header + the brand-logo grid. */
 export function PopularBrandsSection() {
   return (
-    <section className="bg-[#fafafa] py-[78px] max-md:py-14">
+    <section className="bg-[#fafafa] py-19.5 max-md:py-14">
       <Container>
         <SectionHeader
           eyebrow="Популярни марки"

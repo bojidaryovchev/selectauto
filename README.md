@@ -27,6 +27,7 @@ pnpm monorepo (`pnpm-workspace.yaml`): `apps/*`, `packages/*`, and `infra`.
 │   │   ├── schema.ts            # Drizzle schema (source of truth; exported to apps/web)
 │   │   ├── migrations/*.sql     # Plain SQL run in production (migrate.mjs)
 │   │   ├── migrate.mjs          # Tiny idempotent SQL migration runner
+│   │   ├── backfill-car-listings.mjs # Rebuild BOTH projection read models (--fn; _counted wrapper)
 │   │   └── drizzle.config.ts    # Drizzle Kit config (dev-time generation)
 │   │
 │   └── functions/               # @auctions-ingestion/functions — Lambda source (esbuild)
@@ -44,6 +45,7 @@ pnpm monorepo (`pnpm-workspace.yaml`): `apps/*`, `packages/*`, and `infra`.
 │       ├── syncReferenceData/handler.ts     # reference sync (legacy + looped handlers)
 │       ├── refreshListingDetail/handler.ts  # SQS FIFO drain worker (1 req/sec)
 │       ├── syncRunLifecycle/handler.ts      # create / finalize / fail (3 exports)
+│       ├── driftSweep/handler.ts            # weekly DB-only projection self-heal (init/step/finalize)
 │       └── build.mjs                # esbuild bundler -> packages/functions/dist/<name>.js
 │
 ├── infra/                       # @auctions-ingestion/infra — Pulumi program (CommonJS)
@@ -70,6 +72,7 @@ flowchart TD
 
     EB -- "rate(1 hour)" --> Combined["combinedHourlySync SM"]
     EB -- "rate(1 day)" --> RefLambda["syncReferenceData<br/>(Lambda)"]
+    EB -- "cron(SUN 03:00)" --> Drift["drift-sweep SM<br/>(DB-only self-heal)"]
     Manual --> Backfill["fullInventoryBackfill SM<br/>(mode=full)"]
 
     Combined -- "startExecution.sync" --> Cars["hourlyCarsSync SM<br/>(incremental, 75m)"]
@@ -89,6 +92,7 @@ flowchart TD
     Loop -- "pooled TLS" --> Neon["Neon Postgres"]
     RefLambda --> Neon
     Worker --> Neon
+    Drift -- "recompute projections+summaries (no API)" --> Neon
 
     %% No VPC: Lambdas reach AuctionsAPI and Neon over public egress.
 ```
@@ -113,12 +117,14 @@ flowchart LR
 | 3. Hourly archived lots | After cars | `/archived-lots?minutes=75&per_page=1000` | `archivedLotsSync` (via combined) |
 | 4. Reference data | Manual + daily | `/manufacturers/cars`, `/models/{id}/cars`, `/generations/{id}/cars` | `referenceSync` SM (loop) / `syncReferenceData` Lambda (tests) |
 | 5. Detail refresh | Internal, via SQS FIFO queue | `/search-lot/{lot}/{domain}` or `/search-vin/{vin}` | `refreshListingDetail` worker |
+| 6. Drift sweep | EventBridge `cron(0 3 ? * SUN *)` (weekly) | none — DB-only | `drift-sweep` SM |
 
 ### State machines (what each one does)
 
-The flows above map to **5** Step Functions state machines (the two hourly flows
+The flows above map to **6** Step Functions state machines (the two hourly flows
 share the `combinedHourlySync` orchestrator). Three are paginated workers that
-share one loop shape; one orchestrates the hourly pair; one is the reference loop.
+share one loop shape; one orchestrates the hourly pair; one is the reference loop;
+one is the weekly drift-repair sweep (a DB-only keyset loop, no API calls).
 
 | Machine | Does | Trigger | Cadence |
 |---------|------|---------|---------|
@@ -127,6 +133,7 @@ share one loop shape; one orchestrates the hourly pair; one is the reference loo
 | `archivedLotsSync` | Incremental archived-lots sync (`/archived-lots?minutes=75`); marks lots `archived`, never deletes. | Run by `combinedHourlySync` | hourly |
 | `combinedHourlySync` | Runs `hourlyCarsSync` **then** `archivedLotsSync` sequentially (so they never share the 1 req/sec budget at once). | EventBridge `rate(1 hour)` | hourly |
 | `referenceSync` | Populates `manufacturers`/`vehicle_models`/`vehicle_generations`, one manufacturer per step (timeout-proof loop). | EventBridge `rate(1 day)` + manual | daily |
+| `drift-sweep` | **DB-only self-heal** (no API): recomputes every car by keyset window to rebuild the projection read models **and** their summary tables, correcting any drift. | EventBridge `cron(0 3 ? * SUN *)` | weekly |
 
 **The three paginated workers share one loop** — see
 [Paginated loop](#paginated-loop-shared-by-backfill-hourly-cars-archived-lots)
@@ -172,10 +179,26 @@ Two non-obvious behaviours worth knowing before editing those files:
 
 ## Database
 
-Tables: `cars`, `auction_lots`, `manufacturers`, `vehicle_models`,
-`vehicle_generations`, `sync_runs`. Every table stores `raw_json` for future
-reprocessing. See [db/schema.ts](packages/db/schema.ts) and
-[db/migrations/0001_initial.sql](packages/db/migrations/0001_initial.sql).
+**Ingested tables** (this system's core): `cars`, `auction_lots`,
+`manufacturers`, `vehicle_models`, `vehicle_generations`, `sync_runs`. Each
+stores `raw_json` for future reprocessing.
+
+**Projection read models** the website reads from: `car_listings` and
+`car_listings_archived` — one "best-lot-per-car" row each, maintained by the
+`recompute_*` functions (the same pick-strategy ingestion, backfill and the drift
+sweep all share). **Summary tables** `car_listing_counts` and
+`car_listing_facets` make catalog counts and filter dropdowns O(1); they're kept
+in sync with the projections **in the same transaction** by the `_counted`
+wrappers (a before/after snapshot-diff serialized by an advisory lock), so they're
+correct by construction — no periodic reseed.
+
+The schema also holds **auth** (`users`, `accounts`, `verification_tokens`,
+`password_reset_tokens`), **`favorites`**, **website leads** (`carfax_requests`,
+`inquiries`), and the migration ledger `_migrations` — 18 tables total.
+
+See [db/schema.ts](packages/db/schema.ts) and the full data dictionary in
+[docs/02-data-model-and-tables.md](docs/02-data-model-and-tables.md) rather than
+duplicating per-column detail here.
 
 **How the tables relate (important for writing queries).** AuctionsAPI ids are
 stored as `external_*` columns; local `id` columns are our own serials. The joins
@@ -349,6 +372,14 @@ $arn = (cd infra; pulumi stack output stateMachineArns | ConvertFrom-Json).refer
 '{"includeEmpty":false}' | Out-File -Encoding ascii ref.json
 aws stepfunctions start-execution --state-machine-arn $arn --input file://ref.json
 Remove-Item ref.json
+
+# 3. Seed the projection read models the website reads from (car_listings +
+#    car_listings_archived). Without this, car_listings is empty and the catalog
+#    shows nothing even though cars/auction_lots are full. The default --fn
+#    calls the _counted wrapper, so car_listing_counts/facets are seeded too.
+cd packages/db
+node --env-file-if-exists=../../.env backfill-car-listings.mjs                                 # -> car_listings
+node --env-file-if-exists=../../.env backfill-car-listings.mjs --fn=recompute_archived_car_listings  # -> car_listings_archived
 ```
 
 Watch progress in the **Step Functions console**, or in Neon:
@@ -372,8 +403,12 @@ FROM cars c JOIN manufacturers m ON m.external_id = c.manufacturer_id
 GROUP BY m.name ORDER BY cars DESC LIMIT 20;
 ```
 
-After this, the **hourly schedule keeps cars/lots fresh and the daily schedule
-keeps reference data fresh automatically** — no manual steps in steady state.
+After this, the **hourly schedule keeps cars/lots fresh, the daily schedule keeps
+reference data fresh, and the weekly drift sweep self-heals the projections +
+summaries** — all automatic, no manual steps in steady state. (The projections
+also stay current continuously: the hourly sync write paths recompute them via
+the same `_counted` wrappers on every change — the weekly sweep is just a
+belt-and-suspenders full recompute.)
 
 ---
 
@@ -423,6 +458,18 @@ Remove-Item payload.json
 ```
 
 See [Reference-sync scaling](#reference-sync-scaling) for the difference.
+
+### Drift sweep (weekly self-heal)
+
+An EventBridge schedule (`cron(0 3 ? * SUN *)`) starts the **`drift-sweep` state
+machine**. It makes **no API calls** — it recomputes every car in keyset windows
+straight from `cars`/`auction_lots`, rebuilding `car_listings` /
+`car_listings_archived` **and** their summary tables (`car_listing_counts`,
+`car_listing_facets`) via the same `_counted` wrappers ingestion uses. The write
+paths already keep these current on every change, so the sweep normally finds
+nothing to fix; it exists to correct any accumulated drift belt-and-suspenders.
+To run it off-cycle, `start-execution` on the `drift-sweep` ARN (from
+`pulumi stack output stateMachineArns`) with an empty `{}` input.
 
 ### Detail refresh (internal, queued)
 
@@ -740,8 +787,11 @@ Lambda.
 
 ## Reference-sync scaling
 
-The full catalog (~424 manufacturers, ~5.5k models at 1 req/sec ≈ 1 hour) exceeds
-a single Lambda's 15-min limit, so there are **two** ways to sync reference data:
+The full upstream catalog (~424 manufacturers, ~5.5k models at 1 req/sec ≈ 1 hour)
+exceeds a single Lambda's 15-min limit, so there are **two** ways to sync reference
+data. (We don't store the whole upstream catalog: because the default run skips
+manufacturers with `cars_qty = 0`, we end up with roughly **~3,462** models — only
+the brands that actually have cars.)
 
 - **`referenceSync` state machine (use this for the full catalog).** A Step
   Functions loop that processes **one manufacturer per invocation** (its models +

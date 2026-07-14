@@ -1,6 +1,14 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { and, asc, eq, sql } from "drizzle-orm";
-import { COLOR_BG, bodyTypeLabel, colorLabel, conditionLabel, driveLabel, vehicleTypeLabel } from "@/lib/car-labels";
+import {
+  COLOR_BG,
+  bodyTypeLabel,
+  colorLabel,
+  conditionLabel,
+  driveLabel,
+  fuelLabel,
+  vehicleTypeLabel,
+} from "@/lib/car-labels";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { getDb, schema } from "@/lib/db";
 import type { FacetOption, FacetOptions } from "@/types/car-filters.type";
@@ -33,10 +41,19 @@ const EMPTY_FACETS: FacetOptions = {
   modelsByBrand: {},
   colors: [],
   drives: [],
+  fuels: [],
   conditions: [],
   types: [],
   years: [],
 };
+
+/**
+ * Canonical order for the fuel dropdown — common first (most listings), then the
+ * rarer alternatives. 'electric' is a drivetrain tag that also covers hybrids;
+ * 'hybrid' is a separate value. Any fuel value present but not listed here sorts
+ * last (still shown). Labels come from car-labels FUEL_BG (`fuelLabel`).
+ */
+const FUEL_ORDER = ["gasoline", "diesel", "hybrid", "electric", "flexible", "gas", "hydrogen"];
 
 /**
  * Just the brand list (external id + name), for components that only need to map
@@ -122,7 +139,7 @@ async function computeCarFacets(): Promise<FacetOptions> {
   // full-projection aggregates). Intermediate row shapes match the old query, so
   // the label/ordering/grouping logic below is unchanged.
   const tk = FACET_TABLE_KIND;
-  const [brandRows, modelRows, colorRows, driveRows, condRows, yearRows, vtRows, btRows] = await Promise.all([
+  const [brandRows, modelRows, colorRows, driveRows, fuelRows, condRows, yearRows, vtRows, btRows] = await Promise.all([
     // Brands that appear in the catalog, with their display name (summary id →
     // manufacturers; the join drops ids with no manufacturers row, as before).
     db
@@ -150,6 +167,12 @@ async function computeCarFacets(): Promise<FacetOptions> {
 
     // Drives present (front/all/rear), BG-labelled below.
     db.select({ drive: cf.val }).from(cf).where(and(eq(cf.tableKind, tk), eq(cf.dim, "drive"))),
+
+    // Fuel types present, with counts (BG-labelled + canonically ordered below).
+    db
+      .select({ value: cf.val, n: sql<number>`${cf.n}::int` })
+      .from(cf)
+      .where(and(eq(cf.tableKind, tk), eq(cf.dim, "fuel"))),
 
     // Conditions present, with counts (grouped by BG label below).
     db
@@ -204,6 +227,17 @@ async function computeCarFacets(): Promise<FacetOptions> {
     .filter(Boolean)
     .map((d) => ({ value: d, label: driveLabel(d) }));
 
+  // Fuel types present, BG-labelled, ordered common-first (FUEL_ORDER), unknowns
+  // last. Counts carried through so the dropdown can show them like Тип/Състояние.
+  const fuels = fuelRows
+    .filter((r) => r.value)
+    .sort((a, b) => {
+      const ia = FUEL_ORDER.indexOf(a.value as string);
+      const ib = FUEL_ORDER.indexOf(b.value as string);
+      return (ia === -1 ? FUEL_ORDER.length : ia) - (ib === -1 ? FUEL_ORDER.length : ib);
+    })
+    .map((r) => ({ value: r.value as string, label: fuelLabel(r.value), count: r.n }));
+
   // Conditions present, grouped BY BG LABEL: several raw values collapse to one
   // buyer-facing label (run_and_drives + engine_starts both → "Пали и се движи"),
   // so the option's value is the comma-joined raw set and the query matches with
@@ -245,5 +279,5 @@ async function computeCarFacets(): Promise<FacetOptions> {
   }
   const types = typeOpts.sort((a, b) => b.count - a.count);
 
-  return { brands, modelsByBrand, colors, drives, conditions, types, years };
+  return { brands, modelsByBrand, colors, drives, fuels, conditions, types, years };
 }
