@@ -4,7 +4,7 @@ import type { ComponentType } from "react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/common";
-import { ChevronDownIcon, FlagCaIcon, FlagKrIcon, FlagUsIcon } from "@/components/icons";
+import { FlagCaIcon, FlagKrIcon, FlagUsIcon } from "@/components/icons";
 import { serializeCarFilters } from "@/lib/car-filters";
 import type { CarFilters, FacetOptions } from "@/types/car-filters.type";
 
@@ -50,7 +50,7 @@ const labelCls = "mb-1.5 block text-xs font-semibold uppercase tracking-wide tex
  * as many rows as they need without ever cutting a label off.
  */
 const pillBase =
-  "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-bold transition";
+  "inline-flex items-center gap-1.5 rounded-full border px-4 py-2.5 text-sm font-bold transition";
 const pillActive = "border-brand bg-brand text-white";
 const pillIdle = "border-[#ddd] bg-white text-ink hover:border-[#bbb] hover:bg-[#f6f6f6]";
 
@@ -77,9 +77,6 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
   // `draft` mirrors the controls (so typing is responsive); the URL is the
   // source of truth and is updated instantly or debounced per control.
   const [draft, setDraft] = useState<CarFilters>(current);
-  // Secondary attributes are collapsed by default on mobile; this drives that
-  // disclosure (ignored at `lg`+, where the panel is forced open via CSS).
-  const [moreOpen, setMoreOpen] = useState(false);
 
   // Keep the controls in sync when the URL changes from elsewhere (back/forward,
   // a card link, Clear). React's "adjust state during render" pattern — no effect,
@@ -142,9 +139,6 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
   };
 
   const isPast = draft.status === "past";
-  // Count of the collapsible secondary attributes currently applied — surfaced on
-  // the "Още филтри" toggle so users know filters are hidden while it's collapsed.
-  const secondaryCount = [draft.fuel, draft.drive, draft.condition, draft.color].filter(Boolean).length;
 
   return (
     <div className="rounded-2xl border border-line bg-white p-5 shadow-sm max-md:p-4">
@@ -338,79 +332,57 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
         </div>
       ) : null}
 
-      {/* ── Secondary attributes — collapsible on mobile, always shown at lg+ ── */}
-      <div className="mt-5 border-t border-line pt-4">
-        <Button
-          onClick={() => setMoreOpen((v) => !v)}
-          aria-expanded={moreOpen}
-          className="flex w-full items-center justify-between gap-3 text-sm font-bold text-ink lg:hidden"
-        >
-          <span>
-            Още филтри
-            {secondaryCount ? <span className="ml-1.5 text-brand">({secondaryCount})</span> : null}
-          </span>
-          <ChevronDownIcon className={`size-4 shrink-0 text-brand transition-transform ${moreOpen ? "rotate-180" : ""}`} />
-        </Button>
-
-        {/* CSS-only disclosure: animate grid-template-rows 0fr→1fr on mobile; at lg+
-            it's forced open (and the toggle above is hidden). No JS height measuring. */}
-        <div
-          className={`grid transition-[grid-template-rows] duration-300 ease-out lg:grid-rows-[1fr] ${moreOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
-        >
-          <div className="overflow-hidden">
-            <div className="grid grid-cols-1 gap-4 pt-4 sm:grid-cols-2 lg:grid-cols-4 lg:pt-0">
-              <div>
-                <label className={labelCls}>Гориво</label>
-                <select className={selectCls} value={draft.fuel ?? ""} onChange={(e) => setInstant("fuel", e.target.value || undefined)}>
-                  <option value="">Всички</option>
-                  {facets.fuels.map((f) => (
-                    <option key={f.value} value={f.value}>
-                      {f.label}
-                      {f.count !== undefined ? ` (${f.count})` : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={labelCls}>Задвижване</label>
-                <select className={selectCls} value={draft.drive ?? ""} onChange={(e) => setInstant("drive", e.target.value || undefined)}>
-                  <option value="">Всички</option>
-                  {facets.drives.map((d) => (
-                    <option key={d.value} value={d.value}>
-                      {d.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={labelCls}>Състояние</label>
-                <select
-                  className={selectCls}
-                  value={draft.condition ?? ""}
-                  onChange={(e) => setInstant("condition", e.target.value || undefined)}
-                >
-                  <option value="">Всички състояния</option>
-                  {facets.conditions.map((c) => (
-                    <option key={c.value} value={c.value}>
-                      {c.label}
-                      {c.count !== undefined ? ` (${c.count})` : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={labelCls}>Цвят</label>
-                <select className={selectCls} value={draft.color ?? ""} onChange={(e) => setInstant("color", e.target.value || undefined)}>
-                  <option value="">Всички цветове</option>
-                  {facets.colors.map((c) => (
-                    <option key={c.value} value={c.value}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
+      {/* ── Secondary attributes — always visible (separated by a divider) ── */}
+      <div className="mt-5 grid grid-cols-1 gap-4 border-t border-line pt-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <label className={labelCls}>Гориво</label>
+          <select className={selectCls} value={draft.fuel ?? ""} onChange={(e) => setInstant("fuel", e.target.value || undefined)}>
+            <option value="">Всички</option>
+            {facets.fuels.map((f) => (
+              <option key={f.value} value={f.value}>
+                {f.label}
+                {f.count !== undefined ? ` (${f.count})` : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>Задвижване</label>
+          <select className={selectCls} value={draft.drive ?? ""} onChange={(e) => setInstant("drive", e.target.value || undefined)}>
+            <option value="">Всички</option>
+            {facets.drives.map((d) => (
+              <option key={d.value} value={d.value}>
+                {d.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>Състояние</label>
+          <select
+            className={selectCls}
+            value={draft.condition ?? ""}
+            onChange={(e) => setInstant("condition", e.target.value || undefined)}
+          >
+            <option value="">Всички състояния</option>
+            {facets.conditions.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+                {c.count !== undefined ? ` (${c.count})` : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>Цвят</label>
+          <select className={selectCls} value={draft.color ?? ""} onChange={(e) => setInstant("color", e.target.value || undefined)}>
+            <option value="">Всички цветове</option>
+            {facets.colors.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
     </div>
