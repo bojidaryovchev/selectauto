@@ -192,7 +192,7 @@ export function CarCardsCarousel({
         grabCursor
         watchOverflow
         loop={loop}
-        loopAdditionalSlides={typeof window !== "undefined" && window.__LAS !== undefined ? window.__LAS : LOOP_ADDITIONAL_SLIDES}
+        loopAdditionalSlides={LOOP_ADDITIONAL_SLIDES}
         rewind={!loop}
         autoplay={mounted ? { delay: AUTOPLAY_DELAY_MS, disableOnInteraction: false, pauseOnMouseEnter: true } : undefined}
         breakpoints={{
