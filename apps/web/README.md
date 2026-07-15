@@ -38,3 +38,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 # Auth Secret
 
 To generate a value for `AUTH_SECRET` open a Git Bash and use `openssl rand -base64 32`
+
+# CRON Secret
+
+To generate a value for `CRON_SECRET` open a Git Bash and use `openssl rand -hex 32`
