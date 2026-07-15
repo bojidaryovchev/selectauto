@@ -55,7 +55,15 @@ export function SiteHeader() {
 
     const root = document.documentElement;
     const publish = () => {
-      root.style.setProperty("--header-h", `${Math.round(el.offsetHeight)}px`);
+      const h = Math.round(el.offsetHeight);
+      // The header is `max-lg:hidden`, and offsetHeight is also 0 for any frame
+      // where it isn't laid out yet. Writing that 0 as an INLINE style would
+      // override the CSS media-query fallback (`--header-h: 107px` at ≥1024) and
+      // collapse every page's `pt-(--header-h)` to 0 — the content sits under the
+      // fixed header for a frame, then snaps down ~107px when the next measurement
+      // writes the real height. So only publish a real, positive height; when the
+      // header is genuinely hidden (mobile) the CSS base value (0) already applies.
+      if (h > 0) root.style.setProperty("--header-h", `${h}px`);
     };
     publish();
 
