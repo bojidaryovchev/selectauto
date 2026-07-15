@@ -18,7 +18,11 @@ import {
  * routes/actions log failures but never fail the submission on an email error.
  */
 
-const FROM = "SelectAuto <noreply@selectauto.bg>";
+// Sender address. Defaults to the production, domain-verified address. Override
+// with RESEND_FROM to test before a domain is verified in Resend — set it to
+// "SelectAuto <onboarding@resend.dev>" (Resend's shared test sender, which sends
+// only to your own Resend-account email) to exercise the flow with no domain.
+const FROM = process.env.RESEND_FROM || "SelectAuto <noreply@selectauto.bg>";
 const TO = process.env.CARFAX_NOTIFY_EMAIL || "info@selectauto.bg";
 
 let resendClient: Resend | null = null;
