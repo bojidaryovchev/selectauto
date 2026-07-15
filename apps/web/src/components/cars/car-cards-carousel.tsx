@@ -38,29 +38,31 @@ const AUTOPLAY_DELAY_MS = 2000;
 const AUTOPLAY_RESUME_DELAY_MS = 6000;
 
 /**
- * Extra slides Swiper keeps buffered on each side of the active one in `loop`
- * mode. Swiper's default `loopedSlides` is just `slidesPerGroup` (= 1 here), which
- * is FATALLY too small at our `slidesPerView` (up to 3.3): after a few `slideNext`
- * calls the active slide reaches the track's hard `maxTranslate` and every further
- * click advances `realIndex` but pins `translate` in place — the row visually
- * freezes until a manual drag re-centers it (the exact "arrows do nothing until I
- * drag" bug). Bumping the buffer to `slidesPerGroup + 3 = 4` (≈ ceil(3.3)) keeps
- * the active slide centered with slides to spare on both ends, so the loop
- * advances forever. Verified stuck-free over 20+ clicks at 1280px via Chrome CDP.
+ * Extra slides Swiper keeps buffered on each side of the active one in `loop` mode,
+ * i.e. `loopedSlides = slidesPerGroup(1) + LOOP_ADDITIONAL_SLIDES`. Swiper's default
+ * buffer (just `slidesPerGroup` = 1) is FATALLY too small at our fractional
+ * `slidesPerView` (up to 3.3): after a few `slideNext` calls the active slide can no
+ * longer be re-centered and every further click advances `realIndex` while `translate`
+ * stays pinned — the row visually freezes until a manual drag re-centers it (the exact
+ * "arrows do nothing until I drag" bug). Empirically (Chrome CDP, 12 real slides):
+ * loopedSlides ≤ 4 still freeze, loopedSlides ≥ 5 advance on every click. We use 5
+ * (LOOP_ADDITIONAL_SLIDES = 5 → loopedSlides = 6) for a margin above that floor;
+ * verified smooth over 17/17 clicks at every breakpoint width 390→1600px. (Raising
+ * the slide COUNT alone does NOT help — the buffer, not the count, is the fix.)
  */
-const LOOP_ADDITIONAL_SLIDES = 3;
+const LOOP_ADDITIONAL_SLIDES = 5;
 
 /**
- * Minimum cards before we switch on the infinite `loop`. Swiper needs
- * `slides.length ≥ ceil(slidesPerView) + loopedSlides` or loop malfunctions; at the
- * densest breakpoint that's `ceil(3.3) + (1 + LOOP_ADDITIONAL_SLIDES) = 8`, plus a
- * spare = 9. Empirically, 8 slides still freeze at the boundary while 9 loop
- * cleanly (verified at 1280px via Chrome CDP), so 9 is the hard floor. Shorter
- * lists (e.g. the DB-down fallback's 6 cars, or a detail page with few related
- * cars) fall back to `rewind` — snap back to the first card at the end — which is
- * always stuck-free. Homepage sections now fetch 12 to sit comfortably above this.
+ * Minimum cards before we switch on the infinite `loop`. Two constraints bound it at
+ * the densest breakpoint (slidesPerView 3.3): Swiper warns/malfunctions unless
+ * `slides.length ≥ ceil(3.3) + loopedSlides = 4 + 6 = 10`, and the loop only advances
+ * smoothly with the buffer above — verified at 12. The homepage sections fetch exactly
+ * 12 (see get-buy-now-cars / get-auction-cars queries), so we gate on 12: the full,
+ * CDP-verified set loops; anything shorter (the DB-down fallback's 6 cars, or a detail
+ * page's related list) falls back to `rewind` — advance then snap back to the first
+ * card at the end — which is always stuck-free regardless of count.
  */
-const LOOP_MIN_SLIDES = 9;
+const LOOP_MIN_SLIDES = 12;
 
 interface Props {
   cars: CarView[];
@@ -101,13 +103,13 @@ interface Props {
  *      reconciling the teardown. Gating loop behind `mounted` — the same remount
  *      that adds Autoplay — means only the stable client instance ever loops, and
  *      the SSR shell keeps its cards in document order (SEO/LCP intact).
- *   2. Enough cards (LOOP_MIN_SLIDES = 9). Short lists fall back to `rewind` (snap
+ *   2. Enough cards (LOOP_MIN_SLIDES = 12). Short lists fall back to `rewind` (snap
  *      to the first card at the end) — too few slides to loop without a visible gap,
  *      and Swiper would warn. With either mode the arrows never hit a disabled
  *      end state.
  *   3. A real loop buffer (`loopAdditionalSlides={LOOP_ADDITIONAL_SLIDES}`). Without
- *      it Swiper's buffer is a single slide, so after ~3 clicks the active slide
- *      hits the track's hard end and the arrows appear dead until you drag (the bug
+ *      it Swiper's buffer is a single slide, so after ~3 clicks the active slide can
+ *      no longer be re-centered and the arrows appear dead until you drag (the bug
  *      this fixes). See LOOP_ADDITIONAL_SLIDES above.
  * (`loop`/`rewind`, never `loop`'s old clone mode — clones tripped React's
  * reconciliation; the move-based loop is clone-free.)

@@ -12,12 +12,12 @@ const cars = schema.cars;
 const lots = schema.auctionLots;
 
 /**
- * How many same-model cars to show in the "Подобни автомобили" carousel. 12 (not 8)
- * so that when enough related cars exist the shared `CarCardsCarousel` clears its
- * infinite-`loop` floor (LOOP_MIN_SLIDES = 9) and advances without freezing; with
- * fewer real matches it safely falls back to `rewind`. See car-cards-carousel.tsx.
+ * How many same-model cars to show in the "Подобни автомобили" carousel. Stays under
+ * the shared `CarCardsCarousel`'s infinite-`loop` floor (LOOP_MIN_SLIDES = 12), so
+ * this carousel always uses the stuck-free `rewind` mode — it advances then snaps back
+ * to the first card at the end, never freezing. See car-cards-carousel.tsx.
  */
-const RELATED_LIMIT = 12;
+const RELATED_LIMIT = 8;
 
 /**
  * Full payload for the single-car detail page (`/avtomobil/[id]`): the rich

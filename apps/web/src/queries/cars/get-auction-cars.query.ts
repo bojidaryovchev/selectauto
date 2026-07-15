@@ -6,10 +6,10 @@ import { carListingToView } from "@/lib/car-mapper";
 import { getDb, schema } from "@/lib/db";
 import type { CarView } from "@/types/car.type";
 
-// 12 (not 6) so the homepage `CarCardsCarousel` has enough slides for its infinite
-// `loop` to advance without freezing — Swiper needs ≥ LOOP_MIN_SLIDES (9) real
-// slides plus a loop buffer; see car-cards-carousel.tsx. The count is part of the
-// `"use cache"` key.
+// 12 (not 6) so the homepage `CarCardsCarousel` reaches its infinite-`loop` floor
+// (LOOP_MIN_SLIDES = 12) and advances without freezing; with only 6 the loop can't
+// re-center and the arrows appear dead until you drag. See car-cards-carousel.tsx.
+// The count is part of the `"use cache"` key.
 const DEFAULT_LIMIT = 12;
 
 /**
