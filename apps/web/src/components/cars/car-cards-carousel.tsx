@@ -38,31 +38,31 @@ const AUTOPLAY_DELAY_MS = 2000;
 const AUTOPLAY_RESUME_DELAY_MS = 6000;
 
 /**
- * Extra slides Swiper keeps buffered on each side of the active one in `loop` mode,
- * i.e. `loopedSlides = slidesPerGroup(1) + LOOP_ADDITIONAL_SLIDES`. Swiper's default
- * buffer (just `slidesPerGroup` = 1) is FATALLY too small at our fractional
- * `slidesPerView` (up to 3.3): after a few `slideNext` calls the active slide can no
- * longer be re-centered and every further click advances `realIndex` while `translate`
- * stays pinned — the row visually freezes until a manual drag re-centers it (the exact
- * "arrows do nothing until I drag" bug). Empirically (Chrome CDP, 12 real slides):
- * loopedSlides ≤ 4 still freeze, loopedSlides ≥ 5 advance on every click. We use 5
- * (LOOP_ADDITIONAL_SLIDES = 5 → loopedSlides = 6) for a margin above that floor;
- * verified smooth over 17/17 clicks at every breakpoint width 390→1600px. (Raising
- * the slide COUNT alone does NOT help — the buffer, not the count, is the fix.)
+ * Why `rewind` and not the infinite `loop`.
+ *
+ * The obvious ask is an endless `loop` that never snaps back to the first card. We
+ * tried it hard and it is NOT achievable with Swiper 12 here: at our fractional
+ * `slidesPerView` (the 1.15 / 2.2 / 3.3 "peek next card" breakpoints), Swiper's
+ * `loop` navigation is broken in a way no config fixes.
+ *
+ * Verified via Chrome CDP against the running app (see the git history / scratch
+ * probes): with `loop` on, the **prev** arrow's `slidePrev()` reorders slides
+ * (`realIndex` changes) but never moves `translate` — the row is visually frozen —
+ * while the loop buffer (`loopAdditionalSlides`) is too small the **next** arrow
+ * freezes the same way after ~3 clicks. Sweeping `loopAdditionalSlides` 2→7 (i.e.
+ * loopedSlides 3→8) found NO value where both arrows work: below 5 both stall, at
+ * 5+ next is smooth but prev is completely dead (0/11 clicks moved). This is
+ * Swiper's own long-standing, still-open bug (nolimits4web/swiper#6383,
+ * "slidePrev() stops working after some calls in loop mode", label "bug confirmed"),
+ * not something in our wiring — it reproduces on a direct `swiper.slidePrev()` call
+ * with autoplay stopped.
+ *
+ * `rewind` has no such bug: both arrows move on every click at every breakpoint
+ * (CDP-verified), the only cost being that the last card's "next" snaps back to the
+ * first (and the first card's "prev" jumps to the last) instead of wrapping
+ * seamlessly. That's the trade we take for arrows that actually work. Do NOT
+ * reintroduce `loop` unless Swiper#6383 is fixed or the carousel is moved off Swiper.
  */
-const LOOP_ADDITIONAL_SLIDES = 5;
-
-/**
- * Minimum cards before we switch on the infinite `loop`. Two constraints bound it at
- * the densest breakpoint (slidesPerView 3.3): Swiper warns/malfunctions unless
- * `slides.length ≥ ceil(3.3) + loopedSlides = 4 + 6 = 10`, and the loop only advances
- * smoothly with the buffer above — verified at 12. The homepage sections fetch exactly
- * 12 (see get-buy-now-cars / get-auction-cars queries), so we gate on 12: the full,
- * CDP-verified set loops; anything shorter (the DB-down fallback's 6 cars, or a detail
- * page's related list) falls back to `rewind` — advance then snap back to the first
- * card at the end — which is always stuck-free regardless of count.
- */
-const LOOP_MIN_SLIDES = 12;
 
 interface Props {
   cars: CarView[];
@@ -93,26 +93,10 @@ interface Props {
  * `beforeInit` re-runs. `onClick` fires long after mount, when the instance is
  * always live, so navigation just works.)
  *
- * Auto-advances every 2s (pauses on hover, resumes after a manual swipe) and
- * scrolls infinitely (`loop`) so it never snaps back to the first card. Three
- * guards make `loop` safe AND functional here:
- *   1. Client-only. Swiper 12's loop MOVES real slide DOM nodes around the track
- *      (it no longer clones). If loop were live on the SSR instance, the
- *      ssr→client remount below (which adds Autoplay) would tear down a slider
- *      whose slides Swiper had reparented, and React would throw "removeChild"
- *      reconciling the teardown. Gating loop behind `mounted` — the same remount
- *      that adds Autoplay — means only the stable client instance ever loops, and
- *      the SSR shell keeps its cards in document order (SEO/LCP intact).
- *   2. Enough cards (LOOP_MIN_SLIDES = 12). Short lists fall back to `rewind` (snap
- *      to the first card at the end) — too few slides to loop without a visible gap,
- *      and Swiper would warn. With either mode the arrows never hit a disabled
- *      end state.
- *   3. A real loop buffer (`loopAdditionalSlides={LOOP_ADDITIONAL_SLIDES}`). Without
- *      it Swiper's buffer is a single slide, so after ~3 clicks the active slide can
- *      no longer be re-centered and the arrows appear dead until you drag (the bug
- *      this fixes). See LOOP_ADDITIONAL_SLIDES above.
- * (`loop`/`rewind`, never `loop`'s old clone mode — clones tripped React's
- * reconciliation; the move-based loop is clone-free.)
+ * Auto-advances every 2s (pauses on hover, resumes after a manual swipe). It uses
+ * `rewind` — advance to the last card, and the next click snaps back to the first
+ * (prev from the first jumps to the last) — NOT the infinite `loop`; see the
+ * "Why `rewind`" note above for why Swiper's loop can't work here.
  *
  * Swiper's Autoplay module calls `new Date()` at construction, which Next's
  * `cacheComponents` (PPR) forbids during the static-shell prerender of a client
@@ -134,12 +118,6 @@ export function CarCardsCarousel({
   const mounted = useMounted();
 
   const modules = [...(mounted ? [Autoplay] : []), ...(freeMode ? [FreeMode] : [])];
-
-  // Infinite loop only on the client (see the "removeChild" note above) and only
-  // with enough cards to wrap seamlessly; otherwise `rewind`. Both are stable for
-  // this render — `mounted` and `cars.length` don't change mid-life on the single
-  // client instance, so loop never toggles on a live slider.
-  const loop = mounted && cars.length >= LOOP_MIN_SLIDES;
 
   // Drop any pending "resume autoplay" timer on unmount (and whenever the Swiper
   // instance is swapped out by the client remount below), so it never fires
@@ -193,9 +171,7 @@ export function CarCardsCarousel({
         freeMode={freeMode}
         grabCursor
         watchOverflow
-        loop={loop}
-        loopAdditionalSlides={LOOP_ADDITIONAL_SLIDES}
-        rewind={!loop}
+        rewind
         autoplay={mounted ? { delay: AUTOPLAY_DELAY_MS, disableOnInteraction: false, pauseOnMouseEnter: true } : undefined}
         breakpoints={{
           560: { slidesPerView: 2.2, spaceBetween: spaceBetween.sm },

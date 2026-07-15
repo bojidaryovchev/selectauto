@@ -1,15 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { Button, LinkButton } from "@/components/common";
-import { signOutAction } from "@/mutations/auth";
 
 /**
  * Account dropdown for a signed-in user. Shows the user's initial/avatar; the
- * menu links to favourites and signs out via the `signOutAction` server action.
- * `tone` adapts the trigger colours to the dark mobile drawer vs the orange
- * desktop pill.
+ * menu links to favourites and signs out via the client `signOut` from
+ * next-auth/react (NOT a Server Action — the client call mutates the
+ * SessionProvider state + broadcasts to other tabs, so the header flips to
+ * "Вход" with no reload; a Server Action would clear the cookie but leave the
+ * cached client session "authenticated", making sign-out look broken — the same
+ * gotcha the sign-in form solves with `update()`). `tone` adapts the trigger
+ * colours to the dark mobile drawer vs the orange desktop pill.
  */
 export function UserMenu({ tone = "light" }: { tone?: "light" | "dark" }) {
   const { data } = useSession();
@@ -65,16 +68,15 @@ export function UserMenu({ tone = "light" }: { tone?: "light" | "dark" }) {
           >
             Любими автомобили
           </LinkButton>
-          <form action={signOutAction}>
-            <Button
-              type="submit"
-              role="menuitem"
-              rippleTheme="dark"
-              className="block w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-[#b53b2f] transition-colors hover:bg-[#fff3f2]"
-            >
-              Изход
-            </Button>
-          </form>
+          <Button
+            type="button"
+            onClick={() => signOut({ redirectTo: "/" })}
+            role="menuitem"
+            rippleTheme="dark"
+            className="block w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-[#b53b2f] transition-colors hover:bg-[#fff3f2]"
+          >
+            Изход
+          </Button>
         </div>
       ) : null}
     </div>

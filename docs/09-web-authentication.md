@@ -151,10 +151,20 @@ bcrypt(12) the new password → update the user **and set `email_verified = now(
 
 ### 2d. Google OAuth + sign-out
 
-`googleSignIn(redirectTo)` / `signOutAction` ([`oauth-sign-in.action.ts`](../apps/web/src/mutations/auth/oauth-sign-in.action.ts)) are thin
-Server Actions over `signIn("google", …)` / `signOut(…)`. Google's throws a
-**redirect** internally — deliberately **not** caught (let it propagate so the
-browser navigates). The Drizzle adapter creates/links the `users` + `accounts` rows.
+`googleSignIn(redirectTo)` ([`oauth-sign-in.action.ts`](../apps/web/src/mutations/auth/oauth-sign-in.action.ts)) is a thin
+Server Action over `signIn("google", …)`. Google's throws a **redirect** internally
+— deliberately **not** caught (let it propagate so the browser navigates). The
+Drizzle adapter creates/links the `users` + `accounts` rows.
+
+**Sign-out** is deliberately **NOT** a Server Action. It runs client-side via
+`signOut({ redirectTo: "/" })` from `next-auth/react` in [`user-menu.tsx`](../apps/web/src/components/auth/user-menu.tsx). A
+Server-Action `signOut` clears the JWT cookie but leaves the client
+`SessionProvider`'s cached session `"authenticated"` (it only refetches on
+mount/focus/its own client call), so after the soft redirect the header keeps
+showing the account menu and sign-out *looks* broken until a hard reload — the
+mirror image of the sign-in refresh gotcha in §2b. The client `signOut()` mutates
+the provider state and broadcasts to other tabs, so the header flips to "Вход"
+with no reload.
 
 > **Account-linking behaviour (expected).** A Credentials user who later signs in
 > with Google **using the same email** hits Auth.js's default
@@ -178,7 +188,7 @@ request-time data (`searchParams`) does so inside a `<Suspense>` so the static s
 
 The header ([`SiteHeader`](../apps/web/src/components/layout/site-header/site-header.tsx)) swaps on `useSession().status`: signed-out shows a
 **"Вход"** link; signed-in shows [`UserMenu`](../apps/web/src/components/auth/user-menu.tsx) (avatar dropdown → name/email,
-"Любими автомобили", "Изход" via `signOutAction`).
+"Любими автомобили", "Изход" via the client `signOut()` — see §2d).
 
 ---
 

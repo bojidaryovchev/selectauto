@@ -20,6 +20,10 @@ import { getDueFavoriteAuctionAlerts } from "@/queries/favorites";
  * send failure is logged and skipped (best-effort, like the app's other emails) —
  * there's no same-day retry either way, so claim-first never costs a recoverable
  * send.
+ *
+ * On-demand testing: append `?dryRun=1` to preview who WOULD receive the digest
+ * (and which cars) as JSON — it sends nothing and does NOT stamp `sent_on`, so
+ * you can run it repeatedly. Requires the same `Authorization: Bearer <CRON_SECRET>`.
  */
 export const maxDuration = 60;
 
@@ -30,7 +34,24 @@ export async function GET(request: Request) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
+  const dryRun = new URL(request.url).searchParams.get("dryRun") !== null;
+
   const due = await getDueFavoriteAuctionAlerts();
+
+  // Preview mode: report the computed recipients + their cars, send nothing,
+  // stamp nothing (safe to re-run any number of times same day).
+  if (dryRun) {
+    return NextResponse.json({
+      dryRun: true,
+      recipients: due.length,
+      details: due.map((r) => ({
+        email: r.email,
+        cars: r.cars.length,
+        titles: r.cars.map((c) => c.title),
+      })),
+    });
+  }
+
   if (due.length === 0) {
     return NextResponse.json({ recipients: 0, sent: 0, failed: 0 });
   }

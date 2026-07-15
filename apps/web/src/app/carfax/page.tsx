@@ -8,14 +8,17 @@ import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
 
 export const metadata: Metadata = {
-  title: "Carfax заявка — SelectAuto",
+  // Targets the real Carfax brand demand in BG („carfax българия", „carfax
+  // цена" — docs/12-web-seo-strategy.md §3.4): name the country and the price
+  // question in the title/description instead of the generic „заявка".
+  title: "Carfax проверка в България — поръчай доклад | SelectAuto",
   description:
-    "Поръчай Carfax проверка за избрания автомобил. Получи по-ясна представа за историята на автомобила — пробег, инциденти, собственици и важни записи преди да вземеш решение.",
+    "Поръчай Carfax проверка от България на изгодна цена. Пълна история на автомобила по VIN — пробег, инциденти, собственици и важни записи, преди да вземеш решение за внос от САЩ или Канада.",
   alternates: { canonical: `${SITE_URL}/carfax` },
   openGraph: {
-    title: "Carfax заявка — SelectAuto",
+    title: "Carfax проверка в България — поръчай доклад | SelectAuto",
     description:
-      "Поръчай Carfax проверка — пробег, инциденти, собственици и важни записи, преди да вземеш решение.",
+      "Carfax доклад от България — пробег, инциденти, собственици и важни записи, преди да вземеш решение.",
     url: `${SITE_URL}/carfax`,
     type: "website",
   },

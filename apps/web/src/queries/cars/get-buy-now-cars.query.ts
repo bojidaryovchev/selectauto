@@ -6,11 +6,7 @@ import { carListingToView } from "@/lib/car-mapper";
 import { getDb, schema } from "@/lib/db";
 import type { CarView } from "@/types/car.type";
 
-// 12 (not 6) so the homepage `CarCardsCarousel` reaches its infinite-`loop` floor
-// (LOOP_MIN_SLIDES = 12) and advances without freezing; with only 6 the loop can't
-// re-center and the arrows appear dead until you drag. See car-cards-carousel.tsx.
-// The count is part of the `"use cache"` key.
-const DEFAULT_LIMIT = 12;
+const DEFAULT_LIMIT = 6;
 
 /**
  * Buy-now car listings for the homepage: active buy-now cars with an image,
