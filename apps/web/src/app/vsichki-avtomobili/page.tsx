@@ -6,7 +6,7 @@ import { SiteFooter, SiteHeader } from "@/components/layout";
 import { FilterNavProvider } from "@/contexts/filter-nav-context";
 import { SITE_URL } from "@/constants";
 import { AFTER_PARAM, parseCarFilters, serializeCarFilters } from "@/lib/car-filters";
-import { buildBreadcrumbJsonLd, buildItemListJsonLd } from "@/lib/site-jsonld";
+import { buildItemListJsonLd } from "@/lib/site-jsonld";
 import { getCarFacets, getCarsCount, getCarsPage, getCarsWindow } from "@/queries/cars";
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -91,20 +91,15 @@ export default async function AllCarsPage({ searchParams }: { searchParams: Prom
   const isPast = filters.status === "past";
 
   // Structured data for the active (indexable) catalog only — the past view is
-  // noindex, so its JSON-LD would be ignored. Breadcrumb = Home → Catalog;
-  // ItemList = the SSR first page of listings (their canonical detail URLs), the
-  // lightweight pattern for a paginated listing (per-car Product lives on each
-  // detail page).
+  // noindex, so its JSON-LD would be ignored. ItemList = the SSR first page of
+  // listings (their canonical detail URLs), the lightweight pattern for a
+  // paginated listing (per-car Product lives on each detail page). NO
+  // BreadcrumbList here: the catalog renders no visible breadcrumb nav, and
+  // breadcrumb markup must correspond to on-page content.
   const catalogJsonLd =
     isPast
       ? null
-      : [
-          buildBreadcrumbJsonLd([
-            { name: "Начало", url: "/" },
-            { name: "Всички автомобили", url: "/vsichki-avtomobili" },
-          ]),
-          buildItemListJsonLd(firstPage.cars.map((c) => ({ url: c.href, name: c.title }))),
-        ];
+      : [buildItemListJsonLd(firstPage.cars.map((c) => ({ url: c.href, name: c.title })))];
 
   return (
     <>

@@ -38,8 +38,8 @@ import { QuizStep } from "./quiz-step";
  * `@/lib/phone`.
  */
 
-const LOGO =
-  "https://selectauto.bg/wp-content/uploads/2025/09/autoselect-e1760829297592.jpg";
+// Local copy — the old value hotlinked WP `wp-content/uploads`, which dies at cutover.
+const LOGO = "/images/inquiry-hero.jpg";
 
 type Screen = "start" | "quiz";
 type QuizData = {
@@ -335,7 +335,7 @@ export function InquiryModal({
             </h2>
             <p className="mx-auto mb-4.5 text-center text-[15px] leading-[1.65] text-[#555962]">
               SelectAuto е вашият надежден партньор при избора, закупуването и
-              доставката на мечтания автомобил от Европа, САЩ и Канада.
+              доставката на мечтания автомобил от Корея, САЩ и Канада.
             </p>
             <MainButton onClick={() => setScreen("quiz")}>
               Започни консултация

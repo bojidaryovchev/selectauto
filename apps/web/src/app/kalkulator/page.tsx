@@ -11,6 +11,13 @@ export const metadata: Metadata = {
   description:
     "Изчисли ориентировъчната цена за внос на автомобил от Корея, САЩ или Канада — цена, аукционни такси, транспорт, мито, ДДС и регистрация. Прозрачна разбивка и точна оферта от SelectAuto.",
   alternates: { canonical: `${SITE_URL}/kalkulator` },
+  openGraph: {
+    title: "Калкулатор за внос на автомобил — колко струва | SelectAuto",
+    description:
+      "Ориентировъчна цена за внос от Корея, САЩ или Канада — цена, такси, транспорт, мито, ДДС и регистрация.",
+    url: `${SITE_URL}/kalkulator`,
+    type: "website",
+  },
 };
 
 /**
@@ -119,6 +126,30 @@ export default function CalculatorPage() {
                 </div>
               ))}
             </div>
+          </section>
+
+          {/* Contextual links into the money pages (the FAQ hub links here;
+              this closes the loop — docs/12-web-seo-strategy.md §7). */}
+          <section className="mt-12">
+            <h2 className="mb-4 text-2xl font-black text-ink">Полезни страници</h2>
+            <ul className="m-0 flex list-none flex-wrap gap-3 p-0">
+              {[
+                { label: "Внос на коли от Корея", href: "/vnos-na-koli-ot-korea" },
+                { label: "Внос на коли от САЩ", href: "/vnos-na-koli-ot-sasht" },
+                { label: "Внос на коли от Канада", href: "/vnos-na-koli-ot-kanada" },
+                { label: "Проверка на VIN", href: "/proverka-vin" },
+                { label: "Често задавани въпроси", href: "/chesto-zadavani-vaprosi" },
+              ].map((l) => (
+                <li key={l.href}>
+                  <a
+                    href={l.href}
+                    className="inline-flex rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-ink shadow-card transition-colors hover:text-brand-dark"
+                  >
+                    {l.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
           </section>
 
           {/* CTA */}

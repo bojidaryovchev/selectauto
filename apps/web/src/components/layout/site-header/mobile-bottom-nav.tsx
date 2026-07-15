@@ -36,8 +36,8 @@ interface Props {
 /** A tab link. `active` when the current path is (or is under) `href`. */
 const TABS = [
   { label: "Начало", href: "/", Icon: HomeIcon, exact: true },
-  { label: "Автомобили", href: "/vsichki-avtomobili/", Icon: CarIcon, exact: false },
-  { label: "Carfax", href: "/carfax/", Icon: GlobeIcon, exact: false },
+  { label: "Автомобили", href: "/vsichki-avtomobili", Icon: CarIcon, exact: false },
+  { label: "Carfax", href: "/carfax", Icon: GlobeIcon, exact: false },
 ] as const;
 
 export function MobileBottomNav({ drawerOpen, hidden, onToggleDrawer }: Props) {

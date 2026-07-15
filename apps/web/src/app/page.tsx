@@ -45,9 +45,10 @@ export default async function HomePage() {
       <SiteHeader />
 
       <main className="flex-1 text-ink">
-        {/* Real page <h1> for crawlers/AI/no-JS — the visible hero title lives in
-            the WebGL canvas (not in the DOM), so the page would otherwise have no
-            h1. Visually hidden, but it IS the page's true heading (not cloaking). */}
+        {/* The page's SINGLE <h1>: keyword-bearing, visually hidden (the visible
+            hero slogan in ParticleHero is a styled <p> — it was an <h1> once,
+            which made the page carry duplicate H1s). Not cloaking: it states
+            exactly what the page is. */}
         <h1 className="sr-only">
           Внос на автомобили от Корея, САЩ и Канада — SelectAuto
         </h1>
@@ -65,7 +66,7 @@ export default async function HomePage() {
           title="Налични предложения, които можеш да вземеш сега"
           subtitle="Това са автомобили с директна възможност за покупка — подходящи за клиенти, които искат бързо и ясно решение."
           cars={buyNowCars}
-          ctaHref="/vsichki-avtomobili/?channel=buy-now"
+          ctaHref="/vsichki-avtomobili?channel=buy-now"
           ctaLabel="Виж всички Buy Now"
         />
 
@@ -77,7 +78,7 @@ export default async function HomePage() {
           title="Възможности от аукционите, подбрани със стратегия"
           subtitle="Аукционните автомобили дават силни възможности, когато зад избора има правилен подход и реална експертиза."
           cars={auctionCars}
-          ctaHref="/vsichki-avtomobili/?channel=auction"
+          ctaHref="/vsichki-avtomobili?channel=auction"
           ctaLabel="Виж всички аукционни автомобили"
         />
 

@@ -62,7 +62,7 @@ export default function CookiePolicyPage() {
               <h3 className="mb-1 mt-2 text-base font-extrabold text-ink">От трети страни</h3>
               <p>
                 На страницата{" "}
-                <Link href="/kontakti/" className="font-semibold text-brand-dark hover:underline">
+                <Link href="/kontakti" className="font-semibold text-brand-dark hover:underline">
                   Контакти
                 </Link>{" "}
                 зареждаме вградена карта на Google Maps, за да покажем локацията на шоурума. Google може да постави
@@ -85,7 +85,7 @@ export default function CookiePolicyPage() {
               <h2 className="mb-2 text-xl font-extrabold text-ink">4. Връзка с личните данни</h2>
               <p>
                 Повече за това как обработваме лични данни ще намерите в нашата{" "}
-                <Link href="/politika-za-poveritelnost/" className="font-semibold text-brand-dark hover:underline">
+                <Link href="/politika-za-poveritelnost" className="font-semibold text-brand-dark hover:underline">
                   Политика за поверителност
                 </Link>
                 . За въпроси относно бисквитките пишете ни на{" "}

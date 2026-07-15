@@ -6,7 +6,7 @@ import { serializeCarFilters } from "@/lib/car-filters";
 import { getCarBrands } from "@/queries/cars";
 import { BRANDS } from "@/data/home";
 
-const CATALOG_PATH = "/vsichki-avtomobili/";
+const CATALOG_PATH = "/vsichki-avtomobili";
 
 /**
  * Popular-brands grid — ports the `selectauto_popular_brands` plugin's
@@ -43,7 +43,7 @@ export async function BrandsGrid() {
             Популярни марки
           </h2>
           <Link
-            href="/vsichki-avtomobili/"
+            href="/vsichki-avtomobili"
             className="inline-flex items-center gap-2.5 whitespace-nowrap text-lg font-bold text-[#c86116] transition-[opacity,transform] duration-200 hover:translate-x-0.5 hover:opacity-90 max-[991px]:text-base"
           >
             <span>Виж всички</span>

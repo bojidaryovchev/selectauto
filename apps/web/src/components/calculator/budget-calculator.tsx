@@ -59,7 +59,7 @@ export function BudgetCalculator() {
   }, [payment, term, income, expenses]);
 
   const impactPct = Math.round(r.impact * 100);
-  const catalogHref = r.high > 0 ? `/vsichki-avtomobili/?price_max=${Math.round(r.high)}` : "/vsichki-avtomobili/";
+  const catalogHref = r.high > 0 ? `/vsichki-avtomobili?price_max=${Math.round(r.high)}` : "/vsichki-avtomobili";
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.15fr_0.85fr]">

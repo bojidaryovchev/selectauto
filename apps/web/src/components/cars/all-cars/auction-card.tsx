@@ -196,7 +196,7 @@ function AuctionCardImpl({ car, priority = false }: { car: CarView; priority?: b
             // Past cards aren't actionable — they're price-research. Offer a path
             // back to active inventory instead of a "buy this" CTA.
             <LinkButton
-              href="/vsichki-avtomobili/"
+              href="/vsichki-avtomobili"
               rippleTheme="dark"
               className="inline-flex min-h-11.5 w-full items-center justify-center rounded-full border border-line bg-white px-5 text-sm font-extrabold uppercase tracking-wide text-[#333] transition-transform duration-200 hover:-translate-y-0.5 hover:text-brand-dark"
             >

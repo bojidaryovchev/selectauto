@@ -39,7 +39,7 @@ export function CarfaxHero() {
                 Изпрати запитване
               </LinkButton>
               <LinkButton
-                href="/kontakti/"
+                href="/kontakti"
                 rippleTheme="light"
                 className="inline-flex min-h-13.5 items-center justify-center rounded-full border border-white/18 bg-white/8 px-6.5 text-[15px] font-extrabold text-white backdrop-blur-md transition-transform duration-200 hover:-translate-y-0.5 max-md:w-full"
               >

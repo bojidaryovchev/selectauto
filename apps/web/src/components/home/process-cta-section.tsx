@@ -18,7 +18,7 @@ export function ProcessCtaSection() {
               разговор до готовия автомобил.
             </p>
             <LinkButton
-              href="/proces/"
+              href="/proces"
               rippleTheme="light"
               className="mt-9.5 inline-flex min-h-15.5 items-center justify-center gap-3.5 rounded-full bg-linear-to-br from-[#ff9b4a] via-[#f06f20] to-[#c94e0f] pl-8.5 pr-4.5 text-base font-extrabold text-white shadow-[0_14px_34px_rgba(232,108,32,0.22),inset_0_1px_0_rgba(255,255,255,0.22)] transition-transform duration-200 hover:-translate-y-0.75 max-md:w-full max-md:pl-6"
             >

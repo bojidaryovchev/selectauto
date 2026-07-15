@@ -17,6 +17,7 @@ export const metadata: Metadata = {
     description:
       "Поръчай Carfax проверка — пробег, инциденти, собственици и важни записи, преди да вземеш решение.",
     url: `${SITE_URL}/carfax`,
+    type: "website",
   },
 };
 

@@ -487,7 +487,10 @@ export function ParticleHero() {
       {/* Copy — aligned to the shared 1280px page column (matches the header/nav
           and every Container section) instead of a fixed viewport inset. */}
       <div className="pointer-events-none relative z-5 mx-auto flex min-h-screen w-[min(100%-28px,1280px)] flex-col items-start justify-center pb-22.5 pt-[clamp(110px,12vh,150px)] *:pointer-events-auto max-[900px]:min-h-fit max-[900px]:justify-start max-[900px]:pb-0 max-[900px]:pt-13">
-        <h1 className="mb-6 max-w-170 text-[clamp(46px,6vw,88px)] font-black leading-[0.95] tracking-[-2px] text-white max-[900px]:mb-3.5 max-[900px]:max-w-full max-[900px]:text-[clamp(34px,11vw,46px)] max-[900px]:leading-none max-[900px]:tracking-[-1.4px]">
+        {/* Visible hero slogan — deliberately a <p>, NOT a heading: the page's
+            single <h1> is the keyword-bearing sr-only heading in app/page.tsx
+            (this used to be a second <h1>, giving the homepage duplicate H1s). */}
+        <p className="mb-6 max-w-170 text-[clamp(46px,6vw,88px)] font-black leading-[0.95] tracking-[-2px] text-white max-[900px]:mb-3.5 max-[900px]:max-w-full max-[900px]:text-[clamp(34px,11vw,46px)] max-[900px]:leading-none max-[900px]:tracking-[-1.4px]">
           Намираме{" "}
           <span className="bg-linear-to-br from-brand-glow to-[#ffb37a] bg-clip-text text-transparent">
             точните
@@ -497,7 +500,7 @@ export function ParticleHero() {
             точните
           </span>{" "}
           хора
-        </h1>
+        </p>
 
         <p className="mb-9 max-w-130 text-lg/relaxed text-white/70 max-[900px]:mb-5.5 max-[900px]:max-w-full max-[900px]:text-sm max-[900px]:text-white/85">
           SelectAuto не е просто каталог. Това е процес, опит и реално
@@ -507,7 +510,7 @@ export function ParticleHero() {
 
         <div className="flex flex-wrap items-center gap-4 max-[900px]:w-full max-[900px]:flex-col max-[900px]:gap-3">
           <LinkButton
-            href="/vsichki-avtomobili/"
+            href="/vsichki-avtomobili"
             rippleTheme="light"
             className="inline-flex min-h-13.5 items-center justify-center rounded-full bg-linear-to-br from-brand-glow to-[#e86c20] px-7.5 text-[15px] font-extrabold text-white shadow-[0_12px_40px_rgba(232,108,32,0.4)] transition-transform duration-200 hover:-translate-y-0.75 max-[900px]:w-full"
           >

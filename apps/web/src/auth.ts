@@ -56,8 +56,16 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           .limit(1);
         const user = rows[0];
 
-        // No user, or an OAuth-only user (no password set) → fail.
-        if (!user || !user.passwordHash) return null;
+        // No such email → generic failure (return null → "wrong email or password").
+        if (!user) return null;
+
+        // The email belongs to a Google-only account (signed up via OAuth, no password
+        // set): steer them to the Google button instead of failing generically. NB: this
+        // reveals the account exists as a Google account — an intentional UX/enumeration
+        // tradeoff, consistent with the EMAIL_NOT_VERIFIED branch below.
+        if (!user.passwordHash) {
+          throw new Error("OAUTH_ONLY");
+        }
 
         // Require a verified email before allowing password sign-in.
         if (!user.emailVerified) {
@@ -76,4 +84,41 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       },
     }),
   ],
+  events: {
+    /**
+     * Defense-in-depth for `allowDangerousEmailAccountLinking` (auth.config.ts).
+     *
+     * When a Google account is linked to an existing user, that user may be a
+     * password account whose email was NEVER verified through our own flow
+     * (`verifyEmail` sets `emailVerified`). Such a password is untrusted — it could
+     * have been set by someone who doesn't control the inbox — and must never become
+     * usable. @auth/core already leaves `emailVerified` untouched on OAuth linking
+     * (handle-login.js), and `authorize` gates password sign-in on `emailVerified`,
+     * so the password stays dormant. This makes that invariant explicit and
+     * refactor-proof: if the linked user is still unverified, wipe the password hash.
+     * A genuinely verified user (real dual login) has `emailVerified` set → password
+     * is preserved. `linkAccount` fires only on the FIRST link (subsequent Google
+     * sign-ins match by account id and skip it), so this never touches an
+     * already-established account.
+     */
+    async linkAccount({ user }) {
+      if (!user.id) return;
+      const db = getDb();
+      const rows = await db
+        .select({
+          emailVerified: schema.users.emailVerified,
+          passwordHash: schema.users.passwordHash,
+        })
+        .from(schema.users)
+        .where(eq(schema.users.id, user.id))
+        .limit(1);
+      const row = rows[0];
+      if (row && !row.emailVerified && row.passwordHash) {
+        await db
+          .update(schema.users)
+          .set({ passwordHash: null })
+          .where(eq(schema.users.id, user.id));
+      }
+    },
+  },
 });

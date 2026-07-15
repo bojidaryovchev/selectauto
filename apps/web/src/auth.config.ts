@@ -18,8 +18,18 @@ export const authConfig = {
   session: { strategy: "jwt" },
   pages: {
     signIn: "/sign-in",
+    // Branded replacement for Auth.js's raw `/api/auth/error` card. Any failed
+    // auth flow redirects here with `?error=<reason>`; a cancelled Google chooser
+    // arrives as `error=Configuration` (Auth.js relabels the non-client-safe
+    // state/PKCE-check failure). See src/app/greshka-pri-vhod/page.tsx.
+    error: "/greshka-pri-vhod",
   },
-  providers: [Google],
+  // `allowDangerousEmailAccountLinking`: when a Google sign-in's email matches an
+  // existing user (e.g. one created via email/password), link the Google account to
+  // that user instead of throwing `OAuthAccountNotLinked`. The flag is only unsafe
+  // with providers that DON'T verify email ownership; Google verifies emails, so the
+  // account-takeover vector it guards against doesn't apply here.
+  providers: [Google({ allowDangerousEmailAccountLinking: true })],
   callbacks: {
     /**
      * Persist the user id onto the JWT at sign-in, so the session can expose it

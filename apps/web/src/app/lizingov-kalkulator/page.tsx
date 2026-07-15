@@ -118,7 +118,7 @@ export default function LeasingCalculatorPage() {
               <h2 className="mb-4 text-2xl font-black text-ink">Свързани инструменти</h2>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <LinkButton
-                  href="/byudzheten-kalkulator/"
+                  href="/byudzheten-kalkulator"
                   rippleTheme="dark"
                   className="group block rounded-2xl border border-line bg-white p-5 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-brand/50 hover:shadow-card-strong"
                 >
@@ -126,7 +126,7 @@ export default function LeasingCalculatorPage() {
                   <p className="text-sm/relaxed text-[#5a5d64]">Вижте каква цена автомобил отговаря на месечния Ви бюджет.</p>
                 </LinkButton>
                 <LinkButton
-                  href="/kalkulator/"
+                  href="/kalkulator"
                   rippleTheme="dark"
                   className="group block rounded-2xl border border-line bg-white p-5 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-brand/50 hover:shadow-card-strong"
                 >

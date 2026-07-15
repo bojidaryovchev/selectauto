@@ -170,7 +170,7 @@ export default function UsaHubPage() {
             <div className="mb-4 flex items-end justify-between gap-4">
               <h2 className="text-2xl font-black text-ink">Актуални коли от САЩ</h2>
               <Link
-                href="/vsichki-avtomobili/?market=us"
+                href="/vsichki-avtomobili?market=us"
                 className="whitespace-nowrap text-sm font-bold text-brand-dark hover:underline"
               >
                 Виж всички →

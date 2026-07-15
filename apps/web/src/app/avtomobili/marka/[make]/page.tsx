@@ -95,8 +95,9 @@ async function BrandHubBody({ params }: { params: Params }) {
     .filter((m): m is { href: string; name: string; count: number } => m.href !== null);
 
   const jsonLd = [
+    // Mirrors the VISIBLE breadcrumb exactly (which starts at the catalog — no
+    // „Начало" crumb is rendered, so none is marked up).
     buildBreadcrumbJsonLd([
-      { name: "Начало", url: "/" },
       { name: "Всички автомобили", url: "/vsichki-avtomobili" },
       { name: label, url: path },
     ]),
@@ -118,7 +119,7 @@ async function BrandHubBody({ params }: { params: Params }) {
       <Container>
         <div className="py-10 max-md:py-7">
           <nav className="mb-5 text-sm text-muted">
-            <Link href="/vsichki-avtomobili/" className="hover:text-brand-dark">
+            <Link href="/vsichki-avtomobili" className="hover:text-brand-dark">
               Всички автомобили
             </Link>
             <span className="px-2">/</span>
@@ -163,7 +164,7 @@ async function BrandHubBody({ params }: { params: Params }) {
                 автомобил от аукционите.
               </p>
               <LinkButton
-                href="/vsichki-avtomobili/"
+                href="/vsichki-avtomobili"
                 rippleTheme="light"
                 className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand px-6 text-sm font-extrabold uppercase tracking-wide text-white transition-transform duration-200 hover:-translate-y-0.5"
               >

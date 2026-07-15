@@ -15,7 +15,7 @@ export function AboutFeatures() {
           </Reveal>
           <Reveal delay={0.08}>
             <FeatureCard variant="orange" number="15+" title="Аукционни канали">
-              Осигуряваме достъп до аукционни площадки в САЩ, Канада и Европа с
+              Осигуряваме достъп до аукционни площадки в Корея, САЩ и Канада с
               правилен подбор и стратегия.
             </FeatureCard>
           </Reveal>

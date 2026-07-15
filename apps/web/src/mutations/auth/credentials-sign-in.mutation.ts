@@ -44,6 +44,14 @@ export async function credentialsSignIn(input: unknown): Promise<ActionResult> {
           error: "Имейлът ви не е потвърден. Проверете пощата си за линк за активиране.",
         };
       }
+      // `authorize` throws Error("OAUTH_ONLY") when the email belongs to a Google-only
+      // account (no password set) — nudge the user to the Google button.
+      if (cause?.message === "OAUTH_ONLY") {
+        return {
+          success: false,
+          error: "Този имейл е регистриран чрез Google. Влезте с бутона „Продължи с Google“.",
+        };
+      }
       if (error.type === "CredentialsSignin") {
         return { success: false, error: "Грешен имейл или парола." };
       }

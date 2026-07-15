@@ -14,6 +14,13 @@ export const metadata: Metadata = {
   description:
     "Свържете се с нас бързо и лесно – ние сме тук, за да ви съдействаме! Телефон, адрес в гр. Пловдив, работно време и форма за безплатна консултация.",
   alternates: { canonical: `${SITE_URL}/kontakti` },
+  openGraph: {
+    title: "Контакти — SelectAuto",
+    description:
+      "Телефон, адрес в гр. Пловдив, работно време и форма за безплатна консултация.",
+    url: `${SITE_URL}/kontakti`,
+    type: "website",
+  },
 };
 
 export default function ContactsPage() {

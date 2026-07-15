@@ -4,7 +4,7 @@ import { ABOUT_VIDEO_POSTER, ABOUT_VIDEO_SRC } from "./media";
 
 const HERO_POINTS = [
   "Консултация и помощ при избор",
-  "Участие в търгове в Европа и САЩ",
+  "Участие в търгове в Корея, САЩ и Канада",
   "Организация на транспорт и регистрация",
 ];
 
@@ -32,14 +32,14 @@ export function AboutHero() {
 
             <div className="flex flex-wrap gap-3.5 max-md:flex-col">
               <LinkButton
-                href="/kontakti/"
+                href="/kontakti"
                 rippleTheme="light"
                 className="inline-flex min-h-13.5 items-center justify-center rounded-full bg-linear-to-r from-brand-dark to-brand px-6.5 text-[15px] font-extrabold text-white shadow-[0_12px_30px_rgba(216,111,22,0.25)] transition-transform duration-200 hover:-translate-y-0.5 max-md:w-full"
               >
                 Свържи се с нас
               </LinkButton>
               <LinkButton
-                href="/vsichki-avtomobili/"
+                href="/vsichki-avtomobili"
                 rippleTheme="light"
                 className="inline-flex min-h-13.5 items-center justify-center rounded-full border border-white/18 bg-white/8 px-6.5 text-[15px] font-extrabold text-white backdrop-blur-sm transition-transform duration-200 hover:-translate-y-0.5 max-md:w-full"
               >

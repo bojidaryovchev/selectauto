@@ -78,6 +78,37 @@ Goal: give Google an unambiguous, crawl-budget-cheap story for every legacy URL 
       `/kontakti` — the brand SERP is currently owned by US namesakes + an unrelated „Select
       Auto BG" dealership.
 
+### Page-by-page SEO audit (2026-07-16) — done, fixes applied
+
+Three parallel auditors swept every route (27 page.tsx files), robots.ts, all three sitemaps,
+JSON-LD-vs-visible-content consistency, H1s, and legacy-string leftovers. All 27 pages have
+metadata; sitemaps/robots/noindex cross-checks passed. Confirmed issues, all **fixed**:
+
+- [x] Stale sourcing geography in visible copy — `/proces` said „японски и германски аукциони",
+      `/za-nas` (3 components) + the sitewide inquiry modal said „Европа" and omitted Korea —
+      all now „Корея, САЩ и Канада".
+- [x] Homepage had **two H1s** (sr-only keyword H1 + the ParticleHero slogan H1) — hero slogan
+      demoted to a styled `<p>`.
+- [x] robots.txt Disallow on `?status=past` conflicted with the page's `noindex, follow`
+      (Disallow blocks crawling → Google can never read the meta; url-only indexing possible)
+      — Disallow removed, page-level noindex is the single mechanism.
+- [x] Carfax leads recorded a **dead legacy WP URL** as `page_url` — now the real
+      `window.location.href`.
+- [x] Two components hotlinked images from WP `wp-content/uploads` (one already 404 in
+      production) — assets localized to `public/images/` (About poster regenerated from the
+      video's first frame via ffmpeg).
+- [x] No `not-found.tsx` — branded 404 added (header/footer + funnel links; Next auto-noindexes).
+- [x] Breadcrumb JSON-LD ≠ visible breadcrumbs (extra „Начало" node on hubs/detail; catalog had
+      markup but no visible breadcrumb) — markup now mirrors the visible trails exactly.
+- [x] Missing OG on `/kalkulator` + `/kontakti`; `type` missing on `/carfax` — added.
+- [x] `/kalkulator` had no contextual links — „Полезни страници" strip added (hubs, VIN, FAQ).
+- [x] ~24 files used trailing-slash internal links (`/vsichki-avtomobili/` → 308 hop on every
+      click/crawl) — normalized to the slashless canonical form repo-wide.
+
+Deferred (noted, not bugs): `/kontakti` hero uses a stock Unsplash image (content-quality,
+`[user]` to supply a real photo); `/proces` H1 is brand-voice not keyword-bearing (minor);
+„vin проверка" phrasing lands with the Phase B VIN retarget.
+
 ## Phase B — Money-page depth (weeks 1–6; primary goal: leads)
 
 - [ ] `[content]` **Deepen Korea/USA/Canada hubs** from ~600–900 to 2,000–3,000 words each,

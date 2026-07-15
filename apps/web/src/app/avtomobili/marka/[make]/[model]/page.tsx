@@ -146,8 +146,9 @@ async function HubBody({ params }: { params: Params }) {
   // below (Google requires FAQ markup to match on-page content).
   const faq = hubFaq(label, stats);
   const jsonLd = [
+    // Mirrors the VISIBLE breadcrumb exactly (starts at the catalog — no
+    // „Начало" crumb is rendered, so none is marked up).
     buildBreadcrumbJsonLd([
-      { name: "Начало", url: "/" },
       { name: "Всички автомобили", url: "/vsichki-avtomobili" },
       ...(brandHref ? [{ name: hub.brandName, url: brandHref }] : []),
       { name: label, url: path },
@@ -171,7 +172,7 @@ async function HubBody({ params }: { params: Params }) {
           {/* Breadcrumb (matches the JSON-LD trail). Brand crumb links up to the
               parent brand hub when it resolves. */}
           <nav className="mb-5 text-sm text-muted">
-            <Link href="/vsichki-avtomobili/" className="hover:text-brand-dark">
+            <Link href="/vsichki-avtomobili" className="hover:text-brand-dark">
               Всички автомобили
             </Link>
             {brandHref ? (
@@ -201,7 +202,7 @@ async function HubBody({ params }: { params: Params }) {
                 подходящ автомобил от аукционите.
               </p>
               <LinkButton
-                href="/vsichki-avtomobili/"
+                href="/vsichki-avtomobili"
                 rippleTheme="light"
                 className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand px-6 text-sm font-extrabold uppercase tracking-wide text-white transition-transform duration-200 hover:-translate-y-0.5"
               >

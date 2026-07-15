@@ -130,11 +130,11 @@ export default function TermsPage() {
               <h2 className="mb-2 text-xl font-extrabold text-ink">7. Лични данни</h2>
               <p>
                 Обработваме лични данни съгласно нашата{" "}
-                <Link href="/politika-za-poveritelnost/" className="font-semibold text-brand-dark hover:underline">
+                <Link href="/politika-za-poveritelnost" className="font-semibold text-brand-dark hover:underline">
                   Политика за поверителност
                 </Link>{" "}
                 и използваме бисквитки съгласно{" "}
-                <Link href="/politika-za-biskvitki/" className="font-semibold text-brand-dark hover:underline">
+                <Link href="/politika-za-biskvitki" className="font-semibold text-brand-dark hover:underline">
                   Политиката за бисквитки
                 </Link>
                 .

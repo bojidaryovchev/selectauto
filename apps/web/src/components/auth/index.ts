@@ -1,4 +1,5 @@
 export { AuthCard } from "./auth-card";
+export { AuthErrorContent } from "./auth-error-content";
 export { ForgotPasswordForm } from "./forgot-password-form";
 export { GoogleButton } from "./google-button";
 export { ResetPasswordForm } from "./reset-password-form";

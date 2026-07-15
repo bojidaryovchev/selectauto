@@ -13,9 +13,12 @@ import { getSitemapChunkCursors } from "@/queries/sitemap";
  *   wildcard rule. We WANT to be cited in AI Overviews / ChatGPT / Perplexity.
  * - **Disallow private / non-indexable surfaces**: the favourites list and the
  *   auth/account pages (sign-in, registration, password reset, email verify —
- *   all also `noindex` at the page level; robots + meta is belt & suspenders),
- *   and the `?status=past` sold-lots view (thin, fast-decaying price-research
- *   utility kept `noindex, follow` — see the catalog page). `/api/` is internal.
+ *   all also `noindex` at the page level; robots + meta is belt & suspenders).
+ *   `/api/` is internal. The `?status=past` sold-lots view is deliberately NOT
+ *   disallowed here: it relies on its page-level `noindex, follow`, and a robots
+ *   Disallow would block crawling so Google could never read that meta — the two
+ *   mechanisms are mutually defeating (a disallowed-but-linked URL can still be
+ *   indexed url-only, and the `follow` equity would be lost).
  * - Point crawlers at the sitemaps: the static-pages `/sitemap.xml`, the make/model
  *   hub sitemap (`/avtomobili/marka/sitemap.xml`), PLUS each listing chunk
  *   (`/avtomobil/sitemap/{id}.xml`). Next 16 does not auto-generate
@@ -55,7 +58,6 @@ const DISALLOW = [
   "/verify",
   "/zabravena-parola",
   "/nova-parola",
-  "/*?*status=past",
 ];
 
 export default async function robots(): Promise<MetadataRoute.Robots> {

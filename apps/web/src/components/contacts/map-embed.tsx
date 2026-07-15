@@ -55,7 +55,7 @@ export function MapEmbed({ src, title, addressLabel }: Props) {
       </Button>
       <p className="m-0 max-w-sm text-xs/relaxed text-muted">
         Картата се зарежда от Google Maps, който може да зададе бисквитки. Вижте{" "}
-        <Link href="/politika-za-biskvitki/" className="font-semibold text-brand-dark hover:underline">
+        <Link href="/politika-za-biskvitki" className="font-semibold text-brand-dark hover:underline">
           Политика за бисквитки
         </Link>
         .

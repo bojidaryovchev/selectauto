@@ -31,7 +31,7 @@ export function FavoritesGrid({ cars }: { cars: CarView[] }) {
       <div className="mt-6 rounded-2xl border border-line bg-white px-6 py-16 text-center">
         <p className="mb-5 text-base text-muted">Все още нямате запазени автомобили.</p>
         <LinkButton
-          href="/vsichki-avtomobili/"
+          href="/vsichki-avtomobili"
           rippleTheme="light"
           className="inline-flex min-h-13 items-center justify-center rounded-full bg-linear-to-r from-brand-dark to-brand px-8 text-[15px] font-extrabold text-white shadow-[0_12px_28px_rgba(216,111,22,0.22)] transition-transform duration-200 hover:-translate-y-0.5"
         >

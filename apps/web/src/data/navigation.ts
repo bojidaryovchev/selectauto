@@ -30,63 +30,63 @@ import type { LinkItem, NavItem } from "@/types/nav.type";
  * account menu (UserMenu) and the mobile drawer, not a prime top-level slot.
  */
 export const NAV: NavItem[] = [
-  { label: "Автомобили", href: "/vsichki-avtomobili/" },
+  { label: "Автомобили", href: "/vsichki-avtomobili" },
   {
     label: "Внос",
-    href: "/vnos-na-koli-ot-korea/",
+    href: "/vnos-na-koli-ot-korea",
     children: [
-      { label: "Внос от Корея", href: "/vnos-na-koli-ot-korea/" },
-      { label: "Внос от САЩ", href: "/vnos-na-koli-ot-sasht/" },
-      { label: "Внос от Канада", href: "/vnos-na-koli-ot-kanada/" },
+      { label: "Внос от Корея", href: "/vnos-na-koli-ot-korea" },
+      { label: "Внос от САЩ", href: "/vnos-na-koli-ot-sasht" },
+      { label: "Внос от Канада", href: "/vnos-na-koli-ot-kanada" },
     ],
   },
   {
     label: "Инструменти",
-    href: "/kalkulator/",
+    href: "/kalkulator",
     children: [
-      { label: "Калкулатор за внос", href: "/kalkulator/" },
-      { label: "Лизингов калкулатор", href: "/lizingov-kalkulator/" },
-      { label: "Бюджетен калкулатор", href: "/byudzheten-kalkulator/" },
-      { label: "Проверка на VIN", href: "/proverka-vin/" },
-      { label: "Carfax проверка", href: "/carfax/" },
+      { label: "Калкулатор за внос", href: "/kalkulator" },
+      { label: "Лизингов калкулатор", href: "/lizingov-kalkulator" },
+      { label: "Бюджетен калкулатор", href: "/byudzheten-kalkulator" },
+      { label: "Проверка на VIN", href: "/proverka-vin" },
+      { label: "Carfax проверка", href: "/carfax" },
     ],
   },
   {
     label: "За нас",
-    href: "/za-nas/",
+    href: "/za-nas",
     children: [
-      { label: "За нас", href: "/za-nas/" },
-      { label: "Процес", href: "/proces/" },
-      { label: "Отзиви", href: "/otzivi/" },
-      { label: "Често задавани въпроси", href: "/chesto-zadavani-vaprosi/" },
+      { label: "За нас", href: "/za-nas" },
+      { label: "Процес", href: "/proces" },
+      { label: "Отзиви", href: "/otzivi" },
+      { label: "Често задавани въпроси", href: "/chesto-zadavani-vaprosi" },
     ],
   },
-  { label: "Контакти", href: "/kontakti/" },
+  { label: "Контакти", href: "/kontakti" },
 ];
 
 /** Footer "Навигация" column — mirrors the header's transactional surface so the
  *  country hubs get a second site-wide link (docs/12-web-seo-strategy.md §7). */
 export const FOOTER_NAV: LinkItem[] = [
   { label: "Начало", href: "/" },
-  { label: "Автомобили", href: "/vsichki-avtomobili/" },
-  { label: "Внос от Корея", href: "/vnos-na-koli-ot-korea/" },
-  { label: "Внос от САЩ", href: "/vnos-na-koli-ot-sasht/" },
-  { label: "Внос от Канада", href: "/vnos-na-koli-ot-kanada/" },
-  { label: "За нас", href: "/za-nas/" },
-  { label: "Контакти", href: "/kontakti/" },
+  { label: "Автомобили", href: "/vsichki-avtomobili" },
+  { label: "Внос от Корея", href: "/vnos-na-koli-ot-korea" },
+  { label: "Внос от САЩ", href: "/vnos-na-koli-ot-sasht" },
+  { label: "Внос от Канада", href: "/vnos-na-koli-ot-kanada" },
+  { label: "За нас", href: "/za-nas" },
+  { label: "Контакти", href: "/kontakti" },
 ];
 
 /** Footer "Информация" column — tools + trust/authority pages. (Legal docs live
  *  in FOOTER_LEGAL, rendered as a separate row in the footer's bottom bar.) */
 export const FOOTER_INFO: LinkItem[] = [
-  { label: "Калкулатор за внос", href: "/kalkulator/" },
-  { label: "Лизингов калкулатор", href: "/lizingov-kalkulator/" },
-  { label: "Бюджетен калкулатор", href: "/byudzheten-kalkulator/" },
-  { label: "Проверка на VIN", href: "/proverka-vin/" },
-  { label: "Carfax проверка", href: "/carfax/" },
-  { label: "Процес", href: "/proces/" },
-  { label: "Отзиви", href: "/otzivi/" },
-  { label: "Често задавани въпроси", href: "/chesto-zadavani-vaprosi/" },
+  { label: "Калкулатор за внос", href: "/kalkulator" },
+  { label: "Лизингов калкулатор", href: "/lizingov-kalkulator" },
+  { label: "Бюджетен калкулатор", href: "/byudzheten-kalkulator" },
+  { label: "Проверка на VIN", href: "/proverka-vin" },
+  { label: "Carfax проверка", href: "/carfax" },
+  { label: "Процес", href: "/proces" },
+  { label: "Отзиви", href: "/otzivi" },
+  { label: "Често задавани въпроси", href: "/chesto-zadavani-vaprosi" },
 ];
 
 /**
@@ -96,7 +96,7 @@ export const FOOTER_INFO: LinkItem[] = [
  * BG service business (ЗЕТ + ЗЗП + ePrivacy) — see the pages for the legal basis.
  */
 export const FOOTER_LEGAL: LinkItem[] = [
-  { label: "Общи условия", href: "/obshti-usloviya/" },
-  { label: "Политика за поверителност", href: "/politika-za-poveritelnost/" },
-  { label: "Политика за бисквитки", href: "/politika-za-biskvitki/" },
+  { label: "Общи условия", href: "/obshti-usloviya" },
+  { label: "Политика за поверителност", href: "/politika-za-poveritelnost" },
+  { label: "Политика за бисквитки", href: "/politika-za-biskvitki" },
 ];

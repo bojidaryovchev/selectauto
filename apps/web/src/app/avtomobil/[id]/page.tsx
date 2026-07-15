@@ -162,17 +162,17 @@ async function CarDetailBody({ params }: { params: Params }) {
   // so only add it alongside brand). Falls back to the unfiltered catalog when the
   // ids are missing.
   const activeCatalogHref = (() => {
-    if (detail.brandExternalId == null) return "/vsichki-avtomobili/";
+    if (detail.brandExternalId == null) return "/vsichki-avtomobili";
     const p = new URLSearchParams({ brand: String(detail.brandExternalId) });
     if (detail.modelExternalId != null) p.set("model", String(detail.modelExternalId));
     return `/vsichki-avtomobili?${p.toString()}`;
   })();
 
-  // Breadcrumb matching the visible nav (Home → Catalog → [model hub] → this car).
+  // Breadcrumb matching the visible nav EXACTLY (Catalog → [model hub] → this
+  // car — the visible trail has no „Начало" crumb, so none is marked up).
   // Emitted for both active and past cars (a breadcrumb is fine on a noindexed page —
   // it just won't surface; harmless and keeps the trail consistent).
   const crumbs: Breadcrumb[] = [
-    { name: "Начало", url: "/" },
     { name: "Всички автомобили", url: "/vsichki-avtomobili" },
     ...(hubHref && hubLabel ? [{ name: hubLabel, url: hubHref }] : []),
     { name: detail.title, url: `/avtomobil/${id}` },
@@ -197,7 +197,7 @@ async function CarDetailBody({ params }: { params: Params }) {
             {/* Breadcrumb (Home → Catalog → [model hub] → this car). The model-hub
                 link is shown only when it resolves — see `hubHref` above. */}
             <nav className="mb-5 text-sm text-muted">
-              <Link href="/vsichki-avtomobili/" className="hover:text-brand-dark">
+              <Link href="/vsichki-avtomobili" className="hover:text-brand-dark">
                 Всички автомобили
               </Link>
               {hubHref && hubLabel ? (

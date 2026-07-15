@@ -64,7 +64,7 @@ const STEPS: Step[] = [
   {
     num: "Стъпка 02 / 05",
     title: "Търг",
-    desc: "Участваме директно — на корейски, японски и германски аукциони. Стратегия, не късмет.",
+    desc: "Участваме директно — на аукциони в Корея, САЩ и Канада. Стратегия, не късмет.",
     rail: "Търг",
   },
   {
@@ -1003,7 +1003,7 @@ export function ParticleProcess() {
           Не каталог. Не обещание. Готов автомобил с изрядна история и документи.
         </p>
         <LinkButton
-          href="/kontakti/"
+          href="/kontakti"
           rippleTheme="light"
           className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-full bg-linear-to-br from-brand-glow to-[#e86c20] px-9 py-4.5 text-[15px] font-bold text-white shadow-[0_12px_30px_rgba(232,108,32,0.4)] transition-transform duration-200 hover:-translate-y-0.5 active:scale-[0.97] max-[991px]:px-7.5 max-[991px]:py-4 max-[991px]:text-sm"
         >
