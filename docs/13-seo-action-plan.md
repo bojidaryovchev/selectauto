@@ -68,20 +68,19 @@ Goal: give Google an unambiguous, crawl-budget-cheap story for every legacy URL 
       trust/fraud angle mandatory), then Canada (CETA origin myth-busting).
 - [ ] `[code]` **Calculator v2** (`/kalkulator`): itemized line-item output (auction fees,
       transport, duty, VAT, ecotax, homologation, ГТП/КАТ); **Korea origin-declaration toggle**
-      (0% vs 10% duty), **Japan 0%-EPA toggle**, Canada default 10% with CETA note; ecotax age
-      bands as config with „last verified" date; add DE/JP markets; **gated-PDF estimate as
-      lead capture**.
+      (0% vs 10% duty), Canada default 10% with CETA note; ecotax age bands as config with
+      „last verified" date; markets stay **KR/US/CA** (Japan/Germany are not served — see the
+      2026-07 correction in 12 §0.4); **gated-PDF estimate as lead capture**.
 - [ ] `[code+content]` **VIN tool retarget** — `/proverka-vin` copy/title to „vin проверка" /
       „проверка по вин номер безплатно"; add „вин проверка корея" section; `/carfax` targets
       brand demand („carfax цена", „carfax българия").
-- [ ] `[code+content]` **Germany page** `/vnos-na-koli-ot-germaniya` — reframed: „по поръчка",
-      „ддс", „фирми за внос", self-import vs service, mobile.de/AutoScout24 vs B2B auctions,
-      odometer-fraud trust angle.
-- [ ] `[code+content]` **Japan page** `/vnos-na-koli-ot-yaponiya` — single honest informational
-      page: RHD reality, LHD-cars-in-Japan niche (10% duty — no EPA origin), „0% мито от 2026"
-      hook, funnel to Korea. Weakest SERP in the niche = cheap to own.
 - [ ] `[content]` „Колко струва внос на кола от САЩ през 2026" support guide (year-dated titles
       demonstrably win this SERP) interlinked with the calculator.
+
+> **CUT (2026-07):** the previously planned `/vnos-na-koli-ot-germaniya` and
+> `/vnos-na-koli-ot-yaponiya` country pages — the business does not import from Germany or
+> Japan, and a service page for an unserved country would be dishonest lead-gen. Their search
+> demand is captured by two Phase C comparison posts instead (see cluster ③).
 
 ## Phase C — Content clusters, E-E-A-T & authority (weeks 4–16, overlaps B)
 
@@ -91,13 +90,16 @@ Goal: give Google an unambiguous, crawl-budget-cheap story for every legacy URL 
 - [ ] `[content]` Cluster order (by validated demand): ① USA/Canada cost+trust (salvage/flood/
       „наводнена кола", title types, Copart-vs-IAAI, глосар) ② Korea (Encar guide — the
       „Encar България" SERP is junk; LPI/газ течна фаза; mileage authenticity; parts in BG;
-      hidden fees) ③ comparisons („Корея или Америка" first) ④ КАТ/екотакса/хомологация
-      guides ⑤ hybrid/EV-from-Korea. Year-stamp everything.
+      hidden fees) ③ comparisons — „Корея или Америка" first, then the two posts replacing
+      the cut country pages: **„Корея или Германия?"** (the #1 buyer objection — Germany is
+      Bulgaria's default import channel) and **„Защо не внасяме от Япония"** (RHD explainer;
+      weakest SERP in the niche), both funneling to the Korea/USA hubs ④ КАТ/екотакса/
+      хомологация guides ⑤ hybrid/EV-from-Korea. Year-stamp everything.
 - [ ] `[ops]` **Quarterly regulatory re-verification loop** — ecotax draft (+24%) vs Държавен
       вестник, tariff steps, transit times; update „last verified" dates.
 - [ ] `[user+ops]` **Authority/brand track (12–24 mo, aimed at bidmotors-held head terms)**:
       digital PR on newsjackable moments (EPPO fraud coverage → „как да проверите историята",
-      Japan 0% duty, euro transition); BG directories/profiles; **creator partnerships**
+      euro transition); BG directories/profiles; **creator partnerships**
       (AvtoNonchev / ГаражЪ / Кентавър Авто tier — importer-owned channels demonstrably fail);
       consider a **mobile.bg storefront** for arrived cars (marketplaces hold ~60–75% of buyer
       attention).

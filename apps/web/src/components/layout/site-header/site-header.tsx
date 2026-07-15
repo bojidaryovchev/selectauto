@@ -4,9 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import { useSession } from "next-auth/react";
 import { Button, LinkButton } from "@/components/common";
 import { UserMenu } from "@/components/auth";
+import { ChevronDownIcon } from "@/components/icons";
 import { NAV } from "@/data/navigation";
 import { useInquiry } from "@/contexts/inquiry-context";
 import { MobileBottomNav } from "./mobile-bottom-nav";
@@ -34,6 +36,8 @@ export function SiteHeader() {
   const [openSub, setOpenSub] = useState<string | null>(null);
   const [hidden, setHidden] = useState(false);
   const headerRef = useRef<HTMLElement | null>(null);
+  // Honor prefers-reduced-motion for the drawer sub-menu height animation.
+  const reduce = useReducedMotion();
 
   // Current path (trailing-slash normalised to match the NAV hrefs) so the
   // drawer can highlight the active entry, mirroring the bottom nav.
@@ -151,7 +155,7 @@ export function SiteHeader() {
     <>
       <header
         ref={headerRef}
-        className={`fixed inset-x-0 top-0 z-9999 border-b border-white/6 bg-shell/88 px-0 py-3.5 backdrop-blur-xl transition-transform duration-300 ease-out will-change-transform ${
+        className={`fixed inset-x-0 top-0 z-9999 border-b border-white/6 bg-shell/88 px-0 py-3.5 backdrop-blur-xl transition-transform duration-300 ease-out will-change-transform max-lg:hidden ${
           isHidden ? "-translate-y-full" : "translate-y-0"
         }`}
       >
@@ -187,12 +191,13 @@ export function SiteHeader() {
                       <ul className="invisible absolute left-0 top-full z-50 mt-3 min-w-55 translate-y-2 rounded-2xl bg-white p-2.5 opacity-0 shadow-[0_18px_40px_rgba(0,0,0,0.16)] transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
                         {item.children.map((sub) => (
                           <li key={sub.label}>
-                            <Link
+                            <LinkButton
                               href={sub.href}
-                              className="block rounded-xl px-3.5 py-3 text-sm font-semibold text-[#1d1d1d] transition-colors hover:bg-brand/8 hover:text-brand-dark"
+                              rippleTheme="dark"
+                              className="block whitespace-nowrap rounded-xl px-3.5 py-3 text-sm font-semibold text-[#1d1d1d] transition-colors hover:bg-brand/8 hover:text-brand-dark"
                             >
                               {sub.label}
-                            </Link>
+                            </LinkButton>
                           </li>
                         ))}
                       </ul>
@@ -218,7 +223,7 @@ export function SiteHeader() {
               ) : (
                 <LinkButton
                   href="/sign-in"
-                  rippleTheme="light"
+                  rippleTheme="dark"
                   className="inline-flex min-h-13.5 items-center justify-center rounded-full bg-white px-6 text-[15px] font-extrabold text-brand-dark transition-transform duration-200 hover:-translate-y-0.5"
                 >
                   Вход
@@ -236,6 +241,7 @@ export function SiteHeader() {
           its Меню tab opens the same slide-in drawer rendered below. */}
       <MobileBottomNav
         drawerOpen={drawerOpen}
+        hidden={isHidden}
         onToggleDrawer={() => setDrawerOpen((open) => !open)}
       />
 
@@ -286,16 +292,28 @@ export function SiteHeader() {
                       className="flex min-h-14 w-full items-center justify-between gap-3 px-4.5 text-[15px] font-bold text-[#f2f3f5]"
                     >
                       {item.label}
-                      <span
-                        className={`transition-transform duration-200 ${
-                          openSub === item.label ? "rotate-180" : ""
-                        }`}
+                      <motion.span
+                        aria-hidden
+                        animate={{ rotate: openSub === item.label ? 180 : 0 }}
+                        transition={reduce ? { duration: 0 } : { duration: 0.3, ease: "easeInOut" }}
+                        className="shrink-0 text-white/70"
                       >
-                        ⌄
-                      </span>
+                        <ChevronDownIcon className="size-4" />
+                      </motion.span>
                     </Button>
-                    {openSub === item.label && (
-                      <ul className="m-0 list-none bg-white/2 p-0 pb-2.5 pt-1.5">
+                    {/* Sub-menu animates height 0 ↔ auto (matching ExpandableSection)
+                        instead of snapping; children stay mounted so the links are in
+                        the DOM even while collapsed. */}
+                    <motion.div
+                      initial={false}
+                      animate={{
+                        height: openSub === item.label ? "auto" : 0,
+                        opacity: openSub === item.label ? 1 : 0,
+                      }}
+                      transition={reduce ? { duration: 0 } : { duration: 0.32, ease: [0.32, 0.72, 0, 1] }}
+                      style={{ overflow: "hidden" }}
+                    >
+                      <ul className="m-0 list-none bg-white/2 p-0">
                         {item.children.map((sub) => {
                           const active = isActivePath(sub.href);
                           return (
@@ -305,7 +323,7 @@ export function SiteHeader() {
                                 rippleTheme="light"
                                 onClick={() => setDrawerOpen(false)}
                                 aria-current={active ? "page" : undefined}
-                                className={`block py-2.75 pl-7.5 pr-4.5 text-sm font-semibold transition-colors ${
+                                className={`flex min-h-14 items-center pl-7.5 pr-4.5 text-sm font-semibold transition-colors ${
                                   active ? "text-brand-soft" : "text-white/70"
                                 }`}
                               >
@@ -315,7 +333,7 @@ export function SiteHeader() {
                           );
                         })}
                       </ul>
-                    )}
+                    </motion.div>
                   </li>
                 ) : (
                   (() => {

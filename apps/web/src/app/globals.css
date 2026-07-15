@@ -56,12 +56,16 @@ body {
   Height of the fixed <SiteHeader>, exposed as a token so page wrappers can
   offset their top padding by exactly the header's footprint (the header is
   `position: fixed`, so it occupies no layout space of its own).
-  Derived from the header's classes: py-3.5 (14px ×2) + inner min-height
-  + 1px bottom border. Mobile inner min-height is 72px, desktop is 78px.
-  Keep these in sync with site-header.tsx if its padding/min-height changes.
+  The header is `max-lg:hidden` — it only renders on desktop (≥1024px), where
+  it stands 107px tall (py-3.5 (14px ×2) + 78px inner min-height + 1px border).
+  On mobile it serves no purpose (navigation lives in the bottom tab bar), so it
+  is hidden and this token is 0 — collapsing every page's `pt-(--header-h)`
+  offset. SiteHeader also measures the real rendered height at runtime and
+  overrides this token; these are the SSR/pre-hydration fallbacks. Keep the
+  desktop value in sync with site-header.tsx if its padding/min-height changes.
 */
 :root {
-  --header-h: 101px;
+  --header-h: 0px;
 }
 @media (min-width: 1024px) {
   :root {
@@ -131,4 +135,43 @@ body {
     animation: none;
     display: none;
   }
+}
+
+/*
+  Range slider for the „Инструменти" financing calculators (<CalcSlider>). The
+  orange fill + thumb can't be expressed as Tailwind utilities (pseudo-element
+  thumbs), so it lives here. `accent-color` paints the filled track + thumb in
+  supporting browsers; the explicit -webkit/-moz thumb rules guarantee the orange
+  circle everywhere. Track height/rounding match the live site's control.
+*/
+.calc-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-line);
+  accent-color: var(--color-brand);
+  cursor: pointer;
+}
+.calc-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--color-brand);
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+.calc-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 3px solid #fff;
+  border-radius: 999px;
+  background: var(--color-brand);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+.calc-range:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 3px;
 }

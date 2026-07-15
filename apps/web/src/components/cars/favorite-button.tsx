@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { Button } from "@/components/common";
 import { HeartIcon } from "@/components/icons";
 import { useFavorites } from "@/contexts/favorites-context";
 import { toggleFavorite } from "@/mutations/favorites";
@@ -73,10 +74,10 @@ export function FavoriteButton({
   };
 
   return (
-    <button
-      type="button"
+    <Button
       onClick={handleClick}
       disabled={isPending}
+      rippleTheme="dark"
       aria-pressed={favorited}
       aria-label={label}
       title={label}
@@ -85,6 +86,6 @@ export function FavoriteButton({
       }`}
     >
       <HeartIcon className={iconSize} filled={favorited} />
-    </button>
+    </Button>
   );
 }

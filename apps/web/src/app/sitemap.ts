@@ -38,6 +38,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     entry("/otzivi", "monthly", 0.6), // customer reviews
     entry("/kontakti", "yearly", 0.6),
     entry("/kalkulator", "monthly", 0.8), // import-cost calculator
+    entry("/lizingov-kalkulator", "monthly", 0.8), // leasing / monthly-payment calculator
+    entry("/byudzheten-kalkulator", "monthly", 0.8), // budget / affordability calculator
     entry("/proverka-vin", "monthly", 0.8), // VIN / Carfax availability checker
     entry("/chesto-zadavani-vaprosi", "monthly", 0.7), // FAQ hub
     entry("/vnos-na-koli-ot-korea", "weekly", 0.9), // Korea country hub (flagship money page)

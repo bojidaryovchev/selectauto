@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Container } from "@/components/common";
+import { Container, LinkButton } from "@/components/common";
 import { VinCheckTool } from "@/components/carfax";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
@@ -132,12 +132,13 @@ export default function VinCheckPage() {
               Заяви подробна история на автомобила през SelectAuto — собственици, километри, инциденти и важни записи
               преди да вземеш решение.
             </p>
-            <Link
+            <LinkButton
               href="/carfax"
+              rippleTheme="dark"
               className="inline-flex min-h-13.5 items-center justify-center rounded-full bg-white px-8 text-sm font-extrabold uppercase tracking-wide text-brand-dark transition-transform duration-200 hover:-translate-y-0.5"
             >
               Заяви Carfax проверка
-            </Link>
+            </LinkButton>
           </section>
         </Container>
       </main>

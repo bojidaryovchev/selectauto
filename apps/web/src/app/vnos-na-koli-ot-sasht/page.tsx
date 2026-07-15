@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { connection } from "next/server";
 import Link from "next/link";
 import { Container } from "@/components/common";
 import { CostEstimator } from "@/components/calculator";
@@ -199,7 +200,7 @@ export default function UsaHubPage() {
               калкулация, без скрити такси.
             </p>
             <InquiryButton
-              rippleTheme="light"
+              rippleTheme="dark"
               className="inline-flex min-h-13.5 items-center justify-center rounded-full bg-white px-8 text-sm font-extrabold uppercase tracking-wide text-brand-dark transition-transform duration-200 hover:-translate-y-0.5"
             >
               Направи запитване
@@ -214,6 +215,10 @@ export default function UsaHubPage() {
 
 /** Server island: first few active US listings (market=us). */
 async function FeaturedUsaCars() {
+  // See the Korea hub: opt this streamed island into request-time rendering so the
+  // Drizzle `randomBytes` call doesn't trip the prerender-random guard and fail the
+  // build. The shell stays static; the listings stream behind the skeleton.
+  await connection();
   const page = await getCarsPage({ market: "us" }, null);
   const cars = page.cars.slice(0, 6);
   if (cars.length === 0) {

@@ -94,14 +94,32 @@ export function ParticleHero() {
       }
       applyResponsiveCamera();
 
+      // Touch devices scroll the page with a one-finger drag. OrbitControls
+      // treats that same gesture as rotate and — critically — its connect()
+      // hard-sets `domElement.style.touchAction = 'none'`, overriding the CSS
+      // `pan-y` and telling the browser never to scroll from a swipe that
+      // begins over the canvas. Since the hero canvas covers the lower half of
+      // a full-height mobile hero, that swallows the swipe users make to scroll
+      // down. So on touch devices we drop finger-rotate (autoRotate still spins
+      // the model) and restore vertical page scrolling.
+      const isTouch =
+        window.matchMedia?.("(pointer: coarse)")?.matches ??
+        "ontouchstart" in window;
+
       const controls = new OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
       controls.enablePan = false;
       controls.enableZoom = false;
-      controls.enableRotate = true;
+      controls.enableRotate = !isTouch;
       controls.autoRotate = true;
       controls.autoRotateSpeed = isMobile() ? 0.35 : 0.65;
       controls.target.set(4.25, 0.25, 0);
+
+      if (isTouch) {
+        // Undo the `touchAction = 'none'` OrbitControls set in its constructor
+        // so a one-finger drag over the canvas scrolls the page (pan-y) again.
+        renderer.domElement.style.touchAction = "pan-y";
+      }
 
       const root = new THREE.Group();
       root.position.set(4.25, isMobile() ? -1.0 : -0.72, 0);

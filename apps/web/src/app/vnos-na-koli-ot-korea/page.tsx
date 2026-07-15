@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { connection } from "next/server";
 import Link from "next/link";
 import { Container } from "@/components/common";
 import { CostEstimator } from "@/components/calculator";
@@ -212,7 +213,7 @@ export default function KoreaHubPage() {
               калкулация, без скрити такси.
             </p>
             <InquiryButton
-              rippleTheme="light"
+              rippleTheme="dark"
               className="inline-flex min-h-13.5 items-center justify-center rounded-full bg-white px-8 text-sm font-extrabold uppercase tracking-wide text-brand-dark transition-transform duration-200 hover:-translate-y-0.5"
             >
               Направи запитване
@@ -228,6 +229,13 @@ export default function KoreaHubPage() {
 /** Server island: the first few active Korea listings (market=kr). Its own
  *  Suspense boundary keeps the static content above from blocking on the DB read. */
 async function FeaturedKoreaCars() {
+  // Opt this island into request-time (dynamic) rendering. Under `cacheComponents`
+  // Next tries to prerender inside the Suspense boundary too, and the Drizzle/Neon
+  // read calls `randomBytes` (prepared-statement id) before any request/uncached
+  // data is read — which the prerender-random guard rejects and fails the build.
+  // Reading `connection()` first marks this subtree dynamic (it already streams
+  // behind a skeleton), so the shell stays static and the listings stream.
+  await connection();
   const page = await getCarsPage({ market: "kr" }, null);
   const cars = page.cars.slice(0, 6);
   if (cars.length === 0) {

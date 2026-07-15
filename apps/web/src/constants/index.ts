@@ -58,17 +58,27 @@ export const BUSINESS = {
   /**
    * Registered legal-entity identity for the „provider identification" block
    * required by Закона за електронната търговия (ЗЕТ) чл. 4 — surfaced in the
-   * footer bottom bar + the Общи условия page, and (vatID/legalName) in the
-   * Organization/AutoDealer JSON-LD.
-   *
-   * ⚠️ PLACEHOLDERS — fill with the real данни from the owner (Търговски регистър)
-   * before launch. Everything that consumes these renders ONLY when they are
-   * non-empty, so no fake identity is ever displayed while they're blank.
+   * footer bottom bar + the Общи условия page, and (legalName/taxID/vatID) in the
+   * Organization/AutoDealer JSON-LD. Verified against the Търговски регистър
+   * (ЕИК 208786079, state 31.05.2026). NOTE: `registeredOffice` (седалище) is the
+   * legal seat and is DIFFERENT from the showroom (`streetAddress` below) — the
+   * showroom is the place of activity / map pin; both are shown where relevant.
    */
-  registeredName: "", // напр. „СелектАуто ЕООД" — наименование + правна форма, точно както е в ТР
-  companyId: "", // ЕИК / БУЛСТАТ
-  vatId: "", // ДДС номер, ако е регистриран по ЗДДС (напр. „BG123456789")
-  /** Street address (BG). */
+  registeredName: "Селектауто Импорт ЕООД", // наименование + правна форма, както е в ТР (ЕИК 208786079)
+  companyId: "208786079", // ЕИК
+  vatId: "BG208786079", // ДДС номер — потвърдено валиден в EU VIES (BG + ЕИК)
+  /** Управител / едноличен собственик на капитала (от ТР). Not rendered publicly by
+   *  default; available for legal copy / schema if needed. */
+  representative: "Валентин Кичуков",
+  /** Седалище и адрес на управление (legal seat) — ЗЕТ чл. 4. Different from the
+   *  showroom; used only for provider identification, not the map/geo. */
+  registeredOffice: {
+    streetAddress: "р-н Южен, ж.к. Христо Ботев - север, ул. Лазо войвода № 19, ет. 6, ап. 10",
+    city: "Пловдив",
+    postalCode: "4030",
+    country: "BG",
+  },
+  /** Showroom / place of activity street address (BG) — the map pin + LocalBusiness. */
   streetAddress: "ул. Север 64",
   city: "Пловдив",
   /** ISO 3166-1 alpha-2. */

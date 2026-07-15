@@ -1,4 +1,4 @@
-import { Container, Reveal } from "@/components/common";
+import { Container, Reveal, Ripple } from "@/components/common";
 import { ArrowRightIcon } from "@/components/icons";
 import { BUSINESS, CONTACT } from "@/constants";
 import { CopyButton } from "./copy-button";
@@ -32,9 +32,10 @@ const ICON_TILE =
 const HEADING = "mb-1.5 text-[26px] font-black text-[#17181b]";
 const SUB = "text-[15px] leading-[1.7] text-[#5a5d64]";
 
-/** Gradient primary CTA, matching the site's brand buttons. */
+/** Gradient primary CTA, matching the site's brand buttons. `relative
+ *  overflow-hidden` host the click <Ripple> dropped into each anchor. */
 const CTA =
-  "group inline-flex items-center gap-2 rounded-full bg-brand px-[18px] py-2.5 text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(216,111,22,0.3)] transition-all duration-200 hover:bg-brand-dark hover:shadow-[0_14px_28px_rgba(216,111,22,0.4)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand active:scale-[0.98]";
+  "group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-brand px-[18px] py-2.5 text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(216,111,22,0.3)] transition-all duration-200 hover:bg-brand-dark hover:shadow-[0_14px_28px_rgba(216,111,22,0.4)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand active:scale-[0.98]";
 
 /**
  * The 2×2 grid of contact info cards (phone, address, hours, email). Ported 1:1
@@ -114,6 +115,7 @@ export function ContactCards() {
                 >
                   Навигация
                   <ArrowRightIcon className="size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                  <Ripple theme="light" />
                 </a>
                 <CopyButton value={ADDRESS} label="адрес" />
               </div>
@@ -168,6 +170,7 @@ export function ContactCards() {
                 <a href={EMAIL_CTA_HREF} className={CTA}>
                   Изпрати имейл
                   <ArrowRightIcon className="size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                  <Ripple theme="light" />
                 </a>
               </div>
             </article>

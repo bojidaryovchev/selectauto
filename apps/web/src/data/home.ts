@@ -11,7 +11,7 @@ import type { CarView } from "@/types/car.type";
 export const FALLBACK_BUY_NOW_CARS: CarView[] = [
   {
     title: "2022 Hyundai Palisade",
-    href: "/car/2022-hyundai-palisade/",
+    href: "/vsichki-avtomobili/",
     price: "16 743 $",
     mileage: "97 626 км",
     source: "ENCAR",
@@ -20,7 +20,7 @@ export const FALLBACK_BUY_NOW_CARS: CarView[] = [
   },
   {
     title: "2021 Hyundai Palisade",
-    href: "/car/2021-hyundai-palisade/",
+    href: "/vsichki-avtomobili/",
     price: "14 863 $",
     mileage: "61 912 км",
     source: "ENCAR",
@@ -29,7 +29,7 @@ export const FALLBACK_BUY_NOW_CARS: CarView[] = [
   },
   {
     title: "2022 Kia Sorento",
-    href: "/car/2022-kia-sorento/",
+    href: "/vsichki-avtomobili/",
     price: "12 924 $",
     mileage: "87 765 км",
     source: "ENCAR",
@@ -38,7 +38,7 @@ export const FALLBACK_BUY_NOW_CARS: CarView[] = [
   },
   {
     title: "2019 BMW 5 Series",
-    href: "/car/2019-bmw-5series/",
+    href: "/vsichki-avtomobili/",
     price: "17 031 $",
     mileage: "74 565 км",
     source: "ENCAR",

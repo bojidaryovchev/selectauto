@@ -29,7 +29,9 @@ export function collapseLeadingDuplicate(title: string): string {
         break;
       }
     }
-    if (same) return tokens.slice(len).join(" ");
+    // Recurse to a fixpoint so a THREE-fold (or worse) repeated block fully
+    // collapses; terminates because each collapse strictly shrinks the string.
+    if (same) return collapseLeadingDuplicate(tokens.slice(len).join(" "));
   }
   return title;
 }

@@ -45,6 +45,8 @@ export const NAV: NavItem[] = [
     href: "/kalkulator/",
     children: [
       { label: "Калкулатор за внос", href: "/kalkulator/" },
+      { label: "Лизингов калкулатор", href: "/lizingov-kalkulator/" },
+      { label: "Бюджетен калкулатор", href: "/byudzheten-kalkulator/" },
       { label: "Проверка на VIN", href: "/proverka-vin/" },
       { label: "Carfax проверка", href: "/carfax/" },
     ],
@@ -78,6 +80,8 @@ export const FOOTER_NAV: LinkItem[] = [
  *  in FOOTER_LEGAL, rendered as a separate row in the footer's bottom bar.) */
 export const FOOTER_INFO: LinkItem[] = [
   { label: "Калкулатор за внос", href: "/kalkulator/" },
+  { label: "Лизингов калкулатор", href: "/lizingov-kalkulator/" },
+  { label: "Бюджетен калкулатор", href: "/byudzheten-kalkulator/" },
   { label: "Проверка на VIN", href: "/proverka-vin/" },
   { label: "Carfax проверка", href: "/carfax/" },
   { label: "Процес", href: "/proces/" },

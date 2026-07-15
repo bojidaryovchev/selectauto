@@ -23,6 +23,12 @@ import { NavHamburger } from "./nav-hamburger";
 interface Props {
   /** Whether the drawer is currently open — drives the Меню tab's active/hamburger state. */
   drawerOpen: boolean;
+  /**
+   * Whether the bar should be hidden (slid off-screen). Driven by SiteHeader's
+   * scroll-direction state — the same signal that hides the desktop header — so
+   * the bar tucks away on scroll-down and reappears on scroll-up.
+   */
+  hidden: boolean;
   /** Toggle the drawer (owned by SiteHeader so the drawer and this bar share state). */
   onToggleDrawer: () => void;
 }
@@ -34,7 +40,7 @@ const TABS = [
   { label: "Carfax", href: "/carfax/", Icon: GlobeIcon, exact: false },
 ] as const;
 
-export function MobileBottomNav({ drawerOpen, onToggleDrawer }: Props) {
+export function MobileBottomNav({ drawerOpen, hidden, onToggleDrawer }: Props) {
   const pathname = usePathname();
 
   // Normalise the current path to always have a trailing slash so it matches the
@@ -47,7 +53,9 @@ export function MobileBottomNav({ drawerOpen, onToggleDrawer }: Props) {
   return (
     <nav
       aria-label="Основна навигация"
-      className="fixed inset-x-0 bottom-0 z-10000 border-t border-white/8 bg-shell/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
+      className={`fixed inset-x-0 bottom-0 z-10000 border-t border-white/8 bg-shell/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl transition-transform duration-300 ease-out will-change-transform lg:hidden ${
+        hidden ? "translate-y-full" : "translate-y-0"
+      }`}
     >
       <ul className="m-0 grid list-none grid-cols-4 p-0">
         {TABS.map(({ label, href, Icon, exact }) => {

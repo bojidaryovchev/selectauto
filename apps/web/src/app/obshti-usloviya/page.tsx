@@ -48,8 +48,11 @@ export default function TermsPage() {
                   <li>ЕИК: {BUSINESS.companyId}</li>
                   {BUSINESS.vatId ? <li>ДДС №: {BUSINESS.vatId}</li> : null}
                   <li>
-                    Седалище и адрес на управление: {BUSINESS.streetAddress}, {BUSINESS.postalCode} {BUSINESS.city},
-                    България
+                    Седалище и адрес на управление: {BUSINESS.registeredOffice.streetAddress},{" "}
+                    {BUSINESS.registeredOffice.postalCode} {BUSINESS.registeredOffice.city}, България
+                  </li>
+                  <li>
+                    Адрес на дейност (шоурум): {BUSINESS.streetAddress}, {BUSINESS.postalCode} {BUSINESS.city}
                   </li>
                   <li>
                     Контакт: {CONTACT.phone},{" "}

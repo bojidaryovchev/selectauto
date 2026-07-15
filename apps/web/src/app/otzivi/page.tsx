@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { Container } from "@/components/common";
+import { Container, LinkButton } from "@/components/common";
 import { InquiryButton } from "@/components/inquiry";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
@@ -86,14 +86,15 @@ async function ReviewsSection() {
           Вижте отзивите на нашите клиенти директно в Google — реални мнения за процеса на внос със SelectAuto.
         </p>
         {profile ? (
-          <Link
+          <LinkButton
             href={profile}
             target="_blank"
             rel="noopener noreferrer"
+            rippleTheme="dark"
             className="inline-flex min-h-12 items-center justify-center rounded-full border border-line bg-white px-6 text-sm font-extrabold uppercase tracking-wide text-brand-dark transition-transform duration-200 hover:-translate-y-0.5"
           >
             Виж отзивите в Google
-          </Link>
+          </LinkButton>
         ) : null}
       </div>
     );
@@ -176,7 +177,7 @@ export default function ReviewsPage() {
               автомобил и ще поемем целия внос.
             </p>
             <InquiryButton
-              rippleTheme="light"
+              rippleTheme="dark"
               className="inline-flex min-h-13.5 items-center justify-center rounded-full bg-white px-8 text-sm font-extrabold uppercase tracking-wide text-brand-dark transition-transform duration-200 hover:-translate-y-0.5"
             >
               Направи запитване

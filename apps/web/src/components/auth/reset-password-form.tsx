@@ -1,10 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Button } from "@/components/common";
+import { Button, LinkButton } from "@/components/common";
 import { resetPassword } from "@/mutations/auth";
 import { resetPasswordSchema, type ResetPasswordValues } from "@/schemas/auth.schema";
 import {
@@ -42,12 +41,13 @@ export function ResetPasswordForm({ token }: { token: string }) {
     return (
       <div className="grid gap-4">
         <div className={AUTH_SUCCESS_BOX_CLASS}>Паролата е сменена успешно.</div>
-        <Link
+        <LinkButton
           href="/sign-in"
+          rippleTheme="light"
           className="inline-flex min-h-13.5 items-center justify-center rounded-[14px] bg-linear-to-r from-brand-dark to-brand px-6 text-base font-extrabold text-white shadow-[0_12px_28px_rgba(216,111,22,0.22)] transition-transform duration-200 hover:-translate-y-0.5"
         >
           Към вход
-        </Link>
+        </LinkButton>
       </div>
     );
   }

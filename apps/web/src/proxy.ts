@@ -45,7 +45,12 @@ export const proxy = auth(async (request) => {
   const legacy = await resolveLegacyPath(request.nextUrl.pathname);
   if (legacy) {
     if (legacy.kind === "gone") return gone();
-    return NextResponse.redirect(new URL(legacy.to, request.nextUrl), 301);
+    // Preserve the inbound query (utm_*, WP params): resolving a bare path
+    // against a base URL discards the base's search string per WHATWG URL
+    // semantics, and Next's own redirects() passes queries through by default.
+    const target = new URL(legacy.to, request.nextUrl);
+    target.search = request.nextUrl.search;
+    return NextResponse.redirect(target, 301);
   }
 
   // 2. Long-dead sold lots → 410.

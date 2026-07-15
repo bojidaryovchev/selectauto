@@ -163,7 +163,8 @@ export function SiteFooter() {
             <p className="m-0 border-t border-white/8 py-4 text-xs/relaxed text-white/40">
               {BUSINESS.registeredName || "SelectAuto"} · ЕИК {BUSINESS.companyId}
               {BUSINESS.vatId ? ` · ДДС № ${BUSINESS.vatId}` : ""} · Седалище:{" "}
-              {BUSINESS.streetAddress}, {BUSINESS.postalCode} {BUSINESS.city}, България
+              {BUSINESS.registeredOffice.streetAddress}, {BUSINESS.registeredOffice.postalCode}{" "}
+              {BUSINESS.registeredOffice.city}, България
             </p>
           )}
         </div>

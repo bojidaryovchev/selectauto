@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { Button, LinkButton } from "@/components/common";
 
 /**
  * Live VIN record-availability tool for /proverka-vin. Calls the server route
@@ -79,13 +79,14 @@ export function VinCheckTool() {
           placeholder="Въведи VIN номер (17 символа)"
           className={INPUT_CLASS}
         />
-        <button
+        <Button
           type="submit"
           disabled={result.kind === "loading"}
+          rippleTheme="light"
           className="inline-flex min-h-13.5 shrink-0 items-center justify-center rounded-[14px] bg-brand px-7 text-sm font-extrabold uppercase tracking-wide text-white transition-transform duration-200 hover:-translate-y-px disabled:opacity-60 max-sm:w-full"
         >
           {result.kind === "loading" ? "Проверявам…" : "Провери"}
-        </button>
+        </Button>
       </form>
 
       {result.kind === "error" ? <p className="mt-3 text-sm font-semibold text-red-600">{result.message}</p> : null}
@@ -112,12 +113,13 @@ export function VinCheckTool() {
                 За този автомобил има налична история. Заяви пълен Carfax доклад през SelectAuto — ще получиш
                 подробния отчет (собственици, километри, инциденти, записи).
               </p>
-              <Link
+              <LinkButton
                 href="/carfax"
+                rippleTheme="light"
                 className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand px-6 text-sm font-extrabold uppercase tracking-wide text-white transition-transform duration-200 hover:-translate-y-0.5"
               >
                 Заяви пълен Carfax
-              </Link>
+              </LinkButton>
             </>
           ) : (
             <p className="text-sm/relaxed text-[#5a5d64]">

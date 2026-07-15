@@ -15,6 +15,7 @@ export { GoogleIcon } from "./google-icon";
 export { HeartIcon } from "./heart-icon";
 export { HomeIcon } from "./home-icon";
 export { InstagramIcon } from "./instagram-icon";
+export { LocationIcon } from "./location-icon";
 export { PanoramaIcon } from "./panorama-icon";
 export { PhoneIcon } from "./phone-icon";
 export { PlayIcon } from "./play-icon";

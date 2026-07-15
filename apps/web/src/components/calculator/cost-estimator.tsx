@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Button } from "@/components/common";
 
 /**
  * A transparent, adjustable import-cost estimator. NOT an authoritative quote —
@@ -109,10 +110,10 @@ export function CostEstimator({ defaultMarket = "kr" }: { defaultMarket?: Market
           <span className="text-xs font-semibold uppercase tracking-wide text-muted">Пазар</span>
           <div className="flex gap-2">
             {MARKETS.map((m) => (
-              <button
+              <Button
                 key={m.id}
-                type="button"
                 onClick={() => setMarket(m.id)}
+                rippleTheme="dark"
                 className={`flex-1 rounded-xl border px-3 py-2 text-sm font-bold transition-colors ${
                   market === m.id
                     ? "border-brand bg-brand/10 text-brand-dark"
@@ -120,7 +121,7 @@ export function CostEstimator({ defaultMarket = "kr" }: { defaultMarket?: Market
                 }`}
               >
                 {m.label}
-              </button>
+              </Button>
             ))}
           </div>
         </div>

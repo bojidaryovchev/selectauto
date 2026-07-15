@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { LinkButton } from "@/components/common";
 import { verifyEmail } from "@/mutations/auth";
 import { AUTH_ERROR_BOX_CLASS, AUTH_SUCCESS_BOX_CLASS } from "./auth-styles";
 
@@ -40,12 +41,13 @@ export function VerifyEmailClient({ token }: { token: string | null }) {
     return (
       <div className="grid gap-4">
         <div className={AUTH_SUCCESS_BOX_CLASS}>Имейлът ви е потвърден успешно. Вече можете да влезете.</div>
-        <Link
+        <LinkButton
           href="/sign-in"
+          rippleTheme="light"
           className="inline-flex min-h-13.5 items-center justify-center rounded-[14px] bg-linear-to-r from-brand-dark to-brand px-6 text-base font-extrabold text-white shadow-[0_12px_28px_rgba(216,111,22,0.22)] transition-transform duration-200 hover:-translate-y-0.5"
         >
           Към вход
-        </Link>
+        </LinkButton>
       </div>
     );
   }

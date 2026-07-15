@@ -129,7 +129,7 @@ export default function CalculatorPage() {
               такси.
             </p>
             <InquiryButton
-              rippleTheme="light"
+              rippleTheme="dark"
               className="inline-flex min-h-13.5 items-center justify-center rounded-full bg-white px-8 text-sm font-extrabold uppercase tracking-wide text-brand-dark transition-transform duration-200 hover:-translate-y-0.5"
             >
               Направи запитване

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Container } from "@/components/common";
+import { Container, LinkButton } from "@/components/common";
 import { AllCarsGrid, CarGridSkeleton } from "@/components/cars/all-cars";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { MIN_HUB_LISTINGS_TO_INDEX, SITE_URL } from "@/constants";
@@ -142,14 +142,15 @@ async function BrandHubBody({ params }: { params: Params }) {
               <h2 className="mb-4 text-2xl font-black text-ink">Модели {label}</h2>
               <div className="flex flex-wrap gap-2.5">
                 {modelLinks.map((m) => (
-                  <Link
+                  <LinkButton
                     key={m.href}
                     href={m.href}
+                    rippleTheme="dark"
                     className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold text-ink transition-colors duration-200 hover:border-brand hover:text-brand-dark"
                   >
                     {m.name}
                     <span className="text-xs text-muted">{m.count.toLocaleString("bg-BG")}</span>
-                  </Link>
+                  </LinkButton>
                 ))}
               </div>
             </section>
@@ -161,12 +162,13 @@ async function BrandHubBody({ params }: { params: Params }) {
                 В момента няма активни обяви за {label}. Заяви персонална селекция и ще намерим подходящ
                 автомобил от аукционите.
               </p>
-              <Link
+              <LinkButton
                 href="/vsichki-avtomobili/"
+                rippleTheme="light"
                 className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand px-6 text-sm font-extrabold uppercase tracking-wide text-white transition-transform duration-200 hover:-translate-y-0.5"
               >
                 Виж всички автомобили
-              </Link>
+              </LinkButton>
             </div>
           ) : (
             <Suspense fallback={<CarGridSkeleton count={12} />}>

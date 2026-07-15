@@ -44,9 +44,11 @@ const STATIC_REDIRECTS: Record<string, string> = {
   "/коли-за-продажба": "/vsichki-avtomobili",
   "/car": "/vsichki-avtomobili",
   // The old import-service page — incl. the broken slug variant that mixed a
-  // Latin "c" into Cyrillic „внос" (both existed and both 200'd on WP).
-  "/внос": "/",
-  "/вноc": "/",
+  // Latin "c" into Cyrillic „внос" (both existed and both 200'd on WP). Target
+  // the country-agnostic process page, NOT the homepage: a mass 301-to-home is
+  // Google's documented soft-404 pattern, while /proces is the topical equivalent.
+  "/внос": "/proces",
+  "/вноc": "/proces",
 };
 
 /** Exact-path 410s: WP test/junk pages (all were live + sitemap-submitted). */
@@ -69,7 +71,11 @@ function getSql(): ReturnType<typeof neon> | null {
 
 type NamedRow = { name: string; slug: string; externalId: number; carsQty: number };
 
-const REFERENCE_TTL_MS = 60 * 60 * 1000;
+// Bounds the window in which a reference RENAME (slug change) can 301 a legacy
+// /car/ URL onto a hub path the (independently cached) hub resolver no longer
+// matches → notFound(). Legacy hits are low-volume crawl traffic and the two
+// reference queries are tiny (~117 + ~1286 rows), so a short TTL is cheap.
+const REFERENCE_TTL_MS = 10 * 60 * 1000;
 
 let makesCache: { rows: NamedRow[]; at: number } | null = null;
 const modelsCache = new Map<number, { rows: NamedRow[]; at: number }>();
@@ -151,7 +157,15 @@ async function resolveLegacyCarSlug(rawSlug: string): Promise<LegacyDecision> {
   const make = bestContainedMatch(slug, await getMakes());
   if (!make) return { kind: "gone" };
 
-  const model = bestContainedMatch(slug, await getModels(make.externalId));
+  const models = await getModels(make.externalId);
+  // WP appends "-N" dedupe suffixes to duplicate slugs, which would otherwise
+  // boundary-match single-digit model slugs ("…-mazda-6-touring-3" → model "3").
+  // Prefer a match with one trailing numeric token stripped; fall back to the
+  // full slug so a genuine trailing model token ("…-mazda-3") still resolves.
+  const stripped = slug.replace(/-\d+$/, "");
+  const model =
+    (stripped !== slug && stripped ? bestContainedMatch(stripped, models) : null) ??
+    bestContainedMatch(slug, models);
   if (model) return { kind: "redirect", to: `/avtomobili/marka/${make.slug}/${model.slug}` };
   return { kind: "redirect", to: `/avtomobili/marka/${make.slug}` };
 }

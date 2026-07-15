@@ -6,8 +6,9 @@
 > transliterated Latin slugs, junk-page/index management, model + brand hubs (§4.2),
 > Vehicle/Car+Offer + FAQPage/ItemList/Breadcrumb schema (§5), GEO / AI-crawlers + `llms.txt`
 > (§6), the `/kalkulator` cost calculator, the `/proverka-vin` checker, the **Korea / USA /
-> Canada** country hubs (§4.2), the FAQ hub, and `/otzivi` reviews. **Still pending:** Japan
-> & Germany pages (rescoped, §4.2), blog clusters, named-expert bios, and **nav/footer wiring
+> Canada** country hubs (§4.2), the FAQ hub, and `/otzivi` reviews — i.e. ALL country hubs the
+> business actually needs (Japan/Germany are not served — see the correction below). **Still
+> pending:** blog clusters, named-expert bios, and **nav/footer wiring
 > of the money pages** (§7). §1 describes the **legacy WordPress** site being replaced.
 >
 > **Research refresh (2026-07-15).** §§2–3 and 5–9 were rewritten after a full re-audit:
@@ -20,7 +21,10 @@
 > snapshot are marked **[CHANGED 2026-07]**.
 
 > Market: **Bulgaria only** (Bulgarian language, Google.bg)
-> Business: Car import from **Korea, USA, Canada, Japan, Germany** via auctions — full import handling, Carfax/VIN checks, lead-generation focused.
+> Business: Car import from **Korea, USA and Canada** via auctions — full import handling, Carfax/VIN checks, lead-generation focused.
+> **[CORRECTED 2026-07]** Earlier versions of this doc listed Japan and Germany as sourcing
+> countries — the business does NOT serve them. All Japan/Germany "country hub" plans are cut;
+> the residual search demand is captured by comparison/objection **content** instead (§3.6, §4.2).
 > Goal priority: **(1) Lead generation → (2) Inventory/listing visibility → (3) Brand/topical authority**, with a shared content/authority layer feeding all three.
 
 ---
@@ -44,12 +48,14 @@
    Trends: „коли от америка" ≈ 2.5× „коли от корея" in the latest year and still growing.
    Bulgarians say „америка" more than „сащ". Trust is the dominant anxiety (the EPPO salvage-
    fraud scandal drives the media narrative) — lead with transparency/objection content.
-4. **Japan & Germany hubs rescoped.** **[CHANGED 2026-07]** Japan demand is ~zero in Trends
-   (0/262 weeks) — „uncontested" meant „no demand". Build **one** honest informational Japan
-   page (weakest SERP in the niche — old forum threads rank — so it's cheap to own): RHD
-   reality, the LHD-cars-in-Japan niche, funnel to Korea. Germany: real demand phrases
-   differently („по поръчка", „ддс", „фирми за внос", „втора ръка") against a disjoint
-   competitor set — reframe the page around those intents; lower priority than Korea/USA.
+4. **Japan & Germany hubs CUT — the business doesn't serve those countries.** **[CORRECTED 2026-07]**
+   (The demand data independently supports the cut: Japan ~zero in Trends across 262 weeks;
+   Germany's head term ~zero, with the real demand phrased as self-import intent.) What
+   survives is comparison/objection **content**: „Корея или Германия?" is the #1 objection a
+   Korea/USA importer faces in Bulgaria (Germany is the default import channel), and a „Защо
+   не внасяме от Япония" explainer can own the weakest SERP in the niche while honestly
+   funneling that demand to Korea. Blog posts, not country pages — never imply a service we
+   don't offer.
 5. **GEO is live and selectauto's open posture is a real edge — but re-weight the tactics.** **[CHANGED 2026-07]**
    AI Overviews are live in Bulgaria **and in Bulgarian** since May 2025; AI Mode too. Google
    holds ~96% of BG search, so Google AI surfaces (ridden via normal indexing) are the game.
@@ -72,7 +78,7 @@
 
 ## 1. Business & current-state analysis (selectauto.bg — legacy WordPress site)
 
-**What it is:** A car-import concierge. Sources vehicles from Korea, USA, Canada, Japan, Germany via auctions (Copart, IAAI, Manheim, Encar/Korean auctions), handles the full chain — selection → auction bidding → payment/docs → logistics/customs → delivery ready for KAT registration. Positioned as "not a catalog, a process." Lead-gen model (inquiry/consultation forms, phone, Carfax requests).
+**What it is:** A car-import concierge. Sources vehicles from Korea, USA and Canada via auctions (Copart, IAAI, Encar; the old site's copy also name-dropped Japan/Germany/Manheim, but those were never real sourcing channels), handles the full chain — selection → auction bidding → payment/docs → logistics/customs → delivery ready for KAT registration. Positioned as "not a catalog, a process." Lead-gen model (inquiry/consultation forms, phone, Carfax requests).
 
 **Platform:** WordPress + WooCommerce (robots.txt blocks `add-to-cart`, `add_to_wishlist`, `orderby` — WooCommerce signatures). Custom `car` post type with **391 car-sitemaps** (~391k `/car/` URLs, still actively updated).
 
@@ -238,9 +244,11 @@ Transliterated Latin slugs · per-country landing pages (USA/Canada/Korea min.) 
    zero E-E-A-T. Nobody combines live indexable inventory, per-model data-driven copy AND trust.
 3. **mrcars' persistent self-sabotage** — 404 sitemap + empty titles on exactly its country
    money pages: „внос на коли от САЩ/Корея/Канада" head terms are winnable against it.
-4. **Multi-country breadth** — no competitor covers Korea+USA+Canada+Japan+Germany. The Germany
-   cluster and the USA cluster are disjoint competitor sets; only selectauto can cross-link and
-   cross-compare all five (decision content: „откъде да внеса — сравнение").
+4. **Multi-country breadth** — very few competitors credibly cover Korea+USA+Canada together
+   (most are Korea-only specialists or USA/Canada-only brokers). Only a genuine multi-source
+   importer can publish honest „откъде да внеса — сравнение" decision content — including the
+   „Корея или Германия?" objection pillar, since Germany is the country every Bulgarian buyer
+   compares against even though we don't serve it.
 5. **Cost transparency** — only carsdirect shows landed costs per listing; almost nobody
    publishes worked duty/VAT/ecotax examples with 2026 numbers (euro, FTA origin nuances,
    Red-Sea transit times). Accuracy + freshness beats every competitor quoting stale figures.
@@ -275,8 +283,8 @@ steeply rising) > `коли от корея` (3.3, emerged ~2y ago, accelerating
 1. **Transactional head terms**: „внос на коли от **америка**" (primary phrasing — beats „сащ"),
    „внос на коли от корея" (fastest-growing), „внос на коли от канада" (real long tail:
    +калкулатор, +мито, +такси, +осчетоводяване, +мнения; pair as „САЩ и Канада"), „коли от
-   аукцион(и)". Germany: target „внос на коли от германия **по поръчка**", „…**ддс**", „фирми за
-   внос на коли от германия". Japan: single page, minimal bet. Emerging: „внос на коли от китай"
+   аукцион(и)". Germany/Japan head terms are NOT targets (not served — §0.4); those searchers
+   are reached through the comparison cluster (§3.6) instead. Emerging: „внос на коли от китай"
    appears in autocomplete — watch it.
 2. **Cost / calculator**: generic „калкулатор внос на кола" has **zero measured demand** — the
    demand is country-anchored: „калкулатор за внос на кола от америка/сащ/канада", „калкулатор
@@ -315,8 +323,6 @@ steeply rising) > `коли от корея` (3.3, emerged ~2y ago, accelerating
      approved-exporter** (mandatory >€6,000; no importer's-knowledge route). Auction cars
      without it pay 10%. → calculator toggle + differentiator article („защо някои коли от
      Корея плащат 10% мито").
-   - **Japan**: EPA tariff reached **0% in 2026** (importer's-knowledge origin claims allowed) —
-     fresh, citable news hook. Non-Japan-origin (the LHD European cars niche) pays 10%.
    - **Canada catch**: CETA 0% since 2024 **only for Canadian-origin** cars — a US-built car
      bought at a Canadian auction pays 10%. Myth-busting content competitors get wrong.
    - **Екотакса**: in-force M1 ICE bands 125/194/290/310 лв by age (hybrids less; ПМС 76/2016
@@ -327,7 +333,8 @@ steeply rising) > `коли от корея` (3.3, emerged ~2y ago, accelerating
    - **Transit times 2026**: Korea→BG realistically **~2 months** (Cape of Good Hope diversions
      persist; competitors quoting 30–45 days are beatable on accuracy); USA→EU 4–7 weeks
      door-to-port (Atlantic unaffected) — a genuinely fresh „САЩ е по-бърз от Корея" comparison
-     angle. Germany: days, no duty — position as the fast/simple alternative.
+     angle. Germany facts (no duty, days-long delivery, odometer-fraud risk) are inputs to the
+     „Корея или Германия?" objection pillar, not to a service page.
 10. **Hybrid/EV cluster** **[NEW 2026-07]**: Bulgaria leads the EU in hybrid-sales growth;
     hybrids are the fastest-growing used segment; Korea's „green" used exports +200% (2025).
     „хибрид от Корея", used-EV battery/range questions — differentiated sub-topic competitors
@@ -367,12 +374,10 @@ questions are lifted from actual SERP FAQ features observed on Brave.
 │   ├── /vnos-na-koli-ot-korea/         ← FLAGSHIP (demand-validated; contested — win on depth)   [SHIPPED — needs 2–3k words, testimonials]
 │   ├── /vnos-na-koli-ot-sasht/         ← CO-PRIMARY (largest demand pool; „америка" phrasing;
 │   │                                      trust/fraud objection content mandatory)                [SHIPPED — same]
-│   ├── /vnos-na-koli-ot-kanada/        (pair with САЩ; CETA origin myth-busting)                  [SHIPPED — same]
-│   ├── /vnos-na-koli-ot-germaniya/     ← REFRAMED: „по поръчка"/„ддс"/„фирми"/самостоятелен внос
-│   │                                      vs услуга; mobile.de/AutoScout24 vs B2B auctions        [PENDING]
-│   └── /vnos-na-koli-ot-yaponiya/      ← DOWNSCOPED to ONE honest informational page: RHD
-│                                          reality, LHD-cars-in-Japan niche (10% duty), 0%-EPA
-│                                          news hook, funnel to Korea. Weakest SERP = cheap win.   [PENDING]
+│   └── /vnos-na-koli-ot-kanada/        (pair with САЩ; CETA origin myth-busting)                  [SHIPPED — same]
+│       (Japan/Germany country pages CUT — not served by the business. Their residual
+│        search demand is captured by blog comparison content instead: „Корея или
+│        Германия?" objection pillar + „Защо не от Япония" explainer → funnel to Korea.)
 │
 ├── INVENTORY (programmatic, auction-fed)                                                          [SHIPPED]
 │   ├── /vsichki-avtomobili             (catalog; faceted variants canonicalize to bare URL)
@@ -382,9 +387,10 @@ questions are lifted from actual SERP FAQ features observed on Brave.
 │
 ├── TOOLS (conversion assets; SEO via country-anchored phrases)
 │   ├── /kalkulator/                    [SHIPPED — Phase-0 estimator] → upgrade: itemized
-│   │                                    line-items, Korea/Japan origin-declaration toggles,
-│   │                                    ecotax bands (config + „last verified" date), realistic
-│   │                                    transit times, gated-PDF lead capture, DE/JP markets
+│   │                                    line-items, Korea origin-declaration duty toggle,
+│   │                                    Canada CETA-origin default, ecotax bands (config +
+│   │                                    „last verified" date), realistic transit times,
+│   │                                    gated-PDF lead capture (markets stay KR/US/CA)
 │   ├── /proverka-vin/                  [SHIPPED] → retarget copy to „vin проверка"/„безплатно";
 │   │                                    add „вин проверка корея" angle; /carfax feeds brand
 │   │                                    demand („carfax цена/българия")
@@ -397,7 +403,9 @@ questions are lifted from actual SERP FAQ features observed on Brave.
 ├── /blog/  (topical authority — clusters 3.3–3.10)                                               [PENDING — biggest content gap]
 │   ├── cost guides (year-dated, „2026" in title — proven CTR/freshness win in this SERP)
 │   ├── trust/objection per country (salvage/flood/scams/мнения/технотест; Korea mileage+parts)
-│   ├── comparisons (Корея vs Америка, Канада vs САЩ, Германия vs Корея, model X vs Y)
+│   ├── comparisons (Корея vs Америка, Канада vs САЩ, model X vs Y, PLUS the two pages that
+│   │    replace the cut country hubs: „Корея или Германия?" objection pillar and „Защо не
+│   │    внасяме от Япония" explainer — both funnel to the Korea/USA hubs)
 │   ├── auction explainers (Copart vs IAAI, глосар, Encar guide, Manheim, IAA Canada)
 │   └── regulatory/КАТ/еко-такса/хомологация (year-stamped, quarterly re-verification loop)
 │
@@ -541,12 +549,13 @@ for a new site is lower than classic SEO. ~88% of AIO-triggering queries are inf
 **Phase B — money-page depth (weeks 1–6) — primary goal: leads**
 - Deepen Korea/USA/Canada hubs to 2,000–3,000 words with the 2026-verified cost/regulatory pack
   (§3.9), testimonials block, city-modifier sections, „мнения"/objection content.
-- Calculator v2: itemized line-items, Korea/Japan **origin-declaration duty toggles**, Canada
+- Calculator v2: itemized line-items, Korea **origin-declaration duty toggle**, Canada
   10%-default with CETA note, ecotax age bands as config + „last verified" date, realistic 2026
   transit times, gated-PDF lead capture, add DE/JP markets.
 - VIN tool SEO retarget („vin проверка", „безплатно", „вин проверка корея"); `/carfax` page
   targets brand demand („carfax цена/българия").
-- Germany page (reframed) + Japan informational page (§4.2 scopes).
+- „Корея или Германия?" objection pillar + „Защо не внасяме от Япония" explainer (the
+  comparison content that replaces the cut Japan/Germany pages — §0.4, §4.2).
 
 **Phase C — authority & content clusters (weeks 4–16, overlaps)**
 - Ship `/blog` + Article schema + named-author bios (also fixes the /za-nas E-E-A-T gap).
@@ -556,7 +565,7 @@ for a new site is lower than classic SEO. ~88% of AIO-triggering queries are inf
   хомологация guides, (6) hybrid/EV-from-Korea. Year-date titles; quarterly regulatory
   re-verification loop with visible „last updated".
 - Link/PR/brand track (12–24 months, aimed at bidmotors-held head terms): digital PR around
-  newsjackable moments (EPPO fraud coverage → „how to verify history", Japan 0% duty, euro
+  newsjackable moments (EPPO fraud coverage → „how to verify history", euro
   transition), niche directories/profiles, creator partnerships (§6.5), consider a mobile.bg
   storefront for arrived cars (marketplaces hold most buyer attention — ~60–75% by proxy).
 

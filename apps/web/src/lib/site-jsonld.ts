@@ -36,7 +36,11 @@ export function buildOrganizationJsonLd(): Record<string, unknown> {
     "@type": "AutoDealer",
     "@id": ORG_ID,
     name: SITE_NAME,
-    legalName: BUSINESS.legalName,
+    legalName: BUSINESS.registeredName || BUSINESS.legalName,
+    // ЕИК → taxID; ДДС № → vatID. Only emitted when the real values are present in
+    // constants, so the graph never carries a placeholder identifier.
+    ...(BUSINESS.companyId ? { taxID: BUSINESS.companyId } : {}),
+    ...(BUSINESS.vatId ? { vatID: BUSINESS.vatId } : {}),
     url: SITE_URL,
     logo: abs("/logo.png"),
     image: abs("/autoselect.jpg"),

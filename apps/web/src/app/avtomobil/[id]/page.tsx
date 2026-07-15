@@ -69,16 +69,21 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
       ? `${detail.title} — ${titleBits.join(", ")} | SelectAuto`
       : `${detail.title} | SelectAuto`;
 
+  // Source is NOT repeated in descBits (the lead phrase already names it), and a
+  // sold car's realized price is labeled „Продаден за" — never presented as a
+  // live offer (the page is noindex but shareable, and social scrapers read this).
   const descBits = [
-    detail.source,
     detail.highlights.find((h) => h.label === "Пробег")?.value,
     detail.specs.find((sp) => sp.label === "Първична щета")?.value,
-    priceStr,
+    priceStr ? (detail.isPast ? `Продаден за ${priceStr}` : priceStr) : null,
   ].filter(Boolean);
+  const descCta = detail.isPast
+    ? "Автомобилът е продаден — виж активните обяви на SelectAuto."
+    : "Свържи се със SelectAuto за оферта и внос.";
 
   return {
     title,
-    description: `${detail.title} — внос от ${detail.sourceCountry ? `${detail.sourceCountry} (${detail.source})` : detail.source}. ${descBits.join(" · ")}. Свържи се със SelectAuto за оферта и внос.`,
+    description: `${detail.title} — внос от ${detail.sourceCountry ? `${detail.sourceCountry} (${detail.source})` : detail.source}. ${descBits.join(" · ")}. ${descCta}`,
     alternates: { canonical },
     robots: detail.isPast ? { index: false, follow: true } : undefined,
     openGraph: {

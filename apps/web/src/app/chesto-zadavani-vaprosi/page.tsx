@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Container } from "@/components/common";
+import { Container, LinkButton } from "@/components/common";
 import { InquiryButton } from "@/components/inquiry";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
@@ -143,13 +143,14 @@ export default function FaqPage() {
             <h2 className="mb-4 text-2xl font-black text-ink">Полезни страници</h2>
             <div className="flex flex-wrap gap-2.5">
               {LINKS.map((l) => (
-                <Link
+                <LinkButton
                   key={l.href}
                   href={l.href}
+                  rippleTheme="dark"
                   className="inline-flex items-center rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold text-ink transition-colors duration-200 hover:border-brand hover:text-brand-dark"
                 >
                   {l.label}
-                </Link>
+                </LinkButton>
               ))}
             </div>
           </section>
@@ -161,7 +162,7 @@ export default function FaqPage() {
               Кажи ни какво те интересува — ще отговорим и ще изготвим персонална оферта за внос на автомобил.
             </p>
             <InquiryButton
-              rippleTheme="light"
+              rippleTheme="dark"
               className="inline-flex min-h-13.5 items-center justify-center rounded-full bg-white px-8 text-sm font-extrabold uppercase tracking-wide text-brand-dark transition-transform duration-200 hover:-translate-y-0.5"
             >
               Направи запитване

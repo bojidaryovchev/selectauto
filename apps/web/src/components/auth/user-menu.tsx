@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
+import { Button, LinkButton } from "@/components/common";
 import { signOutAction } from "@/mutations/auth";
 
 /**
@@ -36,16 +36,16 @@ export function UserMenu({ tone = "light" }: { tone?: "light" | "dark" }) {
 
   return (
     <div ref={ref} className="relative">
-      <button
-        type="button"
+      <Button
         onClick={() => setOpen((o) => !o)}
+        rippleTheme="light"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Профил"
         className={`grid size-10 place-items-center rounded-full border text-sm font-black uppercase transition-transform duration-150 hover:scale-105 ${triggerClass}`}
       >
         {initial}
-      </button>
+      </Button>
 
       {open ? (
         <div
@@ -56,22 +56,24 @@ export function UserMenu({ tone = "light" }: { tone?: "light" | "dark" }) {
             <p className="truncate text-sm font-bold text-ink">{user?.name || "Профил"}</p>
             {user?.email ? <p className="truncate text-xs text-muted">{user.email}</p> : null}
           </div>
-          <Link
+          <LinkButton
             href="/lyubimi"
             onClick={() => setOpen(false)}
             role="menuitem"
+            rippleTheme="dark"
             className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-brand/8 hover:text-brand-dark"
           >
             Любими автомобили
-          </Link>
+          </LinkButton>
           <form action={signOutAction}>
-            <button
+            <Button
               type="submit"
               role="menuitem"
+              rippleTheme="dark"
               className="block w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-[#b53b2f] transition-colors hover:bg-[#fff3f2]"
             >
               Изход
-            </button>
+            </Button>
           </form>
         </div>
       ) : null}

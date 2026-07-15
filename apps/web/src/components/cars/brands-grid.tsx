@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Ripple } from "@/components/common";
 import { ArrowRightIcon } from "@/components/icons";
 import { serializeCarFilters } from "@/lib/car-filters";
 import { getCarBrands } from "@/queries/cars";
@@ -72,6 +73,7 @@ export async function BrandsGrid() {
                 <div className="wrap-break-word text-lg font-extrabold leading-[1.28] text-[#2c3b57] transition-colors duration-200 group-hover:text-[#c86116]">
                   {brand.name}
                 </div>
+                <Ripple theme="dark" />
               </div>
             </Link>
           ))}

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Container } from "@/components/common";
+import { Container, LinkButton } from "@/components/common";
 import { AllCarsGrid, CarGridSkeleton } from "@/components/cars/all-cars";
 import { ModelSoldPrices } from "@/components/cars";
 import { SiteFooter, SiteHeader } from "@/components/layout";
@@ -200,12 +200,13 @@ async function HubBody({ params }: { params: Params }) {
                 В момента няма активни обяви за {label}. Заяви персонална селекция и ще намерим
                 подходящ автомобил от аукционите.
               </p>
-              <Link
+              <LinkButton
                 href="/vsichki-avtomobili/"
+                rippleTheme="light"
                 className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand px-6 text-sm font-extrabold uppercase tracking-wide text-white transition-transform duration-200 hover:-translate-y-0.5"
               >
                 Виж всички автомобили
-              </Link>
+              </LinkButton>
             </div>
           ) : (
             <Suspense fallback={<CarGridSkeleton count={12} />}>
