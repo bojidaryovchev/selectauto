@@ -17,8 +17,8 @@ import { useRouter } from "next/navigation";
  *
  * The fix is to make that pending state observable. `navigate` wraps the
  * `router.replace` in an explicit `useTransition`, so `pending` stays true for
- * the entire async navigation; the grid frosts itself (a glass veil, see
- * AllCarsGrid) while it's set. `setSoftPending` covers the ~1.5s TEXT-DEBOUNCE gap in the filter bar
+ * the entire async navigation; each stale card frosts under its own glass panel
+ * (see CardGlass) while it's set. `setSoftPending` covers the ~1.5s TEXT-DEBOUNCE gap in the filter bar
  * (year/price/VIN inputs), where the navigation hasn't fired yet but the user's
  * input is already "in flight" — otherwise typing in those fields would feel
  * just as dead as before until the debounce elapsed.

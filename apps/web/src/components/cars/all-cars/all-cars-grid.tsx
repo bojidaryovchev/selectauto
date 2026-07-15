@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useWindowVirtualizer, windowScroll } from "@tanstack/react-virtual";
 import { AuctionCard } from "@/components/cars/all-cars/auction-card";
+import { CardGlass } from "@/components/cars/all-cars/card-glass";
 import { SkeletonCard } from "@/components/cars/all-cars/car-grid-skeleton";
 import { useFilterNav } from "@/contexts/filter-nav-context";
 import { AFTER_PARAM } from "@/lib/car-filters";
@@ -524,41 +525,18 @@ export function AllCarsGrid({
     return () => clearTimeout(id);
   }, [items, cars, columns, startCar, headerOffset, anchorSettled]);
 
-  // Frosted-glass veil shown over the (stale) results while a filter nav is
-  // pending — the visible feedback that a filter change is applying.
-  //
-  // It is `position: sticky` + a canceling negative margin so it costs ZERO
-  // layout space (the container's `offsetTop` → scrollMargin is untouched) yet
-  // pins to the viewport as you scroll. CRUCIALLY it is NOT a full-height layer:
-  // the reserved row space can be ~30M px tall, and a `filter`/inset-0 blur over
-  // that would force the browser to rasterize an enormous surface. A
-  // viewport-sized box with `backdrop-filter` keeps the blur bounded to what's
-  // actually on screen. Sits below the fixed header (`top`), above the cards
-  // (z-index), and never eats clicks (`pointer-events: none`).
-  const glassVeil = pending ? (
-    <div
-      aria-hidden
-      className="pointer-events-none sticky z-5 rounded-2xl border border-white/40 bg-white/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] backdrop-blur-md backdrop-saturate-150"
-      style={{
-        top: "var(--header-h)",
-        height: "calc(100dvh - var(--header-h))",
-        // Cancel the sticky box's flow height so it displaces nothing.
-        marginBottom: "calc(-1 * (100dvh - var(--header-h)))",
-      }}
-    />
-  ) : null;
-
   // Freeze interaction with the stale cards underneath while pending. Pointer
-  // events only — layout-neutral, so no virtualizer measurement is affected.
+  // events only — layout-neutral, so no virtualizer measurement is affected. The
+  // per-card frosted glass (CardGlass) is the visible cue; see below.
   const frozen = pending ? ("none" as const) : undefined;
 
   if (totalCells === 0) {
     return (
-      <div className="relative" style={{ pointerEvents: frozen }}>
-        {glassVeil}
-        <div className="rounded-2xl border border-line bg-white px-6 py-16 text-center text-base text-muted">
-          Няма налични коли по избраните филтри.
-        </div>
+      <div
+        style={{ pointerEvents: frozen }}
+        className="rounded-2xl border border-line bg-white px-6 py-16 text-center text-base text-muted"
+      >
+        Няма налични коли по избраните филтри.
       </div>
     );
   }
@@ -566,11 +544,7 @@ export function AllCarsGrid({
   return (
     // overflow-anchor: none — the browser's native scroll anchoring must not
     // react to skeleton→card swaps or row mounts; positions are already fixed.
-    // position: relative anchors the sticky glass veil to this container (so it
-    // spans only the results region, never the filter bar above) without moving
-    // the container's own offsetTop.
-    <div ref={containerRef} className="relative" style={{ overflowAnchor: "none", pointerEvents: frozen }}>
-      {glassVeil}
+    <div ref={containerRef} style={{ overflowAnchor: "none", pointerEvents: frozen }}>
       {!measured ? (
         // SSR + first client paint: a plain, CSS-responsive grid of the seeded
         // cars. This static HTML is what crawlers index (real card markup +
@@ -581,9 +555,11 @@ export function AllCarsGrid({
         // render too, so hydration matches).
         <div className="grid grid-cols-1 gap-5 min-[560px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {cars.map((car, i) => (
-            // Eager-load the first two cards: the LCP candidate is in the first
-            // row in every column layout.
-            <AuctionCard key={car.id ?? i} car={car} priority={i < 2} />
+            <CardGlass key={car.id ?? i} pending={pending}>
+              {/* Eager-load the first two cards: the LCP candidate is in the
+                  first row in every column layout. */}
+              <AuctionCard car={car} priority={i < 2} />
+            </CardGlass>
           ))}
         </div>
       ) : (
@@ -620,9 +596,12 @@ export function AllCarsGrid({
                 >
                   {cells.map((car, i) =>
                     car ? (
-                      // No `priority`: this branch only exists after hydration,
-                      // when the static first-paint grid already loaded the LCP.
-                      <AuctionCard key={car.id ?? `${virtualRow.index}-${i}`} car={car} />
+                      <CardGlass key={car.id ?? `${virtualRow.index}-${i}`} pending={pending}>
+                        {/* No `priority`: this branch only exists after
+                            hydration, when the static first-paint grid already
+                            loaded the LCP. */}
+                        <AuctionCard car={car} />
+                      </CardGlass>
                     ) : (
                       <SkeletonCard key={`s-${virtualRow.index}-${i}`} />
                     ),
