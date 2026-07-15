@@ -109,24 +109,36 @@ Deferred (noted, not bugs): `/kontakti` hero uses a stock Unsplash image (conten
 `[user]` to supply a real photo); `/proces` H1 is brand-voice not keyword-bearing (minor);
 „vin проверка" phrasing lands with the Phase B VIN retarget.
 
-## Phase B — Money-page depth (weeks 1–6; primary goal: leads)
+## Phase B — Money-page depth (weeks 1–6; primary goal: leads) — **DONE 2026-07-16**
 
-- [ ] `[content]` **Deepen Korea/USA/Canada hubs** from ~600–900 to 2,000–3,000 words each,
-      using the verified 2026 regulatory pack (12 §3.9): duty/VAT worked examples, ecotax
-      bands + „последна проверка" date, honest transit times (Korea ~2 months), city-modifier
-      section („Доставка до София/Пловдив/Варна/Бургас…"), „мнения"/objection content,
-      testimonials block. Korea first (land-grab in progress), then USA (largest demand,
-      trust/fraud angle mandatory), then Canada (CETA origin myth-busting).
-- [ ] `[code]` **Calculator v2** (`/kalkulator`): itemized line-item output (auction fees,
-      transport, duty, VAT, ecotax, homologation, ГТП/КАТ); **Korea origin-declaration toggle**
-      (0% vs 10% duty), Canada default 10% with CETA note; ecotax age bands as config with
-      „last verified" date; markets stay **KR/US/CA** (Japan/Germany are not served — see the
-      2026-07 correction in 12 §0.4); **gated-PDF estimate as lead capture**.
-- [ ] `[code+content]` **VIN tool retarget** — `/proverka-vin` copy/title to „vin проверка" /
-      „проверка по вин номер безплатно"; add „вин проверка корея" section; `/carfax` targets
-      brand demand („carfax цена", „carfax българия").
-- [ ] `[content]` „Колко струва внос на кола от САЩ през 2026" support guide (year-dated titles
-      demonstrably win this SERP) interlinked with the calculator.
+- [x] `[content]` **Deepen Korea/USA/Canada hubs** — DONE (Korea ~1,750 / USA ~1,250 / Canada
+      ~1,150 words): Korea = origin-declaration duty story + Encar history verification + LPI
+      + parts/service; USA = fraud-objection intro + title-types glossary (flood = the trap);
+      Canada = CETA myth-busting + IAA Canada naming. All three: honest 2026 transit times,
+      post-arrival steps (одобряване/екотакса/ГТП/КАТ), city-modifier paragraph, streamed
+      Google-reviews testimonials (shared `components/hubs/hub-testimonials.tsx`, fail-open
+      until the Places key is set), cross-market comparison links, FAQ 5→8/9 mirroring real
+      SERP questions. **Bulgarian copy pending owner review** (esp. the operational claims:
+      Korea „работим с износители…", Canada per-car preference flagging).
+- [x] `[code]` **Calculator v2** — DONE: `data/import-rates.ts` config (rates stamped
+      15.07.2026), itemized breakdown incl. екотакса bands + одобряване, Korea origin toggle,
+      Canada 10% default, BGN dual display, honest transit; **gated EMAIL-offer lead capture**
+      (deviation from „gated PDF": breakdown emails via the existing React-Email/Resend
+      pipeline, lead persisted to `calculator_offers` — migration 0028 applied; PDF can come
+      later). Listing deep links („Калкулирай вноса", USD→EUR converted). Adversarially
+      reviewed — 3 findings fixed.
+- [x] `[code+content]` **VIN tool retarget** — DONE: „VIN проверка … безплатно" title/H1,
+      „VIN проверка на кола от Корея" section + FAQ (Encar-based history — Carfax doesn't
+      cover Korean-domestic cars), `/carfax` retitled to „Carfax проверка в България".
+- [x] `[content]` **Cost guide** — DONE as the blog's first post:
+      `/blog/kolko-struva-vnos-na-kola-ot-sasht-2026` — worked example matching the
+      calculator's math exactly (15 000 € → 24 690 €), „what cheaper offers omit" section,
+      year-dated title, interlinked with calculator/hubs/VIN.
+- [x] `[code]` _(pulled forward from Phase C)_ **`/blog` scaffold** — markdown files in
+      `content/blog/` + gray-matter (frontmatter: title/description/date/updated/author),
+      react-markdown+remark-gfm rendered server-side, `BlogPosting` JSON-LD with author +
+      dates, breadcrumbs, sitemap entries (lastmod = post `updated`), nav/footer/llms.txt
+      links. Fully static (fs reads at build).
 
 > **CUT (2026-07):** the previously planned `/vnos-na-koli-ot-germaniya` and
 > `/vnos-na-koli-ot-yaponiya` country pages — the business does not import from Germany or
@@ -135,7 +147,9 @@ Deferred (noted, not bugs): `/kontakti` hero uses a stock Unsplash image (conten
 
 ## Phase C — Content clusters, E-E-A-T & authority (weeks 4–16, overlaps B)
 
-- [ ] `[code]` **Ship `/blog`** with `Article`/`BlogPosting` + named-`author` `Person` schema.
+- [x] `[code]` **Ship `/blog`** — DONE (pulled into Phase B, 2026-07-16; see above). Posts
+      default to author "SelectAuto" (Organization) — switch to NAMED experts per the bios
+      item below.
 - [ ] `[user+content]` **Named-expert bios** on `/za-nas` + as blog authors (photos,
       credentials, first-hand import experience) — the E-E-A-T moat; currently zero names.
 - [ ] `[content]` Cluster order (by validated demand): ① USA/Canada cost+trust (salvage/flood/

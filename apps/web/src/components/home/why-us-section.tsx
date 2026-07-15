@@ -13,11 +13,13 @@ export function WhyUsSection() {
         />
 
         <div className="grid grid-cols-3 gap-6 max-[1100px]:grid-cols-1">
-          {PILLARS.map((pillar, i) => (
+          {PILLARS.map((pillar, i) => {
+            const Icon = pillar.icon;
+            return (
             <Reveal key={pillar.title} delay={0.08 * (i + 1)}>
               <div className="h-full rounded-card border border-line bg-white px-6 py-7 text-left shadow-card">
-                <div className="mb-4.5 flex size-15 items-center justify-center rounded-[18px] bg-brand/12 text-[28px] text-brand-dark">
-                  {pillar.icon}
+                <div className="mb-4.5 flex size-15 items-center justify-center rounded-[18px] bg-brand/12 text-brand-dark">
+                  <Icon className="size-7" />
                 </div>
                 <h3 className="mb-2.5 text-[23px] font-black text-ink">
                   {pillar.title}
@@ -27,7 +29,8 @@ export function WhyUsSection() {
                 </p>
               </div>
             </Reveal>
-          ))}
+            );
+          })}
         </div>
       </Container>
     </section>

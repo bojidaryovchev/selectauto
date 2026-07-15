@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import Link from "next/link";
-import { Container } from "@/components/common";
+import { Container, LinkButton } from "@/components/common";
 import { CostEstimator } from "@/components/calculator";
 import { AuctionCard } from "@/components/cars/all-cars";
 import { InquiryButton } from "@/components/inquiry";
+import { HubTestimonials } from "@/components/hubs";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
 import { buildBreadcrumbJsonLd, buildFaqJsonLd, type FaqEntry } from "@/lib/site-jsonld";
@@ -66,7 +67,22 @@ const FAQ: FaqEntry[] = [
   {
     question: "Колко време отнема вносът от Канада?",
     answer:
-      "Обичайно няколко седмици от избора на автомобила до готовност за регистрация в КАТ — според транспорта (морски превоз + сухопътна логистика) и оформянето на документите.",
+      "Ориентировъчно 5–8 седмици по море от канадско пристанище до Европа (трансатлантическият маршрут не е засегнат от отклоненията около Африка), плюс сухопътен превоз до България и оформяне. Реалистично: около 2 месеца от покупката до кола, готова за регистрация в КАТ.",
+  },
+  {
+    question: "Има ли 0% мито за коли от Канада заради споразумението CETA?",
+    answer:
+      "На практика — рядко. CETA премахва митото само за автомобили с канадски произход (произведени в Канада по правилата за произход), а голямата част от колите по канадските аукциони са произведени в САЩ или другаде — за тях се дължи стандартното мито от 10%. Затова калкулираме с 10% по подразбиране и посочваме изрично, ако конкретен автомобил отговаря на условията за преференция.",
+  },
+  {
+    question: "Какво е Impact Auto Auctions / IAA Canada?",
+    answer:
+      "Impact Auto Auctions е най-голямата канадска аукционна мрежа за автомобили, вече изцяло интегрирана като IAA Canada — двете имена се отнасят за същите аукциони. Достъпът за международни купувачи е онлайн; ние поемаме подбора, наддаването и логистиката.",
+  },
+  {
+    question: "Какво е нужно, за да се регистрира канадска кола в България?",
+    answer:
+      "Канадските автомобили следват северноамериканските стандарти и нямат европейско одобрение на типа, затова минават индивидуално одобряване (технотест) с типичните адаптации — фарове с европейски светлинен сноп, заден фар за мъгла, km/h скоростомер. След това: екотакса, ГТП и регистрация в КАТ — съдействаме за всички стъпки.",
   },
 ];
 
@@ -125,10 +141,16 @@ export default function CanadaHubPage() {
           <h1 className="mb-3 text-4xl font-black uppercase tracking-tight text-ink max-md:text-3xl">
             Внос на коли от Канада
           </h1>
-          <p className="mb-8 max-w-2xl text-[15px] leading-[1.8] text-[#3d4046]">
+          <p className="mb-4 max-w-2xl text-[15px] leading-[1.8] text-[#3d4046]">
             Канада е силен пазар за автомобили с прозрачна история — Carfax покрива всяка провинция, а изборът на коли с
             чиста история е добър. SelectAuto поема целия процес: подбор, проверка на Carfax и състояние (включително
             корозия), наддаване, транспорт, мито и ДДС, и съдействие до регистрация в КАТ.
+          </p>
+          <p className="mb-8 max-w-2xl text-[15px] leading-[1.8] text-[#3d4046]">
+            Канадските аукциони (IAA Canada, доскоро Impact Auto Auctions) работят на същия принцип като американските
+            Copart и IAAI, но с по-малка конкуренция от международни купувачи на някои лотове — там се появяват добри
+            сделки. Ще прочетете и твърдения за „0% мито по CETA“ — по-долу обясняваме честно защо това почти никога не
+            важи за аукционни коли и как калкулираме реалната крайна цена.
           </p>
 
           <section className="mb-12">
@@ -150,6 +172,25 @@ export default function CanadaHubPage() {
               обвързваща оферта за конкретен автомобил направи запитване.
             </p>
             <CostEstimator defaultMarket="ca" />
+          </section>
+
+          {/* CETA myth-busting — the researched differentiator: competitors either
+              stay silent or imply duty-free Canada; the origin rules say otherwise. */}
+          <section className="mb-12">
+            <h2 className="mb-4 text-2xl font-black text-ink">„0% мито по CETA“ — митът за Канада</h2>
+            <div className="rounded-2xl border border-line bg-white p-6 shadow-card max-md:p-5">
+              <p className="mb-3 text-[15px]/relaxed text-[#3d4046]">
+                Търговското споразумение ЕС–Канада (CETA) наистина премахна митото за автомобили — но{" "}
+                <strong>само за автомобили с канадски произход</strong> по правилата за произход, с декларация от
+                износителя. Уловката: голямата част от колите по канадските аукциони са произведени в САЩ, Мексико или
+                Азия. Фактът, че купувате колата <em>в</em> Канада, не я прави <em>канадска</em> по произход.
+              </p>
+              <p className="text-[15px]/relaxed text-[#3d4046]">
+                Затова калкулираме с 10% мито по подразбиране — честната сметка, с която няма изненади на митницата.
+                Ако конкретен автомобил реално отговаря на условията за преференция, ще ви го посочим изрично в
+                персоналната оферта.
+              </p>
+            </div>
           </section>
 
           <section className="mb-12">
@@ -182,6 +223,53 @@ export default function CanadaHubPage() {
             </Suspense>
           </section>
 
+          {/* Honest transit + post-arrival (same NA-spec adaptation as the US) */}
+          <section className="mb-12">
+            <h2 className="mb-4 text-2xl font-black text-ink">Срокове, транспорт и стъпките след пристигане</h2>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-line bg-white p-6 shadow-card max-md:p-5">
+                <h3 className="mb-2 text-lg font-extrabold text-ink">Колко време отнема — честно</h3>
+                <p className="mb-2 text-sm/relaxed text-[#5a5d64]">
+                  Морският превоз от канадско пристанище до Европа отнема ориентировъчно <strong>5–8 седмици</strong> —
+                  трансатлантическият маршрут не е засегнат от отклоненията около Африка.
+                </p>
+                <p className="text-sm/relaxed text-[#5a5d64]">
+                  Реалистично: около 2 месеца от покупката до кола, готова за КАТ — включително сухопътния превоз до
+                  България и оформянето. Държим ви в течение на всяка стъпка.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-line bg-white p-6 shadow-card max-md:p-5">
+                <h3 className="mb-2 text-lg font-extrabold text-ink">След пристигането</h3>
+                <p className="mb-2 text-sm/relaxed text-[#5a5d64]">
+                  Канадските автомобили следват северноамериканските стандарти и минават{" "}
+                  <strong>индивидуално одобряване</strong> (технотест) с типичните адаптации: европейски (ECE) фарове,
+                  заден фар за мъгла и km/h скоростомер.
+                </p>
+                <p className="text-sm/relaxed text-[#5a5d64]">
+                  Следват еднократната <strong>екотакса</strong> към ПУДООС, ГТП и регистрация в КАТ — всичко е
+                  включено в разбивката на калкулатора и в персоналната оферта.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Testimonials (streamed, fail-open — same daily-cached read as /otzivi) */}
+          <Suspense fallback={null}>
+            <HubTestimonials />
+          </Suspense>
+
+          {/* Nationwide delivery — country+city long-tail as hub content. */}
+          <section className="mb-12">
+            <h2 className="mb-4 text-2xl font-black text-ink">Внос на коли от Канада до всяка точка на България</h2>
+            <div className="rounded-2xl border border-line bg-white p-6 shadow-card max-md:p-5">
+              <p className="text-[15px]/relaxed text-[#3d4046]">
+                Организираме доставка на внесения автомобил до София, Пловдив, Варна, Бургас, Стара Загора, Русе и
+                всеки друг град в страната. Огледът и предаването стават при нас в Пловдив или уговаряме транспорт до
+                вашия адрес — процесът по внос, оформяне и регистрация е един и същ, независимо къде се намирате.
+              </p>
+            </div>
+          </section>
+
           <section className="mb-12">
             <h2 className="mb-4 text-2xl font-black text-ink">Често задавани въпроси</h2>
             <div className="flex flex-col gap-4">
@@ -191,6 +279,34 @@ export default function CanadaHubPage() {
                   <p className="text-sm/relaxed text-[#5a5d64]">{f.answer}</p>
                 </div>
               ))}
+            </div>
+          </section>
+
+          {/* Compare with the other sourcing markets (cross-hub links) */}
+          <section className="mb-12">
+            <h2 className="mb-4 text-2xl font-black text-ink">Сравни с другите пазари</h2>
+            <div className="flex flex-wrap gap-3">
+              <LinkButton
+                href="/vnos-na-koli-ot-korea"
+                rippleTheme="dark"
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-white px-5 text-sm font-extrabold text-ink transition-colors hover:text-brand-dark"
+              >
+                Внос на коли от Корея
+              </LinkButton>
+              <LinkButton
+                href="/vnos-na-koli-ot-sasht"
+                rippleTheme="dark"
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-white px-5 text-sm font-extrabold text-ink transition-colors hover:text-brand-dark"
+              >
+                Внос на коли от САЩ
+              </LinkButton>
+              <LinkButton
+                href="/kalkulator"
+                rippleTheme="dark"
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-white px-5 text-sm font-extrabold text-ink transition-colors hover:text-brand-dark"
+              >
+                Калкулатор за внос
+              </LinkButton>
             </div>
           </section>
 

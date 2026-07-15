@@ -6,10 +6,10 @@ import { Container, LinkButton } from "@/components/common";
 import { CostEstimator } from "@/components/calculator";
 import { AuctionCard } from "@/components/cars/all-cars";
 import { InquiryButton } from "@/components/inquiry";
+import { HubTestimonials } from "@/components/hubs";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
 import { RATES_VERIFIED_AT } from "@/data/import-rates";
-import { getGoogleReviews } from "@/lib/google-reviews";
 import { buildBreadcrumbJsonLd, buildFaqJsonLd, type FaqEntry } from "@/lib/site-jsonld";
 import { getCarsPage } from "@/queries/cars";
 
@@ -457,38 +457,6 @@ async function FeaturedKoreaCars() {
         <AuctionCard key={car.href} car={car} />
       ))}
     </div>
-  );
-}
-
-/** Server island: up to three real Google reviews (same daily-cached Places read
- *  as /otzivi — see lib/google-reviews). Fail-open: renders nothing while the
- *  Places key is unconfigured or on upstream errors, so the hub never blocks on
- *  it. Shown as CONTENT only — no Review/AggregateRating schema (self-serving
- *  review markup is ineligible per Google's policy; see /otzivi). */
-async function HubTestimonials() {
-  const data = await getGoogleReviews();
-  if (!data || data.reviews.length === 0) return null;
-  const reviews = data.reviews.slice(0, 3);
-  return (
-    <section className="mb-12">
-      <div className="mb-4 flex items-end justify-between gap-4">
-        <h2 className="text-2xl font-black text-ink">Какво казват клиентите</h2>
-        <Link href="/otzivi" className="whitespace-nowrap text-sm font-bold text-brand-dark hover:underline">
-          Всички отзиви →
-        </Link>
-      </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {reviews.map((r) => (
-          <figure key={`${r.author}-${r.text.slice(0, 24)}`} className="rounded-2xl border border-line bg-white p-5 shadow-card">
-            <p className="mb-2 text-sm font-bold text-brand-dark" aria-label={`Оценка ${r.rating} от 5`}>
-              {"★".repeat(Math.max(1, Math.min(5, Math.round(r.rating))))}
-            </p>
-            <blockquote className="mb-3 line-clamp-5 text-sm/relaxed text-[#3d4046]">{r.text}</blockquote>
-            <figcaption className="text-xs font-semibold text-muted">{r.author}</figcaption>
-          </figure>
-        ))}
-      </div>
-    </section>
   );
 }
 

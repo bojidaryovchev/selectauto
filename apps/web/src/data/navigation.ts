@@ -59,6 +59,7 @@ export const NAV: NavItem[] = [
       { label: "Процес", href: "/proces" },
       { label: "Отзиви", href: "/otzivi" },
       { label: "Често задавани въпроси", href: "/chesto-zadavani-vaprosi" },
+      { label: "Блог", href: "/blog" },
     ],
   },
   { label: "Контакти", href: "/kontakti" },
@@ -87,6 +88,7 @@ export const FOOTER_INFO: LinkItem[] = [
   { label: "Процес", href: "/proces" },
   { label: "Отзиви", href: "/otzivi" },
   { label: "Често задавани въпроси", href: "/chesto-zadavani-vaprosi" },
+  { label: "Блог", href: "/blog" },
 ];
 
 /**

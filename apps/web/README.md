@@ -42,3 +42,8 @@ To generate a value for `AUTH_SECRET` open a Git Bash and use `openssl rand -bas
 # CRON Secret
 
 To generate a value for `CRON_SECRET` open a Git Bash and use `openssl rand -hex 32`
+
+# Manually trigger favorites email notification
+
+`curl -s "http://localhost:3000/api/cron/favorite-auction-alerts?dryRun=1" -H "Authorization: Bearer $CRON_SECRET" | jq`
+

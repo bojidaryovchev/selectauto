@@ -1,4 +1,6 @@
+import { ScaleIcon, ShieldIcon, TargetIcon } from "@/components/icons";
 import type { CarView } from "@/types/car.type";
+import type { ComponentType } from "react";
 
 /**
  * Static homepage content captured from the live site. The car arrays are a
@@ -142,19 +144,23 @@ export const BRANDS: { name: string; slug: string }[] = [
 ];
 
 /** Three pillars in the "Why SelectAuto" section. Text verbatim from the site. */
-export const PILLARS: { icon: string; title: string; text: string }[] = [
+export const PILLARS: {
+  icon: ComponentType<{ className?: string }>;
+  title: string;
+  text: string;
+}[] = [
   {
-    icon: "🎯",
+    icon: TargetIcon,
     title: "Подбор с мисъл",
     text: "Всяка добра покупка започва с добра селекция. Ние търсим правилните предложения, а не просто много предложения.",
   },
   {
-    icon: "⚖️",
+    icon: ScaleIcon,
     title: "Стратегия и преценка",
     text: "При аукционите, цените и наличностите няма място за хаос. Нужна е ясна логика, опит и правилен тайминг.",
   },
   {
-    icon: "🛡️",
+    icon: ShieldIcon,
     title: "Контрол над процеса",
     text: "От заявката до ключа, процесът е структуриран така, че клиентът да има спокойствие и яснота на всяка стъпка.",
   },

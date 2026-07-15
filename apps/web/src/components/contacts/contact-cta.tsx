@@ -1,4 +1,5 @@
 import { Container, LinkButton, Reveal } from "@/components/common";
+import { MailIcon, PhoneIcon } from "@/components/icons";
 import { InquiryButton } from "@/components/inquiry";
 import { CONTACT } from "@/constants";
 
@@ -31,16 +32,18 @@ export function ContactCta() {
               <LinkButton
                 href={CONTACT.phoneHref}
                 rippleTheme="light"
-                className="rounded-2xl border border-white/8 bg-white/[0.07] px-4 py-3.5 text-base font-bold transition-colors hover:bg-white/12"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/8 bg-white/[0.07] px-4 py-3.5 text-base font-bold transition-colors hover:bg-white/12"
               >
-                📱 {CONTACT.phone}
+                <PhoneIcon className="size-4.5" />
+                {CONTACT.phone}
               </LinkButton>
               <LinkButton
                 href={CONTACT.emailHref}
                 rippleTheme="light"
-                className="rounded-2xl border border-white/8 bg-white/[0.07] px-4 py-3.5 text-base font-bold transition-colors hover:bg-white/12"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/8 bg-white/[0.07] px-4 py-3.5 text-base font-bold transition-colors hover:bg-white/12"
               >
-                ✉️ {CONTACT.email}
+                <MailIcon className="size-4.5" />
+                {CONTACT.email}
               </LinkButton>
             </div>
           </div>

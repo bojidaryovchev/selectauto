@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { Container, LinkButton } from "@/components/common";
+import { StarIcon } from "@/components/icons";
 import { InquiryButton } from "@/components/inquiry";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
@@ -52,9 +53,10 @@ export const metadata: Metadata = {
 function Stars({ rating }: { rating: number }) {
   const full = Math.round(rating);
   return (
-    <span aria-label={`${rating} от 5`} className="text-brand">
-      {"★★★★★".slice(0, full)}
-      <span className="text-line">{"★★★★★".slice(full)}</span>
+    <span aria-label={`${rating} от 5`} className="inline-flex items-center gap-0.5">
+      {Array.from({ length: 5 }, (_, i) => (
+        <StarIcon key={i} className={`size-4 ${i < full ? "text-brand" : "text-line"}`} />
+      ))}
     </span>
   );
 }

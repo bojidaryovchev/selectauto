@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Button, LinkButton } from "@/components/common";
-import { ViberGlyphIcon } from "@/components/icons";
+import { CloseIcon, ViberGlyphIcon } from "@/components/icons";
 import { SOCIALS } from "@/constants";
 
 /**
@@ -175,14 +175,14 @@ export function ViberGroupPopup() {
         </LinkButton>
 
         {/* Close — dismisses for the session. Dark ripple on the white surface.
-            Uses the same `✕` glyph as the header's drawer-close button. */}
+            Uses the same {@link CloseIcon} as the header's drawer-close button. */}
         <Button
           onClick={close}
           aria-label="Затвори"
           rippleTheme="dark"
-          className="grid size-9 shrink-0 place-items-center rounded-full text-[20px] leading-none text-muted/70 transition-colors hover:bg-black/5 hover:text-ink max-md:size-8 max-md:text-[18px]"
+          className="grid size-9 shrink-0 place-items-center rounded-full leading-none text-muted/70 transition-colors hover:bg-black/5 hover:text-ink max-md:size-8"
         >
-          ✕
+          <CloseIcon className="size-5 max-md:size-4.5" />
         </Button>
       </div>
     </div>

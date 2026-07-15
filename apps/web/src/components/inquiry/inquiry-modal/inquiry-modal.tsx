@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/common";
-import { ChevronLeftIcon, CloseIcon } from "@/components/icons";
+import { CheckIcon, ChevronLeftIcon, CloseIcon } from "@/components/icons";
 import {
   INQUIRY_BRANDS,
   INQUIRY_BUDGETS,
@@ -479,8 +479,8 @@ export function InquiryModal({
             {/* Step 7 — success */}
             {step === 7 && (
               <div className="animate-[saFadeIn_0.28s_ease] py-1 text-center">
-                <div className="mx-auto mb-3.5 flex size-16 items-center justify-center rounded-full bg-brand/12 text-3xl font-black text-brand">
-                  ✓
+                <div className="mx-auto mb-3.5 flex size-16 items-center justify-center rounded-full bg-brand/12 text-brand">
+                  <CheckIcon className="size-8" />
                 </div>
                 <h3 className="mb-2.5 text-center text-[17px] font-extrabold text-[#17181b]">
                   Благодарим!

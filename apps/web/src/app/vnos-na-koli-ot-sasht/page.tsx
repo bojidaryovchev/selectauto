@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import Link from "next/link";
-import { Container } from "@/components/common";
+import { Container, LinkButton } from "@/components/common";
 import { CostEstimator } from "@/components/calculator";
 import { AuctionCard } from "@/components/cars/all-cars";
 import { InquiryButton } from "@/components/inquiry";
+import { HubTestimonials } from "@/components/hubs";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
 import { buildBreadcrumbJsonLd, buildFaqJsonLd, type FaqEntry } from "@/lib/site-jsonld";
@@ -67,6 +68,42 @@ const FAQ: FaqEntry[] = [
     answer:
       "Обичайно с контейнерен превоз (по-голяма защита) или RoRo (по-икономичен вариант), последван от сухопътна логистика до България. Срокът и цената зависят от пристанището на натоварване и текущите навла.",
   },
+  {
+    question: "Как да не купя наводнена кола от Америка?",
+    answer:
+      "Наводнените автомобили (flood title) са най-рискованата категория — щетите по електрониката се проявяват късно. Защитата е в историята: flood статусът се вижда в title документа, в Carfax записите и в снимките от аукциона. Проверяваме title статуса и историята на всеки автомобил преди наддаване и не предлагаме коли с прикрита flood история.",
+  },
+  {
+    question: "Колко време отнема вносът от САЩ?",
+    answer:
+      "Ориентировъчно 4–7 седмици от пристанището в САЩ до Европа (трансатлантическият маршрут не е засегнат от отклоненията около Африка), плюс сухопътен превоз до България и оформяне. Реалистично: около 2 месеца от покупката до кола, готова за регистрация в КАТ.",
+  },
+  {
+    question: "Какво е нужно, за да се регистрира американска кола в България?",
+    answer:
+      "Американските автомобили нямат европейско одобрение на типа, затова минават индивидуално одобряване (технотест). Обичайните адаптации са: фарове с европейски (ECE) светлинен сноп, заден фар за мъгла и скоростомер, показващ km/h. След това се заплаща екотаксата, прави се ГТП и колата се регистрира в КАТ — съдействаме за всички стъпки.",
+  },
+];
+
+/** Title-type mini glossary (visible cards) — the honest objection-handling
+ *  content the trust cluster demands (clean/salvage/rebuilt/flood). */
+const TITLE_TYPES: { t: string; d: string }[] = [
+  {
+    t: "Clean title",
+    d: "Без сериозна застрахователна щета — най-лесен за внос и регистрация, на по-висока цена.",
+  },
+  {
+    t: "Salvage title",
+    d: "Обявен за тотална щета от застраховател. По-евтин, но изисква оглед на щетите, реалистична сметка за ремонт и внимателна проверка.",
+  },
+  {
+    t: "Rebuilt title",
+    d: "Salvage кола след ремонт и повторна инспекция. Цената е между clean и salvage — историята на ремонта е ключова.",
+  },
+  {
+    t: "Flood / вода",
+    d: "Наводнен автомобил. Най-рисковата категория — щетите по електрониката се проявяват със закъснение. Избягваме ги и ги разпознаваме по историята.",
+  },
 ];
 
 /** Why-USA pillars (fact-checked). */
@@ -124,10 +161,16 @@ export default function UsaHubPage() {
           <h1 className="mb-3 text-4xl font-black uppercase tracking-tight text-ink max-md:text-3xl">
             Внос на коли от САЩ
           </h1>
-          <p className="mb-8 max-w-2xl text-[15px] leading-[1.8] text-[#3d4046]">
+          <p className="mb-4 max-w-2xl text-[15px] leading-[1.8] text-[#3d4046]">
             САЩ е най-големият пазар за внос на автомобили — огромен избор през Copart и IAAI, конкурентни цени и силно
             предлагане на пикапи и специфични модели. SelectAuto поема целия процес: подбор, проверка на history/title,
             наддаване, транспорт, мито и ДДС, и съдействие до регистрация в КАТ.
+          </p>
+          <p className="mb-8 max-w-2xl text-[15px] leading-[1.8] text-[#3d4046]">
+            Ще бъдем честни: вносът от Америка има и лоша слава — в Европа периодично гърмят скандали с тотално
+            бракувани коли, продадени след козметичен ремонт. Именно затова нашият процес започва от историята, а не
+            от цената: title статус, Carfax записи и снимки от аукциона се проверяват преди каквото и да е наддаване, и
+            получавате всичко това черно на бяло. Изгодната сделка от САЩ съществува — но само с проверена история.
           </p>
 
           <section className="mb-12">
@@ -142,11 +185,39 @@ export default function UsaHubPage() {
             </div>
           </section>
 
+          {/* Title types — the honest objection-handling glossary (trust cluster) */}
+          <section className="mb-12">
+            <h2 className="mb-4 text-2xl font-black text-ink">Видове title — какво всъщност купуваш</h2>
+            <p className="mb-5 max-w-2xl text-sm/relaxed text-[#3d4046]">
+              Всеки американски автомобил идва с title документ, който казва истината за миналото му. Разликата между
+              изгодна сделка и скъп урок е в това какъв title купуваш — и дали историята зад него е проверена.
+            </p>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {TITLE_TYPES.map((r) => (
+                <div key={r.t} className="rounded-2xl border border-line bg-white p-5 shadow-card">
+                  <h3 className="mb-1.5 text-lg font-extrabold text-ink">{r.t}</h3>
+                  <p className="text-sm/relaxed text-[#5a5d64]">{r.d}</p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-4 text-sm text-muted">
+              Преди наддаване проверяваме title статуса и историята на всеки лот —{" "}
+              <Link href="/proverka-vin" className="font-semibold text-brand-dark hover:underline">
+                безплатна VIN проверка
+              </Link>{" "}
+              или пълен{" "}
+              <Link href="/carfax" className="font-semibold text-brand-dark hover:underline">
+                Carfax доклад
+              </Link>
+              .
+            </p>
+          </section>
+
           <section className="mb-12">
             <h2 className="mb-4 text-2xl font-black text-ink">Колко струва внос от САЩ</h2>
             <p className="mb-5 max-w-2xl text-sm/relaxed text-[#3d4046]">
-              Изчисли ориентировъчна разбивка: цена, аукционни такси, транспорт, мито (10%) и ДДС (20%), регистрация. За
-              обвързваща оферта за конкретен автомобил направи запитване.
+              Изчисли ориентировъчна разбивка: цена, аукционни такси, транспорт, мито (10%) и ДДС (20%), екотакса,
+              одобряване и регистрация. За обвързваща оферта за конкретен автомобил направи запитване.
             </p>
             <CostEstimator defaultMarket="us" />
           </section>
@@ -181,6 +252,56 @@ export default function UsaHubPage() {
             </Suspense>
           </section>
 
+          {/* Honest transit + post-arrival (US-specific: individual approval +
+              ECE-light/speedometer adaptation) */}
+          <section className="mb-12">
+            <h2 className="mb-4 text-2xl font-black text-ink">Срокове, транспорт и стъпките след пристигане</h2>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-line bg-white p-6 shadow-card max-md:p-5">
+                <h3 className="mb-2 text-lg font-extrabold text-ink">Колко време отнема — честно</h3>
+                <p className="mb-2 text-sm/relaxed text-[#5a5d64]">
+                  Трансатлантическият превоз отнема ориентировъчно <strong>4–7 седмици</strong> от пристанище в САЩ до
+                  Европа — този маршрут не е засегнат от отклоненията около Африка, така че САЩ в момента е
+                  по-бързият презокеански вариант спрямо Азия.
+                </p>
+                <p className="text-sm/relaxed text-[#5a5d64]">
+                  Реалистично: около 2 месеца от покупката до кола, готова за КАТ — включително сухопътния превоз до
+                  България и оформянето. Държим ви в течение на всяка стъпка.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-line bg-white p-6 shadow-card max-md:p-5">
+                <h3 className="mb-2 text-lg font-extrabold text-ink">След пристигането</h3>
+                <p className="mb-2 text-sm/relaxed text-[#5a5d64]">
+                  Американските автомобили нямат европейско одобрение на типа, затова минават{" "}
+                  <strong>индивидуално одобряване</strong> (технотест) с типичните адаптации: фарове с европейски (ECE)
+                  светлинен сноп, заден фар за мъгла и km/h скоростомер.
+                </p>
+                <p className="text-sm/relaxed text-[#5a5d64]">
+                  Следват еднократната <strong>екотакса</strong> към ПУДООС, ГТП и регистрация в КАТ — всичко е
+                  включено в разбивката на калкулатора и в персоналната оферта.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Testimonials (streamed, fail-open — same daily-cached read as /otzivi) */}
+          <Suspense fallback={null}>
+            <HubTestimonials />
+          </Suspense>
+
+          {/* Nationwide delivery — the country+city long-tail lives HERE, not on
+              standalone city pages (docs/12-web-seo-strategy.md §4.2). */}
+          <section className="mb-12">
+            <h2 className="mb-4 text-2xl font-black text-ink">Внос на коли от САЩ до всяка точка на България</h2>
+            <div className="rounded-2xl border border-line bg-white p-6 shadow-card max-md:p-5">
+              <p className="text-[15px]/relaxed text-[#3d4046]">
+                Организираме доставка на внесения автомобил до София, Пловдив, Варна, Бургас, Стара Загора, Русе и
+                всеки друг град в страната. Огледът и предаването стават при нас в Пловдив или уговаряме транспорт до
+                вашия адрес — процесът по внос, оформяне и регистрация е един и същ, независимо къде се намирате.
+              </p>
+            </div>
+          </section>
+
           <section className="mb-12">
             <h2 className="mb-4 text-2xl font-black text-ink">Често задавани въпроси</h2>
             <div className="flex flex-col gap-4">
@@ -190,6 +311,34 @@ export default function UsaHubPage() {
                   <p className="text-sm/relaxed text-[#5a5d64]">{f.answer}</p>
                 </div>
               ))}
+            </div>
+          </section>
+
+          {/* Compare with the other sourcing markets (cross-hub links) */}
+          <section className="mb-12">
+            <h2 className="mb-4 text-2xl font-black text-ink">Сравни с другите пазари</h2>
+            <div className="flex flex-wrap gap-3">
+              <LinkButton
+                href="/vnos-na-koli-ot-korea"
+                rippleTheme="dark"
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-white px-5 text-sm font-extrabold text-ink transition-colors hover:text-brand-dark"
+              >
+                Внос на коли от Корея
+              </LinkButton>
+              <LinkButton
+                href="/vnos-na-koli-ot-kanada"
+                rippleTheme="dark"
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-white px-5 text-sm font-extrabold text-ink transition-colors hover:text-brand-dark"
+              >
+                Внос на коли от Канада
+              </LinkButton>
+              <LinkButton
+                href="/kalkulator"
+                rippleTheme="dark"
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-white px-5 text-sm font-extrabold text-ink transition-colors hover:text-brand-dark"
+              >
+                Калкулатор за внос
+              </LinkButton>
             </div>
           </section>
 

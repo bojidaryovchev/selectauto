@@ -151,6 +151,38 @@ export function buildFaqJsonLd(entries: FaqEntry[]): Record<string, unknown> {
   };
 }
 
+/** Inputs for a blog post's Article node. Dates are ISO YYYY-MM-DD. */
+export type ArticleInput = {
+  title: string;
+  description: string;
+  url: string;
+  datePublished: string;
+  dateModified: string;
+  authorName: string;
+};
+
+/**
+ * `Article` (BlogPosting) for /blog/{slug} — the E-E-A-T carrier: named author
+ * (Person) + publisher (the site-wide AutoDealer entity via @id) + dates.
+ * No rich-result promise implied — Article markup feeds entity understanding
+ * and Bing/Copilot; the visible byline/dates are what readers (and AI) consume.
+ */
+export function buildArticleJsonLd(a: ArticleInput): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: a.title,
+    description: a.description,
+    url: abs(a.url),
+    mainEntityOfPage: abs(a.url),
+    datePublished: a.datePublished,
+    dateModified: a.dateModified,
+    author: { "@type": a.authorName === "SelectAuto" ? "Organization" : "Person", name: a.authorName },
+    publisher: { "@id": ORG_ID },
+    inLanguage: "bg",
+  };
+}
+
 /** One item in an ItemList: its canonical URL + (optional) display name. */
 export type ItemListEntry = { url: string; name?: string };
 

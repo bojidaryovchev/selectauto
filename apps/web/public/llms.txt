@@ -24,6 +24,7 @@ SelectAuto is a Bulgarian car-import service. We source vehicles from Korea, the
 - [Често задавани въпроси](https://selectauto.bg/chesto-zadavani-vaprosi): Проверени отговори — колко струва вносът, колко време отнема, какво мито и ДДС се дължи, как се регистрира в КАТ.
 - [Отзиви](https://selectauto.bg/otzivi): Реални Google отзиви от клиенти.
 - [За нас](https://selectauto.bg/za-nas): Кои сме ние и как работим.
+- [Блог](https://selectauto.bg/blog): Практични статии за вноса — колко струва, мита и такси, проверка на история, КАТ.
 - [Контакти](https://selectauto.bg/kontakti): Телефон, адрес (гр. Пловдив, ул. Север 64), работно време, карта, форма за консултация.
 
 ## Услуги (Services)

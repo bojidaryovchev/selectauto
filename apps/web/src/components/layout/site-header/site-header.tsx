@@ -8,10 +8,11 @@ import { motion, useReducedMotion } from "motion/react";
 import { useSession } from "next-auth/react";
 import { Button, LinkButton } from "@/components/common";
 import { UserMenu } from "@/components/auth";
-import { ChevronDownIcon } from "@/components/icons";
+import { ChevronDownIcon, ChevronRightIcon, CloseIcon } from "@/components/icons";
 import { NAV } from "@/data/navigation";
 import { useInquiry } from "@/contexts/inquiry-context";
 import { MobileBottomNav } from "./mobile-bottom-nav";
+import { DrawerProfilePanel } from "./drawer-profile-panel";
 
 /**
  * Fixed header with the orange gradient pill shell on desktop and a slide-in
@@ -30,10 +31,13 @@ export function SiteHeader() {
   // Auth.js session state for the header controls. `status` is "loading" until the
   // SessionProvider resolves; we treat anything but "authenticated" as signed-out
   // (shows the "Вход" button), which swaps to the account menu once authenticated.
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const isSignedIn = status === "authenticated";
+  const initial = (session?.user?.name || session?.user?.email || "?").trim().charAt(0).toUpperCase();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [openSub, setOpenSub] = useState<string | null>(null);
+  // Whether the app-style profile sub-screen is pushed over the drawer.
+  const [profileOpen, setProfileOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
   const headerRef = useRef<HTMLElement | null>(null);
   // Honor prefers-reduced-motion for the drawer sub-menu height animation.
@@ -82,6 +86,17 @@ export function SiteHeader() {
       document.body.style.overflow = "";
     };
   }, [drawerOpen]);
+
+  // The profile sub-screen only lives on top of an open drawer — pop it back to
+  // the menu whenever the drawer closes (tap outside, ✕, or a nav link), so
+  // reopening the drawer always lands on the menu, not a stale profile screen.
+  // Adjusted during render (the React-recommended pattern, same as the header
+  // reveal-on-navigation reset below) so no cascading-effect render is needed.
+  const [drawerWasOpen, setDrawerWasOpen] = useState(drawerOpen);
+  if (drawerWasOpen !== drawerOpen) {
+    setDrawerWasOpen(drawerOpen);
+    if (!drawerOpen) setProfileOpen(false);
+  }
 
   // Always reveal the header when the route changes. Header visibility is otherwise
   // driven purely by scroll direction, with no reset tied to navigation — so a
@@ -282,7 +297,7 @@ export function SiteHeader() {
             className="flex size-10 items-center justify-center rounded-xl bg-white/8 text-white"
             aria-label="Затвори менюто"
           >
-            ✕
+            <CloseIcon className="size-5" />
           </Button>
         </div>
         <div className="pb-[calc(22px+env(safe-area-inset-bottom))]">
@@ -388,13 +403,29 @@ export function SiteHeader() {
             >
               Направете запитване
             </Button>
-            {/* Auth: signed-out links to sign-in; signed-in shows the account menu
-                with a label so it's obvious in the dark drawer. */}
+            {/* Auth: signed-out links to sign-in; signed-in shows a full-width
+                row that pushes the app-style profile sub-screen (favourites +
+                sign-out) in from the right — see <DrawerProfilePanel> below.
+                (The old reused <UserMenu> popover got clipped by the drawer.) */}
             {isSignedIn ? (
-              <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/6 px-5 py-2.5">
-                <UserMenu tone="dark" />
-                <span className="text-sm font-bold text-white/80">Моят профил</span>
-              </div>
+              <Button
+                onClick={() => setProfileOpen(true)}
+                rippleTheme="light"
+                aria-haspopup="menu"
+                aria-expanded={profileOpen}
+                className="flex min-h-14 w-full items-center gap-3 rounded-full border border-white/10 bg-white/6 pl-3 pr-4 text-left"
+              >
+                <span className="grid size-10 shrink-0 place-items-center rounded-full border border-white/20 bg-white/10 text-sm font-black uppercase text-white">
+                  {initial}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[15px] font-bold text-white">Моят профил</span>
+                  {session?.user?.email ? (
+                    <span className="block truncate text-xs text-white/55">{session.user.email}</span>
+                  ) : null}
+                </span>
+                <ChevronRightIcon className="size-4 shrink-0 text-white/55" />
+              </Button>
             ) : (
               <LinkButton
                 href="/sign-in"
@@ -408,6 +439,17 @@ export function SiteHeader() {
           </div>
         </div>
       </aside>
+
+      {/* App-style profile sub-screen. Only mounted while signed in; slides in
+          over the drawer when the "Моят профил" row is tapped, with a back
+          button that pops back to the menu. */}
+      {isSignedIn ? (
+        <DrawerProfilePanel
+          open={profileOpen}
+          onBack={() => setProfileOpen(false)}
+          onNavigate={() => setDrawerOpen(false)}
+        />
+      ) : null}
     </>
   );
 }

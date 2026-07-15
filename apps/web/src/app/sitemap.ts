@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/constants";
+import { getAllPosts } from "@/lib/blog";
 
 /**
  * Root sitemap (`/sitemap.xml`) — the indexable STATIC pages only. The ~945k car
@@ -48,5 +49,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
     entry("/obshti-usloviya", "yearly", 0.2), // Terms & Conditions (ЗЕТ/ЗЗП)
     entry("/politika-za-poveritelnost", "yearly", 0.2),
     entry("/politika-za-biskvitki", "yearly", 0.2), // Cookie Policy (ePrivacy)
+    // Blog: the index + every markdown post (content/blog — build-time fs read;
+    // lastModified = the post's own `updated` frontmatter, not build time).
+    entry("/blog", "weekly", 0.7),
+    ...getAllPosts().map(
+      (p): MetadataRoute.Sitemap[number] => ({
+        url: `${SITE_URL}/blog/${p.slug}`,
+        lastModified: new Date(p.updated),
+        changeFrequency: "monthly",
+        priority: 0.7,
+      }),
+    ),
   ];
 }

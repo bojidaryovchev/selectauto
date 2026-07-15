@@ -1,3 +1,4 @@
+import { AlertIcon } from "@/components/icons";
 import type { CarInsurance } from "@/types/car-detail.type";
 
 /** A big-number stat card (label under a coloured value). */
@@ -48,9 +49,10 @@ export function CarInsuranceSummary({ insurance }: { insurance: CarInsurance }) 
           {flags.map((f) => (
             <span
               key={f}
-              className="inline-flex items-center rounded-full bg-[#fdecec] px-3 py-1 text-[12px] font-bold text-[#b91c1c] ring-1 ring-[#f3c9c9]"
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#fdecec] px-3 py-1 text-[12px] font-bold text-[#b91c1c] ring-1 ring-[#f3c9c9]"
             >
-              ⚠ {f}
+              <AlertIcon className="size-3.5" />
+              {f}
             </span>
           ))}
         </div>

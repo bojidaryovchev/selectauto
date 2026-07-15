@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Container, LinkButton } from "@/components/common";
+import { AlertIcon } from "@/components/icons";
 import {
   CarContactPanel,
   CarFactoryOptions,
@@ -290,12 +291,14 @@ async function CarDetailBody({ params }: { params: Params }) {
                     <div className="mt-2.5 flex flex-wrap gap-2">
                       {detail.odometerNotActual ? (
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fff4e5] px-3.5 py-1.5 text-[13px] font-bold text-[#9a5b00] ring-1 ring-[#f5d9ac]">
-                          ⚠ Непотвърден километраж
+                          <AlertIcon className="size-3.5" />
+                          Непотвърден километраж
                         </span>
                       ) : null}
                       {detail.usageFlag ? (
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fff4e5] px-3.5 py-1.5 text-[13px] font-bold text-[#9a5b00] ring-1 ring-[#f5d9ac]">
-                          ⚠ {detail.usageFlag}
+                          <AlertIcon className="size-3.5" />
+                          {detail.usageFlag}
                         </span>
                       ) : null}
                     </div>

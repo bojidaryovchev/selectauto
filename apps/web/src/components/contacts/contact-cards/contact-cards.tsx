@@ -1,5 +1,5 @@
 import { Container, Reveal, Ripple } from "@/components/common";
-import { ArrowRightIcon } from "@/components/icons";
+import { ArrowRightIcon, ClockIcon, LocationIcon, MailIcon, PhoneIcon } from "@/components/icons";
 import { BUSINESS, CONTACT } from "@/constants";
 import { CopyButton } from "./copy-button";
 import { HoursStatus } from "./hours-status";
@@ -27,7 +27,7 @@ const CARD =
   "flex h-full flex-col rounded-[28px] border border-line bg-white px-[30px] py-8 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-strong max-md:px-5 max-md:py-6";
 
 const ICON_TILE =
-  "mb-[18px] flex h-[60px] w-[60px] items-center justify-center rounded-[18px] bg-brand/[0.12] text-[28px]";
+  "mb-[18px] flex h-[60px] w-[60px] items-center justify-center rounded-[18px] bg-brand/[0.12] text-brand-dark";
 
 const HEADING = "mb-1.5 text-[26px] font-black text-[#17181b]";
 const SUB = "text-[15px] leading-[1.7] text-[#5a5d64]";
@@ -55,7 +55,7 @@ export function ContactCards() {
           <Reveal>
             <article className={CARD}>
               <div className={ICON_TILE} aria-hidden="true">
-                📱
+                <PhoneIcon className="size-7" />
               </div>
               <h2 className={HEADING}>Телефон за връзка</h2>
               <p className={`mb-4 ${SUB}`}>Натисни за обаждане или копирай номера</p>
@@ -97,7 +97,7 @@ export function ContactCards() {
           <Reveal delay={0.08}>
             <article className={CARD}>
               <div className={ICON_TILE} aria-hidden="true">
-                📍
+                <LocationIcon className="size-7" />
               </div>
               <h2 className={HEADING}>Адрес</h2>
               <p className="mb-3 text-[22px] font-black text-[#17181b]">{ADDRESS}</p>
@@ -126,7 +126,7 @@ export function ContactCards() {
           <Reveal delay={0.04}>
             <article className={CARD}>
               <div className={ICON_TILE} aria-hidden="true">
-                🕒
+                <ClockIcon className="size-7" />
               </div>
               <h2 className={HEADING}>Работно време</h2>
               <p className={`mb-4 ${SUB}`}>Винаги добре дошли</p>
@@ -149,7 +149,7 @@ export function ContactCards() {
           <Reveal delay={0.12}>
             <article className={CARD}>
               <div className={ICON_TILE} aria-hidden="true">
-                ✉️
+                <MailIcon className="size-7" />
               </div>
               <h2 className={HEADING}>Имейл</h2>
               <p className={`mb-4 ${SUB}`}>

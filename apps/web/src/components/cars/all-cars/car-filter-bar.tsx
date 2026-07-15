@@ -148,6 +148,11 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
 
   const isPast = draft.status === "past";
 
+  // Applied-filter count for the Clear badge. Every set key in `draft` is a live
+  // filter — `withChange` strips undefined/empty/NaN keys, so a plain key count
+  // is exact (brand+model, priceMin+priceMax, etc. each count once).
+  const appliedCount = Object.keys(draft).length;
+
   return (
     <div className="rounded-2xl border border-line bg-white p-5 shadow-sm max-md:p-4">
       {/* ── Mode toggle (Active vs Past) + Clear ── */}
@@ -168,9 +173,15 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
         </div>
         <Button
           onClick={onReset}
-          className="inline-flex h-10 items-center rounded-[10px] border border-[#ddd] px-5 text-sm font-semibold text-muted transition hover:border-[#bbb] hover:text-ink"
+          disabled={appliedCount === 0}
+          className="inline-flex h-10 items-center gap-2 rounded-[10px] border border-[#ddd] px-5 text-sm font-semibold text-muted transition hover:border-[#bbb] hover:text-ink disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-[#ddd] disabled:hover:text-muted"
         >
           Изчисти филтрите
+          {appliedCount > 0 ? (
+            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-xs font-bold leading-none text-white">
+              {appliedCount}
+            </span>
+          ) : null}
         </Button>
       </div>
 
