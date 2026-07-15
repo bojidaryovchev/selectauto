@@ -11,7 +11,7 @@ const HERO_POINTS = [
 /** About hero — full-bleed video background with a glass info card. */
 export function AboutHero() {
   return (
-    <section className="relative flex min-h-[92vh] items-end overflow-hidden bg-black">
+    <section className="relative flex min-h-[92vh] items-end overflow-hidden bg-black pt-(--header-h)">
       <CanvasVideo src={ABOUT_VIDEO_SRC} poster={ABOUT_VIDEO_POSTER} />
 
       {/* Gradient + orange-glow overlay */}
