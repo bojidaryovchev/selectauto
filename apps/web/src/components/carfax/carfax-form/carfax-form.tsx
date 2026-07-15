@@ -23,9 +23,6 @@ type Status =
   | { kind: "success"; message: string }
   | { kind: "error"; message: string };
 
-const PAGE_URL =
-  "https://selectauto.bg/carfax-%d0%b7%d0%b0%d1%8f%d0%b2%d0%ba%d0%b0/";
-
 const INPUT_CLASS =
   "min-h-[54px] w-full appearance-none rounded-[14px] border border-[#d9dde4] bg-white px-4 text-base font-semibold text-[#17181b] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-[border-color,box-shadow,transform] duration-200 placeholder:font-medium placeholder:text-[#9aa0aa] focus:-translate-y-px focus:border-brand focus:shadow-[0_0_0_4px_rgba(216,111,22,0.12)] focus:outline-none";
 
@@ -58,7 +55,10 @@ export function CarfaxForm() {
       ...values,
       phone,
       vin,
-      page_url: PAGE_URL,
+      // The actual page the lead came from (was a hardcoded legacy WP URL —
+      // every lead recorded a dead route as its source). Client component, so
+      // the submit handler always runs in the browser.
+      page_url: window.location.href,
     };
 
     try {

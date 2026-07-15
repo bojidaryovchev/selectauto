@@ -18,18 +18,28 @@ The old site has ~zero equity to protect (no measurable authority, broken titles
 absent from every top-20 — see 12 §2.0), so this is a cleanup, not a preservation exercise.
 Goal: give Google an unambiguous, crawl-budget-cheap story for every legacy URL pattern.
 
-- [ ] `[code]` **Redirect/410 map served by the rebuild from day one** (proxy.ts or
-      next.config redirects; the sold-lot 410 pattern in `proxy.ts` is the template):
-  | Legacy pattern | Action |
+- [x] `[code]` **Redirect/410 map served by the rebuild from day one** — **DONE 2026-07-15**:
+      [`lib/legacy-redirects.ts`](../apps/web/src/lib/legacy-redirects.ts) wired into
+      [`proxy.ts`](../apps/web/src/proxy.ts). Live-tested against the real DB (24+ cases incl.
+      the actual Korean-character slugs from the audit) and hardened by an adversarial review
+      (7 confirmed findings fixed: inbound query strings preserved on 301s; WP `-N` dedupe
+      suffixes no longer mis-match single-digit model slugs; `/внос`+`/вноc` 301 → `/proces`
+      instead of a soft-404 homepage redirect; 10-min reference-cache TTL bounds stale-slug
+      windows after renames). As-built map:
+  | Legacy pattern | Action (as built) |
   |---|---|
   | `/процес/`, `/за-нас/`, `/контакти/` (+ percent-encoded variants) | 301 → `/proces`, `/za-nas`, `/kontakti` |
   | `/cars/`, `/всички-автомобили/`, `/коли-за-продажба/`, `/car/` (archive) | 301 → `/vsichki-avtomobili` |
-  | `/car/{slug}` (~391k) | parse make/model from slug (`lib/car-slug.ts` matching) → 301 → model hub, else brand hub; **unparseable → 410** |
+  | `/внос/`, `/вноc/` (broken Latin-c slug) | 301 → `/proces` |
+  | `/car/{slug}` (~391k) | make/model parsed from slug → 301 → model hub, else brand hub; unparseable/DB-error → **410** |
   | `/auction-car/{id}` | 410 |
-  | `/sql-cars-test/`, `/sql-car-test/`, `/new-sql-listing/`, `/sample-page/`, `/all-cars-dashboard/`, `/вноc/` | 410 |
-  | Old blog posts | 410, EXCEPT any we port into the new blog (301 then). Candidates found indexed: the Canada guide, „Yaris Cross vs Kona" comparison |
-  | Anything else unmatched | 410 (with `x-robots-tag: noindex`) |
-- [ ] `[code]` Redirect handling must decode percent-encoded Cyrillic/Korean slugs before matching.
+  | `/sql-cars-test/`, `/sql-car-test/`, `/new-sql-listing/`, `/sample-page/`, `/all-cars-dashboard/` | 410 |
+  | Anything else unmatched | falls through to Next's 404 (the proxy never terminates live-app paths) |
+- [ ] `[code]` Old blog posts: currently fall through to 404. When the new `/blog` ships,
+      decide the port list (candidates found indexed: the Canada guide, „Yaris Cross vs Kona")
+      → 301 ported posts, optionally add a blanket 410 for the rest.
+- [x] `[code]` Percent-encoded Cyrillic/Korean slugs decoded before matching — done (verified
+      with real `%D0%…`/`%ed%8a%…` paths).
 - [ ] `[user]` **Google Search Console**: verify the domain property (DNS), submit the three
       new sitemaps, remove/let-die the old Yoast sitemaps, use the Removals tool on the junk
       URLs for fast de-indexing.
@@ -42,18 +52,28 @@ Goal: give Google an unambiguous, crawl-budget-cheap story for every legacy URL 
 
 ## Phase A — Wiring & hygiene (days; near-zero cost; do before any new content)
 
-- [ ] `[code]` **Nav/footer wiring** — add to header nav and/or footer: the 3 country hubs,
-      `/kalkulator`, `/proverka-vin`, `/chesto-zadavani-vaprosi`, `/otzivi`; link the hubs from
-      the homepage. (Money pages are currently orphaned — 11 §8.)
-- [ ] `[code]` **Refresh `public/llms.txt`** — add country hubs, calculator, VIN tool, FAQ hub,
-      reviews (currently omits every money page).
-- [ ] `[code]` **Canonical + OG** on `/za-nas`, `/carfax`, `/proces`.
-- [ ] `[code]` **Listing `<title>` enrichment** — add price/fuel/„внос от {държава}" to
-      `/avtomobil/[id]` titles (competitors' listing titles are uniformly thin; cheap CTR edge
-      across ~945k pages).
-- [ ] `[code]` **Visible masked VIN** on the listing spec sheet (currently JSON-LD-only).
-- [ ] `[code]` **Organization `sameAs`** in the site-wide JSON-LD → real Facebook/Instagram/
-      YouTube/Viber profiles (brand-disambiguation input).
+- [x] `[code]` **Nav/footer wiring** — **DONE**: `data/navigation.ts` puts the hubs under a
+      top-level „Внос" (parent → Korea flagship), tools under „Инструменти", trust cluster
+      under „За нас"; FOOTER_NAV carries the hubs, FOOTER_INFO the tools/FAQ/reviews.
+- [x] `[code]` **`public/llms.txt` refreshed** — **DONE 2026-07-15**: country hubs, calculator,
+      VIN tool, FAQ hub, reviews, brand-hub example all listed (BG+EN).
+- [x] `[code]` **Canonical + OG** on `/za-nas`, `/carfax`, `/proces` — **DONE 2026-07-15**.
+- [x] `[code]` **Listing `<title>` enrichment** — **DONE 2026-07-15**: active cars render
+      „{title} — {цена}, внос от {Корея/САЩ/Канада} | SelectAuto"; country comes from the new
+      `sourceCountry` (lot `location_country`; never guessed — Copart/IAAI span USA+Canada);
+      sold cars keep price out of the title and label it „Продаден за" in the description.
+      BONUS fix: upstream-duplicated titles (Ritchie-Bros-sourced IAAI trucks,
+      „2020 Freightliner Cascadia 126 2020 Freightliner…") collapsed via `lib/title-clean.ts`
+      in BOTH card + detail mappers.
+- [x] `[code]` ~~Visible masked VIN~~ **RESOLVED DIFFERENTLY**: the FULL VIN is visible on the
+      spec sheet (and in the Car JSON-LD) — deliberate deviation from the old blueprint's
+      "masked" wording: visible VINs catch VIN searches (bidmotors' proven pattern) and
+      masking would contradict the JSON-LD.
+- [x] `[code]` **Organization `sameAs`** — **DONE**: `site-jsonld.ts` emits the real
+      Facebook/Instagram/TikTok/Viber profiles from `constants` SOCIALS.
+- [x] `[code]` _(unplanned, from review)_ Dead legacy path removed from `car-mapper.ts`
+      (`toCarView` still linked WP-era `/коли-за-продажба/`, `/внос/` and double-prefixed the
+      year); homepage DB-down fallback cards no longer link legacy `/car/{slug}` URLs.
 - [ ] `[user]` **Google Business Profile**: claim/create, consistent „SelectAuto" NAP matching
       `/kontakti` — the brand SERP is currently owned by US namesakes + an unrelated „Select
       Auto BG" dealership.
