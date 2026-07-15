@@ -199,6 +199,8 @@ export function carDetailFromRows(opts: {
   brand?: string;
   brandLogo?: string;
   model?: string;
+  brandExternalId?: number;
+  modelExternalId?: number;
   generation?: { name?: string; fromYear?: number; toYear?: number };
   /** Archive avg sale price for this model+year (market benchmark), when available. */
   marketAvg?: { avg: number; count: number };
@@ -394,6 +396,8 @@ export function carDetailFromRows(opts: {
     brand: opts.brand,
     brandLogo: opts.brandLogo,
     model: opts.model,
+    brandExternalId: opts.brandExternalId,
+    modelExternalId: opts.modelExternalId,
     generation: opts.generation,
     year: car.year ?? undefined,
     vin: car.vin ?? undefined,

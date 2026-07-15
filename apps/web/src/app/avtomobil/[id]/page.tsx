@@ -156,6 +156,18 @@ async function CarDetailBody({ params }: { params: Params }) {
   const hubHref = modelHubPath(detail.brand, detail.model);
   const hubLabel = detail.brand && detail.model ? `${detail.brand} ${detail.model}` : null;
 
+  // Deep-link for the concluded car's "Виж активни обяви" CTA → the catalog
+  // pre-filtered to this exact make (+ model). Uses the manufacturer/model
+  // external ids the catalog `?brand=&model=` params expect (model is brand-scoped,
+  // so only add it alongside brand). Falls back to the unfiltered catalog when the
+  // ids are missing.
+  const activeCatalogHref = (() => {
+    if (detail.brandExternalId == null) return "/vsichki-avtomobili/";
+    const p = new URLSearchParams({ brand: String(detail.brandExternalId) });
+    if (detail.modelExternalId != null) p.set("model", String(detail.modelExternalId));
+    return `/vsichki-avtomobili?${p.toString()}`;
+  })();
+
   // Breadcrumb matching the visible nav (Home → Catalog → [model hub] → this car).
   // Emitted for both active and past cars (a breadcrumb is fine on a noindexed page —
   // it just won't surface; harmless and keeps the trail consistent).
@@ -336,7 +348,7 @@ async function CarDetailBody({ params }: { params: Params }) {
 
                 {detail.isPast ? (
                   <LinkButton
-                    href="/vsichki-avtomobili/"
+                    href={activeCatalogHref}
                     rippleTheme="dark"
                     className="inline-flex min-h-13 w-full items-center justify-center rounded-full border border-line bg-white px-5 text-sm font-extrabold uppercase tracking-wide text-[#333] transition-transform duration-200 hover:-translate-y-0.5 hover:text-brand-dark"
                   >

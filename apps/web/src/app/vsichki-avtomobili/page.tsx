@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { Container } from "@/components/common";
 import { AllCarsGrid, CarFilterBar, CarGridSkeleton } from "@/components/cars/all-cars";
 import { SiteFooter, SiteHeader } from "@/components/layout";
+import { FilterNavProvider } from "@/contexts/filter-nav-context";
 import { SITE_URL } from "@/constants";
 import { AFTER_PARAM, parseCarFilters, serializeCarFilters } from "@/lib/car-filters";
 import { buildBreadcrumbJsonLd, buildItemListJsonLd } from "@/lib/site-jsonld";
@@ -70,7 +71,10 @@ export default async function AllCarsPage({ searchParams }: { searchParams: Prom
   const useWindow = !!after && !filters.search;
 
   const [facets, firstPage, count] = await Promise.all([
-    getCarFacets(),
+    // Pass filters so the count-bearing dropdowns (Тип/Гориво/Състояние) show
+    // counts for the CURRENT selection (live leave-one-out) once a selective
+    // filter is set — otherwise the global summary counts stand. See getCarFacets.
+    getCarFacets(filters),
     useWindow ? getCarsWindow(filters, after!) : getCarsPage(filters, null),
     getCarsCount(filters),
   ]);
@@ -124,30 +128,37 @@ export default async function AllCarsPage({ searchParams }: { searchParams: Prom
               </p>
             ) : null}
 
-            <CarFilterBar facets={facets} current={filters} />
+            {/* Shares one pending state across the filter bar and the grid: a
+                filter change is a soft (transition) navigation that keeps the old
+                grid on screen and suppresses the Suspense skeleton, so the
+                provider surfaces the in-flight state as a dimmed grid + indicator
+                instead of a silent freeze-then-swap. */}
+            <FilterNavProvider>
+              <CarFilterBar facets={facets} current={filters} />
 
-            {isSearch ? (
-              <p className="mb-4 mt-6 text-sm text-muted">Резултати от търсенето</p>
-            ) : (
-              <p className="mb-4 mt-6 text-sm text-muted">
-                {isPast ? "Намерени резултати: " : "Намерени автомобили: "}
-                <strong className="text-ink">{count.count.toLocaleString("bg-BG").replace(/ /g, " ")}</strong>
-              </p>
-            )}
+              {isSearch ? (
+                <p className="mb-4 mt-6 text-sm text-muted">Резултати от търсенето</p>
+              ) : (
+                <p className="mb-4 mt-6 text-sm text-muted">
+                  {isPast ? "Намерени резултати: " : "Намерени автомобили: "}
+                  <strong className="text-ink">{count.count.toLocaleString("bg-BG").replace(/ /g, " ")}</strong>
+                </p>
+              )}
 
-            <Suspense fallback={<CarGridSkeleton count={12} />}>
-              <AllCarsGrid
-                key={filtersKey}
-                initialPage={firstPage}
-                initialAnchor={initialAnchor}
-                filters={filters}
-                // Search is a capped lookup, not a feed — its "total" is just
-                // what came back. The feed passes the exact filtered count so
-                // the grid can reserve fixed space for the entire catalog.
-                totalCount={isSearch ? firstPage.cars.length : count.count}
-                aboveCount={aboveCount}
-              />
-            </Suspense>
+              <Suspense fallback={<CarGridSkeleton count={12} />}>
+                <AllCarsGrid
+                  key={filtersKey}
+                  initialPage={firstPage}
+                  initialAnchor={initialAnchor}
+                  filters={filters}
+                  // Search is a capped lookup, not a feed — its "total" is just
+                  // what came back. The feed passes the exact filtered count so
+                  // the grid can reserve fixed space for the entire catalog.
+                  totalCount={isSearch ? firstPage.cars.length : count.count}
+                  aboveCount={aboveCount}
+                />
+              </Suspense>
+            </FilterNavProvider>
           </div>
         </Container>
       </main>

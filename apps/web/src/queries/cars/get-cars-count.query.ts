@@ -1,8 +1,8 @@
-import { and, eq, gte, inArray, lte, ne, or, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
+import { buildListingConditions, tableFor } from "@/lib/car-listing-conditions";
 import { getDb, schema } from "@/lib/db";
 import type { CarFilters } from "@/types/car-filters.type";
 
-const cl = schema.carListings;
 const clc = schema.carListingCounts;
 
 /**
@@ -74,57 +74,6 @@ async function getBroadCount(filters: CarFilters): Promise<number | null> {
   return rows[0]?.n ?? 0;
 }
 
-/** Same WHERE builder as the listing page, minus the keyset cursor. */
-type ListingTable = typeof schema.carListings | typeof schema.carListingsArchived;
-
-function tableFor(filters: CarFilters): ListingTable {
-  return filters.status === "past" ? schema.carListingsArchived : schema.carListings;
-}
-
-function buildConditions(filters: CarFilters, t: ListingTable = cl) {
-  const conds = [];
-  if (filters.channel === "buy-now") conds.push(and(eq(t.buyNow, true), sql`${t.effectivePrice} > 0`));
-  else if (filters.channel === "auction")
-    conds.push(or(ne(t.buyNow, true), sql`${t.buyNow} IS NULL`, sql`${t.effectivePrice} IS NULL`));
-  if (filters.market === "us") conds.push(eq(t.locationCountry, "USA"));
-  else if (filters.market === "kr") conds.push(eq(t.locationCountry, "kr"));
-  else if (filters.market === "ca") conds.push(eq(t.locationCountry, "Canada"));
-  // Auction-timing window (active view only) — mirror the page query's predicate
-  // so the count matches the grid. See docs/08-web-all-cars-page.md §3.
-  if (filters.status !== "past" && filters.auctionWindow) {
-    conds.push(sql`${t.saleDate} > now()`);
-    if (filters.auctionWindow === "today")
-      // Mirror the page query: "Днес" = end of the current US-Eastern auction day
-      // (the only dated lots are US/CA Copart+IAAI). See get-cars-page.query.ts.
-      conds.push(sql`${t.saleDate} < date_trunc('day', now() AT TIME ZONE 'America/New_York') AT TIME ZONE 'America/New_York' + interval '1 day'`);
-    else if (filters.auctionWindow === "24h") conds.push(sql`${t.saleDate} <= now() + interval '24 hours'`);
-    else if (filters.auctionWindow === "3d") conds.push(sql`${t.saleDate} <= now() + interval '3 days'`);
-    else if (filters.auctionWindow === "7d") conds.push(sql`${t.saleDate} <= now() + interval '7 days'`);
-  }
-  if (filters.brand !== undefined) conds.push(eq(t.manufacturerId, filters.brand));
-  if (filters.model !== undefined) conds.push(eq(t.modelId, filters.model));
-  if (filters.color) conds.push(eq(t.carColor, filters.color));
-  if (filters.drive) conds.push(eq(t.driveWheel, filters.drive));
-  if (filters.fuel) conds.push(eq(t.fuelType, filters.fuel));
-  if (filters.condition) {
-    // Mirror the page query: the facet value is one or more raws (a BG label can
-    // cover several, e.g. run_and_drives,engine_starts), so match the whole set.
-    const raws = filters.condition.split(",").filter(Boolean);
-    if (raws.length === 1) conds.push(eq(t.condition, raws[0]));
-    else if (raws.length > 1) conds.push(inArray(t.condition, raws));
-  }
-  if (filters.type) {
-    const [kind, value] = filters.type.split(":");
-    if (kind === "vt" && value) conds.push(eq(t.vehicleType, value));
-    else if (kind === "bt" && value) conds.push(eq(t.bodyType, value));
-  }
-  if (filters.yearFrom !== undefined) conds.push(gte(t.carYear, filters.yearFrom));
-  if (filters.yearTo !== undefined) conds.push(lte(t.carYear, filters.yearTo));
-  if (filters.priceMin !== undefined) conds.push(gte(t.effectivePrice, String(filters.priceMin)));
-  if (filters.priceMax !== undefined) conds.push(lte(t.effectivePrice, String(filters.priceMax)));
-  return conds;
-}
-
 /** The exact number of cars matching the filters. */
 export type CarsCount = { count: number };
 
@@ -153,7 +102,7 @@ export async function getCarsCount(filters: CarFilters): Promise<CarsCount> {
   if (broad !== null) return { count: broad };
 
   const t = tableFor(filters);
-  const conds = buildConditions(filters, t);
+  const conds = buildListingConditions(filters, t);
   const rows = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(t)

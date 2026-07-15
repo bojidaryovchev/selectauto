@@ -1,5 +1,6 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { and, asc, eq, sql } from "drizzle-orm";
+import { buildListingConditions, tableFor } from "@/lib/car-listing-conditions";
 import {
   COLOR_BG,
   bodyTypeLabel,
@@ -11,7 +12,7 @@ import {
 } from "@/lib/car-labels";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { getDb, schema } from "@/lib/db";
-import type { FacetOption, FacetOptions } from "@/types/car-filters.type";
+import type { CarFilters, FacetOption, FacetOptions } from "@/types/car-filters.type";
 
 const cf = schema.carListingFacets;
 
@@ -115,10 +116,28 @@ export async function getCarBrands(): Promise<FacetOption[]> {
  * manufacturer external id (string).
  *
  * Still NOT app-cached: each read is a cheap index scan, so it reads Neon directly.
+ *
+ * ── Filter-aware counts (Тип / Гориво / Състояние) ──
+ * The precomputed summary is GLOBAL (whole active catalog), so its counts go stale
+ * the moment the user filters — "Дизел (12 000)" even after picking a brand with no
+ * diesels. When `filters` carries a SELECTIVE predicate (brand/model/year/price —
+ * see `hasSelectiveFilter`), we overlay LIVE leave-one-out counts for the three
+ * count-bearing dims onto the summary's option lists, zeroing values absent from
+ * the filtered subset so the UI can disable those options (dead-end prevention).
+ * The option lists + their order stay summary-derived (stable — options never jump
+ * as filters change); only the numbers are refreshed. Weak-only filter states keep
+ * the global counts (guard rationale in `hasSelectiveFilter`).
  */
-export async function getCarFacets(): Promise<FacetOptions> {
+export async function getCarFacets(filters: CarFilters = {}): Promise<FacetOptions> {
   try {
-    return await computeCarFacets();
+    // Base option lists (+ global counts) from the summary, and — only when a
+    // selective filter is present — the live leave-one-out counts, computed
+    // concurrently (they're independent reads).
+    const [base, live] = await Promise.all([
+      computeCarFacets(),
+      hasSelectiveFilter(filters) ? computeLiveFacetCounts(filters) : Promise.resolve(null),
+    ]);
+    return live ? overlayCounts(base, live) : base;
   } catch (error) {
     // Never hard-fail a render on facets (it's the heaviest query set). An empty
     // facet set degrades the filter dropdowns gracefully; the catalog still works.
@@ -280,4 +299,112 @@ async function computeCarFacets(): Promise<FacetOptions> {
   const types = typeOpts.sort((a, b) => b.count - a.count);
 
   return { brands, modelsByBrand, colors, drives, fuels, conditions, types, years };
+}
+
+/**
+ * Is `filters` selective enough that live leave-one-out facet aggregates run over
+ * a SMALL, index-narrowed subset? Only brand / model / year-range / price-range
+ * qualify — each has a `(col, sort_id DESC)` index (migrations 0008/0015/0021) that
+ * narrows the projection to a bounded slice before the GROUP BY.
+ *
+ * Crucially, `computeLiveFacetCounts` only ever LEAVES OUT the low-selectivity dims
+ * (fuel/condition/type) and NEVER these, so every leave-one-out subset still
+ * retains the selective predicate and stays cheap. Weak-only filter states
+ * (fuel/condition/color/drive/market/channel alone) deliberately do NOT qualify: a
+ * GROUP BY over e.g. all-gasoline (~hundreds of k rows) is the exact full-projection
+ * contention the precomputed summary (migration 0017) exists to avoid, so those
+ * keep the global summary counts.
+ */
+function hasSelectiveFilter(f: CarFilters): boolean {
+  return (
+    f.brand !== undefined ||
+    f.model !== undefined ||
+    f.yearFrom !== undefined ||
+    f.yearTo !== undefined ||
+    f.priceMin !== undefined ||
+    f.priceMax !== undefined
+  );
+}
+
+/** Shallow-omit one filter key (leave-one-out): a facet's own selection must not
+ *  constrain its own counts, else picking a value would zero every sibling option
+ *  in that same dropdown. */
+function omit(f: CarFilters, key: keyof CarFilters): CarFilters {
+  const next = { ...f };
+  delete next[key];
+  return next;
+}
+
+type LiveFacetCounts = {
+  fuel: Map<string, number>;
+  condition: Map<string, number>;
+  vtype: Map<string, number>;
+  btype: Map<string, number>;
+};
+
+/**
+ * Live leave-one-out counts for the three count-bearing dims (fuel / condition /
+ * type = vehicle_type + body_type) over the filtered subset. Each dimension counts
+ * with all OTHER active filters applied (its own selection omitted). Runs only when
+ * `hasSelectiveFilter(filters)` held, so each GROUP BY is over the selective
+ * predicate's small, index-narrowed slice — four concurrent cheap aggregates, not
+ * the full-projection scan 0017 removed. Uses `tableFor(filters)` so counts match
+ * the grid the user sees (active vs archived).
+ */
+async function computeLiveFacetCounts(filters: CarFilters): Promise<LiveFacetCounts> {
+  const db = getDb();
+  const t = tableFor(filters);
+
+  const fuelConds = buildListingConditions(omit(filters, "fuel"), t);
+  const condConds = buildListingConditions(omit(filters, "condition"), t);
+  const typeConds = buildListingConditions(omit(filters, "type"), t);
+  // Body types are only meaningful for automobiles (mirrors the summary in 0017).
+  const btypeConds = [...typeConds, eq(t.vehicleType, "automobile")];
+
+  const whereOf = (conds: ReturnType<typeof buildListingConditions>) =>
+    conds.length > 0 ? and(...conds) : undefined;
+
+  const [fuelRows, condRows, vtypeRows, btypeRows] = await Promise.all([
+    db.select({ v: t.fuelType, n: sql<number>`count(*)::int` }).from(t).where(whereOf(fuelConds)).groupBy(t.fuelType),
+    db.select({ v: t.condition, n: sql<number>`count(*)::int` }).from(t).where(whereOf(condConds)).groupBy(t.condition),
+    db.select({ v: t.vehicleType, n: sql<number>`count(*)::int` }).from(t).where(whereOf(typeConds)).groupBy(t.vehicleType),
+    db.select({ v: t.bodyType, n: sql<number>`count(*)::int` }).from(t).where(and(...btypeConds)).groupBy(t.bodyType),
+  ]);
+
+  const toMap = (rows: { v: string | null; n: number }[]): Map<string, number> => {
+    const m = new Map<string, number>();
+    for (const r of rows) if (r.v != null) m.set(r.v, r.n);
+    return m;
+  };
+
+  return { fuel: toMap(fuelRows), condition: toMap(condRows), vtype: toMap(vtypeRows), btype: toMap(btypeRows) };
+}
+
+/**
+ * Overlay live counts onto the summary-derived option lists — keeping the lists +
+ * their order untouched (options never jump as filters change) and setting each
+ * option's count to its filtered-subset value (0 when absent, so the UI disables
+ * it). Only the three count-bearing dims are touched; brands/models/colors/drives/
+ * years pass through unchanged.
+ */
+function overlayCounts(base: FacetOptions, live: LiveFacetCounts): FacetOptions {
+  const fuels: FacetOption[] = base.fuels.map((o) => ({ ...o, count: live.fuel.get(o.value) ?? 0 }));
+
+  const conditions: FacetOption[] = base.conditions.map((o) => ({
+    ...o,
+    // A condition option's value is one or more comma-joined raws (a BG label can
+    // cover several) — sum their live counts.
+    count: o.value
+      .split(",")
+      .filter(Boolean)
+      .reduce((sum, raw) => sum + (live.condition.get(raw) ?? 0), 0),
+  }));
+
+  const types: FacetOption[] = base.types.map((o) => {
+    const [kind, val] = o.value.split(":");
+    const count = kind === "vt" ? (live.vtype.get(val) ?? 0) : kind === "bt" ? (live.btype.get(val) ?? 0) : 0;
+    return { ...o, count };
+  });
+
+  return { ...base, fuels, conditions, types };
 }

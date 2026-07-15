@@ -138,6 +138,11 @@ export type CarDetail = {
   brandLogo?: string;
   /** Resolved model name (from vehicle_models), when available — for JSON-LD. */
   model?: string;
+  /** manufacturers.external_id — the catalog `?brand=` param, for deep-linking a
+   *  concluded car to its make-filtered catalog view. */
+  brandExternalId?: number;
+  /** vehicle_models.external_id — the catalog `?model=` param (brand-scoped). */
+  modelExternalId?: number;
   /** Resolved generation (from vehicle_generations) — name + year range, when available. */
   generation?: { name?: string; fromYear?: number; toYear?: number };
   year?: number;

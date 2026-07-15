@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { checkVinRecords, isValidVin } from "@/lib/vin-reports";
+import { checkVinRecords } from "@/lib/vin-reports";
+import { vinCheckSchema } from "@/schemas/vin-check.schema";
 
 /**
  * VIN record-availability endpoint for the /proverka-vin tool. Thin server-side
@@ -51,15 +52,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, message: "Невалидна заявка." }, { status: 400 });
   }
 
-  const rawVin = typeof (body as { vin?: unknown })?.vin === "string" ? (body as { vin: string }).vin : "";
-  const vin = rawVin.trim().toUpperCase();
-
-  if (!isValidVin(vin)) {
+  // Same schema the client form validates against, so the two never drift. The
+  // schema trims + upper-cases, so `vin` is already normalised past this point.
+  const parsed = vinCheckSchema.safeParse(body);
+  if (!parsed.success) {
     return NextResponse.json(
-      { success: false, message: "Невалиден VIN номер. VIN се състои от 17 символа (без I, O, Q)." },
+      {
+        success: false,
+        message:
+          parsed.error.issues[0]?.message ??
+          "Невалиден VIN номер. VIN се състои от 17 символа (без I, O, Q).",
+      },
       { status: 400 },
     );
   }
+  const { vin } = parsed.data;
 
   try {
     const result = await checkVinRecords(vin);

@@ -1,7 +1,10 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
 import { Button, LinkButton } from "@/components/common";
+import { vinCheckSchema, type VinCheckValues } from "@/schemas/vin-check.schema";
 
 /**
  * Live VIN record-availability tool for /proverka-vin. Calls the server route
@@ -9,39 +12,41 @@ import { Button, LinkButton } from "@/components/common";
  * stays server-side). Shows how many Carfax / AutoCheck records exist for the VIN
  * plus the normalized vehicle name, then routes the user to the Carfax lead form
  * for the full (paid, manually-run) report. No paid call happens here.
+ *
+ * The VIN field is validated with react-hook-form + `zodResolver(vinCheckSchema)`
+ * — the SAME schema the `/api/vin-check` route validates against, so the instant
+ * client check and the server guard can never drift. Field-level format errors
+ * surface inline; `result` holds the async lookup outcome (network / API).
  */
 
 type Result =
   | { kind: "idle" }
-  | { kind: "loading" }
   | { kind: "error"; message: string }
   | { kind: "ok"; vin: string; vehicle: string | null; carfax: number; autocheck: number };
 
 const INPUT_CLASS =
   "min-h-[54px] w-full appearance-none rounded-[14px] border border-[#d9dde4] bg-white px-4 text-base font-semibold uppercase tracking-wide text-[#17181b] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-[border-color,box-shadow] duration-200 placeholder:font-medium placeholder:normal-case placeholder:text-[#9aa0aa] focus:border-brand focus:shadow-[0_0_0_4px_rgba(216,111,22,0.12)] focus:outline-none";
 
-/** VIN format check mirrored from the server (17 chars, no I/O/Q) for instant UX. */
-const VIN_RE = /^[A-HJ-NPR-Z0-9]{17}$/;
-
 export function VinCheckTool() {
-  const [vin, setVin] = useState("");
   const [result, setResult] = useState<Result>({ kind: "idle" });
 
-  const trimmed = vin.trim().toUpperCase();
-  const valid = VIN_RE.test(trimmed);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<VinCheckValues>({
+    resolver: zodResolver(vinCheckSchema),
+    defaultValues: { vin: "" },
+  });
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!valid) {
-      setResult({ kind: "error", message: "Въведи валиден 17-значен VIN номер (без I, O, Q)." });
-      return;
-    }
-    setResult({ kind: "loading" });
+  // `values.vin` is already trimmed + upper-cased by the schema.
+  async function onValid({ vin }: VinCheckValues) {
+    setResult({ kind: "idle" });
     try {
       const res = await fetch("/api/vin-check", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ vin: trimmed }),
+        body: JSON.stringify({ vin }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
@@ -64,30 +69,38 @@ export function VinCheckTool() {
 
   return (
     <div className="rounded-2xl border border-line bg-white p-6 shadow-card max-md:p-5">
-      <form onSubmit={onSubmit} className="flex flex-col gap-3 sm:flex-row">
+      <form
+        noValidate
+        // Clear any stale lookup result when the VIN fails client validation, so a
+        // previous "ok" card doesn't linger next to the new inline field error.
+        onSubmit={handleSubmit(onValid, () => setResult({ kind: "idle" }))}
+        className="flex flex-col gap-3 sm:flex-row"
+      >
         <label className="sr-only" htmlFor="vinCheckInput">
           VIN номер
         </label>
         <input
           id="vinCheckInput"
-          name="vin"
-          value={vin}
-          onChange={(e) => setVin(e.target.value)}
           maxLength={17}
           autoComplete="off"
           spellCheck={false}
           placeholder="Въведи VIN номер (17 символа)"
           className={INPUT_CLASS}
+          {...register("vin")}
         />
         <Button
           type="submit"
-          disabled={result.kind === "loading"}
+          disabled={isSubmitting}
           rippleTheme="light"
           className="inline-flex min-h-13.5 shrink-0 items-center justify-center rounded-[14px] bg-brand px-7 text-sm font-extrabold uppercase tracking-wide text-white transition-transform duration-200 hover:-translate-y-px disabled:opacity-60 max-sm:w-full"
         >
-          {result.kind === "loading" ? "Проверявам…" : "Провери"}
+          {isSubmitting ? "Проверявам…" : "Провери"}
         </Button>
       </form>
+
+      {errors.vin?.message ? (
+        <p className="mt-3 text-sm font-semibold text-red-600">{errors.vin.message}</p>
+      ) : null}
 
       {result.kind === "error" ? <p className="mt-3 text-sm font-semibold text-red-600">{result.message}</p> : null}
 

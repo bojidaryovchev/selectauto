@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useWindowVirtualizer, windowScroll } from "@tanstack/react-virtual";
 import { AuctionCard } from "@/components/cars/all-cars/auction-card";
 import { SkeletonCard } from "@/components/cars/all-cars/car-grid-skeleton";
+import { useFilterNav } from "@/contexts/filter-nav-context";
 import { AFTER_PARAM } from "@/lib/car-filters";
 import { loadMoreCars, loadPrevCars } from "@/mutations/cars";
 import type { CarFilters, CarsPage } from "@/types/car-filters.type";
@@ -116,6 +117,11 @@ export function AllCarsGrid({
   /** Cars above the seeded window in the feed — the window's absolute position. */
   aboveCount: number;
 }) {
+  // While a filter navigation is in flight the committed (still-visible) grid is
+  // the PREVIOUS filter's results — dim + disable it so the stale cars read as
+  // "updating" rather than current. Safe with no provider (hub pages): false.
+  const { pending } = useFilterNav();
+
   const [cars, setCars] = useState<CarView[]>(initialPage.cars);
   const [bottomCursor, setBottomCursor] = useState<string | null>(initialPage.nextCursor);
   const [topCursor, setTopCursor] = useState<string | null>(initialPage.prevCursor ?? null);
@@ -498,10 +504,41 @@ export function AllCarsGrid({
     return () => clearTimeout(id);
   }, [items, cars, columns, startCar, headerOffset, anchorSettled]);
 
+  // Frosted-glass veil shown over the (stale) results while a filter nav is
+  // pending — the visible feedback that a filter change is applying.
+  //
+  // It is `position: sticky` + a canceling negative margin so it costs ZERO
+  // layout space (the container's `offsetTop` → scrollMargin is untouched) yet
+  // pins to the viewport as you scroll. CRUCIALLY it is NOT a full-height layer:
+  // the reserved row space can be ~30M px tall, and a `filter`/inset-0 blur over
+  // that would force the browser to rasterize an enormous surface. A
+  // viewport-sized box with `backdrop-filter` keeps the blur bounded to what's
+  // actually on screen. Sits below the fixed header (`top`), above the cards
+  // (z-index), and never eats clicks (`pointer-events: none`).
+  const glassVeil = pending ? (
+    <div
+      aria-hidden
+      className="pointer-events-none sticky z-5 rounded-2xl border border-white/40 bg-white/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] backdrop-blur-md backdrop-saturate-150"
+      style={{
+        top: "var(--header-h)",
+        height: "calc(100dvh - var(--header-h))",
+        // Cancel the sticky box's flow height so it displaces nothing.
+        marginBottom: "calc(-1 * (100dvh - var(--header-h)))",
+      }}
+    />
+  ) : null;
+
+  // Freeze interaction with the stale cards underneath while pending. Pointer
+  // events only — layout-neutral, so no virtualizer measurement is affected.
+  const frozen = pending ? ("none" as const) : undefined;
+
   if (totalCells === 0) {
     return (
-      <div className="rounded-2xl border border-line bg-white px-6 py-16 text-center text-base text-muted">
-        Няма налични коли по избраните филтри.
+      <div className="relative" style={{ pointerEvents: frozen }}>
+        {glassVeil}
+        <div className="rounded-2xl border border-line bg-white px-6 py-16 text-center text-base text-muted">
+          Няма налични коли по избраните филтри.
+        </div>
       </div>
     );
   }
@@ -509,7 +546,11 @@ export function AllCarsGrid({
   return (
     // overflow-anchor: none — the browser's native scroll anchoring must not
     // react to skeleton→card swaps or row mounts; positions are already fixed.
-    <div ref={containerRef} style={{ overflowAnchor: "none" }}>
+    // position: relative anchors the sticky glass veil to this container (so it
+    // spans only the results region, never the filter bar above) without moving
+    // the container's own offsetTop.
+    <div ref={containerRef} className="relative" style={{ overflowAnchor: "none", pointerEvents: frozen }}>
+      {glassVeil}
       {!measured ? (
         // SSR + first client paint: a plain, CSS-responsive grid of the seeded
         // cars. This static HTML is what crawlers index (real card markup +

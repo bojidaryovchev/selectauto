@@ -156,6 +156,8 @@ export async function getCarDetail(carId: number): Promise<CarDetailPayload | nu
     brand: brand[0]?.name ?? undefined,
     brandLogo: brand[0]?.imageUrl ?? undefined,
     model: model[0]?.name ?? undefined,
+    brandExternalId: listing.manufacturerId ?? undefined,
+    modelExternalId: listing.modelId ?? undefined,
     generation: gen
       ? {
           name: gen.name ?? undefined,

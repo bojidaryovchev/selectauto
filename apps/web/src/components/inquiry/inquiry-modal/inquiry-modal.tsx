@@ -1,7 +1,9 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
 import { Button } from "@/components/common";
 import { ChevronLeftIcon, CloseIcon } from "@/components/icons";
 import {
@@ -10,8 +12,8 @@ import {
   INQUIRY_FINANCE,
   INQUIRY_TIMES,
 } from "@/data/inquiry-brands";
-import { isValidPhone, normalizePhone } from "@/lib/phone";
 import { createInquiry } from "@/mutations/inquiries";
+import { inquiryContactSchema, type InquiryContactValues } from "@/schemas/inquiry.schema";
 import type { InquiryPrefill } from "@/types";
 import { MainButton } from "./main-button";
 import { QuizOption } from "./quiz-option";
@@ -66,10 +68,23 @@ export function InquiryModal({
   const [screen, setScreen] = useState<Screen>("start");
   const [step, setStep] = useState(0); // 0..7 within the quiz
   const [data, setData] = useState<QuizData>({});
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  // Server-side submit error (createInquiry failure); field-level validation for
+  // name/phone is handled by react-hook-form below.
   const [error, setError] = useState("");
-  const [sending, setSending] = useState(false);
+
+  // Only the final step's name/phone are validated fields — the quiz answers are
+  // button taps stored in `data`. `zodResolver(inquiryContactSchema)` normalises
+  // the phone (`08…` → `+359…`) as part of validation, so `onSubmit` gets the same
+  // `+359…` value `createInquiry` expects.
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<InquiryContactValues>({
+    resolver: zodResolver(inquiryContactSchema),
+    defaultValues: { name: "", phone: "" },
+  });
 
   // A car page opens the modal knowing the brand+model → pre-answer those steps.
   const isCarPrefill = Boolean(prefill?.brand && prefill?.model);
@@ -88,10 +103,7 @@ export function InquiryModal({
   if (isOpen !== prevOpen) {
     setPrevOpen(isOpen);
     if (isOpen) {
-      setName("");
-      setPhone("");
       setError("");
-      setSending(false);
       if (isCarPrefill) {
         setScreen("quiz");
         setStep(BUDGET_STEP);
@@ -121,6 +133,13 @@ export function InquiryModal({
       document.removeEventListener("keydown", onKey);
     };
   }, [isOpen, close]);
+
+  // Clear the name/phone fields whenever the modal (re)opens. Done in an effect,
+  // not the render-time seeding above, because RHF's `reset` must not run during
+  // render — and the name/phone step is never the opening step, so there's no flash.
+  useEffect(() => {
+    if (isOpen) reset({ name: "", phone: "" });
+  }, [isOpen, reset]);
 
   if (!isOpen) return null;
 
@@ -173,22 +192,15 @@ export function InquiryModal({
     setStep((s) => Math.max(0, s - 1));
   }
 
-  async function submit() {
-    const cleanName = name.trim();
-    const cleanPhone = normalizePhone(phone);
-
-    if (!cleanName || !isValidPhone(cleanPhone)) {
-      setError("Моля въведете име и валиден телефонен номер.");
-      return;
-    }
-
+  // `values` is validated + normalised by `inquiryContactSchema` (zodResolver), so
+  // `name` is trimmed/non-empty and `phone` is already in `+359…` form. RHF's
+  // `isSubmitting` drives the button's pending state.
+  async function onSubmit(values: InquiryContactValues) {
     setError("");
-    setSending(true);
-
     try {
       const result = await createInquiry({
-        name: cleanName,
-        phone: cleanPhone,
+        name: values.name,
+        phone: values.phone,
         specific_model: data.specific_model,
         brand: data.brand,
         model: data.model,
@@ -206,8 +218,6 @@ export function InquiryModal({
       }
     } catch {
       setError("Грешка при изпращане. Моля опитай отново.");
-    } finally {
-      setSending(false);
     }
   }
 
@@ -244,10 +254,14 @@ export function InquiryModal({
       {/* Dialog — a flex column: a PINNED header (back + close + progress + car
           banner) that never scrolls, over a scrollable body. The scroll used to
           live on this whole box with the close button `absolute` inside it, so on
-          tall steps (the brand/model lists) the header scrolled out of view. */}
-      <div className="relative z-2 mx-auto mt-[5vh] flex max-h-[min(88vh,820px)] w-[min(100%-24px,520px)] flex-col overflow-hidden rounded-[30px] bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(248,248,250,0.98)_100%)] shadow-[0_30px_80px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-md max-[640px]:mt-[3vh] max-[640px]:max-h-[92vh] max-[640px]:w-[min(100%-16px,460px)] max-[640px]:rounded-[22px]">
+          tall steps (the brand/model lists) the header scrolled out of view.
+          On phones (≤640px) it fills the whole viewport — edge-to-edge, square
+          corners, `h-dvh` (tracks the URL bar / keyboard) — with the header/body
+          padding honouring the notch + home-indicator safe-area insets. From 641px
+          up it's the centred card. */}
+      <div className="relative z-2 mx-auto mt-[5vh] flex max-h-[min(88vh,820px)] w-[min(100%-24px,520px)] flex-col overflow-hidden rounded-[30px] bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(248,248,250,0.98)_100%)] shadow-[0_30px_80px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-md max-[640px]:mt-0 max-[640px]:h-dvh max-[640px]:max-h-dvh max-[640px]:w-full max-[640px]:rounded-none max-[640px]:shadow-none">
         {/* Pinned header */}
-        <div className="shrink-0 px-7 pt-5 max-[640px]:px-4.5 max-[640px]:pt-4">
+        <div className="shrink-0 px-7 pt-5 max-[640px]:px-4.5 max-[640px]:pt-[max(1rem,env(safe-area-inset-top))]">
           <div className="flex items-center justify-between gap-2">
             {showBack ? (
               <Button
@@ -301,7 +315,7 @@ export function InquiryModal({
         </div>
 
         {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto px-7 pb-6.5 pt-4 max-[640px]:px-4.5 max-[640px]:pb-4.5">
+        <div className="flex-1 overflow-y-auto px-7 pb-6.5 pt-4 max-[640px]:px-4.5 max-[640px]:pb-[max(1.125rem,env(safe-area-inset-bottom))]">
         {/* Start screen */}
         {screen === "start" && (
           <div>
@@ -399,7 +413,11 @@ export function InquiryModal({
 
             {/* Step 6 — name / phone */}
             {step === 6 && (
-              <div className="animate-[saFadeIn_0.28s_ease]">
+              <form
+                noValidate
+                onSubmit={handleSubmit(onSubmit)}
+                className="animate-[saFadeIn_0.28s_ease]"
+              >
                 <div className="mb-3.5">
                   <label
                     htmlFor="sa-quiz-name"
@@ -410,15 +428,19 @@ export function InquiryModal({
                   <input
                     id="sa-quiz-name"
                     type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
                     placeholder="Име"
                     autoComplete="name"
                     enterKeyHint="next"
-                    className="mb-4 min-h-14 w-full rounded-[14px] border border-[#d9dde4] bg-white px-4 text-[15px] font-semibold text-[#17181b] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] outline-none transition-all duration-200 placeholder:font-medium placeholder:text-[#9aa0aa] focus:-translate-y-px focus:border-brand focus:shadow-[0_0_0_4px_rgba(216,111,22,0.12)]"
+                    className="min-h-14 w-full rounded-[14px] border border-[#d9dde4] bg-white px-4 text-[15px] font-semibold text-[#17181b] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] outline-none transition-all duration-200 placeholder:font-medium placeholder:text-[#9aa0aa] focus:-translate-y-px focus:border-brand focus:shadow-[0_0_0_4px_rgba(216,111,22,0.12)]"
+                    {...register("name")}
                   />
+                  {errors.name?.message ? (
+                    <p className="mt-1.5 text-left text-[13px] font-semibold leading-[1.45] text-[#c0392b]">
+                      {errors.name.message}
+                    </p>
+                  ) : null}
                 </div>
-                <div className="mb-3.5">
+                <div className="mb-4">
                   <label
                     htmlFor="sa-quiz-phone"
                     className="mb-2 block text-left text-[15px] font-bold text-[#17181b]"
@@ -428,18 +450,22 @@ export function InquiryModal({
                   <input
                     id="sa-quiz-phone"
                     type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
                     placeholder="+359XXXXXXXXX"
                     inputMode="tel"
                     autoComplete="tel"
                     enterKeyHint="done"
-                    className="mb-4 min-h-14 w-full rounded-[14px] border border-[#d9dde4] bg-white px-4 text-[15px] font-semibold text-[#17181b] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] outline-none transition-all duration-200 placeholder:font-medium placeholder:text-[#9aa0aa] focus:-translate-y-px focus:border-brand focus:shadow-[0_0_0_4px_rgba(216,111,22,0.12)]"
+                    className="min-h-14 w-full rounded-[14px] border border-[#d9dde4] bg-white px-4 text-[15px] font-semibold text-[#17181b] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] outline-none transition-all duration-200 placeholder:font-medium placeholder:text-[#9aa0aa] focus:-translate-y-px focus:border-brand focus:shadow-[0_0_0_4px_rgba(216,111,22,0.12)]"
+                    {...register("phone")}
                   />
+                  {errors.phone?.message ? (
+                    <p className="mt-1.5 text-left text-[13px] font-semibold leading-[1.45] text-[#c0392b]">
+                      {errors.phone.message}
+                    </p>
+                  ) : null}
                 </div>
 
-                <MainButton onClick={submit} disabled={sending}>
-                  {sending ? "Изпращаме заявката..." : "Изпрати"}
+                <MainButton type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Изпращаме заявката..." : "Изпрати"}
                 </MainButton>
 
                 {error && (
@@ -447,7 +473,7 @@ export function InquiryModal({
                     {error}
                   </p>
                 )}
-              </div>
+              </form>
             )}
 
             {/* Step 7 — success */}

@@ -1,10 +1,10 @@
 "use client";
 
 import type { ComponentType } from "react";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/common";
 import { FlagCaIcon, FlagKrIcon, FlagUsIcon } from "@/components/icons";
+import { useFilterNav } from "@/contexts/filter-nav-context";
 import { serializeCarFilters } from "@/lib/car-filters";
 import type { CarFilters, FacetOptions } from "@/types/car-filters.type";
 
@@ -61,10 +61,15 @@ const pillIdle = "border-[#ddd] bg-white text-ink hover:border-[#bbb] hover:bg-[
  *  - The text inputs (year from/to, price from/to, lot/VIN) apply after a
  *    ~1.5s **debounce** (so we don't navigate on every keystroke).
  *
- * Applying = `router.replace` with the serialized filters in the URL (replace,
- * not push, so rapid changes don't flood browser history). The page re-renders
- * SSR for the new filters and `AllCarsGrid` resets via its key. `current` seeds
- * the controls from the URL-parsed filters.
+ * Applying = a soft `router.replace` (via `useFilterNav().navigate`) with the
+ * serialized filters in the URL (replace, not push, so rapid changes don't flood
+ * browser history). The page re-renders SSR for the new filters and `AllCarsGrid`
+ * resets via its key. Because that navigation is a React transition — which keeps
+ * the old grid on screen and suppresses the Suspense skeleton — the provider's
+ * `pending` flag drives the visible feedback (dimmed grid + indicator); the
+ * debounced text inputs additionally flag `setSoftPending` on keystroke so the
+ * gap before the debounce fires isn't dead. `current` seeds the controls from the
+ * URL-parsed filters.
  *
  * Layout (top → bottom): mode toggle + clear · lot/VIN lookup · primary filters
  * (make/model/type + price/year) · scope (market/buy-now/auction) · secondary
@@ -73,7 +78,7 @@ const pillIdle = "border-[#ddd] bg-white text-ink hover:border-[#bbb] hover:bg-[
  * results grid sits higher on small screens.
  */
 export function CarFilterBar({ facets, current }: { facets: FacetOptions; current: CarFilters }) {
-  const router = useRouter();
+  const { navigate, setSoftPending } = useFilterNav();
   // `draft` mirrors the controls (so typing is responsive); the URL is the
   // source of truth and is updated instantly or debounced per control.
   const [draft, setDraft] = useState<CarFilters>(current);
@@ -96,7 +101,7 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
 
   const apply = (next: CarFilters) => {
     const qs = serializeCarFilters(next).toString();
-    router.replace(qs ? `?${qs}` : "?", { scroll: false });
+    navigate(qs ? `?${qs}` : "?");
   };
 
   // Build the next draft for a single key (handles clearing + brand→model reset).
@@ -122,6 +127,9 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
   const setDebounced = <K extends keyof CarFilters>(key: K, value: CarFilters[K]) => {
     const next = withChange(draft, key, value);
     setDraft(next);
+    // Flag pending NOW so the grid dims during the debounce window (the nav only
+    // fires when the user stops typing); `navigate` clears it as it takes over.
+    setSoftPending();
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => apply(next), TEXT_DEBOUNCE_MS);
   };
@@ -130,7 +138,7 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
   const onReset = () => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     setDraft({});
-    router.replace("?", { scroll: false });
+    navigate("?");
   };
 
   const numOrUndef = (v: string): number | undefined => {
@@ -213,7 +221,9 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
           <select className={selectCls} value={draft.type ?? ""} onChange={(e) => setInstant("type", e.target.value || undefined)}>
             <option value="">Всички типове</option>
             {facets.types.map((t) => (
-              <option key={t.value} value={t.value}>
+              // Zero in the current (filtered) subset → disable so the user can't
+              // pick a dead-end combo; never disable the active selection itself.
+              <option key={t.value} value={t.value} disabled={t.count === 0 && t.value !== draft.type}>
                 {t.label}
                 {t.count !== undefined ? ` (${t.count})` : ""}
               </option>
@@ -339,7 +349,8 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
           <select className={selectCls} value={draft.fuel ?? ""} onChange={(e) => setInstant("fuel", e.target.value || undefined)}>
             <option value="">Всички</option>
             {facets.fuels.map((f) => (
-              <option key={f.value} value={f.value}>
+              // Zero in the current (filtered) subset → disable; never the active one.
+              <option key={f.value} value={f.value} disabled={f.count === 0 && f.value !== draft.fuel}>
                 {f.label}
                 {f.count !== undefined ? ` (${f.count})` : ""}
               </option>
@@ -366,7 +377,8 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
           >
             <option value="">Всички състояния</option>
             {facets.conditions.map((c) => (
-              <option key={c.value} value={c.value}>
+              // Zero in the current (filtered) subset → disable; never the active one.
+              <option key={c.value} value={c.value} disabled={c.count === 0 && c.value !== draft.condition}>
                 {c.label}
                 {c.count !== undefined ? ` (${c.count})` : ""}
               </option>
