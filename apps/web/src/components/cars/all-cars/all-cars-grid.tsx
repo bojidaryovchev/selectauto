@@ -25,12 +25,32 @@ const ROW_GAP = 20; // px, matches gap-5
 const ESTIMATED_ROW_HEIGHT = 715;
 
 /**
- * Write the `?after=<sortId>` scroll page-pointer into the URL WITHOUT a Next
- * navigation. Uses raw `history.replaceState` (not `router.replace`) on purpose:
- * this fires as the user scrolls across page boundaries, and a router navigation
- * per boundary would re-render/refetch the route. `replace` (not push) so the
- * back button isn't flooded. Preserves every existing query param (the filters);
- * only the pointer changes. A null sortId removes the pointer (back at the top).
+ * Write the `?after=<sortId>` scroll page-pointer into the URL WITHOUT touching
+ * the Next.js router. This fires continuously as the user scrolls across page
+ * boundaries, and it MUST NOT be seen by the router.
+ *
+ * Next 16 patches `window.history.replaceState` (an OWN property on the history
+ * instance) so any call syncs the change into the router: it dispatches
+ * `ACTION_RESTORE`, moving the router's canonical URL to the new `?after` value.
+ * That is actively harmful here: the catalog's infinite scroll is driven by the
+ * `loadMoreCars` Server Action, whose request is bound to the router's state
+ * tree / canonical URL. When the pointer moves the canonical URL WHILE a Server
+ * Action is in flight (both happen at once during fast/deep scrolling), and that
+ * action stalls (a slow `getCarsPage`/DB round-trip), Next reconciles the
+ * mismatch by discarding the action and performing a full-page (MPA) navigation
+ * to the current `?after` URL — a hard reload that snaps scroll to the top
+ * before the anchor restore drags it back down. That is the "scrolling down
+ * sometimes jumps to the top" bug.
+ *
+ * Fix: call the NATIVE `History.prototype.replaceState` (the unpatched prototype
+ * method — Next only shadowed the instance method), so the address bar still
+ * updates (deep-link + refresh restore keep working: page.tsx reads `?after`
+ * server-side on a real load) but the router never learns about it and its
+ * canonical URL never drifts. Preserve `window.history.state` so Next's own
+ * internal history entry (`__NA`, the tree) stays intact. `replace` (not push)
+ * so the back button isn't flooded. Nothing client-side reads `?after` via
+ * `useSearchParams` — the pointer effect reads `window.location` directly — so
+ * keeping the router out of the loop costs nothing.
  */
 function writeAfterPointer(sortId: number | null): void {
   if (typeof window === "undefined") return;
@@ -40,12 +60,12 @@ function writeAfterPointer(sortId: number | null): void {
   if (prev === nextVal) return; // no-op: don't spam history with identical states
   if (nextVal === null) url.searchParams.delete(AFTER_PARAM);
   else url.searchParams.set(AFTER_PARAM, nextVal);
-  // Pass a relative URL STRING (path + query), matching Next's documented
-  // window.history integration — `replaceState`/`pushState` sync into the Next
-  // router (usePathname/useSearchParams) only when called this way, which is also
-  // what lets the pointer survive a forward nav and be restored on Back. Passing a
-  // URL object or a foreign state value bypasses that integration.
-  window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+  History.prototype.replaceState.call(
+    window.history,
+    window.history.state,
+    "",
+    `${url.pathname}${url.search}`,
+  );
 }
 
 /**
