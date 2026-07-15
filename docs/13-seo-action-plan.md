@@ -152,14 +152,16 @@ Deferred (noted, not bugs): `/kontakti` hero uses a stock Unsplash image (conten
       item below.
 - [ ] `[user+content]` **Named-expert bios** on `/za-nas` + as blog authors (photos,
       credentials, first-hand import experience) — the E-E-A-T moat; currently zero names.
-- [ ] `[content]` Cluster order (by validated demand): ① USA/Canada cost+trust (salvage/flood/
-      „наводнена кола", title types, Copart-vs-IAAI, глосар) ② Korea (Encar guide — the
-      „Encar България" SERP is junk; LPI/газ течна фаза; mileage authenticity; parts in BG;
-      hidden fees) ③ comparisons — „Корея или Америка" first, then the two posts replacing
-      the cut country pages: **„Корея или Германия?"** (the #1 buyer objection — Germany is
-      Bulgaria's default import channel) and **„Защо не внасяме от Япония"** (RHD explainer;
-      weakest SERP in the niche), both funneling to the Korea/USA hubs ④ КАТ/екотакса/
-      хомологация guides ⑤ hybrid/EV-from-Korea. Year-stamp everything.
+- [~] `[content]` Content clusters — **6 posts live as of 2026-07-16** (all year-stamped,
+      interlinked with hubs/calculator/VIN, rates footnoted to 15.07.2026):
+      ✅ „Колко струва внос от САЩ 2026" (cost, cluster ①) · ✅ „Речник на американските
+      аукциони" (глосар + title types + Copart-vs-IAAI, ①) · ✅ „Encar на български" (②) ·
+      ✅ „Корея или Америка" (③) · ✅ „Корея или Германия?" (③ — the objection pillar) ·
+      ✅ „Защо не внасяме от Япония" (③ — RHD explainer → Korea funnel) ·
+      ✅ „Регистрация на внесена кола стъпка по стъпка" (④).
+      **Remaining:** ② LPI/газ deep-dive + „скрити такси от Корея" + mileage-authenticity
+      standalone; ① „наводнена кола" standalone; ⑤ hybrid/EV-from-Korea; model-specific
+      guides (Tucson/Sportage/Sorento от Корея; Grand Cherokee от САЩ).
 - [ ] `[ops]` **Quarterly regulatory re-verification loop** — ecotax draft (+24%) vs Държавен
       вестник, tariff steps, transit times; update „last verified" dates.
 - [ ] `[user+ops]` **Authority/brand track (12–24 mo, aimed at bidmotors-held head terms)**:
