@@ -13,6 +13,7 @@
 import {
   bigint,
   boolean,
+  date,
   index,
   integer,
   jsonb,
@@ -262,6 +263,35 @@ export const inquiries = pgTable(
 );
 
 /**
+ * calculator_offers — leads from the /kalkulator gated-offer flow (Calculator
+ * v2): the visitor tunes the import-cost estimator, submits name/phone/email to
+ * receive the itemized breakdown by email, and the lead lands here. Website-
+ * write, low-volume lead data like carfax_requests/inquiries. `breakdownJson`
+ * snapshots the exact estimate the visitor saw (inputs + line items + rates
+ * version). Keep in sync with migrations/0028_calculator_offers.sql.
+ */
+export const calculatorOffers = pgTable(
+  "calculator_offers",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    phone: text("phone").notNull(),
+    email: text("email").notNull(),
+    /** Sourcing market the estimate was for ('kr' | 'us' | 'ca'). */
+    market: text("market").notNull(),
+    carPriceEur: integer("car_price_eur").notNull(),
+    totalEur: integer("total_eur").notNull(),
+    breakdownJson: jsonb("breakdown_json").notNull(),
+    pageUrl: text("page_url"),
+    userIp: text("user_ip"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    createdAtIdx: index("calculator_offers_created_at_idx").on(t.createdAt),
+  }),
+);
+
+/**
  * Auth.js (NextAuth v5) tables — self-hosted auth (Google + email/password, JWT
  * sessions). Shapes for users/accounts/verificationTokens match what
  * @auth/drizzle-adapter expects (verified against its lib/pg.d.ts). JWT sessions
@@ -281,6 +311,13 @@ export const users = pgTable("users", {
   emailVerified: timestamp("email_verified", { withTimezone: true }),
   image: text("image"),
   passwordHash: text("password_hash"),
+  // Opt-in for the daily "любими автомобили с търг днес" email digest, set from
+  // /lyubimi. Default off. See apps/web/src/queries/favorites +
+  // apps/web/src/app/api/cron/favorite-auction-alerts.
+  favoriteAuctionAlerts: boolean("favorite_auction_alerts").notNull().default(false),
+  // The America/New_York auction DAY we last sent this user a digest for; the
+  // cron skips a user already sent for today's NY day so re-runs never double-send.
+  favoriteAuctionAlertSentOn: date("favorite_auction_alert_sent_on"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -558,6 +595,8 @@ export type CarListingCount = typeof carListingCounts.$inferSelect;
 export type CarListingFacet = typeof carListingFacets.$inferSelect;
 export type Inquiry = typeof inquiries.$inferSelect;
 export type NewInquiry = typeof inquiries.$inferInsert;
+export type CalculatorOffer = typeof calculatorOffers.$inferSelect;
+export type NewCalculatorOffer = typeof calculatorOffers.$inferInsert;
 export type Favorite = typeof favorites.$inferSelect;
 export type NewFavorite = typeof favorites.$inferInsert;
 export type User = typeof users.$inferSelect;

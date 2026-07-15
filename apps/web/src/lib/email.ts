@@ -1,10 +1,16 @@
 import { Resend } from "resend";
 import {
+  CalculatorOfferEmail,
+  CalculatorOfferNotificationEmail,
   CarfaxNotificationEmail,
+  type DigestCar,
+  FavoriteAuctionDigestEmail,
   InquiryNotificationEmail,
   PasswordResetEmail,
   VerificationEmail,
 } from "@/emails";
+import { formatBgDateTime } from "@/emails/theme";
+import type { CarView } from "@/types/car.type";
 
 /**
  * Resend client + the app's transactional/notification emails. Each send passes
@@ -118,6 +124,81 @@ export async function sendInquiryNotification(data: InquiryNotification) {
 }
 
 /**
+ * Calculator-offer emails (the /kalkulator gated-offer flow). One data shape
+ * feeds both templates: the CUSTOMER email (the itemized breakdown they asked
+ * for) and the INTERNAL notification (same numbers + contact, to the info@
+ * inbox). Amounts arrive pre-formatted — the breakdown is computed and
+ * formatted once in the create-calculator-offer action from the raw inputs.
+ */
+export type CalculatorOfferEmailData = {
+  name: string;
+  phone: string;
+  email: string;
+  marketLabel: string;
+  /** Ordered, pre-formatted line items ("Мито (10%)" → "1 490 €"). */
+  lines: { label: string; amount: string }[];
+  totalEurFormatted: string;
+  totalBgnFormatted: string;
+  transit: string;
+  ratesVerifiedAt: string;
+  pageUrl?: string;
+  createdAt: string;
+};
+
+/** The customer's copy of the estimate — the gated-offer deliverable. */
+export async function sendCalculatorOfferToCustomer(data: CalculatorOfferEmailData) {
+  const lines = [
+    `Здравейте, ${data.name}!`,
+    "",
+    `Вашата ориентировъчна калкулация за внос от ${data.marketLabel}:`,
+    "",
+    ...data.lines.map((l) => `${l.label}: ${l.amount}`),
+    `ОБЩО (ориентир): ${data.totalEurFormatted} (≈ ${data.totalBgnFormatted})`,
+    "",
+    `Ориентировъчен срок за доставка: ${data.transit}`,
+    `Ставките са проверени към ${data.ratesVerifiedAt}.`,
+    "",
+    "Това е ориентировъчна оценка и НЕ представлява обвързваща оферта.",
+    "За точна калкулация за конкретен автомобил отговорете на този имейл или се обадете на " +
+      "+359 898 980 011.",
+  ];
+
+  return getResend().emails.send({
+    from: FROM,
+    to: data.email,
+    replyTo: TO,
+    subject: `Вашата калкулация за внос от ${data.marketLabel} — SelectAuto`,
+    react: CalculatorOfferEmail(data),
+    text: lines.join("\n"),
+  });
+}
+
+/** The internal lead notification for the same submission. */
+export async function sendCalculatorOfferNotification(data: CalculatorOfferEmailData) {
+  const lines = [
+    "Нов лийд от калкулатора",
+    "",
+    `Име: ${data.name}`,
+    `Телефон: ${data.phone}`,
+    `Имейл: ${data.email}`,
+    `Пазар: ${data.marketLabel}`,
+    ...data.lines.map((l) => `${l.label}: ${l.amount}`),
+    `Общо: ${data.totalEurFormatted} (≈ ${data.totalBgnFormatted})`,
+    `Страница: ${data.pageUrl ?? ""}`,
+    `Дата: ${data.createdAt}`,
+  ];
+
+  return getResend().emails.send({
+    from: FROM,
+    to: TO,
+    replyTo: data.email,
+    subject: `Нов лийд от калкулатора - ${data.name} (${data.marketLabel})`,
+    react: CalculatorOfferNotificationEmail(data),
+    text: lines.join("\n"),
+  });
+}
+
+/**
  * Auth emails — sent to the USER (not the info@ inbox) for the self-hosted
  * Auth.js email/password flows. We send them ourselves via Resend (the same client
  * + verified `noreply@selectauto.bg` sender). The link is built from APP_URL.
@@ -152,6 +233,70 @@ export async function sendVerificationEmail(to: string, token: string, name?: st
     to,
     subject: "Потвърдете имейла си — SelectAuto",
     react: VerificationEmail({ name, verifyUrl: link }),
+    text: lines.join("\n"),
+  });
+}
+
+/**
+ * Favourites auction digest — sent to a user who opted in on /lyubimi, listing
+ * their favourited cars whose auction is today. Sent by the daily Vercel cron
+ * (api/cron/favorite-auction-alerts), one email per recipient. `cars` is
+ * pre-formatted by the caller (title/price/lot/time already resolved); this only
+ * builds the back-link and the plain-text fallback.
+ */
+export async function sendFavoriteAuctionDigest(
+  to: string,
+  data: { name?: string; cars: CarView[] },
+) {
+  const base = appUrl();
+  const favoritesUrl = `${base}/lyubimi`;
+
+  // Map the UI CarView rows to the presentational DigestCar shape: absolute
+  // links (emails can't use relative paths) and the auction time formatted in
+  // the showroom's timezone (Europe/Sofia).
+  const cars: DigestCar[] = data.cars.map((car) => ({
+    title: car.title,
+    url: car.href.startsWith("http") ? car.href : `${base}${car.href}`,
+    price: car.price,
+    lotNumber: car.lotNumber,
+    auctionTime: car.saleDate ? formatBgDateTime(car.saleDate) : undefined,
+    source: car.source,
+  }));
+
+  const count = cars.length;
+  const heading =
+    count === 1
+      ? "1 от любимите ви автомобили е на търг днес"
+      : `${count} от любимите ви автомобили са на търг днес`;
+
+  const lines = [
+    heading,
+    "",
+    `Здравейте${data.name ? ` ${data.name}` : ""},`,
+    "",
+    ...cars.map((car) =>
+      [
+        car.title,
+        [
+          car.auctionTime ? `Търг: ${car.auctionTime}` : null,
+          car.price ? `Цена: ${car.price}` : null,
+          car.lotNumber ? `Търг № ${car.lotNumber}` : null,
+          car.source || null,
+        ]
+          .filter(Boolean)
+          .join("  ·  "),
+        car.url,
+        "",
+      ].join("\n"),
+    ),
+    `Вижте любимите автомобили: ${favoritesUrl}`,
+  ];
+
+  return getResend().emails.send({
+    from: FROM,
+    to,
+    subject: heading,
+    react: FavoriteAuctionDigestEmail({ name: data.name, cars, favoritesUrl }),
     text: lines.join("\n"),
   });
 }

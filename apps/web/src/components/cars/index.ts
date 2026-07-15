@@ -1,3 +1,4 @@
+export { AuctionAlertToggle } from "./auction-alert-toggle";
 export { BrandsGrid } from "./brands-grid";
 export { FavoriteButton } from "./favorite-button";
 export { FavoritesGrid } from "./favorites-grid";

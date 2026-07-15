@@ -51,7 +51,17 @@ function InfoCell({ label, value, accent }: { label: string; value?: string; acc
  */
 const CARD_IMAGE_SIZES = "(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 560px) 50vw, 100vw";
 
-function AuctionCardImpl({ car, priority = false }: { car: CarView; priority?: boolean }) {
+function AuctionCardImpl({
+  car,
+  priority = false,
+  confirmRemove = false,
+}: {
+  car: CarView;
+  priority?: boolean;
+  // Gate un-favouriting behind a confirmation dialog (set on /lyubimi, where a
+  // heart tap removes the card from the saved list).
+  confirmRemove?: boolean;
+}) {
   const phoneHref = CONTACT.phoneHref;
   const isPast = car.isPast ?? false;
 
@@ -86,7 +96,7 @@ function AuctionCardImpl({ car, priority = false }: { car: CarView; priority?: b
             stable car id); a past/sold car can still be saved for price research. */}
         {car.id !== undefined ? (
           <div className="absolute right-3 top-3 z-3">
-            <FavoriteButton carId={car.id} size="md" variant="overlay" />
+            <FavoriteButton carId={car.id} size="md" variant="overlay" confirmOnRemove={confirmRemove} />
           </div>
         ) : null}
 

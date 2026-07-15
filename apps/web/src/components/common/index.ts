@@ -1,5 +1,6 @@
 export { Button } from "./button";
 export { CarouselNav } from "./carousel-nav";
+export { ConfirmDialog } from "./confirm-dialog";
 export { Container } from "./container";
 export { ExpandableSection } from "./expandable-section";
 export { LinkButton } from "./link-button";

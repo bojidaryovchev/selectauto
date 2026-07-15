@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Container } from "@/components/common";
-import { CostEstimator } from "@/components/calculator";
+import { CostEstimator, CostEstimatorFromUrl } from "@/components/calculator";
 import { InquiryButton } from "@/components/inquiry";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
+import { RATES_VERIFIED_AT } from "@/data/import-rates";
 import { buildFaqJsonLd, type FaqEntry } from "@/lib/site-jsonld";
 
 export const metadata: Metadata = {
@@ -21,12 +23,14 @@ export const metadata: Metadata = {
 };
 
 /**
- * /kalkulator — import-cost landing page + interactive estimator. Fixes a dead
- * footer link (`FOOTER_INFO` pointed here with no route) and targets the
- * high-conversion "колко струва внос" cost cluster (docs/12-web-seo-strategy.md cluster #2).
- * The interactive `<CostEstimator>` is a client island; the page itself is a
- * server component holding the SEO copy + FAQ. A full itemized multi-country
- * calculator with a gated PDF estimate is the Phase-1 upgrade of this page.
+ * /kalkulator — import-cost landing page + the v2 interactive estimator
+ * (market-correct duty logic, itemized breakdown incl. екотакса/одобряване,
+ * gated email-offer lead capture — docs/13-seo-action-plan.md Phase B). The
+ * estimator is a client island seeded from `?market=&price=` (car-detail deep
+ * links) via <CostEstimatorFromUrl>, whose `useSearchParams()` is isolated
+ * behind Suspense so the page keeps its static shell; the fallback renders the
+ * default estimator so nothing flashes empty. The page itself is a server
+ * component holding the SEO copy + FAQ.
  */
 
 /** Visible FAQ — also emitted as FAQPage JSON-LD (must match the rendered text). */
@@ -34,12 +38,22 @@ const FAQ: FaqEntry[] = [
   {
     question: "Колко струва внос на кола от Америка или Корея?",
     answer:
-      "Крайната цена се състои от цената на автомобила, аукционните такси, транспорта до България, митото и ДДС, и таксите за регистрация. За автомобил на стойност около 15 000 € крайната сума обикновено е значително по-висока след добавяне на тези компоненти. Използвайте калкулатора по-горе за ориентир и се свържете с нас за точна оферта.",
+      "Крайната цена се състои от цената на автомобила, аукционните такси, транспорта до България, митото и ДДС, екотаксата, одобряването (технотест) и таксите за регистрация. За автомобил на стойност около 15 000 € крайната сума обикновено е значително по-висока след добавяне на тези компоненти. Използвайте калкулатора по-горе за ориентир и се свържете с нас за точна оферта.",
   },
   {
     question: "Какво мито и ДДС се плащат при внос от трета страна?",
     answer:
-      "При внос на лек автомобил от страна извън ЕС (САЩ, Канада, Корея) обикновено се дължи мито върху стойността до България и ДДС върху сумата от стойността и митото. Точните ставки зависят от конкретния случай и текущите тарифи — калкулаторът използва типични стойности, които можете да коригирате.",
+      "При внос на лек автомобил от страна извън ЕС се дължи мито 10% върху стойността до България (цена + такси + транспорт) и ДДС 20% върху тази стойност плюс митото. Изключение: при внос от Корея митото е 0%, когато корейският износител издаде декларация за преференциален произход по Споразумението ЕС–Корея — без такава декларация се дължи пълното мито.",
+  },
+  {
+    question: "Защо някои коли от Корея плащат 10% мито, а други 0%?",
+    answer:
+      "Нулевото мито по Споразумението ЕС–Корея важи само когато износителят е „одобрен износител“ и издаде декларация за произход върху фактурата (задължително за пратки над 6 000 €). Автомобил, купен на корейски аукцион без такава декларация, дължи пълното мито от 10%. Затова е важно вносът да мине през износител, който издава документа — попитайте ни за конкретния случай.",
+  },
+  {
+    question: "Какво е екотакса и колко струва?",
+    answer:
+      "Екотаксата (продуктова такса за МПС) се заплаща еднократно към ПУДООС преди първата регистрация в КАТ. Размерът зависи от възрастта и задвижването на автомобила — например за бензинов/дизелов автомобил на възраст 5–10 години таксата е 290 лв (≈148 €), а над 10 години — 310 лв (≈159 €). Хибридите дължат по-ниски ставки.",
   },
   {
     question: "Калкулаторът дава ли точна крайна цена?",
@@ -47,9 +61,9 @@ const FAQ: FaqEntry[] = [
       "Не. Калкулаторът дава ориентировъчна разбивка по зададени от Вас стойности. Точните мита, ДДС, транспорт и такси зависят от конкретния автомобил, неговата стойност и актуалните тарифи. За обвързваща калкулация направете запитване и ще получите персонална оферта.",
   },
   {
-    question: "Какво включва транспортът?",
+    question: "Колко време отнема доставката?",
     answer:
-      "Транспортът покрива доставката на автомобила от аукциона до България (морски/контейнерен превоз и сухопътна логистика). Стойността зависи от пазара на произход и текущите навла.",
+      "Ориентировъчно: от Корея около 8–10 седмици (морският маршрут в момента минава покрай нос Добра надежда), от САЩ около 4–7 седмици и от Канада около 5–8 седмици — от покупката до пристигането в България, преди оформяне и регистрация.",
   },
 ];
 
@@ -75,7 +89,16 @@ export default function CalculatorPage() {
             запитване — изготвяме персонална калкулация за конкретния автомобил.
           </p>
 
-          <CostEstimator />
+          {/* URL-seeded estimator (car-detail deep links): useSearchParams lives
+              in the wrapper, so only this hole is dynamic; the fallback is the
+              default estimator — visually identical when no params are set. */}
+          <Suspense fallback={<CostEstimator />}>
+            <CostEstimatorFromUrl />
+          </Suspense>
+
+          <p className="mt-3 text-xs text-muted">
+            Ставките (мито, ДДС, екотакса) са проверени към {RATES_VERIFIED_AT}.
+          </p>
 
           {/* Cost-component explainer (real, indexable content) */}
           <section className="mt-12">
@@ -96,11 +119,19 @@ export default function CalculatorPage() {
                 },
                 {
                   t: "Мито и ДДС",
-                  d: "При внос от страна извън ЕС се начисляват мито и ДДС върху стойността до България.",
+                  d: "Мито 10% върху стойността до България и ДДС 20% върху стойността плюс митото. От Корея митото е 0% при декларация за преференциален произход от одобрен износител.",
+                },
+                {
+                  t: "Екотакса (ПУДООС)",
+                  d: "Еднократна продуктова такса преди първата регистрация — по възраст и задвижване (напр. 290 лв за бензин/дизел на 5–10 г.).",
+                },
+                {
+                  t: "Одобряване и адаптация",
+                  d: "Индивидуално одобряване (технотест) за автомобили без ЕС одобрение на типа; за САЩ/Канада — и адаптация (светлини, km/h скоростомер).",
                 },
                 {
                   t: "Регистрация и такси",
-                  d: "Местни такси, оформяне на документи и регистрация в КАТ.",
+                  d: "ГТП, такси на КАТ и табели — финалните стъпки до регистрацията.",
                 },
                 {
                   t: "Проверка на история",

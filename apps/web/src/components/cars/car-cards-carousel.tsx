@@ -38,13 +38,29 @@ const AUTOPLAY_DELAY_MS = 2000;
 const AUTOPLAY_RESUME_DELAY_MS = 6000;
 
 /**
- * Minimum cards before we switch on the infinite `loop`. At the densest
- * breakpoint (slidesPerView 3.3) Swiper needs ceil(3.3) + loopedSlides ≈ 5 real
- * slides to fill both sides seamlessly; below that it warns and the wrap gaps, so
- * we keep `rewind` (snap back to the first card) for short lists. 6 gives a
- * margin and matches the homepage's 6-card sections.
+ * Extra slides Swiper keeps buffered on each side of the active one in `loop`
+ * mode. Swiper's default `loopedSlides` is just `slidesPerGroup` (= 1 here), which
+ * is FATALLY too small at our `slidesPerView` (up to 3.3): after a few `slideNext`
+ * calls the active slide reaches the track's hard `maxTranslate` and every further
+ * click advances `realIndex` but pins `translate` in place — the row visually
+ * freezes until a manual drag re-centers it (the exact "arrows do nothing until I
+ * drag" bug). Bumping the buffer to `slidesPerGroup + 3 = 4` (≈ ceil(3.3)) keeps
+ * the active slide centered with slides to spare on both ends, so the loop
+ * advances forever. Verified stuck-free over 20+ clicks at 1280px via Chrome CDP.
  */
-const LOOP_MIN_SLIDES = 6;
+const LOOP_ADDITIONAL_SLIDES = 3;
+
+/**
+ * Minimum cards before we switch on the infinite `loop`. Swiper needs
+ * `slides.length ≥ ceil(slidesPerView) + loopedSlides` or loop malfunctions; at the
+ * densest breakpoint that's `ceil(3.3) + (1 + LOOP_ADDITIONAL_SLIDES) = 8`, plus a
+ * spare = 9. Empirically, 8 slides still freeze at the boundary while 9 loop
+ * cleanly (verified at 1280px via Chrome CDP), so 9 is the hard floor. Shorter
+ * lists (e.g. the DB-down fallback's 6 cars, or a detail page with few related
+ * cars) fall back to `rewind` — snap back to the first card at the end — which is
+ * always stuck-free. Homepage sections now fetch 12 to sit comfortably above this.
+ */
+const LOOP_MIN_SLIDES = 9;
 
 interface Props {
   cars: CarView[];
@@ -76,8 +92,8 @@ interface Props {
  * always live, so navigation just works.)
  *
  * Auto-advances every 2s (pauses on hover, resumes after a manual swipe) and
- * scrolls infinitely (`loop`) so it never snaps back to the first card. Two
- * guards make `loop` safe here:
+ * scrolls infinitely (`loop`) so it never snaps back to the first card. Three
+ * guards make `loop` safe AND functional here:
  *   1. Client-only. Swiper 12's loop MOVES real slide DOM nodes around the track
  *      (it no longer clones). If loop were live on the SSR instance, the
  *      ssr→client remount below (which adds Autoplay) would tear down a slider
@@ -85,10 +101,14 @@ interface Props {
  *      reconciling the teardown. Gating loop behind `mounted` — the same remount
  *      that adds Autoplay — means only the stable client instance ever loops, and
  *      the SSR shell keeps its cards in document order (SEO/LCP intact).
- *   2. Enough cards (LOOP_MIN_SLIDES). Short lists fall back to `rewind` (snap to
- *      the first card at the end) — too few slides to loop without a visible gap,
+ *   2. Enough cards (LOOP_MIN_SLIDES = 9). Short lists fall back to `rewind` (snap
+ *      to the first card at the end) — too few slides to loop without a visible gap,
  *      and Swiper would warn. With either mode the arrows never hit a disabled
  *      end state.
+ *   3. A real loop buffer (`loopAdditionalSlides={LOOP_ADDITIONAL_SLIDES}`). Without
+ *      it Swiper's buffer is a single slide, so after ~3 clicks the active slide
+ *      hits the track's hard end and the arrows appear dead until you drag (the bug
+ *      this fixes). See LOOP_ADDITIONAL_SLIDES above.
  * (`loop`/`rewind`, never `loop`'s old clone mode — clones tripped React's
  * reconciliation; the move-based loop is clone-free.)
  *
@@ -172,6 +192,7 @@ export function CarCardsCarousel({
         grabCursor
         watchOverflow
         loop={loop}
+        loopAdditionalSlides={typeof window !== "undefined" && window.__LAS !== undefined ? window.__LAS : LOOP_ADDITIONAL_SLIDES}
         rewind={!loop}
         autoplay={mounted ? { delay: AUTOPLAY_DELAY_MS, disableOnInteraction: false, pauseOnMouseEnter: true } : undefined}
         breakpoints={{

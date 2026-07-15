@@ -24,6 +24,7 @@ import { AuctionCountdown } from "@/components/cars/all-cars";
 import { FavoriteButton } from "@/components/cars/favorite-button";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
+import { USD_PER_EUR } from "@/data/import-rates";
 import { buildCarJsonLd } from "@/lib/car-detail-jsonld";
 import { modelHubPath } from "@/lib/car-slug";
 import { buildBreadcrumbJsonLd, type Breadcrumb } from "@/lib/site-jsonld";
@@ -166,6 +167,27 @@ async function CarDetailBody({ params }: { params: Params }) {
     const p = new URLSearchParams({ brand: String(detail.brandExternalId) });
     if (detail.modelExternalId != null) p.set("model", String(detail.modelExternalId));
     return `/vsichki-avtomobili?${p.toString()}`;
+  })();
+
+  // „Калкулирай вноса" deep link → /kalkulator?market=&price= (per-listing
+  // landed-cost transparency — docs/13-seo-action-plan.md Phase B). Market maps
+  // kr → kr; US-market lots split us/ca by the mapper's sourceCountry (Copart/
+  // IAAI run branches in both); unknown → no market param (calculator default).
+  // Active cars with a primary price only — a sold car's price isn't an input.
+  const calculatorHref = (() => {
+    if (detail.isPast) return null;
+    const priceDigits = detail.prices.find((p) => p.primary)?.value.replace(/[^\d]/g, "");
+    const amountUsd = Number(priceDigits);
+    if (!Number.isFinite(amountUsd) || amountUsd <= 0) return null;
+    // Listing prices are USD ("16 743 $") but the calculator's price field is
+    // EUR — convert at the fixed approximate rate (import-rates.USD_PER_EUR)
+    // so the seeded estimate isn't systematically ~8% inflated.
+    const amountEur = Math.round(amountUsd / USD_PER_EUR);
+    const market =
+      detail.market === "kr" ? "kr" : detail.sourceCountry === "Канада" ? "ca" : detail.market === "us" ? "us" : null;
+    const p = new URLSearchParams({ price: String(amountEur) });
+    if (market) p.set("market", market);
+    return `/kalkulator?${p.toString()}`;
   })();
 
   // Breadcrumb matching the visible nav EXACTLY (Catalog → [model hub] → this
@@ -312,6 +334,18 @@ async function CarDetailBody({ params }: { params: Params }) {
                 </div>
 
                 <CarPricePanel prices={detail.prices} liveBid={detail.liveBid} marketAvg={detail.marketAvg} />
+
+                {/* Per-listing landed-cost transparency: opens the calculator
+                    pre-seeded with THIS car's price + market (see calculatorHref). */}
+                {calculatorHref ? (
+                  <LinkButton
+                    href={calculatorHref}
+                    rippleTheme="dark"
+                    className="inline-flex min-h-12 w-full items-center justify-center rounded-full border border-line bg-white px-5 text-sm font-extrabold uppercase tracking-wide text-[#333] transition-transform duration-200 hover:-translate-y-0.5 hover:text-brand-dark"
+                  >
+                    Калкулирай вноса до България
+                  </LinkButton>
+                ) : null}
 
                 {detail.seller?.name || detail.seller?.logo ? (
                   <div className="flex items-center gap-3 rounded-2xl border border-line bg-white px-5 py-4 shadow-card">

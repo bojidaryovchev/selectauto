@@ -1,9 +1,9 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Button } from "@/components/common";
+import { Button, ConfirmDialog } from "@/components/common";
 import { HeartIcon } from "@/components/icons";
 import { useFavorites } from "@/contexts/favorites-context";
 import { toggleFavorite } from "@/mutations/favorites";
@@ -24,15 +24,22 @@ import { toggleFavorite } from "@/mutations/favorites";
  * `size` controls the touch target; `variant="overlay"` is the translucent
  * on-image style used on cards, `variant="solid"` the bordered style for the
  * detail page header.
+ *
+ * `confirmOnRemove` gates removal behind a confirmation dialog — used on the
+ * /lyubimi page, where a click means "take this off my saved list" and an
+ * accidental tap would silently drop the card. Adding to favourites is never
+ * gated (it's cheap to undo); only the favourited→unfavourited direction asks.
  */
 export function FavoriteButton({
   carId,
   size = "md",
   variant = "overlay",
+  confirmOnRemove = false,
 }: {
   carId: number;
   size?: "md" | "lg";
   variant?: "overlay" | "solid";
+  confirmOnRemove?: boolean;
 }) {
   const { status } = useSession();
   const isSignedIn = status === "authenticated";
@@ -40,6 +47,7 @@ export function FavoriteButton({
   const pathname = usePathname();
   const { isFavorite, setFavorite } = useFavorites();
   const [isPending, startTransition] = useTransition();
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const favorited = isFavorite(carId);
 
@@ -52,14 +60,8 @@ export function FavoriteButton({
 
   const label = favorited ? "Премахни от любими" : "Запази в любими";
 
-  const handleClick = () => {
-    // Signed out → go to sign-in, returning to the current page afterwards.
-    if (!isSignedIn) {
-      const back = encodeURIComponent(pathname || "/");
-      router.push(`/sign-in?redirectTo=${back}`);
-      return;
-    }
-    // Optimistic flip, then reconcile with the server result.
+  // The actual toggle: optimistic flip, then reconcile with the server result.
+  const runToggle = () => {
     const optimistic = !favorited;
     setFavorite(carId, optimistic);
     startTransition(async () => {
@@ -73,19 +75,54 @@ export function FavoriteButton({
     });
   };
 
+  const handleClick = () => {
+    // Signed out → go to sign-in, returning to the current page afterwards.
+    if (!isSignedIn) {
+      const back = encodeURIComponent(pathname || "/");
+      router.push(`/sign-in?redirectTo=${back}`);
+      return;
+    }
+    // Removing while gated → ask first. Adding is never gated.
+    if (confirmOnRemove && favorited) {
+      setConfirmOpen(true);
+      return;
+    }
+    runToggle();
+  };
+
   return (
-    <Button
-      onClick={handleClick}
-      disabled={isPending}
-      rippleTheme="dark"
-      aria-pressed={favorited}
-      aria-label={label}
-      title={label}
-      className={`grid ${dimensions} place-items-center rounded-full transition-transform duration-150 hover:scale-110 disabled:opacity-60 ${base} ${
-        favorited ? "text-brand" : "text-[#333]"
-      }`}
-    >
-      <HeartIcon className={iconSize} filled={favorited} />
-    </Button>
+    <>
+      <Button
+        onClick={handleClick}
+        disabled={isPending}
+        rippleTheme="dark"
+        aria-pressed={favorited}
+        aria-label={label}
+        title={label}
+        className={`grid ${dimensions} place-items-center rounded-full transition-transform duration-150 hover:scale-110 disabled:opacity-60 ${base} ${
+          favorited ? "text-brand" : "text-[#333]"
+        }`}
+      >
+        <HeartIcon className={iconSize} filled={favorited} />
+      </Button>
+
+      {confirmOnRemove ? (
+        <ConfirmDialog
+          isOpen={confirmOpen}
+          tone="danger"
+          icon={<HeartIcon className="size-8" filled />}
+          title="Премахване от любими"
+          message="Сигурни ли сте, че искате да премахнете този автомобил от списъка със запазени?"
+          confirmLabel="Премахни"
+          cancelLabel="Отказ"
+          isPending={isPending}
+          onConfirm={() => {
+            setConfirmOpen(false);
+            runToggle();
+          }}
+          onCancel={() => setConfirmOpen(false)}
+        />
+      ) : null}
+    </>
   );
 }

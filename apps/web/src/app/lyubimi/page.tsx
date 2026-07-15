@@ -3,9 +3,9 @@ import { Suspense } from "react";
 import { auth } from "@/auth";
 import { Container, LinkButton } from "@/components/common";
 import { CarGridSkeleton } from "@/components/cars/all-cars";
-import { FavoritesGrid } from "@/components/cars";
+import { AuctionAlertToggle, FavoritesGrid } from "@/components/cars";
 import { SiteFooter, SiteHeader } from "@/components/layout";
-import { getFavoriteCars } from "@/queries/favorites";
+import { getAuctionAlertPreference, getFavoriteCars } from "@/queries/favorites";
 
 export const metadata: Metadata = {
   title: "Любими автомобили | SelectAuto",
@@ -69,7 +69,15 @@ async function FavoritesBody() {
     );
   }
 
-  const cars = await getFavoriteCars();
+  const [cars, alertsEnabled] = await Promise.all([
+    getFavoriteCars(),
+    getAuctionAlertPreference(),
+  ]);
 
-  return <FavoritesGrid cars={cars} />;
+  return (
+    <>
+      <AuctionAlertToggle initialEnabled={alertsEnabled} />
+      <FavoritesGrid cars={cars} />
+    </>
+  );
 }
