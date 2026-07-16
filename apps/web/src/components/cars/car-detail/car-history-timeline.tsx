@@ -34,7 +34,7 @@ export function CarHistoryTimeline({ history }: { history: CarHistoryEntry[] }) 
               </span>
             ) : null}
             {entry.sub && entry.sub !== entry.title ? (
-              <span className="mt-1.5 block whitespace-pre-line text-[13px] leading-relaxed text-muted">
+              <span className="mt-1.5 block whitespace-pre-line text-[13px]/relaxed text-muted">
                 {entry.sub}
               </span>
             ) : null}
