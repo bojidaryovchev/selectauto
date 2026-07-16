@@ -20,23 +20,19 @@ export function detectCarPage(): DetectedCar | null {
     return m ? { source: "copart", externalId: m[1]!, url } : null;
   }
 
-  // IAAI CANADA (must precede IAAI US)
+  // IAAI CANADA (must precede IAAI US). Match ANY /vehicle-detail(s)/{id} or
+  // ?itemid= — the id can be numeric ("46127174~US") or a Canada import token
+  // ("Imp_3048024~CA"). The captured id is NOT the DB key (the stock number is,
+  // read from the page); it only marks the page + serves as a dedup key.
   if (host.includes("ca.iaai.com") || host.includes("iaai.ca")) {
-    const m =
-      url.match(/\/vehicle-details\/(\d+)/i) ||
-      url.match(/\/VehicleDetail\/(\d+)/i) ||
-      url.match(/\/VehicleDetails\/(\d+)/i) ||
-      url.match(/[?&]itemid=(\d+)/i);
-    return m ? { source: "iaai_ca", externalId: m[1]!, url } : null;
+    const m = url.match(/\/vehicle-?details?\/([^/?#]+)/i) || url.match(/[?&]itemid=([^&#]+)/i);
+    return m ? { source: "iaai_ca", externalId: decodeURIComponent(m[1]!), url } : null;
   }
 
-  // IAAI US
+  // IAAI US — same broadened matching.
   if (host.includes("iaai.com")) {
-    const m =
-      url.match(/\/VehicleDetail\/(\d+)/i) ||
-      url.match(/\/VehicleDetails\/(\d+)/i) ||
-      url.match(/[?&]itemid=(\d+)/i);
-    return m ? { source: "iaai", externalId: m[1]!, url } : null;
+    const m = url.match(/\/vehicle-?details?\/([^/?#]+)/i) || url.match(/[?&]itemid=([^&#]+)/i);
+    return m ? { source: "iaai", externalId: decodeURIComponent(m[1]!), url } : null;
   }
 
   // ENCAR — /cars/detail/{carId} or ?carid=

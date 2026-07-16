@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
 import { Suspense } from "react";
 import { SessionProvider } from "next-auth/react";
-import { ScrollToTop, ViberGroupPopup } from "@/components/layout";
+import { BackToTop, ScrollToTop, ViberGroupPopup } from "@/components/layout";
 import { Providers } from "@/components/providers";
 import { SITE_NAME, SITE_URL } from "@/constants";
 import { buildOrganizationJsonLd, buildWebsiteJsonLd } from "@/lib/site-jsonld";
@@ -84,6 +84,11 @@ export default function RootLayout({
             dismissable for the session. Self-contained client singleton — no
             usePathname, so (unlike ScrollToTop) it needs no Suspense boundary. */}
         <ViberGroupPopup />
+
+        {/* Floating "back to top" button: reveals once scrolled past ~one
+            viewport, smooth-scrolls to the top on click. Self-contained client
+            singleton, lifted above the mobile bottom nav. */}
+        <BackToTop />
       </body>
     </html>
   );
