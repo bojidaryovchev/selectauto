@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { compare } from "bcryptjs";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { signInSchema } from "@/schemas/auth.schema";
 import { authConfig } from "@/auth.config";
@@ -143,6 +143,28 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           .set({ passwordHash: null })
           .where(eq(schema.users.id, user.id));
       }
+    },
+    /**
+     * Stamp `email_verified` for Google sign-ins. @auth/core creates every OAuth
+     * user with `emailVerified: null` — hardcoded in
+     * lib/actions/callback/handle-login.js as `createUser({ ...profile,
+     * emailVerified: null })` — so Google's verified-email signal never reaches
+     * the users row. Without this, no Google user ever satisfies the
+     * `email_verified IS NOT NULL` gate the favourite-auction digest (and any
+     * future verified-email check) relies on, and the digest silently never sends
+     * to them. Google verifies email ownership — the same trust
+     * `allowDangerousEmailAccountLinking` (auth.config.ts) is built on — so we
+     * stamp it ourselves. The `isNull` guard makes this a one-time write per user
+     * and never clobbers an existing verification timestamp. `signIn` fires AFTER
+     * the `linkAccount` event above, so the unverified-password defence still runs
+     * first when a Google account links to a pre-existing password user.
+     */
+    async signIn({ user, account }) {
+      if (account?.provider !== "google" || !user?.id) return;
+      await getDb()
+        .update(schema.users)
+        .set({ emailVerified: new Date() })
+        .where(and(eq(schema.users.id, user.id), isNull(schema.users.emailVerified)));
     },
   },
 });
