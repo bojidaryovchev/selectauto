@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
 import { Suspense } from "react";
 import { SessionProvider } from "next-auth/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ScrollToTop, ViberGroupPopup } from "@/components/layout";
 import { Providers } from "@/components/providers";
 import { SITE_NAME, SITE_URL } from "@/constants";
@@ -84,6 +85,9 @@ export default function RootLayout({
             dismissable for the session. Self-contained client singleton — no
             usePathname, so (unlike ScrollToTop) it needs no Suspense boundary. */}
         <ViberGroupPopup />
+
+        {/* Vercel Speed Insights: tracks Core Web Vitals and performance metrics. */}
+        <SpeedInsights />
       </body>
     </html>
   );
