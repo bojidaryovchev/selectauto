@@ -2,7 +2,6 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import type { LeadType } from "@/constants/admin";
 import type { AdminLeadView } from "@/types/admin.type";
 import { LeadFilters } from "@/components/admin/lead-filters";
 import { LeadStatusBadge } from "@/components/admin/lead-status-badge";
@@ -15,7 +14,6 @@ import { LeadDetailDrawer } from "./lead-detail-drawer";
  * for the drawer). Clicking a row opens the drawer where status/notes are edited.
  */
 export function LeadInbox({
-  type,
   basePath,
   columns,
   leads,
@@ -23,7 +21,6 @@ export function LeadInbox({
   pageCount,
   total,
 }: {
-  type: LeadType;
   basePath: string;
   columns: string[];
   leads: AdminLeadView[];
@@ -74,7 +71,7 @@ export function LeadInbox({
                     {columns.slice(1).map((col, i) => (
                       <div key={col} className="flex justify-between gap-3">
                         <dt className="shrink-0 text-muted">{col}</dt>
-                        <dd className="break-words text-right text-ink">{lead.cells[i + 1]}</dd>
+                        <dd className="wrap-break-word text-right text-ink">{lead.cells[i + 1]}</dd>
                       </div>
                     ))}
                     <div className="flex justify-between gap-3">
@@ -89,7 +86,7 @@ export function LeadInbox({
 
           {/* Desktop: full table. */}
           <div className="hidden overflow-x-auto rounded-2xl border border-line bg-white md:block">
-            <table className="w-full min-w-[46rem] text-left text-sm">
+            <table className="w-full min-w-184 text-left text-sm">
               <thead>
                 <tr className="border-b border-line text-xs uppercase tracking-wide text-muted">
                   {columns.map((c) => (

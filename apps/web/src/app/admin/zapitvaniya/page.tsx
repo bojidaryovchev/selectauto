@@ -23,7 +23,6 @@ export default async function AdminInquiriesPage({
         {LEAD_TYPE_META.inquiry.label}
       </h1>
       <LeadInbox
-        type="inquiry"
         basePath={LEAD_TYPE_META.inquiry.href}
         columns={INQUIRY_COLUMNS}
         leads={rows.map(toInquiryView)}

@@ -36,13 +36,13 @@ export function LeadDetailDrawer({
         onClick={onClose}
         className="absolute inset-0 bg-black/40"
       />
-      <aside className="relative flex h-full w-full max-w-lg flex-col bg-white shadow-2xl">
-        <header className="flex items-center gap-3 border-b border-line px-4 py-4 sm:px-6">
+      <aside className="relative flex size-full max-w-lg flex-col bg-white shadow-2xl">
+        <header className="flex items-center gap-3 border-b border-line p-4 sm:px-6">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-bold uppercase tracking-wide text-muted">
               {LEAD_TYPE_META[lead.type].short} · #{lead.id}
             </p>
-            <p className="break-words text-lg font-black text-ink">{lead.cells[0]}</p>
+            <p className="wrap-break-word text-lg font-black text-ink">{lead.cells[0]}</p>
           </div>
           <LeadStatusBadge status={lead.status} />
           <button
@@ -79,7 +79,7 @@ function DetailRow({ field }: { field: AdminDetailField }) {
   return (
     <div className="grid grid-cols-[7rem_1fr] gap-3 py-2.5 sm:grid-cols-[9rem_1fr]">
       <dt className="text-sm font-semibold text-muted">{field.label}</dt>
-      <dd className={`text-sm text-ink ${field.mono ? "font-mono" : ""} break-words`}>
+      <dd className={`text-sm text-ink ${field.mono ? "font-mono" : ""} wrap-break-word`}>
         {field.href ? (
           <a
             href={field.href}

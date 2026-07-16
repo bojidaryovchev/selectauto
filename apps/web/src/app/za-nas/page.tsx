@@ -29,6 +29,9 @@ export default function AboutPage() {
       <SiteHeader />
 
       <main className="flex-1 bg-[#f4f5f7] text-[#18191c]">
+        {/* Dark spacer so the fixed header sits above the hero, not on it —
+            matches the home / carfax / kontakti hero pattern. */}
+        <div className="h-(--header-h) bg-shell" />
         <AboutHero />
         <AboutIntro />
         <AboutStats />

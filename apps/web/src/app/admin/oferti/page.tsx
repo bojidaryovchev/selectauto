@@ -24,7 +24,6 @@ export default async function AdminOffersPage({
         {LEAD_TYPE_META.calculator.label}
       </h1>
       <LeadInbox
-        type="calculator"
         basePath={LEAD_TYPE_META.calculator.href}
         columns={CALCULATOR_COLUMNS}
         leads={rows.map(toCalculatorView)}

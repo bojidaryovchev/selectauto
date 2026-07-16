@@ -8,6 +8,7 @@
     "start": "next start",
     "type-check": "tsc --noEmit",
     "lint": "eslint",
+    "lint:fix": "eslint --fix",
     "bake:edges": "node scripts/bake-particle-edges.mjs"
   },
   "dependencies": {

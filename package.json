@@ -24,7 +24,7 @@
     "dev:extension": "pnpm --filter @auctions-ingestion/extension run dev",
     "build:extension": "pnpm --filter @auctions-ingestion/extension run build",
     "type-check": "pnpm --filter @auctions-ingestion/web --filter @auctions-ingestion/functions --filter @auctions-ingestion/infra --filter @auctions-ingestion/db --filter @auctions-ingestion/extension run type-check",
-    "lint": "eslint .",
+    "lint": "eslint --fix && pnpm --filter @auctions-ingestion/web run lint:fix",
     "format": "prettier --write \"**/*.{ts,tsx,mjs,json}\"",
     "check": "pnpm run type-check && pnpm run lint"
   },

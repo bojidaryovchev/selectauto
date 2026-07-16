@@ -35,7 +35,7 @@ export function AdminNav() {
     });
 
   return (
-    <header className="sticky top-0 z-30 border-b border-line bg-white/95 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-line bg-white/95 backdrop-blur-sm">
       <div className="mx-auto max-w-7xl px-4">
         {/* Top row: logo + (desktop-only inline nav) + right actions. */}
         <div className="flex h-14 items-center gap-2">

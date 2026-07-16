@@ -25,7 +25,6 @@ export default async function AdminCarfaxPage({
         {LEAD_TYPE_META.carfax.label}
       </h1>
       <LeadInbox
-        type="carfax"
         basePath={LEAD_TYPE_META.carfax.href}
         columns={CARFAX_COLUMNS}
         leads={rows.map(toCarfaxView)}
