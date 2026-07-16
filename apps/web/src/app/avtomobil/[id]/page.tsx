@@ -19,6 +19,7 @@ import {
   CarSellerNote,
   CarSpecSheet,
   CarTagChips,
+  CarVinCheck,
   RelatedCars,
 } from "@/components/cars/car-detail";
 import { AuctionCountdown } from "@/components/cars/all-cars";
@@ -317,6 +318,11 @@ async function CarDetailBody({ params }: { params: Params }) {
 
                 {/* Spec sheet (desktop reads it here under the heading) */}
                 <CarSpecSheet specs={detail.specs} />
+
+                {/* Per-car VIN history check → Carfax lead funnel. Only when the car
+                    carries a VIN (the `cars.vin` column is nullable; many lots have
+                    none). Reuses the free /api/vin-check lookup, DB-cached per VIN. */}
+                {detail.vin ? <CarVinCheck vin={detail.vin} /> : null}
               </div>
 
               {/* ── Right column: price + status + contact (sticky) ── */}
@@ -398,6 +404,8 @@ async function CarDetailBody({ params }: { params: Params }) {
                     model={detail.model}
                     year={detail.year}
                     lotNumber={detail.lotNumber}
+                    vin={detail.vin}
+                    market={detail.market}
                   />
                 )}
               </aside>

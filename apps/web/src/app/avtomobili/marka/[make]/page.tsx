@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
+import { cache, Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Container, LinkButton } from "@/components/common";
@@ -19,6 +19,21 @@ import type { CarFilters } from "@/types/car-filters.type";
 
 type Params = Promise<{ make: string }>;
 
+/**
+ * Request-scoped loader shared by `generateMetadata` and the page body so the slug
+ * resolution + exact count run ONCE per request instead of once each. `resolveBrandHub`
+ * is already `"use cache"`, but `getCarsCount` is a live read that otherwise ran twice
+ * per request. Keyed on the route-param STRING (React `cache()` compares args by
+ * identity), so the count is resolved inside this shared loader rather than by each
+ * call site with its own `filters` object.
+ */
+const loadBrandHub = cache(async (make: string) => {
+  const hub = await resolveBrandHub(make);
+  if (!hub) return null;
+  const { count } = await getCarsCount({ brand: hub.brandId });
+  return { hub, count };
+});
+
 /** The brand hub's canonical path from the resolved (re-slugged) name; falls back
  *  to the brand id defensively (the name came from a real match, so null is
  *  unreachable in practice). */
@@ -33,10 +48,10 @@ function hubPath(hub: BrandHubResolution): string {
  */
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { make } = await params;
-  const hub = await resolveBrandHub(make);
-  if (!hub) return { title: "Автомобили | SelectAuto", robots: { index: false, follow: true } };
+  const data = await loadBrandHub(make);
+  if (!data) return { title: "Автомобили | SelectAuto", robots: { index: false, follow: true } };
 
-  const { count } = await getCarsCount({ brand: hub.brandId });
+  const { hub, count } = data;
   const canonical = `${SITE_URL}${hubPath(hub)}`;
 
   return {
@@ -75,13 +90,13 @@ export default function BrandHubPage({ params }: { params: Params }) {
 
 async function BrandHubBody({ params }: { params: Params }) {
   const { make } = await params;
-  const hub = await resolveBrandHub(make);
-  if (!hub) notFound();
+  const data = await loadBrandHub(make);
+  if (!data) notFound();
 
+  const { hub, count } = data;
   const filters: CarFilters = { brand: hub.brandId };
-  const [firstPage, { count }, modelHubs] = await Promise.all([
+  const [firstPage, modelHubs] = await Promise.all([
     getCarsPage(filters, null),
-    getCarsCount(filters),
     getBrandModelHubs(hub.brandId, MIN_HUB_LISTINGS_TO_INDEX),
   ]);
 

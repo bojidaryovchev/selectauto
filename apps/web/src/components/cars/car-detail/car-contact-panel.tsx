@@ -1,7 +1,8 @@
 import { LinkButton } from "@/components/common";
-import { PhoneIcon, ViberIcon } from "@/components/icons";
+import { PhoneIcon, ShieldIcon, ViberIcon } from "@/components/icons";
 import { InquiryButton } from "@/components/inquiry";
 import { CONTACT, SOCIALS } from "@/constants";
+import type { CarMarket } from "@/types/car-detail.type";
 import type { InquiryPrefill } from "@/types";
 
 const VIBER_HREF = SOCIALS.find((s) => s.label === "Viber")?.href ?? "";
@@ -16,6 +17,11 @@ const VIBER_HREF = SOCIALS.find((s) => s.label === "Viber")?.href ?? "";
  * When the car has a resolved brand + model, the inquiry opens PRE-ANSWERED for
  * this car (skipping the brand/model quiz steps, starting at budget, with a banner
  * naming the car). Missing brand/model → the button opens the generic quiz.
+ *
+ * A „Заяви Carfax проверка" CTA deep-links to /carfax with the car's VIN/make/model
+ * pre-filled. It's shown only for US/Canada cars (`market !== "kr"`) — Carfax is a
+ * North-American vehicle-history product, and Encar (KR) lots already render their
+ * own built-in insurance/inspection history further down the page.
  */
 export function CarContactPanel({
   title,
@@ -23,12 +29,16 @@ export function CarContactPanel({
   model,
   year,
   lotNumber,
+  vin,
+  market,
 }: {
   title: string;
   brand?: string;
   model?: string;
   year?: number;
   lotNumber?: string;
+  vin?: string;
+  market?: CarMarket;
 }) {
   const prefill: InquiryPrefill | undefined =
     brand && model
@@ -39,6 +49,18 @@ export function CarContactPanel({
           lotNumber,
         }
       : undefined;
+
+  // Carfax lead form, deep-linked with this car's details pre-filled (see the
+  // CarfaxFormFromUrl wrapper). Only the params we actually have are appended.
+  const carfaxHref = (() => {
+    const p = new URLSearchParams();
+    if (vin) p.set("vin", vin);
+    if (brand) p.set("make", brand);
+    if (model) p.set("model", model);
+    const qs = p.toString();
+    return qs ? `/carfax?${qs}` : "/carfax";
+  })();
+  const showCarfax = market !== "kr";
 
   return (
     <section className="rounded-2xl border border-line bg-white p-6 shadow-card max-md:p-5">
@@ -65,6 +87,17 @@ export function CarContactPanel({
         >
           Направете заявка
         </InquiryButton>
+
+        {showCarfax ? (
+          <LinkButton
+            href={carfaxHref}
+            rippleTheme="dark"
+            className="inline-flex min-h-13 items-center justify-center gap-2.5 rounded-full border border-line bg-white px-5 text-sm font-extrabold uppercase tracking-wide text-[#333] transition-transform duration-200 hover:-translate-y-0.5 hover:text-brand-dark"
+          >
+            <ShieldIcon className="size-5" />
+            Заяви Carfax проверка
+          </LinkButton>
+        ) : null}
 
         {VIBER_HREF ? (
           <LinkButton

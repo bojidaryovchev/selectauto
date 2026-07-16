@@ -26,6 +26,9 @@ export type CarDetailPrice = {
 export type CarDetailSpec = {
   label: string;
   value: string;
+  /** Render an inline copy-to-clipboard button next to the value (VIN, lot №) —
+   *  identifiers the user pastes into a Carfax/VIN lookup or quotes to us. */
+  copyable?: boolean;
 };
 
 /** Which market a car comes from — discriminates the detail-page render mode. */

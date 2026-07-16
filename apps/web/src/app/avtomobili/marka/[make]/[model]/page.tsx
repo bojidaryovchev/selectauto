@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
+import { cache, Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Container, LinkButton } from "@/components/common";
@@ -21,6 +21,22 @@ import {
 import type { CarFilters } from "@/types/car-filters.type";
 
 type Params = Promise<{ make: string; model: string }>;
+
+/**
+ * Request-scoped loader shared by `generateMetadata` and the page body so the slug
+ * resolution + exact count run ONCE per request instead of once each. `resolveCarHub`
+ * is already `"use cache"` (deduped on its own), but `getCarsCount` is a live read —
+ * without this it ran twice per hub request. Keyed on the route-param STRINGS:
+ * React `cache()` compares args by identity, so a fresh `filters` object at each call
+ * site would not dedup — the count must be resolved inside this shared loader.
+ */
+const loadModelHub = cache(async (make: string, model: string) => {
+  const hub = await resolveCarHub(make, model);
+  if (!hub) return null;
+  const filters: CarFilters = { brand: hub.brandId, model: hub.modelId };
+  const { count } = await getCarsCount(filters);
+  return { hub, filters, count };
+});
 
 /** The hub's canonical path from resolved (re-slugged) names — collapses any
  *  near-miss casing/spacing in the requested URL to one canonical form. The names
@@ -63,11 +79,10 @@ const MIN_SAMPLE_FOR_COUNTRY_CLAIM = 10;
  */
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { make, model } = await params;
-  const hub = await resolveCarHub(make, model);
-  if (!hub) return { title: "Автомобили | SelectAuto", robots: { index: false, follow: true } };
+  const data = await loadModelHub(make, model);
+  if (!data) return { title: "Автомобили | SelectAuto", robots: { index: false, follow: true } };
 
-  const filters: CarFilters = { brand: hub.brandId, model: hub.modelId };
-  const { count } = await getCarsCount(filters);
+  const { hub, count } = data;
   const canonical = `${SITE_URL}${hubPath(hub)}`;
   const label = `${hub.brandName} ${hub.modelName}`;
 
@@ -123,13 +138,12 @@ export default function ModelHubPage({ params }: { params: Params }) {
  */
 async function HubBody({ params }: { params: Params }) {
   const { make, model } = await params;
-  const hub = await resolveCarHub(make, model);
-  if (!hub) notFound();
+  const data = await loadModelHub(make, model);
+  if (!data) notFound();
 
-  const filters: CarFilters = { brand: hub.brandId, model: hub.modelId };
-  const [firstPage, { count }, stats, soldByYear] = await Promise.all([
+  const { hub, filters, count } = data;
+  const [firstPage, stats, soldByYear] = await Promise.all([
     getCarsPage(filters, null),
-    getCarsCount(filters),
     getModelHubStats(hub.brandId, hub.modelId),
     getModelSoldPricesByYear(hub.brandId, hub.modelId),
   ]);

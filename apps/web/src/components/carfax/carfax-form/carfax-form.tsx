@@ -26,7 +26,12 @@ type Status =
 const INPUT_CLASS =
   "min-h-[54px] w-full appearance-none rounded-[14px] border border-[#d9dde4] bg-white px-4 text-base font-semibold text-[#17181b] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-[border-color,box-shadow,transform] duration-200 placeholder:font-medium placeholder:text-[#9aa0aa] focus:-translate-y-px focus:border-brand focus:shadow-[0_0_0_4px_rgba(216,111,22,0.12)] focus:outline-none";
 
-export function CarfaxForm() {
+/**
+ * @param defaults Optional seed values (VIN/make/model) — supplied by
+ *   `CarfaxFormFromUrl` when a car-detail page deep-links here with the car's
+ *   details pre-filled. Absent on the standalone /carfax page.
+ */
+export function CarfaxForm({ defaults }: { defaults?: Partial<CarfaxFormValues> } = {}) {
   const [status, setStatus] = useState<Status>({ kind: "idle" });
 
   const {
@@ -49,6 +54,7 @@ export function CarfaxForm() {
       car_make: "",
       car_model: "",
       message: "",
+      ...defaults,
     },
   });
 
