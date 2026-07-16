@@ -54,7 +54,7 @@ export function LeadFilters({ basePath }: { basePath: string }) {
       </div>
 
       <form
-        className="ml-auto flex items-center gap-2"
+        className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto"
         onSubmit={(e) => {
           e.preventDefault();
           apply({ q });
@@ -65,7 +65,7 @@ export function LeadFilters({ basePath }: { basePath: string }) {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Търси по име, телефон, VIN…"
-          className="h-10 w-64 max-w-full rounded-full border border-line bg-white px-4 text-sm text-ink outline-none focus:border-brand"
+          className="h-10 w-full rounded-full border border-line bg-white px-4 text-sm text-ink outline-none focus:border-brand sm:w-64"
         />
         <button
           type="submit"

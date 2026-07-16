@@ -56,43 +56,76 @@ export function LeadInbox({
           Няма заявки за този филтър.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-line bg-white">
-          <table className="w-full min-w-[46rem] text-left text-sm">
-            <thead>
-              <tr className="border-b border-line text-xs uppercase tracking-wide text-muted">
-                {columns.map((c) => (
-                  <th key={c} className="px-4 py-3 font-bold">
-                    {c}
-                  </th>
-                ))}
-                <th className="px-4 py-3 font-bold">Получено</th>
-                <th className="px-4 py-3 font-bold">Статус</th>
-              </tr>
-            </thead>
-            <tbody>
-              {leads.map((lead) => (
-                <tr
-                  key={lead.id}
+        <>
+          {/* Mobile: tappable cards (a table would need to scroll horizontally). */}
+          <ul className="space-y-3 md:hidden">
+            {leads.map((lead) => (
+              <li key={lead.id}>
+                <button
+                  type="button"
                   onClick={() => setSelected(lead)}
-                  className="cursor-pointer border-b border-line/60 transition-colors last:border-0 hover:bg-[#fafafa]"
+                  className="flex w-full flex-col gap-2 rounded-2xl border border-line bg-white p-4 text-left transition-colors active:bg-[#fafafa]"
                 >
-                  {lead.cells.map((cell, i) => (
-                    <td
-                      key={i}
-                      className={`px-4 py-3 ${i === 0 ? "font-semibold text-ink" : "text-muted"}`}
-                    >
-                      {cell}
-                    </td>
-                  ))}
-                  <td className="whitespace-nowrap px-4 py-3 text-muted">{lead.createdAt}</td>
-                  <td className="px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="font-bold text-ink">{lead.cells[0]}</span>
                     <LeadStatusBadge status={lead.status} />
-                  </td>
+                  </div>
+                  <dl className="space-y-1 text-sm">
+                    {columns.slice(1).map((col, i) => (
+                      <div key={col} className="flex justify-between gap-3">
+                        <dt className="shrink-0 text-muted">{col}</dt>
+                        <dd className="break-words text-right text-ink">{lead.cells[i + 1]}</dd>
+                      </div>
+                    ))}
+                    <div className="flex justify-between gap-3">
+                      <dt className="shrink-0 text-muted">Получено</dt>
+                      <dd className="text-right text-muted">{lead.createdAt}</dd>
+                    </div>
+                  </dl>
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          {/* Desktop: full table. */}
+          <div className="hidden overflow-x-auto rounded-2xl border border-line bg-white md:block">
+            <table className="w-full min-w-[46rem] text-left text-sm">
+              <thead>
+                <tr className="border-b border-line text-xs uppercase tracking-wide text-muted">
+                  {columns.map((c) => (
+                    <th key={c} className="px-4 py-3 font-bold">
+                      {c}
+                    </th>
+                  ))}
+                  <th className="px-4 py-3 font-bold">Получено</th>
+                  <th className="px-4 py-3 font-bold">Статус</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {leads.map((lead) => (
+                  <tr
+                    key={lead.id}
+                    onClick={() => setSelected(lead)}
+                    className="cursor-pointer border-b border-line/60 transition-colors last:border-0 hover:bg-[#fafafa]"
+                  >
+                    {lead.cells.map((cell, i) => (
+                      <td
+                        key={i}
+                        className={`px-4 py-3 ${i === 0 ? "font-semibold text-ink" : "text-muted"}`}
+                      >
+                        {cell}
+                      </td>
+                    ))}
+                    <td className="whitespace-nowrap px-4 py-3 text-muted">{lead.createdAt}</td>
+                    <td className="px-4 py-3">
+                      <LeadStatusBadge status={lead.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {pageCount > 1 && (

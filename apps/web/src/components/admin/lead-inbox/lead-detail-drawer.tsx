@@ -37,24 +37,24 @@ export function LeadDetailDrawer({
         className="absolute inset-0 bg-black/40"
       />
       <aside className="relative flex h-full w-full max-w-lg flex-col bg-white shadow-2xl">
-        <header className="flex items-center gap-3 border-b border-line px-6 py-4">
-          <div>
+        <header className="flex items-center gap-3 border-b border-line px-4 py-4 sm:px-6">
+          <div className="min-w-0 flex-1">
             <p className="text-xs font-bold uppercase tracking-wide text-muted">
               {LEAD_TYPE_META[lead.type].short} · #{lead.id}
             </p>
-            <p className="text-lg font-black text-ink">{lead.cells[0]}</p>
+            <p className="break-words text-lg font-black text-ink">{lead.cells[0]}</p>
           </div>
           <LeadStatusBadge status={lead.status} />
           <button
             type="button"
             onClick={onClose}
-            className="ml-auto grid size-9 place-items-center rounded-full text-muted transition-colors hover:bg-neutral-100 hover:text-ink"
+            className="grid size-9 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-neutral-100 hover:text-ink"
           >
             ✕
           </button>
         </header>
 
-        <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
+        <div className="flex-1 space-y-6 overflow-y-auto px-4 py-5 sm:px-6">
           <dl className="divide-y divide-line">
             {lead.details.map((f, i) => (
               <DetailRow key={i} field={f} />
@@ -77,7 +77,7 @@ export function LeadDetailDrawer({
 
 function DetailRow({ field }: { field: AdminDetailField }) {
   return (
-    <div className="grid grid-cols-[9rem_1fr] gap-3 py-2.5">
+    <div className="grid grid-cols-[7rem_1fr] gap-3 py-2.5 sm:grid-cols-[9rem_1fr]">
       <dt className="text-sm font-semibold text-muted">{field.label}</dt>
       <dd className={`text-sm text-ink ${field.mono ? "font-mono" : ""} break-words`}>
         {field.href ? (

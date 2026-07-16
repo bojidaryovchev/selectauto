@@ -18,41 +18,56 @@ export function AdminNav() {
     ...LEAD_TYPES.map((t) => ({ href: LEAD_TYPE_META[t].href, label: LEAD_TYPE_META[t].short })),
   ];
 
+  const renderLinks = () =>
+    links.map((l) => {
+      const active = l.href === "/admin" ? pathname === "/admin" : pathname.startsWith(l.href);
+      return (
+        <Link
+          key={l.href}
+          href={l.href}
+          className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold transition-colors ${
+            active ? "bg-brand/10 text-brand" : "text-muted hover:bg-neutral-100 hover:text-ink"
+          }`}
+        >
+          {l.label}
+        </Link>
+      );
+    });
+
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-white/95 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-7xl items-center gap-1 px-4">
-        <Link href="/admin" className="mr-3 text-sm font-black uppercase tracking-tight text-ink">
-          SelectAuto <span className="text-brand">Админ</span>
-        </Link>
-        <nav className="flex items-center gap-1">
-          {links.map((l) => {
-            const active = l.href === "/admin" ? pathname === "/admin" : pathname.startsWith(l.href);
-            return (
-              <Link
-                key={l.href}
-                href={l.href}
-                className={`rounded-full px-3 py-1.5 text-sm font-semibold transition-colors ${
-                  active ? "bg-brand/10 text-brand" : "text-muted hover:bg-neutral-100 hover:text-ink"
-                }`}
-              >
-                {l.label}
-              </Link>
-            );
-          })}
+      <div className="mx-auto max-w-7xl px-4">
+        {/* Top row: logo + (desktop-only inline nav) + right actions. */}
+        <div className="flex h-14 items-center gap-2">
+          <Link
+            href="/admin"
+            className="shrink-0 text-sm font-black uppercase tracking-tight text-ink"
+          >
+            SelectAuto <span className="text-brand">Админ</span>
+          </Link>
+          <nav className="hidden items-center gap-1 md:flex">{renderLinks()}</nav>
+          <div className="ml-auto flex shrink-0 items-center gap-1">
+            <Link
+              href="/"
+              className="rounded-full px-2.5 py-1.5 text-sm font-semibold text-muted transition-colors hover:bg-neutral-100 hover:text-ink sm:px-3"
+            >
+              <span className="hidden sm:inline">← Към сайта</span>
+              <span className="sm:hidden">← Сайт</span>
+            </Link>
+            <button
+              type="button"
+              onClick={() => signOut({ callbackUrl: "/" })}
+              className="rounded-full px-2.5 py-1.5 text-sm font-semibold text-muted transition-colors hover:bg-neutral-100 hover:text-ink sm:px-3"
+            >
+              Изход
+            </button>
+          </div>
+        </div>
+
+        {/* Second row on mobile: horizontally scrollable section links. */}
+        <nav className="-mx-1 flex items-center gap-1 overflow-x-auto px-1 pb-2 md:hidden">
+          {renderLinks()}
         </nav>
-        <Link
-          href="/"
-          className="ml-auto rounded-full px-3 py-1.5 text-sm font-semibold text-muted transition-colors hover:bg-neutral-100 hover:text-ink"
-        >
-          ← Към сайта
-        </Link>
-        <button
-          type="button"
-          onClick={() => signOut({ callbackUrl: "/" })}
-          className="rounded-full px-3 py-1.5 text-sm font-semibold text-muted transition-colors hover:bg-neutral-100 hover:text-ink"
-        >
-          Изход
-        </button>
       </div>
     </header>
   );
