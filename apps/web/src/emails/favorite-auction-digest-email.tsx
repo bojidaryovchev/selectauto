@@ -1,4 +1,4 @@
-import { Button, Heading, Hr, Link, Section, Text } from "react-email";
+import { Button, Heading, Hr, Img, Link, Section, Text } from "react-email";
 import { EmailLayout } from "./email-layout";
 
 /** One favourite car whose auction is today, pre-formatted by the caller. */
@@ -7,6 +7,13 @@ export type DigestCar = {
   title: string;
   /** Absolute link to the car's detail page. */
   url: string;
+  /**
+   * Absolute image URL (the AuctionsAPI CDN `.webp`), or undefined when the
+   * listing has no photo. Rendered as a clickable thumbnail; `alt` carries the
+   * title so clients that don't render WebP (classic Outlook desktop) still show
+   * the car.
+   */
+  image?: string;
   /** Formatted price ("32 500 $") or undefined when unpriced. */
   price?: string;
   /** Auction lot number ("Търг № …"). */
@@ -27,10 +34,13 @@ type FavoriteAuctionDigestEmailProps = {
 
 /**
  * Daily digest emailed to a user who opted in on /lyubimi: their favourited cars
- * whose auction lands today. Text/data-focused (no auction photos — the upstream
- * Copart/IAAI image URLs expire and block hotlinking), matching the other
- * SelectAuto emails. Each car links to its detail page; a footer CTA links back
- * to the saved-cars list.
+ * whose auction lands today. Each car shows its photo (the AuctionsAPI CDN
+ * `i.auctionsapi.com` `.webp` — a stable, hotlink-friendly URL, unlike the raw
+ * Copart/IAAI URLs which expire/block hotlinking; the CDN fetch works from an
+ * email client's image proxy), title, and auction details, and links to its
+ * detail page. WebP renders in Gmail/Apple Mail/mobile/webmail; the `alt` (title)
+ * covers clients that don't (classic Outlook desktop). A footer CTA links back to
+ * the saved-cars list.
  */
 export function FavoriteAuctionDigestEmail({
   name,
@@ -52,6 +62,16 @@ export function FavoriteAuctionDigestEmail({
       {cars.map((car, index) => (
         <Section key={`${car.url}-${index}`}>
           {index > 0 ? <Hr className="my-4 border-line" /> : null}
+          {car.image ? (
+            <Link href={car.url} className="block no-underline">
+              <Img
+                src={car.image}
+                alt={car.title}
+                width="536"
+                className="mb-3 h-auto w-full rounded-xl border border-solid border-line"
+              />
+            </Link>
+          ) : null}
           <Link
             href={car.url}
             className="m-0 mb-1 block text-[16px] font-bold text-brand-dark no-underline"

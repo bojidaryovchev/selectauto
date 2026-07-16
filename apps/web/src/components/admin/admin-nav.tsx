@@ -40,10 +40,16 @@ export function AdminNav() {
             );
           })}
         </nav>
+        <Link
+          href="/"
+          className="ml-auto rounded-full px-3 py-1.5 text-sm font-semibold text-muted transition-colors hover:bg-neutral-100 hover:text-ink"
+        >
+          ← Към сайта
+        </Link>
         <button
           type="button"
           onClick={() => signOut({ callbackUrl: "/" })}
-          className="ml-auto rounded-full px-3 py-1.5 text-sm font-semibold text-muted transition-colors hover:bg-neutral-100 hover:text-ink"
+          className="rounded-full px-3 py-1.5 text-sm font-semibold text-muted transition-colors hover:bg-neutral-100 hover:text-ink"
         >
           Изход
         </button>

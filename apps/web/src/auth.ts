@@ -26,21 +26,21 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     /**
      * Node-side override of the edge `jwt` callback (auth.config.ts). Runs only
      * on the initial sign-in (when `user` is present), where we're in the Node
-     * route handler and can hit the DB. Stamps `id` (as before) AND `role` onto
+     * route handler and can hit the DB. Stamps `id` (as before) AND `roles` onto
      * the token so the /admin gate can authorise from the JWT alone — no per-
      * request DB read in the proxy. On later requests `user` is undefined, so the
-     * existing token (with its role) passes through untouched. The edge config's
+     * existing token (with its roles) passes through untouched. The edge config's
      * `jwt` never runs with a `user`, so it never needs the DB.
      */
     async jwt({ token, user }) {
       if (user?.id) {
         token.id = user.id;
         const rows = await getDb()
-          .select({ role: schema.users.role })
+          .select({ roles: schema.users.roles })
           .from(schema.users)
           .where(eq(schema.users.id, user.id))
           .limit(1);
-        token.role = rows[0]?.role ?? "user";
+        token.roles = rows[0]?.roles ?? [];
       }
       return token;
     },

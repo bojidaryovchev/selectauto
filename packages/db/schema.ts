@@ -329,10 +329,13 @@ export const users = pgTable("users", {
   emailVerified: timestamp("email_verified", { withTimezone: true }),
   image: text("image"),
   passwordHash: text("password_hash"),
-  // Authorises the owner-facing /admin back office (migration 0029). 'user' |
-  // 'admin'. Rides on the Auth.js JWT (set in the `jwt` callback from a DB read
-  // at sign-in) so /admin gating needs no per-request DB lookup.
-  role: text("role").notNull().default("user"),
+  // Elevated roles granted to this account — authorises the owner-facing /admin
+  // back office (migrations 0029→0031). An array so an account can hold several
+  // roles (admin today; editor/… later); a normal visitor has an empty array.
+  // Membership of 'admin' gates /admin. Rides on the Auth.js JWT (set in the
+  // `jwt` callback from a DB read at sign-in) so /admin gating needs no per-
+  // request DB lookup. RBAC-ready via the role model in src/constants/admin.ts.
+  roles: text("roles").array().notNull().default([]),
   // Opt-in for the daily "любими автомобили с търг днес" email digest, set from
   // /lyubimi. Default off. See apps/web/src/queries/favorites +
   // apps/web/src/app/api/cron/favorite-auction-alerts.

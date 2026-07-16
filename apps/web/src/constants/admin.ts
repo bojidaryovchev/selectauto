@@ -1,4 +1,14 @@
 /**
+ * Elevated account roles (RBAC-ready). `users.roles` is a text[] holding any of
+ * these; a normal visitor has none. To add a role, extend this list — then map
+ * roles to capabilities in code as needed (no schema change, no join tables).
+ * The only gate today is membership of 'admin' (the /admin back office).
+ */
+export const APP_ROLES = ["admin"] as const;
+
+export type AppRole = (typeof APP_ROLES)[number];
+
+/**
  * Shared constants for the owner-facing /admin back office (migration 0029).
  *
  * The three lead tables (carfax_requests, inquiries, calculator_offers) share a
