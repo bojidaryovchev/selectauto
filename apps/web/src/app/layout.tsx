@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
 import { Suspense } from "react";
+import { Analytics } from "@vercel/analytics/next";
 import { SessionProvider } from "next-auth/react";
 import { ScrollToTop, ViberGroupPopup } from "@/components/layout";
 import { Providers } from "@/components/providers";
@@ -84,6 +85,11 @@ export default function RootLayout({
             dismissable for the session. Self-contained client singleton — no
             usePathname, so (unlike ScrollToTop) it needs no Suspense boundary. */}
         <ViberGroupPopup />
+
+        {/* Vercel Web Analytics: tracks page views and web vitals. Enabled via the
+            Vercel dashboard (Analytics section). Automatically collects Core Web
+            Vitals (LCP, FID, CLS) and page navigation events. */}
+        <Analytics />
       </body>
     </html>
   );
