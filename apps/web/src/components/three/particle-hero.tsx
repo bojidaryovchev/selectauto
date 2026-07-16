@@ -486,11 +486,11 @@ export function ParticleHero() {
 
       {/* Copy — aligned to the shared 1280px page column (matches the header/nav
           and every Container section) instead of a fixed viewport inset. */}
-      <div className="pointer-events-none relative z-5 mx-auto flex min-h-screen w-[min(100%-28px,1280px)] flex-col items-start justify-center pb-22.5 pt-[clamp(110px,12vh,150px)] *:pointer-events-auto max-[900px]:min-h-fit max-[900px]:justify-start max-[900px]:pb-0 max-[900px]:pt-13">
+      <div className="pointer-events-none relative z-5 mx-auto flex min-h-screen w-[min(100%-28px,1280px)] flex-col items-start justify-center pb-22.5 pt-[clamp(110px,12vh,150px)] *:pointer-events-auto max-[900px]:min-h-fit max-[900px]:justify-start max-[900px]:pb-0 max-[900px]:pt-[clamp(76px,13vh,128px)]">
         {/* Visible hero slogan — deliberately a <p>, NOT a heading: the page's
             single <h1> is the keyword-bearing sr-only heading in app/page.tsx
             (this used to be a second <h1>, giving the homepage duplicate H1s). */}
-        <p className="mb-6 max-w-170 text-[clamp(46px,6vw,88px)] font-black leading-[0.95] tracking-[-2px] text-white max-[900px]:mb-3.5 max-[900px]:max-w-full max-[900px]:text-[clamp(34px,11vw,46px)] max-[900px]:leading-none max-[900px]:tracking-[-1.4px]">
+        <p className="mb-6 max-w-170 text-[clamp(46px,6vw,88px)] font-black leading-[0.95] tracking-[-2px] text-white max-[900px]:mb-4.5 max-[900px]:max-w-full max-[900px]:text-[clamp(34px,11vw,46px)] max-[900px]:leading-none max-[900px]:tracking-[-1.4px]">
           Намираме{" "}
           <span className="bg-linear-to-br from-brand-glow to-[#ffb37a] bg-clip-text text-transparent">
             точните
@@ -508,7 +508,7 @@ export function ParticleHero() {
           на ключ.
         </p>
 
-        <div className="flex flex-wrap items-center gap-4 max-[900px]:w-full max-[900px]:flex-col max-[900px]:gap-3">
+        <div className="flex flex-wrap items-center gap-4 max-[900px]:mt-1 max-[900px]:w-full max-[900px]:flex-col max-[900px]:gap-3.5">
           <LinkButton
             href="/vsichki-avtomobili"
             rippleTheme="light"

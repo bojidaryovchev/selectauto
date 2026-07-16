@@ -53,7 +53,7 @@ export function MobileBottomNav({ drawerOpen, hidden, onToggleDrawer }: Props) {
   return (
     <nav
       aria-label="Основна навигация"
-      className={`fixed inset-x-0 bottom-0 z-10000 border-t border-white/8 bg-shell/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl transition-transform duration-300 ease-out will-change-transform lg:hidden ${
+      className={`fixed inset-x-0 bottom-0 z-10000 border-t border-white/10 bg-linear-to-b from-shell/95 to-black/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_30px_rgba(0,0,0,0.5)] backdrop-blur-xl transition-transform duration-300 ease-out will-change-transform lg:hidden ${
         hidden ? "translate-y-full" : "translate-y-0"
       }`}
     >

@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import {
-  AboutCta,
-  AboutFeatures,
+  AboutClosing,
   AboutHero,
   AboutIntro,
-  AboutMedia,
-  AboutSocial,
+  AboutProcess,
+  AboutStats,
+  AboutValues,
 } from "@/components/about";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
@@ -31,10 +31,10 @@ export default function AboutPage() {
       <main className="flex-1 bg-[#f4f5f7] text-[#18191c]">
         <AboutHero />
         <AboutIntro />
-        <AboutFeatures />
-        <AboutMedia />
-        <AboutSocial />
-        <AboutCta />
+        <AboutStats />
+        <AboutProcess />
+        <AboutValues />
+        <AboutClosing />
       </main>
 
       <SiteFooter />

@@ -413,7 +413,7 @@ export function SiteHeader() {
                 rippleTheme="light"
                 aria-haspopup="menu"
                 aria-expanded={profileOpen}
-                className="flex min-h-14 w-full items-center gap-3 rounded-full border border-white/10 bg-white/6 pl-3 pr-4 text-left"
+                className="flex min-h-14 w-full items-center gap-3 rounded-full border border-white/10 bg-white/6 pl-2 pr-4 text-left"
               >
                 <span className="grid size-10 shrink-0 place-items-center rounded-full border border-white/20 bg-white/10 text-sm font-black uppercase text-white">
                   {initial}

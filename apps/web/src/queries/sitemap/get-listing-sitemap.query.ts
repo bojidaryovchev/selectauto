@@ -1,5 +1,5 @@
 import { cacheLife, cacheTag } from "next/cache";
-import { asc, gt, sql } from "drizzle-orm";
+import { asc, gt } from "drizzle-orm";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { getDb, schema } from "@/lib/db";
 
@@ -24,37 +24,57 @@ export const SITEMAP_CHUNK_SIZE = 50_000;
 
 /**
  * The `car_id` cursor that STARTS each chunk: chunk `i` contains rows with
- * `car_id > cursors[i]` (cursor 0 is `0`, so chunk 0 starts from the smallest
- * id). One windowed query over the PK; cached (listings change slowly, and this
- * runs once per build for all chunks). Returns `[]` on error → zero chunks.
+ * `car_id > cursors[i]` (cursor 0 sits just below the smallest id). Cached
+ * (listings change slowly; runs once per build for all chunks). `[]` on error
+ * → zero chunks.
+ *
+ * Implementation note: this used to be ONE windowed query
+ * (`row_number() OVER (ORDER BY car_id)` over all ~945k rows), which
+ * materializes the whole PK ordering in a single statement — and repeatedly hit
+ * Neon's statement timeout during builds („chunk-cursor query failed …
+ * canceling statement due to statement timeout"), silently shipping a robots.txt
+ * with NO listing sitemaps. Now it keyset-PROBES one boundary per chunk:
+ * `WHERE car_id > cursor ORDER BY car_id OFFSET 50k LIMIT 1` — each probe is a
+ * bounded index-only scan of ≤50k entries (fast, far under any statement
+ * timeout), and ~19 small probes replace one huge statement. Same exact
+ * boundaries as before.
  */
 export async function getSitemapChunkCursors(): Promise<number[]> {
   "use cache";
   cacheTag(CACHE_TAGS.cars);
   cacheLife("days");
 
+  const cl = schema.carListings;
   try {
-    // Every Nth car_id in car_id order becomes a chunk-start boundary. The first
-    // boundary (rn=0) is the smallest id; we emit it as cursor 0 (`car_id > 0`)
-    // so chunk 0 includes it. Subsequent cursors are the *last* id of the prior
-    // chunk so the next chunk starts strictly after it — so we shift: cursor[i]
-    // = the (i*N)-th id minus nothing; using `car_id > cursor` with cursor =
-    // boundary id would SKIP that boundary row. To keep it simple & exact we
-    // take boundaries at rn % N == 0 and use cursor[0]=0, cursor[i]=boundary[i].
-    const rows = await getDb().execute<{ car_id: number }>(sql`
-      SELECT car_id FROM (
-        SELECT car_id, row_number() OVER (ORDER BY car_id) - 1 AS rn
-        FROM ${schema.carListings}
-      ) s
-      WHERE rn % ${SITEMAP_CHUNK_SIZE} = 0
-      ORDER BY car_id
-    `);
-    const boundaries = rows.rows.map((r) => Number(r.car_id));
-    if (boundaries.length === 0) return [];
-    // boundaries[i] is the FIRST id of chunk i. To fetch chunk i with
-    // `car_id > cursor`, cursor must be strictly below that first id: use
-    // (boundaries[i] - 1). Chunk 0's first id - 1 includes the smallest row.
-    return boundaries.map((firstId) => firstId - 1);
+    // Smallest id (index-only, instant). Empty table → no chunks.
+    const first = await getDb()
+      .select({ carId: cl.carId })
+      .from(cl)
+      .orderBy(asc(cl.carId))
+      .limit(1);
+    if (first.length === 0) return [];
+
+    let cursor = first[0].carId - 1;
+    const cursors: number[] = [cursor];
+
+    // Each probe finds the FIRST id of the NEXT chunk (the row 50k positions
+    // after the current cursor); the next cursor sits just below it. Loop ends
+    // when fewer than a full chunk remains. Hard cap = 100 chunks (5M listings)
+    // as a runaway guard — log if ever hit so the cap is raised consciously.
+    for (let i = 0; i < 100; i++) {
+      const next = await getDb()
+        .select({ carId: cl.carId })
+        .from(cl)
+        .where(gt(cl.carId, cursor))
+        .orderBy(asc(cl.carId))
+        .offset(SITEMAP_CHUNK_SIZE)
+        .limit(1);
+      if (next.length === 0) return cursors;
+      cursor = next[0].carId - 1;
+      cursors.push(cursor);
+    }
+    console.error("[sitemap] chunk-cursor probe hit the 100-chunk cap — raise it");
+    return cursors;
   } catch (error) {
     console.error("[sitemap] chunk-cursor query failed, emitting no listing sitemaps", error);
     return [];

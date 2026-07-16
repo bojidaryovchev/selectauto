@@ -27,7 +27,7 @@ export function SectionHeader({
   const subtitleColor = tone === "dark" ? "text-white/[0.78]" : "text-[#555]";
 
   return (
-    <Reveal className={`mx-auto mb-9.5 max-w-225 text-center ${className}`}>
+    <Reveal className={`mx-auto mb-9.5 max-w-225 text-center max-md:mb-7 ${className}`}>
       <span className="inline-flex items-center justify-center rounded-full bg-brand/10 px-4.5 py-2.5 text-xs font-extrabold uppercase tracking-widest text-brand-dark">
         {eyebrow}
       </span>

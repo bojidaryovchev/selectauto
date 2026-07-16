@@ -33,9 +33,14 @@ export function CarfaxForm() {
     register,
     handleSubmit,
     reset,
+    setFocus,
     formState: { errors, isSubmitting },
   } = useForm<CarfaxFormValues>({
     resolver: zodResolver(carfaxSchema),
+    // Re-validate as the user types after the first submit attempt, so each
+    // inline error clears the moment its field is fixed.
+    mode: "onSubmit",
+    reValidateMode: "onChange",
     defaultValues: {
       full_name: "",
       phone: "",
@@ -93,15 +98,15 @@ export function CarfaxForm() {
   }
 
   function onInvalid(formErrors: typeof errors) {
-    // Surface the first failing field's message in the status box. With every
-    // required field empty this is the original "Моля попълнете..." message; a
-    // filled-but-malformed VIN yields the original VIN-format message instead.
-    const firstError =
-      formErrors.full_name?.message ??
-      formErrors.phone?.message ??
-      formErrors.vin?.message ??
-      "Моля попълнете име, телефон и VIN номер.";
-    setStatus({ kind: "error", message: firstError });
+    // Don't echo field errors into the status box — each invalid field already
+    // shows its own inline hint, and repeating them here is what produced the
+    // stacked "wall of red". Just clear any stale submit result and move focus
+    // to the first invalid field so the user is taken straight to it.
+    setStatus({ kind: "idle" });
+    const firstInvalid = (
+      ["full_name", "phone", "vin"] as const
+    ).find((field) => formErrors[field]);
+    if (firstInvalid) setFocus(firstInvalid);
   }
 
   return (
@@ -110,7 +115,7 @@ export function CarfaxForm() {
       onSubmit={handleSubmit(onSubmit, onInvalid)}
       className="grid gap-3.5"
     >
-      <div className="grid grid-cols-2 gap-3.5 max-md:grid-cols-1">
+      <div className="grid grid-cols-2 items-start gap-3.5 max-md:grid-cols-1">
         <FormField
           id="saCarfaxName"
           label="Име и фамилия"
@@ -140,7 +145,7 @@ export function CarfaxForm() {
         </FormField>
       </div>
 
-      <div className="grid grid-cols-2 gap-3.5 max-md:grid-cols-1">
+      <div className="grid grid-cols-2 items-start gap-3.5 max-md:grid-cols-1">
         <FormField id="saCarfaxEmail" label="Имейл" error={errors.email?.message}>
           <input
             id="saCarfaxEmail"
@@ -163,7 +168,7 @@ export function CarfaxForm() {
         </FormField>
       </div>
 
-      <div className="grid grid-cols-2 gap-3.5 max-md:grid-cols-1">
+      <div className="grid grid-cols-2 items-start gap-3.5 max-md:grid-cols-1">
         <FormField id="saCarfaxMake" label="Марка" error={errors.car_make?.message}>
           <input
             id="saCarfaxMake"

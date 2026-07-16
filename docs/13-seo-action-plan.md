@@ -158,10 +158,14 @@ Deferred (noted, not bugs): `/kontakti` hero uses a stock Unsplash image (conten
       аукциони" (глосар + title types + Copart-vs-IAAI, ①) · ✅ „Encar на български" (②) ·
       ✅ „Корея или Америка" (③) · ✅ „Корея или Германия?" (③ — the objection pillar) ·
       ✅ „Защо не внасяме от Япония" (③ — RHD explainer → Korea funnel) ·
-      ✅ „Регистрация на внесена кола стъпка по стъпка" (④).
-      **Remaining:** ② LPI/газ deep-dive + „скрити такси от Корея" + mileage-authenticity
-      standalone; ① „наводнена кола" standalone; ⑤ hybrid/EV-from-Korea; model-specific
-      guides (Tucson/Sportage/Sorento от Корея; Grand Cherokee от САЩ).
+      ✅ „Регистрация на внесена кола стъпка по стъпка" (④) ·
+      ✅ „Фабричен газ (LPI) от Корея" (②) · ✅ „Скритите такси при внос — 9-те пера" (②) ·
+      ✅ „Реални ли са километрите на колите от Корея" (②) ·
+      ✅ „Наводнена кола от Америка" (①) · ✅ „Хибрид или електромобил от Корея" (⑤).
+      **11 posts + the cost guide = 12 live (≈6,100 words).**
+      **Remaining:** model-specific guides (Tucson/Sportage/Sorento от Корея; Grand Cherokee
+      от САЩ) — best written once real inventory/price data per model accumulates, so the
+      guides carry live numbers (hub stats) instead of generic claims.
 - [ ] `[ops]` **Quarterly regulatory re-verification loop** — ecotax draft (+24%) vs Държавен
       вестник, tariff steps, transit times; update „last verified" dates.
 - [ ] `[user+ops]` **Authority/brand track (12–24 mo, aimed at bidmotors-held head terms)**:

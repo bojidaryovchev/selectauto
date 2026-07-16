@@ -93,7 +93,11 @@ organic traffic (per `12-web-seo-strategy.md` §4.2/§4.3).
 
 - **Per-car sitemap** — [`avtomobil/sitemap.ts`](../apps/web/src/app/avtomobil/sitemap.ts):
   active cars only, split into 50k-URL chunks (`/avtomobil/sitemap/{id}.xml`); sold
-  cars are excluded.
+  cars are excluded. *(2026-07-16: the chunk-boundary query was rewritten from one
+  `row_number()` window over all ~945k rows — which repeatedly hit Neon's statement
+  timeout during builds and silently shipped a robots.txt with NO listing sitemaps —
+  to per-chunk keyset probes, each a bounded ≤50k index-only scan. See
+  `queries/sitemap/get-listing-sitemap.query.ts`.)*
 - **Hub sitemap** — [`avtomobili/marka/sitemap.ts`](../apps/web/src/app/avtomobili/marka/sitemap.ts):
   only indexable hubs (same ≥3 threshold), ~96 brand + ~1047 model URLs.
 - **Static sitemap** — `/sitemap.xml` for the fixed pages.
@@ -130,17 +134,33 @@ only gates Gemini training), AI systems read **visible HTML, not JSON-LD**, and
 [`public/llms.txt`](../apps/web/public/llms.txt) as zero-cost hygiene but invest no
 further in it. Strategy detail: `12-web-seo-strategy.md` §6.
 
+## 7a. Blog (added 2026-07-16)
+
+Markdown posts in `apps/web/content/blog/*.md` (gray-matter frontmatter; filename
+= URL slug) rendered server-side via react-markdown+remark-gfm — see
+[`lib/blog.ts`](../apps/web/src/lib/blog.ts). `/blog` (index, ItemList+Breadcrumb)
+and `/blog/[slug]` (BlogPosting JSON-LD with author/dates, breadcrumb, funnel CTA)
+are fully static (`generateStaticParams` from the content dir). Posts feed the
+root sitemap with per-post `lastmod` (= `updated` frontmatter) and are linked from
+NAV („За нас" → Блог), FOOTER_INFO and llms.txt. 12 posts live at launch covering
+the docs/13 content clusters; publishing = add a file + rebuild.
+
+## 7b. Calculator lead capture (added 2026-07-16)
+
+`/kalkulator` runs the v2 estimator (rates config `data/import-rates.ts`, stamped
+with a verified-at date; Korea origin-declaration duty toggle) with a gated
+email-offer flow: leads persist to `calculator_offers` (migration 0028) and get
+the itemized breakdown by branded email — the breakdown is RECOMPUTED server-side
+from raw inputs, never trusted from the client. Car detail pages deep-link in via
+`?market=&price=` (USD→EUR converted), read by a Suspense-isolated
+`useSearchParams` wrapper so the page keeps its static shell.
+
 ## 8. Known gaps / not built
 
-- **Money pages orphaned from global nav** *(2026-07 audit)* — the primary header
-  NAV and FOOTER_NAV link none of: the 3 country hubs, `/proverka-vin`, the FAQ hub,
-  `/otzivi` (only FOOTER_INFO links `/kalkulator`), and the homepage links only to
-  the filtered catalog. Cross-links exist between the SEO pages themselves, but the
-  site-wide anchors from `12 §7` are not wired.
-- **`llms.txt` is stale** — it omits the country hubs, `/kalkulator`, `/proverka-vin`,
-  `/chesto-zadavani-vaprosi` and `/otzivi`; refresh when touching it next.
-- **Canonical/OG gaps** — `/za-nas`, `/carfax`, `/proces` set title+description but
-  no `alternates.canonical` and no OG object.
+- ~~Money pages orphaned from global nav~~ — **fixed 2026-07**: NAV/FOOTER carry the
+  hubs, tools, FAQ, reviews and blog.
+- ~~`llms.txt` stale~~ — **fixed 2026-07**: money pages + blog listed.
+- ~~Canonical/OG gaps~~ — **fixed 2026-07** on `/za-nas`, `/carfax`, `/proces`.
 - **Dedicated model auction-*price* pages** ("BMW 530 цени от търг" → avg/min/max/
   count with `AggregateOffer` JSON-LD) — distinct from the model *hubs* (§4, which
   carry a price *band* in their copy). Still a future feature; the archive data +
