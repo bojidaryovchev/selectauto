@@ -10,6 +10,8 @@ declare module "next-auth" {
   interface Session {
     user: {
       id: string;
+      /** 'user' | 'admin' — authorises the /admin back office (migration 0029). */
+      role: string;
     } & DefaultSession["user"];
   }
 }
@@ -17,5 +19,7 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     id?: string;
+    /** 'user' | 'admin' — minted at sign-in by the jwt callback in auth.ts. */
+    role?: string;
   }
 }

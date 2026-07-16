@@ -224,11 +224,17 @@ export const carfaxRequests = pgTable(
     message: text("message"),
     pageUrl: text("page_url"),
     userIp: text("user_ip"),
+    // Lead lifecycle (migration 0029) — driven by the /admin inbox.
+    // status: 'new' | 'contacted' | 'won' | 'lost' | 'archived'.
+    status: text("status").notNull().default("new"),
+    adminNotes: text("admin_notes"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => ({
     createdAtIdx: index("carfax_requests_created_at_idx").on(t.createdAt),
     vinIdx: index("carfax_requests_vin_idx").on(t.vin),
+    statusIdx: index("carfax_requests_status_idx").on(t.status),
   }),
 );
 
@@ -255,10 +261,16 @@ export const inquiries = pgTable(
     financingOption: text("financing_option"),
     pageUrl: text("page_url"),
     userIp: text("user_ip"),
+    // Lead lifecycle (migration 0029) — driven by the /admin inbox.
+    // status: 'new' | 'contacted' | 'won' | 'lost' | 'archived'.
+    status: text("status").notNull().default("new"),
+    adminNotes: text("admin_notes"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => ({
     createdAtIdx: index("inquiries_created_at_idx").on(t.createdAt),
+    statusIdx: index("inquiries_status_idx").on(t.status),
   }),
 );
 
@@ -284,10 +296,16 @@ export const calculatorOffers = pgTable(
     breakdownJson: jsonb("breakdown_json").notNull(),
     pageUrl: text("page_url"),
     userIp: text("user_ip"),
+    // Lead lifecycle (migration 0029) — driven by the /admin inbox.
+    // status: 'new' | 'contacted' | 'won' | 'lost' | 'archived'.
+    status: text("status").notNull().default("new"),
+    adminNotes: text("admin_notes"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => ({
     createdAtIdx: index("calculator_offers_created_at_idx").on(t.createdAt),
+    statusIdx: index("calculator_offers_status_idx").on(t.status),
   }),
 );
 
@@ -311,6 +329,10 @@ export const users = pgTable("users", {
   emailVerified: timestamp("email_verified", { withTimezone: true }),
   image: text("image"),
   passwordHash: text("password_hash"),
+  // Authorises the owner-facing /admin back office (migration 0029). 'user' |
+  // 'admin'. Rides on the Auth.js JWT (set in the `jwt` callback from a DB read
+  // at sign-in) so /admin gating needs no per-request DB lookup.
+  role: text("role").notNull().default("user"),
   // Opt-in for the daily "любими автомобили с търг днес" email digest, set from
   // /lyubimi. Default off. See apps/web/src/queries/favorites +
   // apps/web/src/app/api/cron/favorite-auction-alerts.
