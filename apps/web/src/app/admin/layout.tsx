@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { requireAdminPage } from "@/lib/admin";
 import { AdminNav } from "@/components/admin";
 
@@ -10,19 +11,37 @@ export const metadata: Metadata = {
 
 /**
  * /admin layout — the owner-facing back office shell (NOT the public
- * header/footer). Gates the WHOLE tree: `requireAdminPage` redirects a signed-out
- * visitor to sign-in and a signed-in non-admin home. The proxy already blocks
- * `/admin/**`; this is the per-render defence-in-depth (the repo gates per-action,
- * not by route alone). Runs on every admin navigation, so each page inherits the
- * gate without repeating it.
+ * header/footer). The static shell (nav) prerenders immediately; the gated
+ * content streams inside a <Suspense> because it reads request-time auth + DB
+ * (required under cacheComponents — same pattern as /lyubimi). A SINGLE boundary
+ * here covers both the admin gate AND every child page's uncached data fetch, so
+ * the pages don't each need their own Suspense.
  */
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  await requireAdminPage();
-
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#f4f4f5] text-ink">
       <AdminNav />
-      <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
+      <main className="mx-auto max-w-7xl px-4 py-6">
+        <Suspense fallback={<AdminLoading />}>
+          <AdminGate>{children}</AdminGate>
+        </Suspense>
+      </main>
     </div>
   );
+}
+
+/**
+ * Gates the whole /admin tree: `requireAdminPage` redirects a signed-out visitor
+ * to sign-in and a signed-in non-admin home. Runs inside the layout's <Suspense>
+ * (so its `auth()` read doesn't block the static shell), and BEFORE the children
+ * render — so an unauthorised request never triggers any admin query. The proxy
+ * already blocks `/admin/**`; this is the per-render defence-in-depth.
+ */
+async function AdminGate({ children }: { children: React.ReactNode }) {
+  await requireAdminPage();
+  return <>{children}</>;
+}
+
+function AdminLoading() {
+  return <div className="py-16 text-center text-sm text-muted">Зареждане…</div>;
 }
