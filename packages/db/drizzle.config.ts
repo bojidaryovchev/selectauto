@@ -4,11 +4,11 @@
  * migrations/0001_initial.sql, run by migrate.mjs. Use `drizzle-kit generate`
  * only when evolving the schema, then reconcile the generated SQL.
  */
+import type { Config } from "drizzle-kit";
 import { existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { loadEnvFile } from "node:process";
-import type { Config } from "drizzle-kit";
+import { fileURLToPath } from "node:url";
 
 // Load the repo-root .env so NEON_DATABASE_URL is available regardless of how
 // drizzle-kit is invoked (it doesn't pass through the migrate scripts' --env-file).

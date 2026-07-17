@@ -2,6 +2,7 @@ import { BackToTop, ScrollToTop, ViberGroupPopup } from "@/components/layout";
 import { Providers } from "@/components/providers";
 import { SITE_NAME, SITE_URL } from "@/constants";
 import { buildOrganizationJsonLd, buildWebsiteJsonLd } from "@/lib/site-jsonld";
+import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next";
 import { SessionProvider } from "next-auth/react";
@@ -100,6 +101,11 @@ export default function RootLayout({
 
         {/* Vercel Speed Insights: tracks Core Web Vitals and performance metrics. */}
         <SpeedInsights />
+
+        {/* Vercel Web Analytics: tracks page views and web vitals. Enabled via the
+            Vercel dashboard (Analytics section). Automatically collects Core Web
+            Vitals (LCP, FID, CLS) and page navigation events. */}
+        <Analytics />
       </body>
     </html>
   );
