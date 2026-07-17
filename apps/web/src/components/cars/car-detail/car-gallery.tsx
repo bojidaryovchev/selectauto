@@ -139,7 +139,7 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
 
       {/* Thumbnail strip */}
       {count > 1 ? (
-        <div className="grid grid-flow-col auto-cols-[88px] gap-2 overflow-x-auto pb-1 scrollbar-thin">
+        <div className="grid grid-flow-col auto-cols-22 gap-2 overflow-x-auto pb-1 scrollbar-thin">
           {images.map((thumb, i) => (
             <Button
               key={thumb}

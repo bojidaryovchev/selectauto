@@ -18,12 +18,7 @@ const DEFAULT_PHONE = "+359 898 980 011";
  * moving between lots on IAAI/Encar refreshes the panel without a full reload.
  */
 export default defineContentScript({
-  matches: [
-    "https://*.copart.com/*",
-    "https://*.iaai.com/*",
-    "https://*.iaai.ca/*",
-    "https://*.encar.com/*",
-  ],
+  matches: ["https://*.copart.com/*", "https://*.iaai.com/*", "https://*.iaai.ca/*", "https://*.encar.com/*"],
   runAt: "document_idle",
   cssInjectionMode: "ui",
 
@@ -53,10 +48,7 @@ export default defineContentScript({
       if (!ctx.isValid) return; // navigated away / context invalidated mid-request
       if (isIaai && !lot) return; // no Stock # on the page (e.g. "vehicle not found")
 
-      const [res, savedPhone] = await Promise.all([
-        checkLot(car.source, lot ?? car.externalId),
-        getStoredPhone(),
-      ]);
+      const [res, savedPhone] = await Promise.all([checkLot(car.source, lot ?? car.externalId), getStoredPhone()]);
       if (!ctx.isValid) return;
 
       const placeholderPhone = res.phone || DEFAULT_PHONE;

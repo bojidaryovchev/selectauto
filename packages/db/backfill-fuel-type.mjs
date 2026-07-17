@@ -63,7 +63,9 @@ const client = new pg.Client({ connectionString: clean, ssl: { rejectUnauthorize
  */
 async function backfillTable(table) {
   const { rows: mx } = await client.query("SELECT COALESCE(MAX(car_id),0) AS maxid FROM " + table);
-  console.log(`\n${table}: filling fuel_type from cars (max car_id ${mx[0].maxid}, batch=${BATCH}, sleep=${SLEEP_MS}ms)`);
+  console.log(
+    `\n${table}: filling fuel_type from cars (max car_id ${mx[0].maxid}, batch=${BATCH}, sleep=${SLEEP_MS}ms)`,
+  );
 
   const t0 = Date.now();
   let cursor = START;
@@ -72,10 +74,10 @@ async function backfillTable(table) {
   for (;;) {
     // Pull the next window of car_ids present in THIS projection (sparse ids), then
     // fill only that window — a bounded index nested-loop over cars(id) PK.
-    const ids = await client.query(
-      `SELECT car_id FROM ${table} WHERE car_id > $1 ORDER BY car_id ASC LIMIT $2`,
-      [cursor, BATCH],
-    );
+    const ids = await client.query(`SELECT car_id FROM ${table} WHERE car_id > $1 ORDER BY car_id ASC LIMIT $2`, [
+      cursor,
+      BATCH,
+    ]);
     if (ids.rows.length === 0) break;
     const arr = ids.rows.map((r) => r.car_id);
     const res = await client.query(
@@ -94,7 +96,9 @@ async function backfillTable(table) {
     );
     if (SLEEP_MS > 0) await sleep(SLEEP_MS);
   }
-  console.log(`\n  ${table}: done — ${touched} rows updated over ${batches} batches in ${Math.round((Date.now() - t0) / 1000)}s`);
+  console.log(
+    `\n  ${table}: done — ${touched} rows updated over ${batches} batches in ${Math.round((Date.now() - t0) / 1000)}s`,
+  );
 }
 
 /**

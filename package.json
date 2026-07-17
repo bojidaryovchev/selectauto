@@ -1,10 +1,4 @@
 {
-  "packageManager": "pnpm@10.28.0",
-  "pnpm": {
-    "overrides": {
-      "drizzle-orm": "0.38.3"
-    }
-  },
   "scripts": {
     "dev:web": "pnpm --filter @auctions-ingestion/web run dev",
     "build:web": "pnpm --filter @auctions-ingestion/web run build",
@@ -27,11 +21,11 @@
   "devDependencies": {
     "@eslint/js": "9.36.0",
     "eslint": "9.36.0",
-    "globals": "15.14.0",
-    "prettier": "3.4.2",
-    "prettier-plugin-organize-imports": "4.1.0",
-    "prettier-plugin-tailwindcss": "^0.8.0",
+    "globals": "17.7.0",
+    "prettier": "3.9.5",
+    "prettier-plugin-organize-imports": "4.3.0",
+    "prettier-plugin-tailwindcss": "0.8.1",
     "typescript": "5.9.3",
-    "typescript-eslint": "8.44.0"
+    "typescript-eslint": "8.64.0"
   }
 }
