@@ -5,6 +5,7 @@ import { InquiryButton } from "@/components/inquiry";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
 import { buildBreadcrumbJsonLd, buildFaqJsonLd, type FaqEntry } from "@/lib/site-jsonld";
+import { buildSocialMeta } from "@/lib/social-meta";
 
 /**
  * /chesto-zadavani-vaprosi — the top-level FAQ hub (docs/12-web-seo-strategy.md §4.2 + the §3
@@ -28,12 +29,11 @@ export const metadata: Metadata = {
   description:
     "Отговори на най-честите въпроси за внос на кола от САЩ, Корея и Канада — цена, мито и ДДС, срокове, документи, екотакса, регистрация в КАТ, Carfax и salvage title.",
   alternates: { canonical: CANONICAL },
-  openGraph: {
+  ...buildSocialMeta({
     title: "Често задавани въпроси — внос на автомобил | SelectAuto",
     description: "Цена, мито и ДДС, срокове, документи, екотакса, КАТ, Carfax — ясни отговори.",
-    url: CANONICAL,
-    type: "website",
-  },
+    path: PATH,
+  }),
 };
 
 /** Blueprint §3 curated high-intent questions. Answers are self-contained + citable. */

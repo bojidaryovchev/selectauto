@@ -6,20 +6,20 @@ import { InquiryButton } from "@/components/inquiry";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
 import { RATES_VERIFIED_AT } from "@/data/import-rates";
-import { buildFaqJsonLd, type FaqEntry } from "@/lib/site-jsonld";
+import { buildBreadcrumbJsonLd, buildFaqJsonLd, buildWebApplicationJsonLd, type FaqEntry } from "@/lib/site-jsonld";
+import { buildSocialMeta } from "@/lib/social-meta";
 
 export const metadata: Metadata = {
   title: "Калкулатор за внос на автомобил — колко струва | SelectAuto",
   description:
-    "Изчисли ориентировъчната цена за внос на автомобил от Корея, САЩ или Канада — цена, аукционни такси, транспорт, мито, ДДС и регистрация. Прозрачна разбивка и точна оферта от SelectAuto.",
+    "Изчисли ориентировъчната цена за внос на автомобил от Корея, САЩ или Канада — цена, аукционни такси, транспорт, мито, ДДС и регистрация.",
   alternates: { canonical: `${SITE_URL}/kalkulator` },
-  openGraph: {
+  ...buildSocialMeta({
     title: "Калкулатор за внос на автомобил — колко струва | SelectAuto",
     description:
       "Ориентировъчна цена за внос от Корея, САЩ или Канада — цена, такси, транспорт, мито, ДДС и регистрация.",
-    url: `${SITE_URL}/kalkulator`,
-    type: "website",
-  },
+    path: "/kalkulator",
+  }),
 };
 
 /**
@@ -69,6 +69,17 @@ const FAQ: FaqEntry[] = [
 
 export default function CalculatorPage() {
   const faqJsonLd = buildFaqJsonLd(FAQ);
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: "Начало", url: "/" },
+    { name: "Калкулатор за внос", url: "/kalkulator" },
+  ]);
+  const webAppJsonLd = buildWebApplicationJsonLd({
+    name: "Калкулатор за внос на автомобил",
+    description:
+      "Онлайн калкулатор за ориентировъчна цена на внос от Корея, САЩ или Канада — цена, такси, транспорт, мито, ДДС и регистрация.",
+    url: "/kalkulator",
+    category: "FinanceApplication",
+  });
 
   return (
     <>
@@ -77,6 +88,14 @@ export default function CalculatorPage() {
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(webAppJsonLd) }}
         />
 
         <Container className="max-w-245 py-12 max-md:py-8">

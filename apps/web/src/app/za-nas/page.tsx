@@ -9,23 +9,33 @@ import {
 } from "@/components/about";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
+import { buildBreadcrumbJsonLd } from "@/lib/site-jsonld";
+import { buildSocialMeta } from "@/lib/social-meta";
 
 export const metadata: Metadata = {
-  title: "За нас — SelectAuto",
+  title: "За нас — внос на автомобили от Корея, САЩ и Канада | SelectAuto",
   description:
     "В SelectAuto изграждаме сигурен, ясен и професионално управляван процес — от правилния избор до логистиката, регистрацията и финалното предаване.",
   alternates: { canonical: `${SITE_URL}/za-nas` },
-  openGraph: {
+  ...buildSocialMeta({
     title: "За нас — SelectAuto",
     description:
       "Сигурен, ясен и професионално управляван процес по внос — от избора до финалното предаване.",
-    url: `${SITE_URL}/za-nas`,
-  },
+    path: "/za-nas",
+  }),
 };
 
 export default function AboutPage() {
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: "Начало", url: "/" },
+    { name: "За нас", url: "/za-nas" },
+  ]);
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <SiteHeader />
 
       <main className="flex-1 bg-[#f4f5f7] text-[#18191c]">

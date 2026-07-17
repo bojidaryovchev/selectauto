@@ -9,7 +9,8 @@ import { InquiryButton } from "@/components/inquiry";
 import { HubTestimonials } from "@/components/hubs";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
-import { buildBreadcrumbJsonLd, buildFaqJsonLd, type FaqEntry } from "@/lib/site-jsonld";
+import { buildBreadcrumbJsonLd, buildFaqJsonLd, buildServiceJsonLd, type FaqEntry } from "@/lib/site-jsonld";
+import { buildSocialMeta } from "@/lib/social-meta";
 import { getCarsPage } from "@/queries/cars";
 
 /**
@@ -31,14 +32,13 @@ const CANONICAL = `${SITE_URL}${PATH}`;
 export const metadata: Metadata = {
   title: "Внос на коли от САЩ (Америка) — Copart, IAAI | SelectAuto",
   description:
-    "Внос на автомобили от САЩ с SelectAuto — огромен избор от Copart и IAAI, проверка на история и Carfax, транспорт, мито и ДДС, регистрация в КАТ. Ясна разбивка на разходите и точна оферта. Виж активни обяви.",
+    "Внос на автомобили от САЩ с SelectAuto — избор от Copart и IAAI, Carfax проверка, транспорт, мито и ДДС, регистрация в КАТ. Ясна разбивка на разходите.",
   alternates: { canonical: CANONICAL },
-  openGraph: {
+  ...buildSocialMeta({
     title: "Внос на коли от САЩ | SelectAuto",
     description: "Copart и IAAI подбор, Carfax проверка, пълно съдействие до регистрация в КАТ.",
-    url: CANONICAL,
-    type: "website",
-  },
+    path: PATH,
+  }),
 };
 
 /** Visible FAQ — also emitted as FAQPage JSON-LD (must match rendered text). */
@@ -141,6 +141,12 @@ export default function UsaHubPage() {
     { name: "Начало", url: "/" },
     { name: "Внос на коли от САЩ", url: PATH },
   ]);
+  const serviceJsonLd = buildServiceJsonLd({
+    name: "Внос на коли от САЩ",
+    description:
+      "Внос на автомобили от САЩ (Copart, IAAI) — подбор, наддаване, Carfax проверка, транспорт, мито и ДДС, съдействие до регистрация в КАТ.",
+    url: PATH,
+  });
 
   return (
     <>
@@ -148,6 +154,7 @@ export default function UsaHubPage() {
       <main className="flex-1 bg-[#fafafa] pt-(--header-h) text-ink">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceJsonLd) }} />
 
         <Container className="max-w-245 py-12 max-md:py-8">
           <nav className="mb-5 text-sm text-muted">

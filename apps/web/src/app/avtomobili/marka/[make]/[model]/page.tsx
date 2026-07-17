@@ -9,9 +9,11 @@ import { SiteFooter, SiteHeader } from "@/components/layout";
 import { MIN_HUB_LISTINGS_TO_INDEX, SITE_URL } from "@/constants";
 import { brandHubPath, modelHubPath } from "@/lib/car-slug";
 import { buildBreadcrumbJsonLd, buildFaqJsonLd, buildItemListJsonLd } from "@/lib/site-jsonld";
+import { buildSocialMeta } from "@/lib/social-meta";
 import {
   getCarsCount,
   getCarsPage,
+  getHubFacetCount,
   getModelHubStats,
   getModelSoldPricesByYear,
   resolveCarHub,
@@ -34,8 +36,14 @@ const loadModelHub = cache(async (make: string, model: string) => {
   const hub = await resolveCarHub(make, model);
   if (!hub) return null;
   const filters: CarFilters = { brand: hub.brandId, model: hub.modelId };
-  const { count } = await getCarsCount(filters);
-  return { hub, filters, count };
+  // `count` = live number shown to users; `indexCount` = the cached facets-summary
+  // count the hub sitemap uses — the `noindex` gate reads the latter so the page
+  // and the sitemap can never contradict (see getHubFacetCount).
+  const [{ count }, indexCount] = await Promise.all([
+    getCarsCount(filters),
+    getHubFacetCount(hub.brandId, hub.modelId),
+  ]);
+  return { hub, filters, count, indexCount };
 });
 
 /** The hub's canonical path from resolved (re-slugged) names — collapses any
@@ -82,18 +90,21 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const data = await loadModelHub(make, model);
   if (!data) return { title: "Автомобили | SelectAuto", robots: { index: false, follow: true } };
 
-  const { hub, count } = data;
-  const canonical = `${SITE_URL}${hubPath(hub)}`;
+  const { hub, count, indexCount } = data;
+  const path = hubPath(hub);
+  const canonical = `${SITE_URL}${path}`;
   const label = `${hub.brandName} ${hub.modelName}`;
+  const description =
+    `${label} за внос от Copart, IAAI и Encar — ${obiavi(count)}. ` +
+    `Виж цени, спецификации и заяви оферта за внос от SelectAuto.`;
 
   return {
     title: `${label} внос от аукцион | SelectAuto`,
-    description:
-      `${label} за внос от Copart, IAAI и Encar — ${obiavi(count)}. ` +
-      `Виж цени, спецификации и заяви оферта за внос от SelectAuto.`,
+    description,
     alternates: { canonical },
-    robots: count >= MIN_HUB_LISTINGS_TO_INDEX ? undefined : { index: false, follow: true },
-    openGraph: { title: `${label} — внос от аукцион`, url: canonical, type: "website" },
+    // Index decision uses the sitemap's source (facets summary), not the live count.
+    robots: indexCount >= MIN_HUB_LISTINGS_TO_INDEX ? undefined : { index: false, follow: true },
+    ...buildSocialMeta({ title: `${label} — внос от аукцион`, description, path }),
   };
 }
 
@@ -167,7 +178,11 @@ async function HubBody({ params }: { params: Params }) {
       ...(brandHref ? [{ name: hub.brandName, url: brandHref }] : []),
       { name: label, url: path },
     ]),
-    buildItemListJsonLd(firstPage.cars.map((c) => ({ url: c.href, name: c.title }))),
+    // Only when the first page has ≥1 car (an empty ItemList is low-value / mildly
+    // invalid; a below-threshold hub is noindex anyway).
+    ...(firstPage.cars.length > 0
+      ? [buildItemListJsonLd(firstPage.cars.map((c) => ({ url: c.href, name: c.title })))]
+      : []),
     buildFaqJsonLd(faq),
   ];
 

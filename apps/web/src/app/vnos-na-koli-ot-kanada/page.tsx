@@ -9,7 +9,8 @@ import { InquiryButton } from "@/components/inquiry";
 import { HubTestimonials } from "@/components/hubs";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
-import { buildBreadcrumbJsonLd, buildFaqJsonLd, type FaqEntry } from "@/lib/site-jsonld";
+import { buildBreadcrumbJsonLd, buildFaqJsonLd, buildServiceJsonLd, type FaqEntry } from "@/lib/site-jsonld";
+import { buildSocialMeta } from "@/lib/social-meta";
 import { getCarsPage } from "@/queries/cars";
 
 /**
@@ -32,14 +33,13 @@ const CANONICAL = `${SITE_URL}${PATH}`;
 export const metadata: Metadata = {
   title: "Внос на коли от Канада — Carfax, прозрачна история | SelectAuto",
   description:
-    "Внос на автомобили от Канада с SelectAuto — пълна история през Carfax (всяка провинция), проверка на състояние и корозия, транспорт, мито и ДДС, регистрация в КАТ. Ясна разбивка на разходите. Виж активни обяви.",
+    "Внос на автомобили от Канада с SelectAuto — пълна история през Carfax, проверка на състояние и корозия, транспорт, мито и ДДС, регистрация в КАТ.",
   alternates: { canonical: CANONICAL },
-  openGraph: {
+  ...buildSocialMeta({
     title: "Внос на коли от Канада | SelectAuto",
     description: "Carfax история, проверка на състояние, пълно съдействие до регистрация в КАТ.",
-    url: CANONICAL,
-    type: "website",
-  },
+    path: PATH,
+  }),
 };
 
 /** Visible FAQ — also emitted as FAQPage JSON-LD (must match rendered text). */
@@ -121,6 +121,12 @@ export default function CanadaHubPage() {
     { name: "Начало", url: "/" },
     { name: "Внос на коли от Канада", url: PATH },
   ]);
+  const serviceJsonLd = buildServiceJsonLd({
+    name: "Внос на коли от Канада",
+    description:
+      "Внос на автомобили от Канада — пълна история през Carfax, проверка на състояние, транспорт, мито и ДДС, съдействие до регистрация в КАТ.",
+    url: PATH,
+  });
 
   return (
     <>
@@ -128,6 +134,7 @@ export default function CanadaHubPage() {
       <main className="flex-1 bg-[#fafafa] pt-(--header-h) text-ink">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceJsonLd) }} />
 
         <Container className="max-w-245 py-12 max-md:py-8">
           <nav className="mb-5 text-sm text-muted">

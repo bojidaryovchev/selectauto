@@ -7,6 +7,7 @@ import { FilterNavProvider } from "@/contexts/filter-nav-context";
 import { SITE_URL } from "@/constants";
 import { AFTER_PARAM, parseCarFilters, serializeCarFilters } from "@/lib/car-filters";
 import { buildItemListJsonLd } from "@/lib/site-jsonld";
+import { buildSocialMeta } from "@/lib/social-meta";
 import { getCarFacets, getCarsCount, getCarsPage, getCarsWindow } from "@/queries/cars";
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -27,16 +28,25 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
       title: "Приключили търгове | SelectAuto",
       description:
         "Резултати от приключили автомобилни търгове (Copart, IAAI, Encar) — реализирани цени за справка.",
+      // noindex, but self-canonical to the bare catalog URL for consistency with
+      // the active view (the ?status=past variant is not a separate indexable URL).
+      alternates: { canonical: `${SITE_URL}/vsichki-avtomobili` },
       robots: { index: false, follow: true },
     };
   }
+  const description =
+    "Разгледай всички автомобили от Copart, IAAI и Encar, които можем да внесем за теб — с филтри по марка, модел, цвят, година и цена. Buy Now и аукционни оферти на едно място.";
   return {
     title: "Всички автомобили | SelectAuto",
-    description:
-      "Разгледай всички автомобили от Copart, IAAI и Encar, които можем да внесем за теб — с филтри по марка, модел, цвят, година и цена. Buy Now и аукционни оферти на едно място.",
+    description,
     // Filtered/faceted variants (?brand=…&color=… etc.) consolidate to the bare
     // catalog URL — the one indexable canonical for the active listing surface.
     alternates: { canonical: `${SITE_URL}/vsichki-avtomobili` },
+    ...buildSocialMeta({
+      title: "Всички автомобили | SelectAuto",
+      description,
+      path: "/vsichki-avtomobili",
+    }),
   };
 }
 

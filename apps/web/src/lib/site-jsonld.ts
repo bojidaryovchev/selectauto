@@ -16,7 +16,9 @@ import { BUSINESS, CONTACT, SITE_DESCRIPTION, SITE_NAME, SITE_URL, SOCIALS } fro
  * it — the recommended way to build a connected entity graph.
  */
 
-const ORG_ID = `${SITE_URL}#organization`;
+/** Stable @id of the site-wide AutoDealer entity — other nodes reference it
+ *  (e.g. the car Offer's `seller`) instead of redeclaring the org. */
+export const ORG_ID = `${SITE_URL}#organization`;
 const WEBSITE_ID = `${SITE_URL}#website`;
 
 /** Absolute URL from a site-root-relative path (schema wants absolute URLs). */
@@ -43,7 +45,7 @@ export function buildOrganizationJsonLd(): Record<string, unknown> {
     ...(BUSINESS.vatId ? { vatID: BUSINESS.vatId } : {}),
     url: SITE_URL,
     logo: abs("/logo.png"),
-    image: abs("/autoselect.jpg"),
+    image: abs("/og-cover.png"),
     description: SITE_DESCRIPTION,
     telephone: CONTACT.phone,
     email: CONTACT.email,
@@ -175,10 +177,59 @@ export function buildArticleJsonLd(a: ArticleInput): Record<string, unknown> {
     description: a.description,
     url: abs(a.url),
     mainEntityOfPage: abs(a.url),
+    // Posts carry no hero image, so use the branded share card as the article's
+    // representative image (Google recommends an `image` on Article nodes).
+    image: abs("/og-cover.png"),
     datePublished: a.datePublished,
     dateModified: a.dateModified,
     author: { "@type": a.authorName === "SelectAuto" ? "Organization" : "Person", name: a.authorName },
     publisher: { "@id": ORG_ID },
+    inLanguage: "bg",
+  };
+}
+
+/** Inputs for a `Service` node (the country-import offering). */
+export type ServiceInput = { name: string; description: string; url: string };
+
+/**
+ * `Service` for the country-import hubs — the defined offering ("Внос на коли от
+ * X"), tied to the site-wide `AutoDealer` via `provider` @id and scoped to
+ * Bulgaria. No rich result (Google has none for Service), but it's the natural
+ * per-hub entity signal for AI-search / Bing understanding.
+ */
+export function buildServiceJsonLd(s: ServiceInput): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    name: s.name,
+    serviceType: s.name,
+    description: s.description,
+    url: abs(s.url),
+    provider: { "@id": ORG_ID },
+    areaServed: { "@type": "Country", name: "Bulgaria" },
+  };
+}
+
+/** Inputs for a `WebApplication` node (a free on-site tool). */
+export type WebAppInput = { name: string; description: string; url: string; category: string };
+
+/**
+ * `WebApplication` for the on-site tools (the 3 calculators + the VIN checker).
+ * `applicationCategory` "FinanceApplication" (calculators) / "UtilitiesApplication"
+ * (VIN), `offers.price: 0` to signal it's free. Entity/AI-search signal (no rich
+ * result without `aggregateRating`); provider @id links to the site org.
+ */
+export function buildWebApplicationJsonLd(w: WebAppInput): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name: w.name,
+    description: w.description,
+    url: abs(w.url),
+    applicationCategory: w.category,
+    operatingSystem: "Web",
+    offers: { "@type": "Offer", price: 0, priceCurrency: "BGN" },
+    provider: { "@id": ORG_ID },
     inLanguage: "bg",
   };
 }

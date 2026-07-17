@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Montserrat } from "next/font/google";
 import { Suspense } from "react";
 import { SessionProvider } from "next-auth/react";
@@ -31,8 +31,15 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     locale: "bg_BG",
     url: SITE_URL,
-    images: ["/autoselect.jpg"],
+    images: [{ url: "/og-cover.png", width: 1200, height: 630, alt: SITE_NAME }],
   },
+};
+
+// Mobile browser-chrome colour = the dark header/nav (`bg-shell`, #0f1014). The
+// site UI is light-only, so pin `colorScheme` to light (no forced dark inversion).
+export const viewport: Viewport = {
+  themeColor: "#0f1014",
+  colorScheme: "light",
 };
 
 export default function RootLayout({

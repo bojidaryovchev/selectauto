@@ -30,6 +30,7 @@ import { USD_PER_EUR } from "@/data/import-rates";
 import { buildCarJsonLd } from "@/lib/car-detail-jsonld";
 import { modelHubPath } from "@/lib/car-slug";
 import { buildBreadcrumbJsonLd, type Breadcrumb } from "@/lib/site-jsonld";
+import { buildSocialMeta } from "@/lib/social-meta";
 import { getCarDetail } from "@/queries/cars";
 
 type Params = Promise<{ id: string }>;
@@ -84,17 +85,22 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     ? "Автомобилът е продаден — виж активните обяви на SelectAuto."
     : "Свържи се със SelectAuto за оферта и внос.";
 
+  const description = `${detail.title} — внос от ${detail.sourceCountry ? `${detail.sourceCountry} (${detail.source})` : detail.source}. ${descBits.join(" · ")}. ${descCta}`;
+
   return {
     title,
-    description: `${detail.title} — внос от ${detail.sourceCountry ? `${detail.sourceCountry} (${detail.source})` : detail.source}. ${descBits.join(" · ")}. ${descCta}`,
+    description,
     alternates: { canonical },
     robots: detail.isPast ? { index: false, follow: true } : undefined,
-    openGraph: {
+    // OG uses the plain car title + its own description + the first photo as the
+    // share image (falls back to the site image when the car has none). Routed
+    // through the shared builder so siteName/locale/twitter aren't dropped.
+    ...buildSocialMeta({
       title: detail.title,
-      url: canonical,
-      type: "website",
-      images: detail.images.length > 0 ? [detail.images[0]] : undefined,
-    },
+      description,
+      path: `/avtomobil/${id}`,
+      image: detail.images.length > 0 ? detail.images[0] : undefined,
+    }),
   };
 }
 
