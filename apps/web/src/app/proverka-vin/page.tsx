@@ -4,7 +4,8 @@ import { Container, LinkButton } from "@/components/common";
 import { VinCheckTool } from "@/components/carfax";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
-import { buildBreadcrumbJsonLd, buildFaqJsonLd, type FaqEntry } from "@/lib/site-jsonld";
+import { buildBreadcrumbJsonLd, buildFaqJsonLd, buildWebApplicationJsonLd, type FaqEntry } from "@/lib/site-jsonld";
+import { buildSocialMeta } from "@/lib/social-meta";
 
 /**
  * /proverka-vin — the VIN / Carfax availability checker (docs/12-web-seo-strategy.md tools +
@@ -26,15 +27,14 @@ export const metadata: Metadata = {
   // „безплатно" is its top modifier. Both lead the title.
   title: "VIN проверка на автомобил — безплатно | SelectAuto",
   description:
-    "Безплатна проверка по VIN номер: виж дали има Carfax / AutoCheck история за автомобила (собственици, километри, инциденти) — включително какво важи за коли от Корея. Заяви пълен доклад през SelectAuto преди да купиш.",
+    "Безплатна проверка по VIN номер — виж дали има Carfax / AutoCheck история (собственици, километри, инциденти) преди да купиш. Заяви пълен доклад през SelectAuto.",
   alternates: { canonical: CANONICAL },
-  openGraph: {
+  ...buildSocialMeta({
     title: "VIN проверка на автомобил — безплатно | SelectAuto",
     description:
       "Безплатна проверка по VIN номер + пълен Carfax доклад през SelectAuto. Виж и как се проверява история на кола от Корея.",
-    url: CANONICAL,
-    type: "website",
-  },
+    path: PATH,
+  }),
 };
 
 /** Visible FAQ — also emitted as FAQPage JSON-LD (must match rendered text). */
@@ -72,6 +72,13 @@ export default function VinCheckPage() {
     { name: "Начало", url: "/" },
     { name: "Проверка на VIN", url: PATH },
   ]);
+  const webAppJsonLd = buildWebApplicationJsonLd({
+    name: "VIN проверка на автомобил",
+    description:
+      "Безплатна онлайн проверка по VIN номер за налична история и записи в аукционните бази (Copart, IAAI, Encar).",
+    url: PATH,
+    category: "UtilitiesApplication",
+  });
 
   return (
     <>
@@ -79,6 +86,7 @@ export default function VinCheckPage() {
       <main className="flex-1 bg-[#fafafa] pt-(--header-h) text-ink">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webAppJsonLd) }} />
 
         <Container className="max-w-245 py-12 max-md:py-8">
           <nav className="mb-5 text-sm text-muted">

@@ -16,9 +16,16 @@ import type { ActionResult } from "@/types/action-result.type";
  * (so sign-in is blocked until verified) → issue a verification token → email the
  * link via Resend. The user can't sign in until they click it.
  *
- * To avoid leaking which emails are registered, an already-taken email returns a
- * generic "check your inbox" success WITHOUT creating a duplicate or resending —
- * the same outward result as a fresh sign-up.
+ * An already-registered email (password OR Google) is rejected with a clear
+ * "account exists" error that steers them to sign-in / forgot-password, rather
+ * than silently succeeding. This deliberately reveals that the email is taken —
+ * a small account-enumeration tradeoff, but consistent with `authorize`
+ * (auth.ts), which already surfaces OAUTH_ONLY / EMAIL_NOT_VERIFIED. Critically,
+ * sign-up NEVER sets a password on an existing account: the submitter hasn't
+ * proven inbox control, so letting them set a password on a verified Google
+ * account would be an account-takeover primitive. Password-setting for an
+ * existing account goes exclusively through forgot-password (which proves inbox
+ * control via the emailed link).
  */
 export async function signUp(input: unknown): Promise<ActionResult> {
   const parsed = signUpSchema.safeParse(input);
@@ -31,14 +38,20 @@ export async function signUp(input: unknown): Promise<ActionResult> {
   try {
     const db = getDb();
 
-    // Already registered? Return the neutral success (no enumeration, no dup).
+    // Already registered? Reject clearly and steer to sign-in / forgot-password.
+    // Never set a password here (see docstring): an existing account can only
+    // gain a password through forgot-password, which proves inbox control.
     const existing = await db
       .select({ id: schema.users.id })
       .from(schema.users)
       .where(eq(sql`lower(${schema.users.email})`, emailLower))
       .limit(1);
     if (existing.length > 0) {
-      return { success: true, data: undefined };
+      return {
+        success: false,
+        error:
+          'Вече съществува профил с този имейл. Влезте в профила си или използвайте „Забравена парола“, за да зададете парола.',
+      };
     }
 
     const passwordHash = await hash(password, 12);

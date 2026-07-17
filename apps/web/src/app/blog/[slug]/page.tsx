@@ -9,6 +9,7 @@ import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
 import { formatBgDate, getAllPosts, getPostBySlug } from "@/lib/blog";
 import { buildArticleJsonLd, buildBreadcrumbJsonLd } from "@/lib/site-jsonld";
+import { buildSocialMeta } from "@/lib/social-meta";
 
 /**
  * /blog/[slug] — one markdown post (content/blog/{slug}.md — see lib/blog.ts).
@@ -35,12 +36,17 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     title: `${post.title} | SelectAuto`,
     description: post.description,
     alternates: { canonical },
-    openGraph: {
+    ...buildSocialMeta({
       title: post.title,
       description: post.description,
-      url: canonical,
+      path: `/blog/${post.slug}`,
       type: "article",
-    },
+      article: {
+        publishedTime: post.date,
+        modifiedTime: post.updated,
+        authors: [post.author],
+      },
+    }),
   };
 }
 

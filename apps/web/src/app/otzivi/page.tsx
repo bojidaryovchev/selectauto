@@ -8,6 +8,7 @@ import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
 import { getGoogleReviews, type GoogleReview } from "@/lib/google-reviews";
 import { buildBreadcrumbJsonLd } from "@/lib/site-jsonld";
+import { buildSocialMeta } from "@/lib/social-meta";
 
 /**
  * /otzivi — customer reviews (docs/12-web-seo-strategy.md §4.2). Real Google reviews are
@@ -42,12 +43,11 @@ export const metadata: Metadata = {
   description:
     "Реални отзиви от клиенти на SelectAuto за внос на автомобили от Корея, САЩ и Канада — прозрачност, коректност и съдействие през целия процес до регистрация в КАТ.",
   alternates: { canonical: CANONICAL },
-  openGraph: {
+  ...buildSocialMeta({
     title: "Отзиви за SelectAuto",
     description: "Какво казват клиентите за внос на автомобили със SelectAuto.",
-    url: CANONICAL,
-    type: "website",
-  },
+    path: PATH,
+  }),
 };
 
 function Stars({ rating }: { rating: number }) {

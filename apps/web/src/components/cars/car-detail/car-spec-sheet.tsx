@@ -1,3 +1,4 @@
+import { CopyButton } from "@/components/common";
 import type { CarDetailSpec } from "@/types/car-detail.type";
 
 /**
@@ -21,7 +22,10 @@ export function CarSpecSheet({ specs }: { specs: CarDetailSpec[] }) {
             <dt className="shrink-0 text-[13px] font-semibold uppercase tracking-wide text-muted">
               {spec.label}
             </dt>
-            <dd className="text-right text-sm font-bold text-ink">{spec.value}</dd>
+            <dd className="flex min-w-0 items-center justify-end gap-2 text-right text-sm font-bold text-ink">
+              <span className="break-all">{spec.value}</span>
+              {spec.copyable ? <CopyButton value={spec.value} label={spec.label} /> : null}
+            </dd>
           </div>
         ))}
       </dl>

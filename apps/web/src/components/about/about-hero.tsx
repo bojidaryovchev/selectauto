@@ -11,13 +11,16 @@ const HERO_POINTS = [
 /** About hero — full-bleed video background with a glass info card. */
 export function AboutHero() {
   return (
-    <section className="relative flex min-h-[92vh] items-end overflow-hidden bg-black pt-(--header-h)">
+    <section className="relative flex min-h-[92vh] items-end overflow-hidden bg-black">
       <CanvasVideo src={ABOUT_VIDEO_SRC} poster={ABOUT_VIDEO_POSTER} />
 
       {/* Gradient + orange-glow overlay */}
       <div className="absolute inset-0 z-1 bg-[linear-gradient(180deg,rgba(0,0,0,0.20)_0%,rgba(0,0,0,0.48)_54%,rgba(0,0,0,0.78)_100%),radial-gradient(circle_at_20%_18%,rgba(216,111,22,0.22),transparent_26%),radial-gradient(circle_at_78%_76%,rgba(216,111,22,0.18),transparent_30%)]" />
 
-      <Container className="relative z-2 pb-18.5 max-md:pb-9.5">
+      {/* On mobile the fixed header is hidden (--header-h collapses to 0), so
+          reserve the same top breathing room the home hero uses — otherwise the
+          tall hero content overflows and the h1 jams against the viewport top. */}
+      <Container className="relative z-2 pb-18.5 max-md:pb-9.5 max-md:pt-[clamp(76px,13vh,128px)]">
         <div className="grid grid-cols-[1.1fr_0.9fr] items-end gap-8 max-[1100px]:grid-cols-1">
           <div>
             <h1 className="mb-4 max-w-225 text-[clamp(44px,7vw,92px)] font-black leading-[0.94] tracking-[-0.04em] text-white">

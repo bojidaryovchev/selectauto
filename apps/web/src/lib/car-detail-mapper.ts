@@ -247,8 +247,8 @@ export function carDetailFromRows(opts: {
 
   // ── Full spec sheet ──
   const specs: CarDetailSpec[] = [];
-  const pushSpec = (label: string, value: string | undefined) => {
-    if (value) specs.push({ label, value });
+  const pushSpec = (label: string, value: string | undefined, copyable?: boolean) => {
+    if (value) specs.push(copyable ? { label, value, copyable } : { label, value });
   };
 
   // Vehicle / body type
@@ -304,8 +304,8 @@ export function carDetailFromRows(opts: {
   pushSpec("Тип продавач", sellerTypeLabel(s(get(rawLot, "seller_type.name"))) || undefined);
   pushSpec("Вид търг", auctionTypeLabel(s(get(rawLot, "auction_type.name"))) || undefined);
   pushSpec("Локация (склад)", s(get(rawLot, "selling_branch.name")));
-  pushSpec("Лот №", lot.lotNumber ?? undefined);
-  pushSpec("VIN", car.vin ?? undefined);
+  pushSpec("Лот №", lot.lotNumber ?? undefined, true);
+  pushSpec("VIN", car.vin ?? undefined, true);
 
   // ── Location string ("Glassboro, New Jersey, USA") ──
   const locParts = [lot.locationCity, lot.locationState, lot.locationCountry]

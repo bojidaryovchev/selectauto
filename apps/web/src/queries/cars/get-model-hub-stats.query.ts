@@ -1,4 +1,6 @@
+import { cacheLife, cacheTag } from "next/cache";
 import { and, eq, sql } from "drizzle-orm";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { getDb, schema } from "@/lib/db";
 
 const cl = schema.carListings;
@@ -14,10 +16,14 @@ const cl = schema.carListings;
  *
  * All over the ACTIVE catalog only (car_listings), price-positive rows for the
  * money stats, so the numbers match what the visitor sees in the grid. A single
- * round-trip (one aggregate row + a small country breakdown). Not app-cached — a
- * cheap indexed scan over one make/model's slice (the same (manufacturer_id,
- * model_id) predicate the catalog already uses), read per request like the other
- * catalog queries. Fails closed to null so the hub still renders without stats.
+ * round-trip (one aggregate row + a small country breakdown).
+ *
+ * Cached with `"use cache"` + `cacheLife("days")` (tag `cars`): the args are the
+ * make/model ids (a small, stable key), the output is shared across all visitors,
+ * and it changes only as fast as the daily reference sync — the SAME footing as the
+ * hub's `resolveCarHub`/`getBrandModelHubs` reads, which were already cached while
+ * this sibling on the same page was not. Fails closed to null so the hub still
+ * renders without stats.
  */
 
 export type ModelHubStats = {
@@ -42,6 +48,10 @@ export type ModelHubStats = {
 const COUNTRY_LABEL: Record<string, string> = { USA: "САЩ", Canada: "Канада", kr: "Корея" };
 
 export async function getModelHubStats(brandId: number, modelId: number): Promise<ModelHubStats | null> {
+  "use cache";
+  cacheTag(CACHE_TAGS.cars);
+  cacheLife("days");
+
   try {
     const db = getDb();
     const where = and(eq(cl.manufacturerId, brandId), eq(cl.modelId, modelId), sql`${cl.effectivePrice} > 0`);

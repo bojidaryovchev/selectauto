@@ -194,12 +194,7 @@ export interface NormalizedPage<T> {
  * ======================================================================== */
 
 export type FlowType =
-  | "full_backfill"
-  | "hourly_cars"
-  | "archived_lots"
-  | "reference"
-  | "detail_refresh"
-  | "drift_sweep";
+  "full_backfill" | "hourly_cars" | "archived_lots" | "reference" | "detail_refresh" | "drift_sweep";
 
 /** Mode distinguishes a full backfill from an incremental (minutes-windowed) sync. */
 export type SyncMode = "full" | "incremental";

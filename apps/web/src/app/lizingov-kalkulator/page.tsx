@@ -4,13 +4,20 @@ import { Container, LinkButton, Reveal } from "@/components/common";
 import { InquiryButton } from "@/components/inquiry";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
-import { buildBreadcrumbJsonLd, buildFaqJsonLd, type FaqEntry } from "@/lib/site-jsonld";
+import { buildBreadcrumbJsonLd, buildFaqJsonLd, buildWebApplicationJsonLd, type FaqEntry } from "@/lib/site-jsonld";
+import { buildSocialMeta } from "@/lib/social-meta";
 
 export const metadata: Metadata = {
   title: "Лизингов калкулатор — месечна вноска за автомобил | SelectAuto",
   description:
     "Изчисли месечната лизингова вноска за автомобил: цена, първоначална вноска, срок и ГПР. Прозрачна разбивка на кредита, лихвата и общата стойност. Онлайн калкулатор на SelectAuto.",
   alternates: { canonical: `${SITE_URL}/lizingov-kalkulator` },
+  ...buildSocialMeta({
+    title: "Лизингов калкулатор — месечна вноска за автомобил | SelectAuto",
+    description:
+      "Изчисли месечната лизингова вноска: цена, първоначална вноска, срок и ГПР — прозрачна разбивка на кредита.",
+    path: "/lizingov-kalkulator",
+  }),
 };
 
 /**
@@ -51,6 +58,13 @@ export default function LeasingCalculatorPage() {
     { name: "Начало", url: "/" },
     { name: "Лизингов калкулатор", url: "/lizingov-kalkulator" },
   ]);
+  const webAppJsonLd = buildWebApplicationJsonLd({
+    name: "Лизингов калкулатор",
+    description:
+      "Онлайн калкулатор за месечна лизингова вноска на автомобил — цена, първоначална вноска, срок и ГПР.",
+    url: "/lizingov-kalkulator",
+    category: "FinanceApplication",
+  });
 
   return (
     <>
@@ -58,6 +72,7 @@ export default function LeasingCalculatorPage() {
       <main className="flex-1 bg-[#fafafa] pt-(--header-h) text-ink">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webAppJsonLd) }} />
 
         <Container className="max-w-300 py-12 max-md:py-8">
           <h1 className="mb-3 text-4xl font-black uppercase tracking-tight text-ink max-md:text-3xl">

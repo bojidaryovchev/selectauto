@@ -224,11 +224,17 @@ export const carfaxRequests = pgTable(
     message: text("message"),
     pageUrl: text("page_url"),
     userIp: text("user_ip"),
+    // Lead lifecycle (migration 0029) — driven by the /admin inbox.
+    // status: 'new' | 'contacted' | 'won' | 'lost' | 'archived'.
+    status: text("status").notNull().default("new"),
+    adminNotes: text("admin_notes"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => ({
     createdAtIdx: index("carfax_requests_created_at_idx").on(t.createdAt),
     vinIdx: index("carfax_requests_vin_idx").on(t.vin),
+    statusIdx: index("carfax_requests_status_idx").on(t.status),
   }),
 );
 
@@ -255,10 +261,16 @@ export const inquiries = pgTable(
     financingOption: text("financing_option"),
     pageUrl: text("page_url"),
     userIp: text("user_ip"),
+    // Lead lifecycle (migration 0029) — driven by the /admin inbox.
+    // status: 'new' | 'contacted' | 'won' | 'lost' | 'archived'.
+    status: text("status").notNull().default("new"),
+    adminNotes: text("admin_notes"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => ({
     createdAtIdx: index("inquiries_created_at_idx").on(t.createdAt),
+    statusIdx: index("inquiries_status_idx").on(t.status),
   }),
 );
 
@@ -284,12 +296,44 @@ export const calculatorOffers = pgTable(
     breakdownJson: jsonb("breakdown_json").notNull(),
     pageUrl: text("page_url"),
     userIp: text("user_ip"),
+    // Lead lifecycle (migration 0029) — driven by the /admin inbox.
+    // status: 'new' | 'contacted' | 'won' | 'lost' | 'archived'.
+    status: text("status").notNull().default("new"),
+    adminNotes: text("admin_notes"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => ({
     createdAtIdx: index("calculator_offers_created_at_idx").on(t.createdAt),
+    statusIdx: index("calculator_offers_status_idx").on(t.status),
   }),
 );
+
+/**
+ * vin_report_checks — read-through cache for the FREE AuctionsAPI
+ * `/reports/check-records/{vin}` lookup (Carfax / AutoCheck record availability).
+ * Backs the /proverka-vin tool AND the per-car "Провери история по VIN" button on
+ * /avtomobil/[id].
+ *
+ * Unlike `"use cache"` (in-memory LRU, per-instance — does NOT persist across
+ * serverless requests, see apps/web/src/lib/cache-tags.ts), this durable row dedupes
+ * the lookup across all users, which is what protects the shared AuctionsAPI ~3 req/s
+ * budget. The endpoint is free (no report credit), so the win is rate-limit/latency,
+ * not cost. One row per VIN; the counts drift up slowly as history accrues, so rows
+ * are refreshed on a TTL (`checkedAt`) by lib/vin-report-cache.ts, which also falls
+ * back to a stale row when the upstream call fails. Keep in sync with
+ * migrations/0032_vin_report_checks.sql.
+ */
+export const vinReportChecks = pgTable("vin_report_checks", {
+  /** Normalized (trimmed, upper-cased) 17-char VIN — the natural key. */
+  vin: text("vin").primaryKey(),
+  /** Normalized vehicle description ("HONDA CR-V EX 2018"), or NULL. */
+  vehicle: text("vehicle"),
+  carfax: integer("carfax").notNull().default(0),
+  autocheck: integer("autocheck").notNull().default(0),
+  /** When the upstream lookup that produced this row last ran (the TTL clock). */
+  checkedAt: timestamp("checked_at", { withTimezone: true }).defaultNow().notNull(),
+});
 
 /**
  * Auth.js (NextAuth v5) tables — self-hosted auth (Google + email/password, JWT
@@ -311,6 +355,13 @@ export const users = pgTable("users", {
   emailVerified: timestamp("email_verified", { withTimezone: true }),
   image: text("image"),
   passwordHash: text("password_hash"),
+  // Elevated roles granted to this account — authorises the owner-facing /admin
+  // back office (migrations 0029→0031). An array so an account can hold several
+  // roles (admin today; editor/… later); a normal visitor has an empty array.
+  // Membership of 'admin' gates /admin. Rides on the Auth.js JWT (set in the
+  // `jwt` callback from a DB read at sign-in) so /admin gating needs no per-
+  // request DB lookup. RBAC-ready via the role model in src/constants/admin.ts.
+  roles: text("roles").array().notNull().default([]),
   // Opt-in for the daily "любими автомобили с търг днес" email digest, set from
   // /lyubimi. Default off. See apps/web/src/queries/favorites +
   // apps/web/src/app/api/cron/favorite-auction-alerts.
@@ -346,10 +397,7 @@ export const accounts = pgTable(
     id_token: text("id_token"),
     session_state: text("session_state"),
   },
-  (t) => [
-    primaryKey({ columns: [t.provider, t.providerAccountId] }),
-    index("accounts_user_id_idx").on(t.userId),
-  ],
+  (t) => [primaryKey({ columns: [t.provider, t.providerAccountId] }), index("accounts_user_id_idx").on(t.userId)],
 );
 
 /**
@@ -402,10 +450,7 @@ export const favorites = pgTable(
       .references(() => cars.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
-  (t) => [
-    primaryKey({ columns: [t.userId, t.carId] }),
-    index("favorites_user_idx").on(t.userId, t.createdAt),
-  ],
+  (t) => [primaryKey({ columns: [t.userId, t.carId] }), index("favorites_user_idx").on(t.userId, t.createdAt)],
 );
 
 /**
@@ -597,6 +642,8 @@ export type Inquiry = typeof inquiries.$inferSelect;
 export type NewInquiry = typeof inquiries.$inferInsert;
 export type CalculatorOffer = typeof calculatorOffers.$inferSelect;
 export type NewCalculatorOffer = typeof calculatorOffers.$inferInsert;
+export type VinReportCheck = typeof vinReportChecks.$inferSelect;
+export type NewVinReportCheck = typeof vinReportChecks.$inferInsert;
 export type Favorite = typeof favorites.$inferSelect;
 export type NewFavorite = typeof favorites.$inferInsert;
 export type User = typeof users.$inferSelect;

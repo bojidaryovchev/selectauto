@@ -5,6 +5,7 @@ import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
 import { formatBgDate, getAllPosts } from "@/lib/blog";
 import { buildBreadcrumbJsonLd, buildItemListJsonLd } from "@/lib/site-jsonld";
+import { buildSocialMeta } from "@/lib/social-meta";
 
 /**
  * /blog — the topical-authority index (docs/13-seo-action-plan.md Phase C).
@@ -20,13 +21,12 @@ export const metadata: Metadata = {
   description:
     "Практични статии за внос на автомобили от Корея, САЩ и Канада — колко струва, как се проверява история, мита и такси, регистрация в КАТ. Без увъртане, с реални числа.",
   alternates: { canonical: CANONICAL },
-  openGraph: {
+  ...buildSocialMeta({
     title: "Блог — внос на автомобили, цени и съвети | SelectAuto",
     description:
       "Практични статии за внос на автомобили — колко струва, проверка на история, мита и такси, КАТ.",
-    url: CANONICAL,
-    type: "website",
-  },
+    path: PATH,
+  }),
 };
 
 export default function BlogIndexPage() {

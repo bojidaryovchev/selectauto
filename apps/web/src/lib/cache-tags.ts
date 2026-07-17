@@ -1,19 +1,25 @@
 /**
  * Cache-tag constants for the app's `"use cache"` data.
  *
- * Only the homepage queries are app-cached today, all with no per-request key and
- * shared across all visitors:
+ * App-cached (`"use cache"`) reads and their tags — all shared across visitors:
  *   - `getBuyNowCars` / `getAuctionCars` → `cacheLife("hours")` (tags
  *     `buyNowCars` / `auctionCars`); track the hourly ingestion sync.
- *   - `getCarBrands` → `cacheLife("days")` (tag `cars`); tracks the daily
- *     reference sync, and caching it is what lets the homepage prerender (it
- *     renders outside a Suspense boundary — see its docstring).
- * The catalog queries (page/count/facets/detail) are deliberately NOT cached:
- * they're already DB-cheap (keyset reads, and the counts/facets summary tables —
- * migrations 0016/0017 — answer in ~40ms), their cache keys are per-request-unique
- * (filters × cursor) so a cache would hit near-zero, and the catalog route is
- * dynamic anyway (reads searchParams). See the Next caching docs in
- * node_modules/next/dist/docs (use-cache, use-cache-remote).
+ *   - The reference + make/model-hub reads → `cacheLife("days")` (tag `cars`):
+ *     `getCarBrands` (caching it is what lets the homepage prerender — it renders
+ *     outside a Suspense boundary), the hub resolvers (`resolveCarHub` /
+ *     `resolveBrandHub` / `getBrandModelHubs`), the per-model hub aggregates
+ *     (`getModelHubStats` / `getModelSoldPricesByYear` / `getModelYearSoldStat`),
+ *     and the sitemap hub/listing queries. Each takes a small, stable key (make/
+ *     model ids) and tracks the daily reference/summary sync.
+ * The catalog FEED queries (page/count/facets) and the per-car `getCarDetail` are
+ * deliberately NOT `"use cache"`: their keys are per-request-unique (filters ×
+ * cursor) or effectively unbounded (~945k car ids) so an app cache would hit
+ * near-zero, and they're already DB-cheap (keyset reads + the counts/facets summary
+ * tables, migrations 0016/0017, ~40ms). Where one of these uncached reads is used in
+ * BOTH `generateMetadata` and the page body — `getCarDetail`, and `getCarsCount` via
+ * the hub pages' request-scoped loaders — React `cache()` collapses it to a single
+ * read per request. See the Next caching docs in node_modules/next/dist/docs
+ * (use-cache, use-cache-remote).
  *
  * Invalidation today is purely TTL-based: the homepage queries set
  * `cacheLife("hours")`, and ingestion runs hourly, so the cache naturally tracks

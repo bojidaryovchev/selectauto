@@ -1,12 +1,13 @@
-import type { Metadata } from "next";
-import { Montserrat } from "next/font/google";
-import { Suspense } from "react";
-import { Analytics } from "@vercel/analytics/next";
-import { SessionProvider } from "next-auth/react";
-import { ScrollToTop, ViberGroupPopup } from "@/components/layout";
+import { BackToTop, ScrollToTop, ViberGroupPopup } from "@/components/layout";
 import { Providers } from "@/components/providers";
 import { SITE_NAME, SITE_URL } from "@/constants";
 import { buildOrganizationJsonLd, buildWebsiteJsonLd } from "@/lib/site-jsonld";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import type { Metadata, Viewport } from "next";
+import { SessionProvider } from "next-auth/react";
+import { Montserrat } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -32,8 +33,15 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     locale: "bg_BG",
     url: SITE_URL,
-    images: ["/autoselect.jpg"],
+    images: [{ url: "/og-cover.png", width: 1200, height: 630, alt: SITE_NAME }],
   },
+};
+
+// Mobile browser-chrome colour = the dark header/nav (`bg-shell`, #0f1014). The
+// site UI is light-only, so pin `colorScheme` to light (no forced dark inversion).
+export const viewport: Viewport = {
+  themeColor: "#0f1014",
+  colorScheme: "light",
 };
 
 export default function RootLayout({
@@ -85,6 +93,14 @@ export default function RootLayout({
             dismissable for the session. Self-contained client singleton — no
             usePathname, so (unlike ScrollToTop) it needs no Suspense boundary. */}
         <ViberGroupPopup />
+
+        {/* Floating "back to top" button: reveals once scrolled past ~one
+            viewport, smooth-scrolls to the top on click. Self-contained client
+            singleton, lifted above the mobile bottom nav. */}
+        <BackToTop />
+
+        {/* Vercel Speed Insights: tracks Core Web Vitals and performance metrics. */}
+        <SpeedInsights />
 
         {/* Vercel Web Analytics: tracks page views and web vitals. Enabled via the
             Vercel dashboard (Analytics section). Automatically collects Core Web

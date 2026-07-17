@@ -9,13 +9,13 @@
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "dependencies": {
-    "pg": "8.13.1"
+    "pg": "8.22.0"
   },
   "devDependencies": {
-    "@types/aws-lambda": "8.10.147",
-    "@types/node": "25.2.3",
-    "@types/pg": "8.11.10",
-    "esbuild": "0.24.2",
+    "@types/aws-lambda": "8.10.162",
+    "@types/node": "26.1.1",
+    "@types/pg": "8.20.0",
+    "esbuild": "0.28.1",
     "typescript": "5.9.3"
   }
 }

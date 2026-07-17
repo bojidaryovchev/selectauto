@@ -1,14 +1,4 @@
 {
-  "name": "auctions-ingestion",
-  "version": "0.1.0",
-  "private": true,
-  "description": "AuctionsAPI -> Neon Postgres ingestion system (AWS Lambda + Step Functions + EventBridge, Pulumi) + Next.js frontend.",
-  "packageManager": "pnpm@10.28.0",
-  "pnpm": {
-    "overrides": {
-      "drizzle-orm": "0.38.3"
-    }
-  },
   "scripts": {
     "dev:web": "pnpm --filter @auctions-ingestion/web run dev",
     "build:web": "pnpm --filter @auctions-ingestion/web run build",
@@ -21,19 +11,21 @@
     "deploy": "pnpm run build:functions && pnpm --filter @auctions-ingestion/infra run pulumi:up",
     "preview": "pnpm run build:functions && pnpm --filter @auctions-ingestion/infra run pulumi:preview",
     "destroy": "pnpm --filter @auctions-ingestion/infra run pulumi:destroy",
-    "type-check": "pnpm --filter @auctions-ingestion/web --filter @auctions-ingestion/functions --filter @auctions-ingestion/infra --filter @auctions-ingestion/db run type-check",
-    "lint": "eslint .",
+    "dev:extension": "pnpm --filter @auctions-ingestion/extension run dev",
+    "build:extension": "pnpm --filter @auctions-ingestion/extension run build",
+    "type-check": "pnpm --filter @auctions-ingestion/web --filter @auctions-ingestion/functions --filter @auctions-ingestion/infra --filter @auctions-ingestion/db --filter @auctions-ingestion/extension run type-check",
+    "lint": "eslint --fix && pnpm --filter @auctions-ingestion/web run lint:fix",
     "format": "prettier --write \"**/*.{ts,tsx,mjs,json}\"",
     "check": "pnpm run type-check && pnpm run lint"
   },
   "devDependencies": {
     "@eslint/js": "9.36.0",
     "eslint": "9.36.0",
-    "globals": "15.14.0",
-    "prettier": "3.4.2",
-    "prettier-plugin-organize-imports": "4.1.0",
-    "prettier-plugin-tailwindcss": "^0.8.0",
+    "globals": "17.7.0",
+    "prettier": "3.9.5",
+    "prettier-plugin-organize-imports": "4.3.0",
+    "prettier-plugin-tailwindcss": "0.8.1",
     "typescript": "5.9.3",
-    "typescript-eslint": "8.44.0"
+    "typescript-eslint": "8.64.0"
   }
 }

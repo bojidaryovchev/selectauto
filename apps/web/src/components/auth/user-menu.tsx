@@ -31,6 +31,7 @@ export function UserMenu({ tone = "light" }: { tone?: "light" | "dark" }) {
 
   const user = data?.user;
   const initial = (user?.name || user?.email || "?").trim().charAt(0).toUpperCase();
+  const isAdmin = user?.roles?.includes("admin") ?? false;
 
   const triggerClass =
     tone === "dark"
@@ -59,6 +60,17 @@ export function UserMenu({ tone = "light" }: { tone?: "light" | "dark" }) {
             <p className="truncate text-sm font-bold text-ink">{user?.name || "Профил"}</p>
             {user?.email ? <p className="truncate text-xs text-muted">{user.email}</p> : null}
           </div>
+          {isAdmin ? (
+            <LinkButton
+              href="/admin"
+              onClick={() => setOpen(false)}
+              role="menuitem"
+              rippleTheme="dark"
+              className="block rounded-xl px-3 py-2.5 text-sm font-bold text-brand transition-colors hover:bg-brand/8"
+            >
+              Админ панел
+            </LinkButton>
+          ) : null}
           <LinkButton
             href="/lyubimi"
             onClick={() => setOpen(false)}

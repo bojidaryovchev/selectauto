@@ -2,7 +2,7 @@
 
 import { signOut, useSession } from "next-auth/react";
 import { Button, LinkButton } from "@/components/common";
-import { ChevronLeftIcon, ChevronRightIcon, HeartIcon } from "@/components/icons";
+import { ChevronLeftIcon, ChevronRightIcon, HeartIcon, ShieldIcon } from "@/components/icons";
 
 /**
  * App-style profile sub-screen for the mobile drawer. Slides in from the right
@@ -32,6 +32,7 @@ export function DrawerProfilePanel({ open, onBack, onNavigate }: Props) {
   const { data } = useSession();
   const user = data?.user;
   const initial = (user?.name || user?.email || "?").trim().charAt(0).toUpperCase();
+  const isAdmin = user?.roles?.includes("admin") ?? false;
 
   return (
     <aside
@@ -68,6 +69,20 @@ export function DrawerProfilePanel({ open, onBack, onNavigate }: Props) {
       {/* Profile actions as full-width rows. */}
       <nav aria-label="Профил навигация">
         <ul className="m-0 list-none p-0">
+          {isAdmin ? (
+            <li className="border-b border-white/6">
+              <LinkButton
+                href="/admin"
+                rippleTheme="light"
+                onClick={onNavigate}
+                className="flex min-h-14 items-center gap-3 px-4.5 text-[15px] font-bold text-brand-soft"
+              >
+                <ShieldIcon className="size-5 shrink-0 text-brand-soft" />
+                <span className="flex-1">Админ панел</span>
+                <ChevronRightIcon className="size-4 shrink-0 text-white/45" />
+              </LinkButton>
+            </li>
+          ) : null}
           <li className="border-b border-white/6">
             <LinkButton
               href="/lyubimi"

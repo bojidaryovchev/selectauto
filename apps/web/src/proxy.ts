@@ -59,7 +59,24 @@ export const proxy = auth(async (request) => {
     return gone();
   }
 
-  // 3. Not legacy, not a long-dead lot → continue (session refresh / passthrough).
+  // 3. Admin back office (/admin/**) — the ONE force-protected area. Roles ride
+  //    on the Auth.js JWT (session.user.roles, minted at sign-in), so this reads
+  //    `request.auth` with no DB lookup. Signed-out → sign-in (with a return
+  //    path); signed-in without the 'admin' role → home (don't advertise the back
+  //    office exists). Every admin page/action re-checks via lib/admin (defence-
+  //    in-depth).
+  if (request.nextUrl.pathname.startsWith("/admin")) {
+    if (!request.auth?.user) {
+      const signIn = new URL("/sign-in", request.nextUrl);
+      signIn.searchParams.set("redirectTo", "/admin");
+      return NextResponse.redirect(signIn);
+    }
+    if (!request.auth.user.roles?.includes("admin")) {
+      return NextResponse.redirect(new URL("/", request.nextUrl));
+    }
+  }
+
+  // 4. Not legacy, not a long-dead lot, allowed → continue (session refresh).
   return NextResponse.next();
 });
 

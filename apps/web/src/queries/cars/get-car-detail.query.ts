@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { carDetailFromRows } from "@/lib/car-detail-mapper";
 import { carListingToView } from "@/lib/car-mapper";
@@ -26,9 +27,17 @@ const RELATED_LIMIT = 8;
  *
  * Unlike the catalog list (single-table, zero joins), this is a single-ROW page,
  * so the join to `cars` + the chosen `auction_lots` row (for the raw_json gallery
- * + appraisal prices) is cheap. Not cached — reads Neon directly per request.
+ * + appraisal prices) is cheap.
+ *
+ * Wrapped in React `cache()` so the `avtomobil/[id]` route — which reads this in
+ * BOTH `generateMetadata` and the page body — runs the whole multi-round-trip read
+ * ONCE per request, not twice (Next auto-memoizes `fetch`, but not ORM/DB calls —
+ * see the generate-metadata docs). `cache()` is request-scoped ONLY: it does not
+ * cache across requests (there are ~945k detail pages — unsuitable for the
+ * per-instance in-memory LRU that a durable `"use cache"` would use here), so each
+ * new request still reads Neon directly.
  */
-export async function getCarDetail(carId: number): Promise<CarDetailPayload | null> {
+export const getCarDetail = cache(async (carId: number): Promise<CarDetailPayload | null> => {
   if (!Number.isInteger(carId) || carId <= 0) return null;
 
   const db = getDb();
@@ -173,7 +182,7 @@ export async function getCarDetail(carId: number): Promise<CarDetailPayload | nu
   const related = await getRelatedCars(carId, listing.modelId, listing.manufacturerId);
 
   return { detail, related };
-}
+});
 
 /**
  * Same-model (else same-brand) ACTIVE cars, newest first, excluding the current

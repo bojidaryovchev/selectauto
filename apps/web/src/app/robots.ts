@@ -52,6 +52,7 @@ const AI_CRAWLERS = [
 // /nova-parola. /api/auth is the NextAuth handler.
 const DISALLOW = [
   "/api/",
+  "/admin", // owner back office (also noindex via admin/layout; proxy-gated)
   "/lyubimi",
   "/sign-in",
   "/registratsiya",
