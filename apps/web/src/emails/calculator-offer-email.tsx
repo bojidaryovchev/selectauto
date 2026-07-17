@@ -12,7 +12,7 @@ import { EmailLayout } from "./email-layout";
  */
 export function CalculatorOfferEmail(data: CalculatorOfferEmailData) {
   return (
-    <EmailLayout preview={`Вашата калкулация за внос от ${data.marketLabel} — общо ≈ ${data.totalEurFormatted}`}>
+    <EmailLayout preview={`Вашата калкулация за внос от ${data.marketLabel} — общо ≈ ${data.totalFormatted}`}>
       <Text className="m-0 mb-1.5 text-[13px] font-bold uppercase tracking-[0.06em] text-brand-dark">
         Калкулация за внос
       </Text>
@@ -43,9 +43,8 @@ export function CalculatorOfferEmail(data: CalculatorOfferEmailData) {
           </Column>
           <Column className="w-30 py-3 text-right align-top">
             <Text className="m-0 text-[17px] font-black text-brand-dark">
-              {data.totalEurFormatted}
+              {data.totalFormatted}
             </Text>
-            <Text className="m-0 text-[12px] text-muted">≈ {data.totalBgnFormatted}</Text>
           </Column>
         </Row>
       </Section>

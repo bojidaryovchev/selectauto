@@ -2,6 +2,7 @@ export { AuthCard } from "./auth-card";
 export { AuthErrorContent } from "./auth-error-content";
 export { ForgotPasswordForm } from "./forgot-password-form";
 export { GoogleButton } from "./google-button";
+export { PasswordInput } from "./password-input";
 export { ResetPasswordForm } from "./reset-password-form";
 export { SignInForm } from "./sign-in-form";
 export { SignUpForm } from "./sign-up-form";

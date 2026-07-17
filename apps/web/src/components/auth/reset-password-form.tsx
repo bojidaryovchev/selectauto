@@ -8,10 +8,10 @@ import { resetPassword } from "@/mutations/auth";
 import { resetPasswordSchema, type ResetPasswordValues } from "@/schemas/auth.schema";
 import {
   AUTH_ERROR_BOX_CLASS,
-  AUTH_INPUT_CLASS,
   AUTH_PRIMARY_BTN_CLASS,
   AUTH_SUCCESS_BOX_CLASS,
 } from "./auth-styles";
+import { PasswordInput } from "./password-input";
 
 /**
  * Reset-password form. The `token` comes from the email link (the page reads it
@@ -27,7 +27,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
     formState: { errors, isSubmitting },
   } = useForm<ResetPasswordValues>({
     resolver: zodResolver(resetPasswordSchema),
-    defaultValues: { token, password: "" },
+    defaultValues: { token, password: "", confirmPassword: "" },
   });
 
   async function onSubmit(values: ResetPasswordValues) {
@@ -61,16 +61,29 @@ export function ResetPasswordForm({ token }: { token: string }) {
         <label htmlFor="reset-password" className="text-sm font-bold text-ink">
           Нова парола
         </label>
-        <input
+        <PasswordInput
           id="reset-password"
-          type="password"
           autoComplete="new-password"
           placeholder="Поне 8 символа"
-          className={AUTH_INPUT_CLASS}
           {...register("password")}
         />
         {errors.password?.message ? (
           <span className="text-xs font-semibold text-[#b53b2f]">{errors.password.message}</span>
+        ) : null}
+      </div>
+
+      <div className="grid gap-1.5">
+        <label htmlFor="reset-confirm-password" className="text-sm font-bold text-ink">
+          Потвърдете паролата
+        </label>
+        <PasswordInput
+          id="reset-confirm-password"
+          autoComplete="new-password"
+          placeholder="Повторете паролата"
+          {...register("confirmPassword")}
+        />
+        {errors.confirmPassword?.message ? (
+          <span className="text-xs font-semibold text-[#b53b2f]">{errors.confirmPassword.message}</span>
         ) : null}
       </div>
 

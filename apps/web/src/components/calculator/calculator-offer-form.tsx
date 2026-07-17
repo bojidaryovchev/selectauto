@@ -26,8 +26,10 @@ type Status =
   | { kind: "success"; message: string }
   | { kind: "error"; message: string };
 
+// text-base (16px) not text-sm: sub-16px inputs make iOS Safari auto-zoom on
+// focus (no maximum-scale lock in the viewport), which strands the page zoomed.
 const INPUT_CLASS =
-  "w-full rounded-xl border border-line bg-white px-3 py-2 text-sm font-bold text-ink outline-none focus:border-brand";
+  "w-full rounded-xl border border-line bg-white px-3 py-2 text-base font-bold text-ink outline-none focus:border-brand";
 
 export function CalculatorOfferForm({ inputs }: { inputs: ImportCostInputs }) {
   const [open, setOpen] = useState(false);

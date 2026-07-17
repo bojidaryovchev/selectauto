@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Button, LinkButton } from "@/components/common";
+import { Button } from "@/components/common";
+import { CarfaxInquiryButton } from "@/components/carfax";
 import { ShieldIcon } from "@/components/icons";
 
 /**
@@ -14,6 +15,10 @@ import { ShieldIcon } from "@/components/icons";
  * `vin_report_checks` read-through cache (so a popular car clicked by many visitors
  * costs the shared AuctionsAPI ~3 req/s budget at most once per TTL — see
  * lib/vin-report-cache.ts). Rendered only when the car has a VIN (gated by the page).
+ *
+ * „Заяви пълен Carfax" opens the in-page CarfaxDialog pre-filled + locked with this
+ * car's VIN (and make/model when known) — same funnel as the contact panel's button,
+ * so the buyer never leaves the page.
  */
 
 type State =
@@ -22,7 +27,7 @@ type State =
   | { kind: "error"; message: string }
   | { kind: "ok"; vehicle: string | null; carfax: number; autocheck: number };
 
-export function CarVinCheck({ vin }: { vin: string }) {
+export function CarVinCheck({ vin, make, model }: { vin: string; make?: string; model?: string }) {
   const [state, setState] = useState<State>({ kind: "idle" });
 
   async function runCheck() {
@@ -98,13 +103,15 @@ export function CarVinCheck({ vin }: { vin: string }) {
                 За този автомобил има налична история. Заяви пълен Carfax доклад през SelectAuto — ще получиш
                 подробния отчет (собственици, километри, инциденти, записи).
               </p>
-              <LinkButton
-                href="/carfax"
+              <CarfaxInquiryButton
+                vin={vin}
+                make={make}
+                model={model}
                 rippleTheme="light"
                 className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand px-6 text-sm font-extrabold uppercase tracking-wide text-white transition-transform duration-200 hover:-translate-y-0.5"
               >
                 Заяви пълен Carfax
-              </LinkButton>
+              </CarfaxInquiryButton>
             </>
           ) : (
             <p className="text-sm/relaxed text-[#5a5d64]">

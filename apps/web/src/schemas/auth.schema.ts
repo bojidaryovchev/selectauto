@@ -36,8 +36,14 @@ export const forgotPasswordSchema = z.object({
 });
 export type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
 
-export const resetPasswordSchema = z.object({
-  token: z.string().min(1),
-  password,
-});
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().min(1),
+    password,
+    confirmPassword: z.string().min(1, { message: "Моля потвърдете паролата." }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Паролите не съвпадат.",
+    path: ["confirmPassword"],
+  });
 export type ResetPasswordValues = z.infer<typeof resetPasswordSchema>;

@@ -135,10 +135,9 @@ export type CalculatorOfferEmailData = {
   phone: string;
   email: string;
   marketLabel: string;
-  /** Ordered, pre-formatted line items ("Мито (10%)" → "1 490 €"). */
+  /** Ordered, pre-formatted line items ("Мито (10%)" → "1 490 $"). */
   lines: { label: string; amount: string }[];
-  totalEurFormatted: string;
-  totalBgnFormatted: string;
+  totalFormatted: string;
   transit: string;
   ratesVerifiedAt: string;
   pageUrl?: string;
@@ -153,7 +152,7 @@ export async function sendCalculatorOfferToCustomer(data: CalculatorOfferEmailDa
     `Вашата ориентировъчна калкулация за внос от ${data.marketLabel}:`,
     "",
     ...data.lines.map((l) => `${l.label}: ${l.amount}`),
-    `ОБЩО (ориентир): ${data.totalEurFormatted} (≈ ${data.totalBgnFormatted})`,
+    `ОБЩО (ориентир): ${data.totalFormatted}`,
     "",
     `Ориентировъчен срок за доставка: ${data.transit}`,
     `Ставките са проверени към ${data.ratesVerifiedAt}.`,
@@ -183,7 +182,7 @@ export async function sendCalculatorOfferNotification(data: CalculatorOfferEmail
     `Имейл: ${data.email}`,
     `Пазар: ${data.marketLabel}`,
     ...data.lines.map((l) => `${l.label}: ${l.amount}`),
-    `Общо: ${data.totalEurFormatted} (≈ ${data.totalBgnFormatted})`,
+    `Общо: ${data.totalFormatted}`,
     `Страница: ${data.pageUrl ?? ""}`,
     `Дата: ${data.createdAt}`,
   ];

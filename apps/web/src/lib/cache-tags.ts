@@ -46,6 +46,10 @@ export const CACHE_TAGS = {
   buyNowCars: "cars-buy-now",
   /** Auction listings shown on the homepage. */
   auctionCars: "cars-auction",
+  /** Active US/Canada transport tariffs (admin-uploaded); revalidated on upload. */
+  usTariffs: "us-tariffs",
+  /** Admin-editable calculator config (fees/commission/rates); revalidated on save. */
+  calcConfig: "calc-config",
 } as const;
 
 export type CacheTag = (typeof CACHE_TAGS)[keyof typeof CACHE_TAGS];

@@ -1,12 +1,7 @@
 "use server";
 
 import { headers } from "next/headers";
-import {
-  computeImportBreakdown,
-  EUR_BGN,
-  MARKETS,
-  RATES_VERIFIED_AT,
-} from "@/data/import-rates";
+import { computeImportBreakdown, type ImportCostInputs, MARKETS, RATES_VERIFIED_AT } from "@/data/import-rates";
 import { getDb, schema } from "@/lib/db";
 import {
   type CalculatorOfferEmailData,
@@ -14,15 +9,14 @@ import {
   sendCalculatorOfferToCustomer,
 } from "@/lib/email";
 import { normalizePhone } from "@/lib/phone";
+import { resolveUsTransport } from "@/lib/us-transport";
+import { getCalcConfig, getUsTariffs } from "@/queries/tariffs";
 import { calculatorOfferSchema } from "@/schemas/calculator-offer.schema";
 import type { ActionResult } from "@/types/action-result.type";
 
-/** "12 345 €" / "24 143 лв." — thin-space grouping, matching the site. */
-function eur(n: number): string {
-  return `${Math.round(n).toLocaleString("bg-BG").replace(/ /g, " ")} €`;
-}
-function bgn(n: number): string {
-  return `${Math.round(n * EUR_BGN).toLocaleString("bg-BG").replace(/ /g, " ")} лв.`;
+/** "15 751 $" — space-grouped, matching the site's price style. */
+function usdStr(n: number): string {
+  return `${Math.round(n).toLocaleString("bg-BG").replace(/\s/g, " ")} $`;
 }
 
 /**
@@ -53,7 +47,25 @@ export async function createCalculatorOffer(input: unknown): Promise<ActionResul
   }
   const data = parsed.data;
 
-  const breakdown = computeImportBreakdown(data.inputs);
+  // Re-resolve US transport server-side (tamper-proof) rather than trusting the
+  // client-sent inland/container. For kr/ca the resolved fields are unused.
+  const rawInputs = data.inputs as ImportCostInputs;
+  let computeInputs: ImportCostInputs = rawInputs;
+  if (rawInputs.market === "us" && rawInputs.auction && rawInputs.location) {
+    const t = resolveUsTransport(
+      {
+        auction: rawInputs.auction,
+        location: rawInputs.location,
+        vehicleType: rawInputs.vehicleType,
+      },
+      await getUsTariffs(),
+    );
+    computeInputs = t.notFound
+      ? { ...rawInputs, usInlandUsd: 0, usContainerUsd: 0 }
+      : { ...rawInputs, usInlandUsd: t.inland, usContainerUsd: t.container };
+  }
+
+  const breakdown = computeImportBreakdown(computeInputs, await getCalcConfig());
   const market = MARKETS.find((m) => m.id === data.inputs.market)!;
 
   const headerStore = await headers();
@@ -72,8 +84,10 @@ export async function createCalculatorOffer(input: unknown): Promise<ActionResul
         phone: data.phone,
         email: data.email,
         market: data.inputs.market,
-        carPriceEur: data.inputs.priceEur,
-        totalEur: breakdown.totalEur,
+        // Columns are legacy-named *Eur but the calculator is USD end-to-end;
+        // we store the USD values (no schema rename to avoid a migration).
+        carPriceEur: data.inputs.priceUsd,
+        totalEur: breakdown.totalUsd,
         breakdownJson: {
           inputs: data.inputs,
           lines: breakdown.lines,
@@ -98,9 +112,8 @@ export async function createCalculatorOffer(input: unknown): Promise<ActionResul
     phone: data.phone,
     email: data.email,
     marketLabel: market.label,
-    lines: breakdown.lines.map((l) => ({ label: l.label, amount: eur(l.amountEur) })),
-    totalEurFormatted: eur(breakdown.totalEur),
-    totalBgnFormatted: bgn(breakdown.totalEur),
+    lines: breakdown.lines.map((l) => ({ label: l.label, amount: usdStr(l.amountUsd) })),
+    totalFormatted: usdStr(breakdown.totalUsd),
     transit: market.transit,
     ratesVerifiedAt: RATES_VERIFIED_AT,
     pageUrl: data.page_url,

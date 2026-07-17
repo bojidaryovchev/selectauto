@@ -7542,7 +7542,7 @@ snapshots:
     dependencies:
       '@types/http-cache-semantics': 4.2.0
       '@types/keyv': 3.1.4
-      '@types/node': 25.2.3
+      '@types/node': 26.1.1
       '@types/responselike': 1.0.3
 
   '@types/cors@2.8.19':
@@ -7581,7 +7581,7 @@ snapshots:
 
   '@types/keyv@3.1.4':
     dependencies:
-      '@types/node': 25.2.3
+      '@types/node': 26.1.1
 
   '@types/mdast@4.0.4':
     dependencies:
@@ -7615,7 +7615,7 @@ snapshots:
 
   '@types/responselike@1.0.3':
     dependencies:
-      '@types/node': 25.2.3
+      '@types/node': 26.1.1
 
   '@types/semver@7.7.1': {}
 
@@ -11014,7 +11014,7 @@ snapshots:
       '@protobufjs/path': 1.1.2
       '@protobufjs/pool': 1.1.0
       '@protobufjs/utf8': 1.1.1
-      '@types/node': 25.2.3
+      '@types/node': 26.1.1
       long: 5.3.2
 
   publish-browser-extension@4.0.5:

@@ -11,7 +11,7 @@ import { formatBgDateTime } from "./theme";
  */
 export function CalculatorOfferNotificationEmail(data: CalculatorOfferEmailData) {
   return (
-    <EmailLayout preview={`Нов лийд от калкулатора: ${data.name} — ${data.marketLabel}, ${data.totalEurFormatted}`}>
+    <EmailLayout preview={`Нов лийд от калкулатора: ${data.name} — ${data.marketLabel}, ${data.totalFormatted}`}>
       <Text className="m-0 mb-1.5 text-[13px] font-bold uppercase tracking-[0.06em] text-brand-dark">
         Нов лийд — калкулатор
       </Text>
@@ -27,7 +27,7 @@ export function CalculatorOfferNotificationEmail(data: CalculatorOfferEmailData)
         {data.lines.map((line) => (
           <InfoRow key={line.label} label={line.label} value={line.amount} />
         ))}
-        <InfoRow label="Общо" value={`${data.totalEurFormatted} (≈ ${data.totalBgnFormatted})`} />
+        <InfoRow label="Общо" value={data.totalFormatted} />
         <InfoRow label="Страница" value={data.pageUrl} href={data.pageUrl || undefined} />
         <InfoRow label="Дата" value={formatBgDateTime(data.createdAt)} />
       </Section>

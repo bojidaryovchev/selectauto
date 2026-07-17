@@ -116,7 +116,7 @@ export default function CalculatorPage() {
           </Suspense>
 
           <p className="mt-3 text-xs text-muted">
-            Ставките (мито, ДДС, екотакса) са проверени към {RATES_VERIFIED_AT}.
+            Всички суми са в щатски долари ($). Ставките (мито, ДДС) са проверени към {RATES_VERIFIED_AT}.
           </p>
 
           {/* Cost-component explainer (real, indexable content) */}

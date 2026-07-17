@@ -16,6 +16,7 @@ export function AdminNav() {
   const links = [
     { href: "/admin", label: "Табло" },
     ...LEAD_TYPES.map((t) => ({ href: LEAD_TYPE_META[t].href, label: LEAD_TYPE_META[t].short })),
+    { href: "/admin/tarifi", label: "Тарифи" },
   ];
 
   const renderLinks = () =>

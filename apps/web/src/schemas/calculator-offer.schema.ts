@@ -26,13 +26,13 @@ export const calculatorOfferContactSchema = z.object({
 
 export type CalculatorOfferContactValues = z.infer<typeof calculatorOfferContactSchema>;
 
-/** Sane EUR bounds for estimate inputs — rejects junk, never blocks real cars.
+/** Sane USD bounds for estimate inputs — rejects junk, never blocks real cars.
  *  BG messages: these surface verbatim in the form's error box on failure. */
-const eurAmount = z
+const usdAmount = z
   .number({ message: "Моля въведете валидна стойност." })
   .int({ message: "Моля въведете цяло число." })
   .min(0, { message: "Стойността не може да е отрицателна." })
-  .max(1_000_000, { message: "Моля въведете реалистична стойност (до 1 000 000 €)." });
+  .max(1_000_000, { message: "Моля въведете реалистична стойност (до 1 000 000 $)." });
 
 export const calculatorOfferSchema = z.object({
   name: z.string().trim().min(1, { message: "Моля въведете име." }),
@@ -43,22 +43,21 @@ export const calculatorOfferSchema = z.object({
   email: z.string().trim().email({ message: "Моля въведете валиден имейл." }),
   inputs: z.object({
     market: z.enum(["kr", "us", "ca"]),
-    priceEur: eurAmount,
-    auctionFeesEur: eurAmount,
-    transportEur: eurAmount,
-    approvalEur: eurAmount,
-    registrationEur: eurAmount,
-    fuel: z.enum(["ice", "hybrid", "ev"]),
-    age: z.enum(["new", "upTo5", "from5to10", "over10"]),
-    originDeclaration: z.boolean(),
-    // Declared customs value as a % of CIF (base for duty + VAT). Optional for
-    // backward compatibility; defaults to 100 (full value) when omitted.
+    vehicleType: z.enum(["sedan", "suv"]),
+    priceUsd: usdAmount,
+    // Optional per-market fields. Duty/VAT base %, defaults to 100 (full value).
     customsBasePct: z
       .number({ message: "Моля въведете валидна стойност." })
       .int({ message: "Моля въведете цяло число." })
       .min(1, { message: "Митническата основа трябва да е между 1 и 100%." })
       .max(100, { message: "Митническата основа трябва да е между 1 и 100%." })
       .default(100),
+    technotest: z.boolean().optional(),
+    originDeclaration: z.boolean().optional(), // kr
+    auction: z.enum(["copart", "iaai"]).optional(), // us/ca
+    location: z.string().optional(), // us — server re-resolves transport from this
+    usInlandUsd: usdAmount.optional(),
+    usContainerUsd: usdAmount.optional(),
   }),
   page_url: z.string().optional(),
 });

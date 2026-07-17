@@ -94,39 +94,40 @@ export function CarfaxDialog({
       {/* Backdrop */}
       <div onClick={onClose} className="absolute inset-0 bg-[rgba(8,10,14,0.72)] backdrop-blur-lg" />
 
-      {/* Scroll host — the card centers on tall screens, top-aligns + scrolls when
-          the form outgrows the viewport (small phones, keyboard open). */}
-      <div className="absolute inset-0 flex items-start justify-center overflow-y-auto p-4 sm:items-center">
-        <div className="relative z-2 my-auto w-[min(100%,560px)] animate-[saFadeIn_0.24s_ease] overflow-hidden rounded-[28px] bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(248,248,250,0.98)_100%)] shadow-[0_30px_80px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.8)]">
-          {/* Header */}
-          <div className="flex items-start justify-between gap-4 border-b border-line/70 px-7 pb-4 pt-6 max-md:px-5">
-            <div className="min-w-0">
-              <h2 id="sa-carfax-dialog-title" className="text-[22px] font-black text-[#17181b] max-md:text-xl">
-                Заяви Carfax проверка
-              </h2>
-              {carLabel ? (
-                <p className="mt-1 truncate text-sm text-muted">
-                  <span className="font-bold text-ink">{carLabel}</span>
-                  {lotNumber ? ` · Лот № ${lotNumber}` : ""}
-                </p>
-              ) : (
-                <p className="mt-1 text-sm text-muted">Остави данни за контакт и ще се свържем с теб.</p>
-              )}
-            </div>
-            <Button
-              ref={closeRef}
-              aria-label="Затвори"
-              onClick={onClose}
-              className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#f1f2f4] text-[#6f747c] transition-all duration-200 hover:-translate-y-px hover:bg-[#e8eaee] hover:text-[#17181b]"
-            >
-              <CloseIcon className="size-4.5" />
-            </Button>
+      {/* Dialog — a flex column: a PINNED header over a scrollable body, so the
+          close button stays reachable on tall forms. Centred card from 641px up;
+          on phones (≤640px) it fills the viewport edge-to-edge (`h-dvh`, square
+          corners), with header/body padding honouring the notch + home-indicator
+          safe-area insets — matching the site's inquiry modal. */}
+      <div className="relative z-2 mx-auto mt-[5vh] flex max-h-[min(88vh,820px)] w-[min(100%-24px,560px)] flex-col overflow-hidden rounded-[28px] bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(248,248,250,0.98)_100%)] shadow-[0_30px_80px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.8)] max-[640px]:mt-0 max-[640px]:h-dvh max-[640px]:max-h-dvh max-[640px]:w-full max-[640px]:rounded-none max-[640px]:shadow-none">
+        {/* Pinned header */}
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-line/70 px-7 pb-4 pt-6 max-[640px]:px-4.5 max-[640px]:pt-[max(1rem,env(safe-area-inset-top))]">
+          <div className="min-w-0">
+            <h2 id="sa-carfax-dialog-title" className="text-[22px] font-black text-[#17181b] max-md:text-xl">
+              Заяви Carfax проверка
+            </h2>
+            {carLabel ? (
+              <p className="mt-1 truncate text-sm text-muted">
+                <span className="font-bold text-ink">{carLabel}</span>
+                {lotNumber ? ` · Лот № ${lotNumber}` : ""}
+              </p>
+            ) : (
+              <p className="mt-1 text-sm text-muted">Остави данни за контакт и ще се свържем с теб.</p>
+            )}
           </div>
+          <Button
+            ref={closeRef}
+            aria-label="Затвори"
+            onClick={onClose}
+            className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#f1f2f4] text-[#6f747c] transition-all duration-200 hover:-translate-y-px hover:bg-[#e8eaee] hover:text-[#17181b]"
+          >
+            <CloseIcon className="size-4.5" />
+          </Button>
+        </div>
 
-          {/* Body — the shared form, stacked + pre-filled/locked. */}
-          <div className="px-7 pb-7 pt-5 max-md:px-5">
-            <CarfaxForm stack defaults={defaults} lockedFields={lockedFields} onSuccess={handleSuccess} />
-          </div>
+        {/* Scrollable body — the shared form, stacked + pre-filled/locked. */}
+        <div className="flex-1 overflow-y-auto px-7 pb-7 pt-5 max-[640px]:px-4.5 max-[640px]:pb-[max(1.125rem,env(safe-area-inset-bottom))]">
+          <CarfaxForm stack defaults={defaults} lockedFields={lockedFields} onSuccess={handleSuccess} />
         </div>
       </div>
     </div>,

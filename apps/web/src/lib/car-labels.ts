@@ -324,11 +324,15 @@ const KR_HISTORY_FLAG_BG: Record<string, string> = {
   corporation: "Юридическо лице",
   dealer: "Дилър",
   direct: "Директна сделка",
+  inheritance: "Наследство",
+  business: "Служебна сделка",
   property_damage: "Имуществена щета",
   use_my_insurance: "Собствена застраховка",
   use_other_insurance: "Чужда застраховка",
   "recall completed": "Отзоваване (изпълнено)",
+  "recall completion": "Отзоваване (изпълнено)",
   "recall required": "Отзоваване (необходимо)",
+  "need to be recalled": "Отзоваване (необходимо)",
 };
 export const historyFlagLabel = (v: string | null | undefined) => lookup(KR_HISTORY_FLAG_BG, v, v ?? "");
 

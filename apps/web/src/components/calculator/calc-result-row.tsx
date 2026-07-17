@@ -5,9 +5,12 @@
  */
 export function CalcResultRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-line/70 py-3 last:border-0">
-      <span className="text-[15px] text-muted">{label}</span>
-      <span className="text-[15px] font-black tabular-nums text-ink">{value}</span>
+    // items-start + a pinned value: a wide 5-digit sum (e.g. „150 000 €") never
+    // wraps its own spaces, and when the label wraps to two lines the value stays
+    // on the first line instead of floating to the vertical middle.
+    <div className="flex items-start justify-between gap-3 border-b border-line/70 py-3 last:border-0">
+      <span className="min-w-0 text-[15px] text-muted">{label}</span>
+      <span className="shrink-0 whitespace-nowrap text-[15px] font-black tabular-nums text-ink">{value}</span>
     </div>
   );
 }

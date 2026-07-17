@@ -24,9 +24,10 @@ import {
 } from "@/components/cars/car-detail";
 import { AuctionCountdown } from "@/components/cars/all-cars";
 import { FavoriteButton } from "@/components/cars/favorite-button";
+import { CarImportCalculator } from "@/components/calculator";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
-import { USD_PER_EUR } from "@/data/import-rates";
+import type { MarketId } from "@/data/import-rates";
 import { buildCarJsonLd } from "@/lib/car-detail-jsonld";
 import { modelHubPath } from "@/lib/car-slug";
 import { buildBreadcrumbJsonLd, type Breadcrumb } from "@/lib/site-jsonld";
@@ -182,20 +183,22 @@ async function CarDetailBody({ params }: { params: Params }) {
   // kr → kr; US-market lots split us/ca by the mapper's sourceCountry (Copart/
   // IAAI run branches in both); unknown → no market param (calculator default).
   // Active cars with a primary price only — a sold car's price isn't an input.
-  const calculatorHref = (() => {
+  // Listing prices are USD ("16 743 $") and the calculator is USD end-to-end, so
+  // the price seeds directly. Active cars with a primary price only.
+  const calcSeed: { priceUsd: number; market?: MarketId } | null = (() => {
     if (detail.isPast) return null;
     const priceDigits = detail.prices.find((p) => p.primary)?.value.replace(/[^\d]/g, "");
     const amountUsd = Number(priceDigits);
     if (!Number.isFinite(amountUsd) || amountUsd <= 0) return null;
-    // Listing prices are USD ("16 743 $") but the calculator's price field is
-    // EUR — convert at the fixed approximate rate (import-rates.USD_PER_EUR)
-    // so the seeded estimate isn't systematically ~8% inflated.
-    const amountEur = Math.round(amountUsd / USD_PER_EUR);
-    const market =
-      detail.market === "kr" ? "kr" : detail.sourceCountry === "Канада" ? "ca" : detail.market === "us" ? "us" : null;
-    const p = new URLSearchParams({ price: String(amountEur) });
-    if (market) p.set("market", market);
-    return `/kalkulator?${p.toString()}`;
+    const market: MarketId | undefined =
+      detail.market === "kr"
+        ? "kr"
+        : detail.sourceCountry === "Канада"
+          ? "ca"
+          : detail.market === "us"
+            ? "us"
+            : undefined;
+    return { priceUsd: Math.round(amountUsd), market };
   })();
 
   // Breadcrumb matching the visible nav EXACTLY (Catalog → [model hub] → this
@@ -328,7 +331,9 @@ async function CarDetailBody({ params }: { params: Params }) {
                 {/* Per-car VIN history check → Carfax lead funnel. Only when the car
                     carries a VIN (the `cars.vin` column is nullable; many lots have
                     none). Reuses the free /api/vin-check lookup, DB-cached per VIN. */}
-                {detail.vin ? <CarVinCheck vin={detail.vin} /> : null}
+                {detail.vin ? (
+                  <CarVinCheck vin={detail.vin} make={detail.brand} model={detail.model} />
+                ) : null}
               </div>
 
               {/* ── Right column: price + status + contact (sticky) ── */}
@@ -350,16 +355,10 @@ async function CarDetailBody({ params }: { params: Params }) {
 
                 <CarPricePanel prices={detail.prices} liveBid={detail.liveBid} marketAvg={detail.marketAvg} />
 
-                {/* Per-listing landed-cost transparency: opens the calculator
-                    pre-seeded with THIS car's price + market (see calculatorHref). */}
-                {calculatorHref ? (
-                  <LinkButton
-                    href={calculatorHref}
-                    rippleTheme="dark"
-                    className="inline-flex min-h-12 w-full items-center justify-center rounded-full border border-line bg-white px-5 text-sm font-extrabold uppercase tracking-wide text-[#333] transition-transform duration-200 hover:-translate-y-0.5 hover:text-brand-dark"
-                  >
-                    Калкулирай вноса до България
-                  </LinkButton>
+                {/* Per-listing landed-cost transparency: an inline collapsible
+                    calculator pre-seeded with THIS car's price + market. */}
+                {calcSeed ? (
+                  <CarImportCalculator defaultPrice={calcSeed.priceUsd} defaultMarket={calcSeed.market} />
                 ) : null}
 
                 {detail.seller?.name || detail.seller?.logo ? (

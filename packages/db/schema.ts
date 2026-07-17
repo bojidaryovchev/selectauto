@@ -310,6 +310,88 @@ export const calculatorOffers = pgTable(
 );
 
 /**
+ * US/Canada transport tariff tables — the import calculator's inland + container
+ * pricing, admin-uploadable via /admin/tarifi (parsed from the provider's
+ * xlsx workbooks). Versioned: each upload is a `tariff_uploads` row; exactly one
+ * is `active`, and the calculator resolves against the active version's rows.
+ * A DB miss falls back to the generated static seed (data/us-transport-tariffs.ts).
+ * Keep in sync with migrations/0033_transport_tariffs.sql.
+ */
+export const tariffUploads = pgTable(
+  "tariff_uploads",
+  {
+    id: serial("id").primaryKey(),
+    /** Original uploaded filename(s), for the audit list. */
+    filename: text("filename").notNull(),
+    inlandRows: integer("inland_rows").notNull(),
+    containerRows: integer("container_rows").notNull(),
+    note: text("note"),
+    /** Exactly one upload is active; the calculator reads that version. */
+    active: boolean("active").notNull().default(false),
+    /** Auth.js user id of the admin who uploaded it. */
+    uploadedBy: text("uploaded_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    activeIdx: index("tariff_uploads_active_idx").on(t.active),
+  }),
+);
+
+export const usInlandTariffs = pgTable(
+  "us_inland_tariffs",
+  {
+    id: serial("id").primaryKey(),
+    uploadId: integer("upload_id")
+      .notNull()
+      .references(() => tariffUploads.id, { onDelete: "cascade" }),
+    location: text("location").notNull(),
+    auction: text("auction").notNull(),
+    city: text("city"),
+    state: text("state"),
+    zip: text("zip"),
+    /** Preferred (cheapest) shipping terminal for this location. */
+    terminal: text("terminal").notNull(),
+    /** Inland transport to that terminal, USD (incl. the +$235 markup). */
+    inland: integer("inland").notNull(),
+  },
+  (t) => ({
+    uploadIdx: index("us_inland_tariffs_upload_idx").on(t.uploadId),
+  }),
+);
+
+/**
+ * calculator_settings — the admin-editable calculator config (fees, commission
+ * tiers, transport legs, agency, technotest, duty/VAT/FX) as one JSON blob. One
+ * row per save (newest wins = active); the calculator falls back to the built-in
+ * DEFAULT_CALC_CONFIG when empty. Keep in sync with migrations/0034_calculator_settings.sql.
+ */
+export const calculatorSettings = pgTable("calculator_settings", {
+  id: serial("id").primaryKey(),
+  /** A serialized `CalcConfig` (see apps/web/src/data/import-rates.ts). */
+  config: jsonb("config").notNull(),
+  updatedBy: text("updated_by"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const usContainerPrices = pgTable(
+  "us_container_prices",
+  {
+    id: serial("id").primaryKey(),
+    uploadId: integer("upload_id")
+      .notNull()
+      .references(() => tariffUploads.id, { onDelete: "cascade" }),
+    /** Container configuration, e.g. "4 cars in 40'HC". */
+    config: text("config").notNull(),
+    terminal: text("terminal").notNull(),
+    /** Price per 1 car, USD (incl. the +$105 markup on 3/4-car rows). */
+    price: integer("price").notNull(),
+  },
+  (t) => ({
+    uploadIdx: index("us_container_prices_upload_idx").on(t.uploadId),
+  }),
+);
+
+/**
  * vin_report_checks — read-through cache for the FREE AuctionsAPI
  * `/reports/check-records/{vin}` lookup (Carfax / AutoCheck record availability).
  * Backs the /proverka-vin tool AND the per-car "Провери история по VIN" button on

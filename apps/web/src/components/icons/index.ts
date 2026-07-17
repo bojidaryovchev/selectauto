@@ -10,6 +10,8 @@ export { ChevronRightIcon } from "./chevron-right-icon";
 export { ClockIcon } from "./clock-icon";
 export { CloseIcon } from "./close-icon";
 export { CopyIcon } from "./copy-icon";
+export { EyeIcon } from "./eye-icon";
+export { EyeOffIcon } from "./eye-off-icon";
 export { FacebookIcon } from "./facebook-icon";
 export { FlagCaIcon } from "./flag-ca-icon";
 export { FlagKrIcon } from "./flag-kr-icon";

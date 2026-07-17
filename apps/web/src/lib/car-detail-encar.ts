@@ -9,6 +9,8 @@ import {
   panelNameLabel,
   panelStatusLabel,
 } from "@/lib/car-labels";
+import { encarExtraNameBg } from "@/lib/encar-extra-labels";
+import { historyDateBg, historySubBg, historyTitleBg } from "@/lib/encar-history-labels";
 import { groupKoreaOptions } from "@/lib/korea-options";
 import type {
   CarFactoryOptions,
@@ -87,10 +89,10 @@ export function buildEncarHistory(details: unknown): CarHistoryEntry[] {
       const sub = s(get(row, "sub"));
       if (!title && !flagRaw && !sub) continue;
       out.push({
-        date,
-        title,
+        date: date ? historyDateBg(date) : date,
+        title: title ? historyTitleBg(title) : title,
         flag: flagRaw ? historyFlagLabel(flagRaw) : undefined,
-        sub,
+        sub: sub ? historySubBg(sub) : sub,
       });
     }
   }
@@ -190,7 +192,8 @@ export function buildEncarFactoryOptions(details: unknown): CarFactoryOptions | 
           // NB: `options_extra[].price` is a small integer (e.g. 100, 65) whose unit is
           // ambiguous (likely ENCAR "만원"/10k-won). Rather than render a misleading
           // number we carry the NAME only for now; wire price once the unit is confirmed.
-          return { name };
+          // Localize the free-text name to BG where confident (see @/lib/encar-extra-labels).
+          return { name: encarExtraNameBg(name) };
         })
         .filter(Boolean)
     : [];
