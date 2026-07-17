@@ -23,8 +23,7 @@ const AUCTION_MATCHES = [
 export default defineConfig({
   manifest: ({ mode }) => ({
     name: "SelectAuto Lot Checker",
-    description:
-      "Показва дали лотът от Copart/IAAI/Encar вече е в SelectAuto и подготвя Viber съобщение.",
+    description: "Показва дали лотът от Copart/IAAI/Encar вече е в SelectAuto и подготвя Viber съобщение.",
     // `storage`: persists the user's Viber phone number (browser.storage.local).
     // No `scripting`: the content script is statically declared.
     permissions: ["storage"],
@@ -52,11 +51,7 @@ export default defineConfig({
     web_accessible_resources: [
       {
         matches: AUCTION_MATCHES,
-        resources: [
-          "logo.png",
-          "fonts/montserrat-latin.woff2",
-          "fonts/montserrat-cyrillic.woff2",
-        ],
+        resources: ["logo.png", "fonts/montserrat-latin.woff2", "fonts/montserrat-cyrillic.woff2"],
       },
     ],
   }),

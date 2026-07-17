@@ -1,11 +1,12 @@
-import type { Metadata, Viewport } from "next";
-import { Montserrat } from "next/font/google";
-import { Suspense } from "react";
-import { SessionProvider } from "next-auth/react";
 import { BackToTop, ScrollToTop, ViberGroupPopup } from "@/components/layout";
 import { Providers } from "@/components/providers";
 import { SITE_NAME, SITE_URL } from "@/constants";
 import { buildOrganizationJsonLd, buildWebsiteJsonLd } from "@/lib/site-jsonld";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import type { Metadata, Viewport } from "next";
+import { SessionProvider } from "next-auth/react";
+import { Montserrat } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -96,6 +97,9 @@ export default function RootLayout({
             viewport, smooth-scrolls to the top on click. Self-contained client
             singleton, lifted above the mobile bottom nav. */}
         <BackToTop />
+
+        {/* Vercel Speed Insights: tracks Core Web Vitals and performance metrics. */}
+        <SpeedInsights />
       </body>
     </html>
   );

@@ -18,11 +18,7 @@ function readIaaiStock(): string | null {
 }
 
 /** Poll for the Stock # until the SPA renders it (or we time out / navigate away). */
-export async function waitForIaaiStock(
-  isValid: () => boolean,
-  timeoutMs = 9000,
-  stepMs = 300,
-): Promise<string | null> {
+export async function waitForIaaiStock(isValid: () => boolean, timeoutMs = 9000, stepMs = 300): Promise<string | null> {
   const start = Date.now();
   for (;;) {
     if (!isValid()) return null;

@@ -397,10 +397,7 @@ export const accounts = pgTable(
     id_token: text("id_token"),
     session_state: text("session_state"),
   },
-  (t) => [
-    primaryKey({ columns: [t.provider, t.providerAccountId] }),
-    index("accounts_user_id_idx").on(t.userId),
-  ],
+  (t) => [primaryKey({ columns: [t.provider, t.providerAccountId] }), index("accounts_user_id_idx").on(t.userId)],
 );
 
 /**
@@ -453,10 +450,7 @@ export const favorites = pgTable(
       .references(() => cars.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
-  (t) => [
-    primaryKey({ columns: [t.userId, t.carId] }),
-    index("favorites_user_idx").on(t.userId, t.createdAt),
-  ],
+  (t) => [primaryKey({ columns: [t.userId, t.carId] }), index("favorites_user_idx").on(t.userId, t.createdAt)],
 );
 
 /**
