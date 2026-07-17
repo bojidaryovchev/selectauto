@@ -3,7 +3,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Button, LinkButton } from "@/components/common";
+import { Button } from "@/components/common";
+import { CarfaxInquiryButton } from "@/components/carfax/carfax-dialog";
 import { vinCheckSchema, type VinCheckValues } from "@/schemas/vin-check.schema";
 
 /**
@@ -126,13 +127,13 @@ export function VinCheckTool() {
                 За този автомобил има налична история. Заяви пълен Carfax доклад през SelectAuto — ще получиш
                 подробния отчет (собственици, километри, инциденти, записи).
               </p>
-              <LinkButton
-                href="/carfax"
+              <CarfaxInquiryButton
+                vin={result.vin}
                 rippleTheme="light"
                 className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand px-6 text-sm font-extrabold uppercase tracking-wide text-white transition-transform duration-200 hover:-translate-y-0.5"
               >
                 Заяви пълен Carfax
-              </LinkButton>
+              </CarfaxInquiryButton>
             </>
           ) : (
             <p className="text-sm/relaxed text-[#5a5d64]">

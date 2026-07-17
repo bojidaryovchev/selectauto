@@ -1,4 +1,5 @@
 import { LinkButton } from "@/components/common";
+import { CarfaxInquiryButton } from "@/components/carfax";
 import { PhoneIcon, ShieldIcon, ViberIcon } from "@/components/icons";
 import { InquiryButton } from "@/components/inquiry";
 import { CONTACT, SOCIALS } from "@/constants";
@@ -18,10 +19,11 @@ const VIBER_HREF = SOCIALS.find((s) => s.label === "Viber")?.href ?? "";
  * this car (skipping the brand/model quiz steps, starting at budget, with a banner
  * naming the car). Missing brand/model → the button opens the generic quiz.
  *
- * A „Заяви Carfax проверка" CTA deep-links to /carfax with the car's VIN/make/model
- * pre-filled. It's shown only for US/Canada cars (`market !== "kr"`) — Carfax is a
- * North-American vehicle-history product, and Encar (KR) lots already render their
- * own built-in insurance/inspection history further down the page.
+ * A „Заяви Carfax проверка" CTA opens the in-page CarfaxDialog pre-filled (and
+ * locked) with this car's VIN/make/model, so the buyer only adds their contact
+ * details without leaving the page. Shown only for US/Canada cars (`market !== "kr"`)
+ * — Carfax is a North-American vehicle-history product, and Encar (KR) lots already
+ * render their own built-in insurance/inspection history further down the page.
  */
 export function CarContactPanel({
   title,
@@ -50,16 +52,6 @@ export function CarContactPanel({
         }
       : undefined;
 
-  // Carfax lead form, deep-linked with this car's details pre-filled (see the
-  // CarfaxFormFromUrl wrapper). Only the params we actually have are appended.
-  const carfaxHref = (() => {
-    const p = new URLSearchParams();
-    if (vin) p.set("vin", vin);
-    if (brand) p.set("make", brand);
-    if (model) p.set("model", model);
-    const qs = p.toString();
-    return qs ? `/carfax?${qs}` : "/carfax";
-  })();
   const showCarfax = market !== "kr";
 
   return (
@@ -89,14 +81,17 @@ export function CarContactPanel({
         </InquiryButton>
 
         {showCarfax ? (
-          <LinkButton
-            href={carfaxHref}
+          <CarfaxInquiryButton
+            vin={vin}
+            make={brand}
+            model={model}
+            lotNumber={lotNumber}
             rippleTheme="dark"
             className="inline-flex min-h-13 items-center justify-center gap-2.5 rounded-full border border-line bg-white px-5 text-sm font-extrabold uppercase tracking-wide text-[#333] transition-transform duration-200 hover:-translate-y-0.5 hover:text-brand-dark"
           >
             <ShieldIcon className="size-5" />
             Заяви Carfax проверка
-          </LinkButton>
+          </CarfaxInquiryButton>
         ) : null}
 
         {VIBER_HREF ? (

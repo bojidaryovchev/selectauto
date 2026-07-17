@@ -51,6 +51,14 @@ export const calculatorOfferSchema = z.object({
     fuel: z.enum(["ice", "hybrid", "ev"]),
     age: z.enum(["new", "upTo5", "from5to10", "over10"]),
     originDeclaration: z.boolean(),
+    // Declared customs value as a % of CIF (base for duty + VAT). Optional for
+    // backward compatibility; defaults to 100 (full value) when omitted.
+    customsBasePct: z
+      .number({ message: "Моля въведете валидна стойност." })
+      .int({ message: "Моля въведете цяло число." })
+      .min(1, { message: "Митническата основа трябва да е между 1 и 100%." })
+      .max(100, { message: "Митническата основа трябва да е между 1 и 100%." })
+      .default(100),
   }),
   page_url: z.string().optional(),
 });

@@ -1,12 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-// Type-only import: erased at build time, so `three` never enters the server
-// bundle, while THREE.* type annotations below still resolve.
-import type * as THREE from "three";
 import { Button, LinkButton } from "@/components/common";
 import { HERO_MODELS } from "@/data/home";
 import { useInquiry } from "@/contexts/inquiry-context";
+import { loadHeroPoints, type HeroTier } from "@/lib/baked-hero";
 
 /**
  * 3D particle hero — a faithful React port of the site's
@@ -36,9 +34,6 @@ export function ParticleHero() {
 
     (async () => {
       const THREE = await import("three");
-      const { GLTFLoader } = await import(
-        "three/examples/jsm/loaders/GLTFLoader.js"
-      );
       const { OrbitControls } = await import(
         "three/examples/jsm/controls/OrbitControls.js"
       );
@@ -47,6 +42,13 @@ export function ParticleHero() {
       const isMobile = () => window.innerWidth <= 768;
       const isTablet = () => window.innerWidth > 768 && window.innerWidth <= 1100;
 
+      // Which pre-baked point-cloud variant to fetch. Must line up with
+      // PARTICLE_COUNT below and the TIERS in scripts/bake-hero-points.mjs.
+      const tier: HeroTier = isMobile()
+        ? "mobile"
+        : isTablet()
+          ? "tablet"
+          : "desktop";
       const PARTICLE_COUNT = isMobile() ? 2500 : isTablet() ? 5000 : 8000;
       const STATIC_DURATION = 4.2;
       const MORPH_DURATION = 2.2;
@@ -203,119 +205,6 @@ export function ParticleHero() {
       });
       root.add(new THREE.Points(particleGeometry, particleMaterial));
 
-      function fitModel(model: THREE.Object3D, targetSize = isMobile() ? 4.9 : 4.4) {
-        model.updateMatrixWorld(true);
-        const box = new THREE.Box3().setFromObject(model);
-        const size = new THREE.Vector3();
-        const center = new THREE.Vector3();
-        box.getSize(size);
-        box.getCenter(center);
-        const maxSize = Math.max(size.x, size.y, size.z);
-        const scale = targetSize / maxSize;
-        model.scale.setScalar(scale);
-        model.position.sub(center.multiplyScalar(scale));
-        model.rotation.y = Math.PI / 2;
-        model.updateMatrixWorld(true);
-        const newBox = new THREE.Box3().setFromObject(model);
-        model.position.y -= newBox.min.y;
-        model.updateMatrixWorld(true);
-      }
-
-      function collectTriangles(model: THREE.Object3D) {
-        const triangles: { a: THREE.Vector3; b: THREE.Vector3; c: THREE.Vector3; area: number }[] = [];
-        model.updateMatrixWorld(true);
-        model.traverse((child: THREE.Object3D) => {
-          const mesh = child as THREE.Mesh;
-          if (!mesh.isMesh || !mesh.geometry?.attributes.position) return;
-          const pos = mesh.geometry.attributes.position;
-          const index = mesh.geometry.index;
-          const matrix = mesh.matrixWorld;
-          const getVertex = (i: number) =>
-            new THREE.Vector3(pos.getX(i), pos.getY(i), pos.getZ(i)).applyMatrix4(
-              matrix,
-            );
-          if (index) {
-            for (let i = 0; i < index.count; i += 3) {
-              const a = getVertex(index.getX(i));
-              const b = getVertex(index.getX(i + 1));
-              const c = getVertex(index.getX(i + 2));
-              const area = new THREE.Triangle(a, b, c).getArea();
-              if (area > 0.00001) triangles.push({ a, b, c, area });
-            }
-          } else {
-            for (let i = 0; i < pos.count; i += 3) {
-              const a = getVertex(i);
-              const b = getVertex(i + 1);
-              const c = getVertex(i + 2);
-              const area = new THREE.Triangle(a, b, c).getArea();
-              if (area > 0.00001) triangles.push({ a, b, c, area });
-            }
-          }
-        });
-        return triangles;
-      }
-
-      function sampleSurfacePoints(model: THREE.Object3D) {
-        const triangles = collectTriangles(model);
-        const cumulative: number[] = [];
-        let totalArea = 0;
-        for (const tri of triangles) {
-          totalArea += tri.area;
-          cumulative.push(totalArea);
-        }
-        const pts = new Float32Array(PARTICLE_COUNT * 3);
-        for (let i = 0; i < PARTICLE_COUNT; i++) {
-          const r = Math.random() * totalArea;
-          let low = 0;
-          let high = cumulative.length - 1;
-          while (low < high) {
-            const mid = Math.floor((low + high) / 2);
-            if (cumulative[mid] < r) low = mid + 1;
-            else high = mid;
-          }
-          const tri = triangles[low];
-          let u = Math.random();
-          let v = Math.random();
-          if (u + v > 1) {
-            u = 1 - u;
-            v = 1 - v;
-          }
-          const point = new THREE.Vector3()
-            .copy(tri.a)
-            .addScaledVector(new THREE.Vector3().subVectors(tri.b, tri.a), u)
-            .addScaledVector(new THREE.Vector3().subVectors(tri.c, tri.a), v);
-          const ix = i * 3;
-          pts[ix] = point.x;
-          pts[ix + 1] = point.y;
-          pts[ix + 2] = point.z;
-        }
-        return pts;
-      }
-
-      function loadModelPoints(src: string, retries = 2): Promise<Float32Array> {
-        const loader = new GLTFLoader();
-        return new Promise((resolve, reject) => {
-          const attempt = (attemptsLeft: number) => {
-            loader.load(
-              src,
-              (gltf) => {
-                fitModel(gltf.scene);
-                resolve(sampleSurfacePoints(gltf.scene));
-              },
-              undefined,
-              (err) => {
-                if (attemptsLeft > 0) {
-                  setTimeout(() => attempt(attemptsLeft - 1), 800);
-                } else {
-                  reject(err);
-                }
-              },
-            );
-          };
-          attempt(retries);
-        });
-      }
-
       function showModelInfo(i: number) {
         setModelName(HERO_MODELS[i].name);
         setModelMeta(HERO_MODELS[i].meta);
@@ -402,22 +291,28 @@ export function ParticleHero() {
 
       async function init() {
         try {
-          models[0] = await loadModelPoints(HERO_MODELS[0].src);
+          // Fetch the first model's baked point cloud, paint it, and start the
+          // loop immediately; the other two are tiny (<100KB) and fetched right
+          // after so the morph has its targets ready.
+          models[0] = await loadHeroPoints(HERO_MODELS[0].src, tier);
           if (disposed) return;
           positions.set(models[0]);
           fromPositions.set(models[0]);
           particleGeometry.attributes.position.needsUpdate = true;
           showModelInfo(0);
           animate();
-          setTimeout(async () => {
-            try {
-              models[1] = await loadModelPoints(HERO_MODELS[1].src);
-              models[2] = await loadModelPoints(HERO_MODELS[2].src);
-              if (!disposed) toPositions.set(models[1]);
-            } catch {
-              /* lazy models failed — hero keeps showing the first model */
-            }
-          }, 1200);
+          try {
+            const [m1, m2] = await Promise.all([
+              loadHeroPoints(HERO_MODELS[1].src, tier),
+              loadHeroPoints(HERO_MODELS[2].src, tier),
+            ]);
+            if (disposed) return;
+            models[1] = m1;
+            models[2] = m2;
+            toPositions.set(models[1]);
+          } catch {
+            /* secondary models failed — hero keeps showing the first model */
+          }
         } catch {
           setModelName("3D ERROR");
           setModelMeta("Моделът не успя да се зареди");

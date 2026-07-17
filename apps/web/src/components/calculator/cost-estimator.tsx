@@ -6,6 +6,7 @@ import {
   AGE_BANDS,
   type AgeBand,
   computeImportBreakdown,
+  DEFAULT_CUSTOMS_BASE_PCT,
   EUR_BGN,
   FUEL_KINDS,
   type FuelKind,
@@ -132,6 +133,9 @@ export function CostEstimator({
   const [registration, setRegistration] = useState<number>(initial.registration);
   const [fuel, setFuel] = useState<FuelKind>("ice");
   const [age, setAge] = useState<AgeBand>("upTo5");
+  // Declared customs value as a % of CIF (the base for duty + VAT). Defaults to
+  // the full 100% (legally correct); editable for a documented lower valuation.
+  const [customsBasePct, setCustomsBasePct] = useState<number>(DEFAULT_CUSTOMS_BASE_PCT);
   // Conservative default: WITHOUT the origin declaration Korea pays the full
   // 10% — the toggle (and its copy) is the differentiator explanation.
   const [originDeclaration, setOriginDeclaration] = useState(false);
@@ -160,8 +164,20 @@ export function CostEstimator({
       fuel,
       age,
       originDeclaration,
+      customsBasePct,
     }),
-    [market, price, auctionFees, transport, approval, registration, fuel, age, originDeclaration],
+    [
+      market,
+      price,
+      auctionFees,
+      transport,
+      approval,
+      registration,
+      fuel,
+      age,
+      originDeclaration,
+      customsBasePct,
+    ],
   );
 
   const b = useMemo(() => computeImportBreakdown(inputs), [inputs]);
@@ -234,10 +250,25 @@ export function CostEstimator({
             step={10}
           />
         </div>
+        <div className="flex flex-col gap-1">
+          <NumberField
+            label="Митническа основа (% от стойността)"
+            value={customsBasePct}
+            onChange={(v) => setCustomsBasePct(Math.min(100, Math.max(1, v)))}
+            step={5}
+          />
+          <span className="text-[11px]/relaxed text-muted">
+            Процент от стойността, върху който се начисляват мито и ДДС. По
+            подразбиране 100% (пълната стойност). Променете само при документирано
+            основание за по-ниска митническа стойност.
+          </span>
+        </div>
+
         <p className="text-xs/relaxed text-muted">
           Митото ({b.dutyPctApplied}%) и ДДС (20%) се изчисляват автоматично върху
-          стойността до България; екотаксата — по гориво и възраст (ПУДООС).
-          Ставките са проверени към {RATES_VERIFIED_AT}.
+          митническата основа ({b.customsBasePctApplied}% от стойността до
+          България); екотаксата — по гориво и възраст (ПУДООС). Ставките са
+          проверени към {RATES_VERIFIED_AT}.
         </p>
       </div>
 
@@ -249,6 +280,13 @@ export function CostEstimator({
         {b.lines.map((l) => (
           <Row key={l.label} label={l.label} value={eur(l.amountEur)} />
         ))}
+        {b.customsBasePctApplied < 100 ? (
+          <Row
+            muted
+            label={`Митническа основа (${b.customsBasePctApplied}%)`}
+            value={eur(b.customsValueEur)}
+          />
+        ) : null}
         <div className="mt-4 flex items-center justify-between gap-4 rounded-xl bg-[#2f343c] px-4 py-3">
           <span className="text-sm font-semibold uppercase tracking-wide text-white/70">
             Общо (ориентир)

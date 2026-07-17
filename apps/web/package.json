@@ -9,7 +9,8 @@
     "type-check": "tsc --noEmit",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
-    "bake:edges": "node scripts/bake-particle-edges.mjs"
+    "bake:edges": "node scripts/bake-particle-edges.mjs",
+    "bake:hero": "node scripts/bake-hero-points.mjs"
   },
   "dependencies": {
     "@auctions-ingestion/db": "workspace:*",

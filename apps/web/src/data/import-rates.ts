@@ -33,6 +33,22 @@ export const DUTY_PCT = 10;
 export const VAT_PCT = 20;
 
 /**
+ * Declared customs value as a % of the full CIF, used as the base duty + VAT are
+ * charged on. **Defaults to 100 (the legally correct full transaction value.)**
+ * Exposed as an editable field so a user with a specific, documented basis for a
+ * lower declared value (e.g. a salvage/damaged valuation) can model it — the safe
+ * default taxes the full value. Lowering it only shrinks the tax base; the car,
+ * fees and transport are still paid (and counted) in full.
+ */
+export const DEFAULT_CUSTOMS_BASE_PCT = 100;
+
+/** Clamp a customs-base % to the sane 1–100 range (100 = full value). */
+export function clampCustomsBasePct(v: number | undefined): number {
+  if (v === undefined || !Number.isFinite(v)) return DEFAULT_CUSTOMS_BASE_PCT;
+  return Math.min(100, Math.max(1, Math.round(v)));
+}
+
+/**
  * Екотакса (продуктова такса МПС, ПУДООС) in BGN by vehicle age band — the
  * in-force M1 rates per ПМС 76/2016 (изм. ДВ 60/2018). EVs: the ordinance
  * defines a fee only for NEW EVs (102 лв) — used EVs have no defined fee, shown
@@ -140,6 +156,11 @@ export type ImportCostInputs = {
   age: AgeBand;
   /** Korea only: the exporter provides an approved-exporter origin declaration → 0% duty. */
   originDeclaration: boolean;
+  /**
+   * Declared customs value as a % of CIF (the base for duty + VAT). Optional;
+   * defaults to `DEFAULT_CUSTOMS_BASE_PCT` (100 = full value) when omitted.
+   */
+  customsBasePct?: number;
 };
 
 export type ImportCostLine = { label: string; amountEur: number };
@@ -148,6 +169,10 @@ export type ImportCostBreakdown = {
   /** Ordered line items (incl. the car price) — what the UI and the email render. */
   lines: ImportCostLine[];
   cifEur: number;
+  /** The value duty + VAT were actually charged on (CIF × customsBasePct). */
+  customsValueEur: number;
+  /** The applied customs-base %, clamped to 1–100 (100 = full value). */
+  customsBasePctApplied: number;
   dutyPctApplied: number;
   dutyEur: number;
   vatEur: number;
@@ -156,14 +181,19 @@ export type ImportCostBreakdown = {
 };
 
 export function computeImportBreakdown(i: ImportCostInputs): ImportCostBreakdown {
-  // Customs value (CIF): price paid + auction fees + transport to the EU/BG.
+  // Full landed value (CIF): price paid + auction fees + transport to the EU/BG.
+  // This is always paid in full and counted in the total.
   const cif = i.priceEur + i.auctionFeesEur + i.transportEur;
+  // Declared customs value: the base duty + VAT are charged on. Defaults to the
+  // full CIF (100%); the UI exposes it as an editable field.
+  const customsBasePct = clampCustomsBasePct(i.customsBasePct);
+  const customsValue = Math.round((cif * customsBasePct) / 100);
   // Duty: Korea reaches 0% ONLY with the origin declaration (EU–KR FTA); USA is
   // 10% MFN; Canada is 10% in practice (CETA needs Canadian ORIGIN — rare on
   // auction inventory, handled via a personal offer, not a toggle).
   const dutyPct = i.market === "kr" && i.originDeclaration ? 0 : DUTY_PCT;
-  const duty = Math.round((cif * dutyPct) / 100);
-  const vat = Math.round(((cif + duty) * VAT_PCT) / 100);
+  const duty = Math.round((customsValue * dutyPct) / 100);
+  const vat = Math.round(((customsValue + duty) * VAT_PCT) / 100);
   const ecotax = ecotaxEur(i.fuel, i.age);
   const total = cif + duty + vat + ecotax + i.approvalEur + i.registrationEur;
 
@@ -178,5 +208,15 @@ export function computeImportBreakdown(i: ImportCostInputs): ImportCostBreakdown
     { label: "Регистрация (ГТП, КАТ, номера)", amountEur: i.registrationEur },
   ];
 
-  return { lines, cifEur: cif, dutyPctApplied: dutyPct, dutyEur: duty, vatEur: vat, ecotaxEur: ecotax, totalEur: total };
+  return {
+    lines,
+    cifEur: cif,
+    customsValueEur: customsValue,
+    customsBasePctApplied: customsBasePct,
+    dutyPctApplied: dutyPct,
+    dutyEur: duty,
+    vatEur: vat,
+    ecotaxEur: ecotax,
+    totalEur: total,
+  };
 }

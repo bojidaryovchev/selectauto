@@ -1,6 +1,5 @@
-import { Suspense } from "react";
 import { Container, Reveal } from "@/components/common";
-import { CarfaxForm, CarfaxFormFromUrl } from "@/components/carfax/carfax-form";
+import { CarfaxForm } from "@/components/carfax/carfax-form";
 
 const INFO_POINTS = [
   "Подходящо за автомобили от САЩ, Канада и други пазари",
@@ -44,13 +43,7 @@ export function CarfaxFormSection() {
               <p className="mb-5 text-base leading-[1.75] text-[#676b73]">
                 Попълни информацията по-долу и ще се свържем с теб.
               </p>
-              {/* Seeded from `?vin=&make=&model=` when reached via a car page's
-                  „Заяви Carfax проверка" button. useSearchParams lives in the
-                  wrapper behind Suspense, so the /carfax page keeps its static
-                  shell; the fallback is the plain empty form. */}
-              <Suspense fallback={<CarfaxForm />}>
-                <CarfaxFormFromUrl />
-              </Suspense>
+              <CarfaxForm />
             </div>
           </Reveal>
         </div>
