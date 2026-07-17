@@ -1,3 +1,4 @@
+import { ORG_ID } from "@/lib/site-jsonld";
 import type { CarDetail } from "@/types/car-detail.type";
 
 /**
@@ -77,6 +78,8 @@ export function buildCarJsonLd(detail: CarDetail, url: string): Record<string, u
         priceCurrency: "USD",
         availability: "https://schema.org/InStock",
         url,
+        // Connect the offer to the site-wide AutoDealer entity (entity graph).
+        seller: { "@id": ORG_ID },
         ...(detail.location ? { availableAtOrFrom: { "@type": "Place", name: detail.location } } : {}),
       };
     }

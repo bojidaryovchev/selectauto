@@ -257,6 +257,14 @@ export async function sendFavoriteAuctionDigest(
   const cars: DigestCar[] = data.cars.map((car) => ({
     title: car.title,
     url: car.href.startsWith("http") ? car.href : `${base}${car.href}`,
+    // Absolute image URL for the email client (relative /public paths, used only
+    // by the static fallback data, get the base prefixed; DB rows already carry
+    // an absolute AuctionsAPI CDN URL). Null image → omit the thumbnail.
+    image: car.image
+      ? car.image.startsWith("http")
+        ? car.image
+        : `${base}${car.image}`
+      : undefined,
     price: car.price,
     lotNumber: car.lotNumber,
     auctionTime: car.saleDate ? formatBgDateTime(car.saleDate) : undefined,

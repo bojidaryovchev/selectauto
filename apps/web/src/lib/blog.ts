@@ -16,6 +16,9 @@ import matter from "gray-matter";
  *   updated:     ISO date — dateModified (defaults to `date`)
  *   author:      display name (defaults to "SelectAuto"; use NAMED experts for
  *                E-E-A-T once bios exist — docs/13 Phase C)
+ *   draft:       `true` hides the post everywhere — excluded from the index,
+ *                `generateStaticParams`, the sitemap, AND `getPostBySlug` (a draft
+ *                slug 404s), so a work-in-progress `.md` is never published/indexed.
  *
  * All reads are synchronous filesystem work on a small directory — deterministic
  * at build/prerender time (no request data), so blog routes stay fully static
@@ -31,6 +34,8 @@ export type BlogPostMeta = {
   /** ISO YYYY-MM-DD; defaults to `date`. */
   updated: string;
   author: string;
+  /** `true` = work-in-progress; hidden from listing/sitemap/routes. */
+  draft: boolean;
 };
 
 export type BlogPost = BlogPostMeta & {
@@ -68,6 +73,7 @@ function readPost(file: string): BlogPost | null {
       date,
       updated,
       author: typeof data.author === "string" && data.author.trim() ? data.author.trim() : "SelectAuto",
+      draft: data.draft === true,
       content,
     };
   } catch (error) {
@@ -86,13 +92,15 @@ export function getAllPosts(): BlogPost[] {
   }
   return files
     .map(readPost)
-    .filter((p): p is BlogPost => p !== null)
+    .filter((p): p is BlogPost => p !== null && !p.draft)
     .sort((a, b) => (a.date < b.date ? 1 : -1));
 }
 
-/** One post by slug (filename without .md), or null. Slug is path-sanitized. */
+/** One PUBLISHED post by slug (filename without .md), or null. Slug is
+ *  path-sanitized; drafts resolve to null so a draft URL 404s. */
 export function getPostBySlug(slug: string): BlogPost | null {
   if (!/^[a-z0-9-]+$/.test(slug)) return null;
   if (!fs.existsSync(path.join(BLOG_DIR, `${slug}.md`))) return null;
-  return readPost(`${slug}.md`);
+  const post = readPost(`${slug}.md`);
+  return post && !post.draft ? post : null;
 }

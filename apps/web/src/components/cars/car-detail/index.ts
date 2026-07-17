@@ -12,4 +12,5 @@ export { CarPricePanel } from "./car-price-panel";
 export { CarSellerNote } from "./car-seller-note";
 export { CarSpecSheet } from "./car-spec-sheet";
 export { CarTagChips } from "./car-tag-chips";
+export { CarVinCheck } from "./car-vin-check";
 export { RelatedCars } from "./related-cars";

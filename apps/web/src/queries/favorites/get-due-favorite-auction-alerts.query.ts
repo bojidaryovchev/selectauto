@@ -20,8 +20,10 @@ export type DueAuctionAlert = {
  *
  * Filters:
  *  - `favorite_auction_alerts = true` — opted in on /lyubimi.
- *  - `email_verified IS NOT NULL` — never email an unverified address (password
- *    sign-in already requires this; OAuth users are verified by the adapter).
+ *  - `email_verified IS NOT NULL` — never email an unverified address. Password
+ *    users verify through our own flow; Google users are stamped verified by the
+ *    `signIn` event in auth.ts (Auth.js itself creates OAuth users with
+ *    `emailVerified: null`, so the adapter never sets it — see that event).
  *  - sent-guard: skip anyone whose `favorite_auction_alert_sent_on` already
  *    equals today's America/New_York auction day, so a duplicate/retried cron
  *    invocation can't double-send. `IS DISTINCT FROM` also lets NULL (never sent)

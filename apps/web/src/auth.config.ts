@@ -43,13 +43,18 @@ export const authConfig = {
       return token;
     },
     /**
-     * Expose the user id on `session.user.id` so server code (favourites) and the
-     * client (`useSession`) can read it. The type augmentation lives in
-     * `src/types/next-auth.d.ts`.
+     * Expose the user id and roles on `session.user` so server code (favourites,
+     * the /admin gate) and the client (`useSession`) can read them. `roles` is
+     * minted onto the token by the full config's `jwt` callback (auth.ts, a DB
+     * read at sign-in); a token without it (older session) reads as `[]`.
+     * The type augmentation lives in `src/types/next-auth.d.ts`.
      */
     session({ session, token }) {
       if (session.user && token.id) {
         session.user.id = token.id as string;
+      }
+      if (session.user) {
+        session.user.roles = (token.roles as string[]) ?? [];
       }
       return session;
     },

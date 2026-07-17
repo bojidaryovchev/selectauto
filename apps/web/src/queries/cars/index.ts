@@ -6,6 +6,7 @@ export {
   resolveCarHub,
   resolveBrandHub,
   getBrandModelHubs,
+  getHubFacetCount,
   type CarHubResolution,
   type BrandHubResolution,
   type BrandModelHub,

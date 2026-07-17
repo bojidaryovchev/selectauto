@@ -8,11 +8,17 @@ import { forgotPasswordSchema } from "@/schemas/auth.schema";
 import type { ActionResult } from "@/types/action-result.type";
 
 /**
- * Starts a password reset: if the email belongs to a password user, issue a
- * single-use reset token and email the link. ALWAYS returns success regardless of
- * whether the email exists or is a Google-only account — never reveal which
- * emails are registered (account-enumeration protection). The user is simply told
- * "if an account exists, we sent a link".
+ * Starts a password set/reset: if the email belongs to ANY existing user, issue a
+ * single-use token and email the link. This intentionally covers Google-only
+ * accounts (no `passwordHash`) too — it's how a user who signed up with Google
+ * ADDS a password and converges to dual login: `resetPassword` sets both
+ * `passwordHash` and `emailVerified`. Safe because the emailed link proves inbox
+ * control, which is exactly the ownership proof needed to set a first password
+ * (unlike the sign-up form — see sign-up.mutation.ts).
+ *
+ * ALWAYS returns success regardless of whether the email exists — never reveal
+ * which emails are registered (account-enumeration protection). The user is
+ * simply told "if an account exists, we sent a link".
  */
 export async function forgotPassword(input: unknown): Promise<ActionResult> {
   const parsed = forgotPasswordSchema.safeParse(input);
@@ -24,14 +30,15 @@ export async function forgotPassword(input: unknown): Promise<ActionResult> {
   try {
     const db = getDb();
     const rows = await db
-      .select({ id: schema.users.id, email: schema.users.email, name: schema.users.name, passwordHash: schema.users.passwordHash })
+      .select({ id: schema.users.id, email: schema.users.email, name: schema.users.name })
       .from(schema.users)
       .where(eq(sql`lower(${schema.users.email})`, emailLower))
       .limit(1);
     const user = rows[0];
 
-    // Only send for a real password account; otherwise silently succeed.
-    if (user && user.passwordHash) {
+    // Send for any existing account (incl. Google-only, which uses this to add a
+    // password); otherwise silently succeed to avoid enumeration.
+    if (user) {
       // Invalidate any outstanding reset tokens for this user, then issue one.
       await db.delete(schema.passwordResetTokens).where(eq(schema.passwordResetTokens.userId, user.id));
       const token = newToken();

@@ -9,25 +9,25 @@ import {
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { ParticleHero } from "@/components/three";
 import { SITE_URL } from "@/constants";
+import { buildSocialMeta } from "@/lib/social-meta";
 import { getAuctionCars, getBuyNowCars } from "@/queries/cars";
 
 /**
  * Home metadata. The page previously exported none (inheriting only the root
  * layout default); this gives it a distinct, keyword-bearing title/description +
- * a self-canonical and OG. (OG type/image/siteName are inherited from the root
- * layout's openGraph defaults.)
+ * a self-canonical and OG. `buildSocialMeta` re-declares the site image/siteName/
+ * locale (a page-level `openGraph` would otherwise replace them wholesale).
  */
 export const metadata: Metadata = {
   title: "Внос на автомобили от Корея, САЩ и Канада | SelectAuto",
   description:
-    "SelectAuto внася автомобили от Корея, САЩ и Канада чрез аукциони (Copart, IAAI, Encar) — подбор, търг, логистика, митница и предаване на ключ. Разгледай налични оферти и поискай калкулация.",
+    "SelectAuto внася автомобили от Корея, САЩ и Канада чрез аукциони (Copart, IAAI, Encar) — подбор, търг, логистика, митница и предаване на ключ.",
   alternates: { canonical: SITE_URL },
-  openGraph: {
+  ...buildSocialMeta({
     title: "Внос на автомобили от Корея, САЩ и Канада | SelectAuto",
     description:
       "Внос на автомобили от Корея, САЩ и Канада чрез аукциони — пълно съдействие от подбора до предаването на ключ.",
-    url: SITE_URL,
-  },
+  }),
 };
 
 export default async function HomePage() {

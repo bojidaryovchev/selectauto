@@ -10,6 +10,8 @@ declare module "next-auth" {
   interface Session {
     user: {
       id: string;
+      /** Elevated roles (e.g. 'admin') — authorises the /admin back office. */
+      roles: string[];
     } & DefaultSession["user"];
   }
 }
@@ -17,5 +19,7 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     id?: string;
+    /** Elevated roles — minted at sign-in by the jwt callback in auth.ts. */
+    roles?: string[];
   }
 }

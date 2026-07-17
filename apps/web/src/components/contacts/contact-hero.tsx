@@ -12,7 +12,10 @@ export function ContactHero() {
         backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.58) 60%, rgba(0,0,0,0.82) 100%), radial-gradient(circle at 20% 16%, rgba(216,111,22,0.20), transparent 24%), radial-gradient(circle at 78% 78%, rgba(216,111,22,0.15), transparent 28%), url('${HERO_BG}')`,
       }}
     >
-      <Container className="pb-17.5 max-md:pb-9.5">
+      {/* On mobile the fixed header is hidden (--header-h collapses to 0); match
+          the home hero's top breathing room so the title never jams the top on
+          smaller phones where the content grows past the hero's min-height. */}
+      <Container className="pb-17.5 max-md:pb-9.5 max-md:pt-[clamp(76px,13vh,128px)]">
         <Reveal>
           <h1 className="mb-4 max-w-230 text-[clamp(44px,7vw,88px)] font-black leading-[0.94] tracking-[-0.04em] text-white">
             Контакти

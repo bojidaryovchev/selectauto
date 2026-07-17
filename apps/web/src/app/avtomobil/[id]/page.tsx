@@ -19,6 +19,7 @@ import {
   CarSellerNote,
   CarSpecSheet,
   CarTagChips,
+  CarVinCheck,
   RelatedCars,
 } from "@/components/cars/car-detail";
 import { AuctionCountdown } from "@/components/cars/all-cars";
@@ -29,6 +30,7 @@ import { USD_PER_EUR } from "@/data/import-rates";
 import { buildCarJsonLd } from "@/lib/car-detail-jsonld";
 import { modelHubPath } from "@/lib/car-slug";
 import { buildBreadcrumbJsonLd, type Breadcrumb } from "@/lib/site-jsonld";
+import { buildSocialMeta } from "@/lib/social-meta";
 import { getCarDetail } from "@/queries/cars";
 
 type Params = Promise<{ id: string }>;
@@ -83,17 +85,22 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     ? "Автомобилът е продаден — виж активните обяви на SelectAuto."
     : "Свържи се със SelectAuto за оферта и внос.";
 
+  const description = `${detail.title} — внос от ${detail.sourceCountry ? `${detail.sourceCountry} (${detail.source})` : detail.source}. ${descBits.join(" · ")}. ${descCta}`;
+
   return {
     title,
-    description: `${detail.title} — внос от ${detail.sourceCountry ? `${detail.sourceCountry} (${detail.source})` : detail.source}. ${descBits.join(" · ")}. ${descCta}`,
+    description,
     alternates: { canonical },
     robots: detail.isPast ? { index: false, follow: true } : undefined,
-    openGraph: {
+    // OG uses the plain car title + its own description + the first photo as the
+    // share image (falls back to the site image when the car has none). Routed
+    // through the shared builder so siteName/locale/twitter aren't dropped.
+    ...buildSocialMeta({
       title: detail.title,
-      url: canonical,
-      type: "website",
-      images: detail.images.length > 0 ? [detail.images[0]] : undefined,
-    },
+      description,
+      path: `/avtomobil/${id}`,
+      image: detail.images.length > 0 ? detail.images[0] : undefined,
+    }),
   };
 }
 
@@ -317,6 +324,11 @@ async function CarDetailBody({ params }: { params: Params }) {
 
                 {/* Spec sheet (desktop reads it here under the heading) */}
                 <CarSpecSheet specs={detail.specs} />
+
+                {/* Per-car VIN history check → Carfax lead funnel. Only when the car
+                    carries a VIN (the `cars.vin` column is nullable; many lots have
+                    none). Reuses the free /api/vin-check lookup, DB-cached per VIN. */}
+                {detail.vin ? <CarVinCheck vin={detail.vin} /> : null}
               </div>
 
               {/* ── Right column: price + status + contact (sticky) ── */}
@@ -398,6 +410,8 @@ async function CarDetailBody({ params }: { params: Params }) {
                     model={detail.model}
                     year={detail.year}
                     lotNumber={detail.lotNumber}
+                    vin={detail.vin}
+                    market={detail.market}
                   />
                 )}
               </aside>

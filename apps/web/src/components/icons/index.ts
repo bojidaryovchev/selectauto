@@ -1,5 +1,6 @@
 export { AlertIcon } from "./alert-icon";
 export { ArrowRightIcon } from "./arrow-right-icon";
+export { ArrowUpIcon } from "./arrow-up-icon";
 export { BellIcon } from "./bell-icon";
 export { CarIcon } from "./car-icon";
 export { CheckIcon } from "./check-icon";

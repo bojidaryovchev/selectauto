@@ -130,6 +130,46 @@ export async function resolveBrandHub(makeSlug: string): Promise<BrandHubResolut
   }
 }
 
+/**
+ * The INDEXABILITY count for a SINGLE hub, read from the SAME `car_listing_facets`
+ * summary the hub sitemap uses (`getSitemapBrands`/`getSitemapHubs`). The hub page
+ * gates its `noindex` on this — NOT on the live `getCarsCount` it shows to users —
+ * so the page's index decision and the sitemap's inclusion decision share ONE
+ * source and can never contradict (a sitemap URL is never rendered `noindex`,
+ * which Google flags). Brand hub: dim='brand', val=brandId. Model hub: dim='model',
+ * val=modelId, val2=brandId (ids are the manufacturer/model EXTERNAL ids the
+ * resolvers return). Returns 0 when no summary row exists → `noindex` (same as the
+ * sitemap omitting it). Cached like the resolvers; fails **closed** (0 → noindex,
+ * matching the sitemap's fail-closed-empty) on a DB hiccup.
+ */
+export async function getHubFacetCount(brandId: number, modelId?: number): Promise<number> {
+  "use cache";
+  cacheTag(CACHE_TAGS.cars);
+  cacheLife("days");
+
+  const cf = schema.carListingFacets;
+  try {
+    const where =
+      modelId === undefined
+        ? and(eq(cf.tableKind, "active"), eq(cf.dim, "brand"), eq(cf.val, String(brandId)))
+        : and(
+            eq(cf.tableKind, "active"),
+            eq(cf.dim, "model"),
+            eq(cf.val, String(modelId)),
+            eq(cf.val2, String(brandId)),
+          );
+    const rows = await getDb()
+      .select({ n: sql<number>`${cf.n}::int` })
+      .from(cf)
+      .where(where)
+      .limit(1);
+    return rows[0]?.n ?? 0;
+  } catch (error) {
+    console.error("[get-hub-facet-count] query failed, returning 0 (noindex)", error);
+    return 0;
+  }
+}
+
 /** One model-hub link on a brand hub: the model's name + its active listing count. */
 export type BrandModelHub = { modelName: string; listingCount: number };
 

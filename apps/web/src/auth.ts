@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { compare } from "bcryptjs";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { signInSchema } from "@/schemas/auth.schema";
 import { authConfig } from "@/auth.config";
@@ -21,6 +21,30 @@ import { authConfig } from "@/auth.config";
  */
 export const { auth, handlers, signIn, signOut } = NextAuth({
   ...authConfig,
+  callbacks: {
+    ...authConfig.callbacks,
+    /**
+     * Node-side override of the edge `jwt` callback (auth.config.ts). Runs only
+     * on the initial sign-in (when `user` is present), where we're in the Node
+     * route handler and can hit the DB. Stamps `id` (as before) AND `roles` onto
+     * the token so the /admin gate can authorise from the JWT alone — no per-
+     * request DB read in the proxy. On later requests `user` is undefined, so the
+     * existing token (with its roles) passes through untouched. The edge config's
+     * `jwt` never runs with a `user`, so it never needs the DB.
+     */
+    async jwt({ token, user }) {
+      if (user?.id) {
+        token.id = user.id;
+        const rows = await getDb()
+          .select({ roles: schema.users.roles })
+          .from(schema.users)
+          .where(eq(schema.users.id, user.id))
+          .limit(1);
+        token.roles = rows[0]?.roles ?? [];
+      }
+      return token;
+    },
+  },
   adapter: DrizzleAdapter(getDb(), {
     usersTable: schema.users,
     accountsTable: schema.accounts,
@@ -119,6 +143,28 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           .set({ passwordHash: null })
           .where(eq(schema.users.id, user.id));
       }
+    },
+    /**
+     * Stamp `email_verified` for Google sign-ins. @auth/core creates every OAuth
+     * user with `emailVerified: null` — hardcoded in
+     * lib/actions/callback/handle-login.js as `createUser({ ...profile,
+     * emailVerified: null })` — so Google's verified-email signal never reaches
+     * the users row. Without this, no Google user ever satisfies the
+     * `email_verified IS NOT NULL` gate the favourite-auction digest (and any
+     * future verified-email check) relies on, and the digest silently never sends
+     * to them. Google verifies email ownership — the same trust
+     * `allowDangerousEmailAccountLinking` (auth.config.ts) is built on — so we
+     * stamp it ourselves. The `isNull` guard makes this a one-time write per user
+     * and never clobbers an existing verification timestamp. `signIn` fires AFTER
+     * the `linkAccount` event above, so the unverified-password defence still runs
+     * first when a Google account links to a pre-existing password user.
+     */
+    async signIn({ user, account }) {
+      if (account?.provider !== "google" || !user?.id) return;
+      await getDb()
+        .update(schema.users)
+        .set({ emailVerified: new Date() })
+        .where(and(eq(schema.users.id, user.id), isNull(schema.users.emailVerified)));
     },
   },
 });

@@ -4,13 +4,20 @@ import { Container, LinkButton, Reveal } from "@/components/common";
 import { InquiryButton } from "@/components/inquiry";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
-import { buildBreadcrumbJsonLd, buildFaqJsonLd, type FaqEntry } from "@/lib/site-jsonld";
+import { buildBreadcrumbJsonLd, buildFaqJsonLd, buildWebApplicationJsonLd, type FaqEntry } from "@/lib/site-jsonld";
+import { buildSocialMeta } from "@/lib/social-meta";
 
 export const metadata: Metadata = {
   title: "Бюджетен калкулатор — каква кола мога да си позволя | SelectAuto",
   description:
     "Разберете каква цена автомобил отговаря на бюджета Ви. Въведете доход, разходи и желана месечна вноска — калкулаторът изчислява достъпната цена, влиянието върху бюджета и прогнозните условия.",
   alternates: { canonical: `${SITE_URL}/byudzheten-kalkulator` },
+  ...buildSocialMeta({
+    title: "Бюджетен калкулатор — каква кола мога да си позволя | SelectAuto",
+    description:
+      "Въведете доход, разходи и желана месечна вноска — вижте достъпната цена автомобил за Вашия бюджет.",
+    path: "/byudzheten-kalkulator",
+  }),
 };
 
 /**
@@ -51,6 +58,13 @@ export default function BudgetCalculatorPage() {
     { name: "Начало", url: "/" },
     { name: "Бюджетен калкулатор", url: "/byudzheten-kalkulator" },
   ]);
+  const webAppJsonLd = buildWebApplicationJsonLd({
+    name: "Бюджетен калкулатор",
+    description:
+      "Онлайн калкулатор каква цена автомобил можете да си позволите според доход, разходи и месечна вноска.",
+    url: "/byudzheten-kalkulator",
+    category: "FinanceApplication",
+  });
 
   return (
     <>
@@ -58,6 +72,7 @@ export default function BudgetCalculatorPage() {
       <main className="flex-1 bg-[#fafafa] pt-(--header-h) text-ink">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webAppJsonLd) }} />
 
         <Container className="max-w-300 py-12 max-md:py-8">
           <h1 className="mb-3 text-4xl font-black uppercase tracking-tight text-ink max-md:text-3xl">

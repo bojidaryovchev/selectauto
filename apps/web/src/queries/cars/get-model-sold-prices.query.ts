@@ -1,4 +1,6 @@
+import { cacheLife, cacheTag } from "next/cache";
 import { and, eq, sql } from "drizzle-orm";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { getDb, schema } from "@/lib/db";
 
 const cla = schema.carListingsArchived;
@@ -15,6 +17,12 @@ const cla = schema.carListingsArchived;
  * outliers, whereas a raw min/max would show noise. Cheap: the (manufacturer_id,
  * model_id) predicate hits `cla_brand_model_sort`; a whole model's slice is a small
  * indexed scan (~250ms for the largest models). Fails closed so callers still render.
+ *
+ * Both functions are `"use cache"` + `cacheLife("days")` (tag `cars`): the args are
+ * a small, stable make/model[/year] key, the output is shared across all visitors,
+ * and realized-sale averages move only with the daily archive sync — the same
+ * footing as the hub's other cached reads. A day-stale average over hundreds of
+ * concluded sales is well within tolerance.
  */
 
 export type ModelYearPrice = {
@@ -36,6 +44,10 @@ const MAX_YEARS = 16;
  * the hub simply omits the section.
  */
 export async function getModelSoldPricesByYear(brandId: number, modelId: number): Promise<ModelYearPrice[]> {
+  "use cache";
+  cacheTag(CACHE_TAGS.cars);
+  cacheLife("days");
+
   try {
     const db = getDb();
     const rows = await db
@@ -75,6 +87,10 @@ export async function getModelYearSoldStat(
   modelId: number,
   year: number,
 ): Promise<{ avg: number; count: number } | null> {
+  "use cache";
+  cacheTag(CACHE_TAGS.cars);
+  cacheLife("days");
+
   if (!Number.isInteger(year) || year < 1990 || year > 2027) return null;
   try {
     const db = getDb();

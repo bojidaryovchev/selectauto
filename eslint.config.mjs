@@ -11,6 +11,9 @@ export default [
       "**/dist/**",
       "**/node_modules/**",
       "**/.next/**",
+      // WXT's generated + built output (apps/extension).
+      "**/.wxt/**",
+      "**/.output/**",
       // apps/web has its own eslint config (Next.js flat config) and lints itself.
       "apps/web/**",
       // assets/ is legacy WordPress/PHP plugin code being migrated out — not ours.
@@ -42,6 +45,14 @@ export default [
       ecmaVersion: 2022,
       sourceType: "module",
       globals: { ...globals.node },
+    },
+  },
+  {
+    // apps/extension (WXT browser extension) runs in the browser / a MV3 service
+    // worker, so its source needs browser + web-extension globals on top of node.
+    files: ["apps/extension/**/*.ts"],
+    languageOptions: {
+      globals: { ...globals.browser, ...globals.webextensions },
     },
   },
 ];

@@ -1,8 +1,4 @@
 {
-  "name": "auctions-ingestion",
-  "version": "0.1.0",
-  "private": true,
-  "description": "AuctionsAPI -> Neon Postgres ingestion system (AWS Lambda + Step Functions + EventBridge, Pulumi) + Next.js frontend.",
   "packageManager": "pnpm@10.28.0",
   "pnpm": {
     "overrides": {
@@ -21,8 +17,10 @@
     "deploy": "pnpm run build:functions && pnpm --filter @auctions-ingestion/infra run pulumi:up",
     "preview": "pnpm run build:functions && pnpm --filter @auctions-ingestion/infra run pulumi:preview",
     "destroy": "pnpm --filter @auctions-ingestion/infra run pulumi:destroy",
-    "type-check": "pnpm --filter @auctions-ingestion/web --filter @auctions-ingestion/functions --filter @auctions-ingestion/infra --filter @auctions-ingestion/db run type-check",
-    "lint": "eslint .",
+    "dev:extension": "pnpm --filter @auctions-ingestion/extension run dev",
+    "build:extension": "pnpm --filter @auctions-ingestion/extension run build",
+    "type-check": "pnpm --filter @auctions-ingestion/web --filter @auctions-ingestion/functions --filter @auctions-ingestion/infra --filter @auctions-ingestion/db --filter @auctions-ingestion/extension run type-check",
+    "lint": "eslint --fix && pnpm --filter @auctions-ingestion/web run lint:fix",
     "format": "prettier --write \"**/*.{ts,tsx,mjs,json}\"",
     "check": "pnpm run type-check && pnpm run lint"
   },

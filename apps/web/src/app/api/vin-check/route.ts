@@ -1,12 +1,18 @@
 import { NextResponse } from "next/server";
-import { checkVinRecords } from "@/lib/vin-reports";
+import { getCachedVinRecords } from "@/lib/vin-report-cache";
 import { vinCheckSchema } from "@/schemas/vin-check.schema";
 
 /**
- * VIN record-availability endpoint for the /proverka-vin tool. Thin server-side
- * transport in front of the AuctionsAPI FREE `check-records` lookup — its whole
- * reason to exist is to keep the API key server-only (the key must never reach the
- * browser; see `lib/vin-reports.ts`).
+ * VIN record-availability endpoint for the /proverka-vin tool AND the per-car
+ * "Провери история по VIN" button on /avtomobil/[id]. Thin server-side transport in
+ * front of the AuctionsAPI FREE `check-records` lookup — its whole reason to exist is
+ * to keep the API key server-only (the key must never reach the browser; see
+ * `lib/vin-reports.ts`).
+ *
+ * Results go through a durable read-through cache (`lib/vin-report-cache.ts`, table
+ * `vin_report_checks`) keyed by VIN, so repeat checks of the same VIN — across users
+ * and serverless instances, where `"use cache"` would NOT dedupe — don't re-spend the
+ * shared AuctionsAPI ~3 req/s budget.
  *
  * Only the FREE check is exposed here. The paid report is a manual, lead-gated step
  * (the tool's CTA routes to the Carfax form), so this route can never spend a
@@ -69,7 +75,10 @@ export async function POST(request: Request) {
   const { vin } = parsed.data;
 
   try {
-    const result = await checkVinRecords(vin);
+    // Read-through DB cache (vin_report_checks) so repeat checks of the same VIN —
+    // across users and serverless instances — don't re-spend the shared AuctionsAPI
+    // ~3 req/s budget. See lib/vin-report-cache.ts.
+    const result = await getCachedVinRecords(vin);
     return NextResponse.json({ success: true, ...result });
   } catch (error) {
     console.error("[vin-check] lookup failed", error);

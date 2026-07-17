@@ -7,20 +7,20 @@ import {
 } from "@/components/contacts";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
-import { buildLocalBusinessJsonLd } from "@/lib/site-jsonld";
+import { buildBreadcrumbJsonLd, buildLocalBusinessJsonLd } from "@/lib/site-jsonld";
+import { buildSocialMeta } from "@/lib/social-meta";
 
 export const metadata: Metadata = {
   title: "Контакти — SelectAuto",
   description:
     "Свържете се с нас бързо и лесно – ние сме тук, за да ви съдействаме! Телефон, адрес в гр. Пловдив, работно време и форма за безплатна консултация.",
   alternates: { canonical: `${SITE_URL}/kontakti` },
-  openGraph: {
+  ...buildSocialMeta({
     title: "Контакти — SelectAuto",
     description:
       "Телефон, адрес в гр. Пловдив, работно време и форма за безплатна консултация.",
-    url: `${SITE_URL}/kontakti`,
-    type: "website",
-  },
+    path: "/kontakti",
+  }),
 };
 
 export default function ContactsPage() {
@@ -28,6 +28,10 @@ export default function ContactsPage() {
   // the canonical home for the physical-location signal (same entity as the
   // site-wide org via @id). Reads verified NAP from constants.
   const localBusinessJsonLd = buildLocalBusinessJsonLd();
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: "Начало", url: "/" },
+    { name: "Контакти", url: "/kontakti" },
+  ]);
 
   return (
     <>
@@ -37,6 +41,10 @@ export default function ContactsPage() {
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
         />
         {/* Dark spacer so the fixed header sits above the hero image, not on it. */}
         <div className="h-(--header-h) bg-shell" />
