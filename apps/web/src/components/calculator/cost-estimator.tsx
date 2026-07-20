@@ -61,7 +61,15 @@ function Row({ label, value, muted }: { label: string; value: string; muted?: bo
 }
 
 /** A numeric input. Module-scoped — a render-time definition would remount the
- *  `<input>` each keystroke and lose focus. text-base (16px) avoids iOS zoom. */
+ *  `<input>` each keystroke and lose focus. text-base (16px) avoids iOS zoom.
+ *
+ *  Holds a local text `draft` while the user is editing so the field can be
+ *  CLEARED or left partial ("", "1", "1.") instead of snapping to a number on
+ *  every keystroke — the old `value={number}` control coerced an empty field to 0,
+ *  which a min-clamped parent (e.g. customs base, min 1) then bounced to 1, making
+ *  the input impossible to clear and retype. A parseable value is still pushed up
+ *  live (the breakdown recomputes as you type); on blur the draft is dropped and
+ *  the input snaps back to the parent's clamped numeric value. */
 function NumberField({
   label,
   value,
@@ -75,6 +83,8 @@ function NumberField({
   step?: number;
   max?: number;
 }) {
+  const [draft, setDraft] = useState<string | null>(null);
+
   return (
     <label className="flex flex-col gap-1">
       <span className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</span>
@@ -84,8 +94,15 @@ function NumberField({
         min={0}
         max={max}
         step={step}
-        value={value}
-        onChange={(e) => onChange(Math.max(0, Math.round(Number(e.target.value) || 0)))}
+        value={draft ?? String(value)}
+        onChange={(e) => {
+          const raw = e.target.value;
+          setDraft(raw);
+          if (raw === "") return; // let the field sit empty mid-edit — don't push a number yet
+          const n = Number(raw);
+          if (Number.isFinite(n)) onChange(Math.max(0, Math.round(n)));
+        }}
+        onBlur={() => setDraft(null)}
         className="w-full rounded-xl border border-line bg-white px-3 py-2 text-base font-bold text-ink outline-none focus:border-brand"
       />
     </label>
