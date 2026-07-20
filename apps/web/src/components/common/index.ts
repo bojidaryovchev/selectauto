@@ -1,5 +1,6 @@
 export { Button } from "./button";
 export { CarouselNav } from "./carousel-nav";
+export { Combobox, type ComboboxOption } from "./combobox";
 export { ConfirmDialog } from "./confirm-dialog";
 export { Container } from "./container";
 export { CopyButton } from "./copy-button";

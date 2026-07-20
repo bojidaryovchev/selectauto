@@ -1,5 +1,3 @@
-"use server";
-
 import { headers } from "next/headers";
 import { getDb, schema } from "@/lib/db";
 import { sendInquiryNotification } from "@/lib/email";
@@ -11,6 +9,12 @@ import type { ActionResult } from "@/types/action-result.type";
  * Persists a "Безплатна консултация" inquiry from the site-wide modal and sends
  * a best-effort notification email. Replaces the modal's former simulated
  * submit (a `setTimeout` + `console.log`).
+ *
+ * A plain async function (NOT a `"use server"` action): it's invoked by the
+ * `/api/inquiry` route handler so BotID can protect a stable path (the modal is
+ * mounted globally and, as a server action, had no single path). Same pattern as
+ * carfax's `createCarfaxRequest`. `headers()` still resolves here because the call
+ * runs inside the route's request scope.
  *
  * Mirrors the carfax route handler's shape: validate (the phone is re-normalised
  * defensively in case the client didn't), capture the client IP, insert

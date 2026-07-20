@@ -167,7 +167,7 @@ from raw inputs, never trusted from the client. Car detail pages deep-link in vi
   the AuctionsAPI `/statistics` endpoint would support it.
 - **Crawlable catalog page-2..N URLs** — the catalog only SSRs its first page;
   deep-listing crawl paths come from the hubs + per-car sitemap instead (§4).
-- **Legacy WordPress cutover** — the old WP site will be **removed entirely** (decision
-  2026-07); its 391 car-sitemaps / dead URLs are handled by a redirect/410 map served
-  by this rebuild from day one of cutover — see
+- **Legacy WordPress cutover** — the old WP site was **removed entirely** (decision 2026-07).
+  A redirect/410 map for its old URLs was built then **removed 2026-07-18** at the owner's
+  request (old site gone, ~zero equity/backlinks) — old legacy URLs now 404. See
   [13-seo-action-plan.md](13-seo-action-plan.md) Phase 0.

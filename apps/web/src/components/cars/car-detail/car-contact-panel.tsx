@@ -9,8 +9,8 @@ import type { InquiryPrefill } from "@/types";
 const VIBER_HREF = SOCIALS.find((s) => s.label === "Viber")?.href ?? "";
 
 /**
- * The lead-capture panel on the detail page — the three legacy CTAs ("Обадете се
- * сега" / "Направете заявка" / "Влез във Viber групата"), modernized. The phone
+ * The lead-capture panel on the detail page — three CTAs ("Обадете се сега" /
+ * "Направете заявка" / "Влез във Viber групата"). The phone
  * + Viber are direct links; "Направете заявка" opens the site-wide inquiry modal
  * (`InquiryButton`, the only client part). Hidden for concluded/sold cars (a sold
  * lot is not a lead) — the page shows a "back to active inventory" CTA instead.

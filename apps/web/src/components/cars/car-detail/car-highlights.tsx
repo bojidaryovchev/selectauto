@@ -2,8 +2,7 @@ import type { CarDetailSpec } from "@/types/car-detail.type";
 
 /**
  * The at-a-glance highlight chips under the car title (year · mileage · fuel ·
- * condition) — the legacy "info chips" row. Each is a present-only spec; the row
- * renders nothing when empty.
+ * condition). Each is a present-only spec; the row renders nothing when empty.
  */
 export function CarHighlights({ highlights }: { highlights: CarDetailSpec[] }) {
   if (highlights.length === 0) return null;

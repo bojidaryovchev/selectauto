@@ -9,13 +9,10 @@ import { normalizePhone } from "@/lib/phone";
 import { FormField } from "./form-field";
 
 /**
- * Carfax inquiry form. Ported 1:1 from the live `#saCarfaxForm`:
- * same fields, labels, placeholders and validation rules (name, phone and VIN
- * required; phone normalised; VIN upper-cased), but rebuilt on react-hook-form
- * + zod instead of the original vanilla `FormData` submit handler. Field-level
- * validation messages are surfaced inline, matching the repo's
- * `ConsultationForm` pattern, while the original single status box is kept for
- * the submit result.
+ * Carfax inquiry form (name, phone and VIN required; phone normalised; VIN
+ * upper-cased), built on react-hook-form + zod. Field-level validation messages
+ * are surfaced inline, matching the repo's `ConsultationForm` pattern, with a
+ * single status box for the submit result.
  */
 
 type Status =
@@ -92,9 +89,8 @@ export function CarfaxForm({
       ...values,
       phone,
       vin,
-      // The actual page the lead came from (was a hardcoded legacy WP URL —
-      // every lead recorded a dead route as its source). Client component, so
-      // the submit handler always runs in the browser.
+      // The actual page the lead came from. Client component, so the submit
+      // handler always runs in the browser.
       page_url: window.location.href,
     };
 

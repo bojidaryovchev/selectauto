@@ -22,8 +22,11 @@ function fmtDate(d: Date): string {
   return dateFmt.format(d);
 }
 
-function eur(n: number): string {
-  return `${Math.round(n).toLocaleString("bg-BG")} €`;
+/** The calculator is USD end-to-end; the `*_eur` columns store USD, so amounts
+ *  here are formatted with `$` to match the estimator and the customer email
+ *  (`usdStr`). */
+function usd(n: number): string {
+  return `${Math.round(n).toLocaleString("bg-BG")} $`;
 }
 
 /** kr/us/ca → BG market name. */
@@ -107,9 +110,12 @@ export function toInquiryView(row: InquiryRow): AdminLeadView {
   };
 }
 
-/** The shape create-calculator-offer.mutation stores in `breakdown_json`. */
+/** The shape create-calculator-offer.mutation stores in `breakdown_json`.
+ *  `lines[].amountUsd` (USD, matching `ImportCostLine`), plus the raw estimator
+ *  `inputs` and the rates version the numbers were computed against. */
 type BreakdownJson = {
-  lines?: { label: string; amountEur: number }[];
+  lines?: { label: string; amountUsd: number }[];
+  ratesVerifiedAt?: string;
 };
 
 export function toCalculatorView(row: CalculatorOfferRow): AdminLeadView {
@@ -119,14 +125,17 @@ export function toCalculatorView(row: CalculatorOfferRow): AdminLeadView {
     { label: "Телефон", value: row.phone, href: `tel:${row.phone}` },
     { label: "Имейл", value: row.email, href: `mailto:${row.email}` },
     { label: "Пазар", value: marketLabel },
-    { label: "Цена на автомобил", value: eur(row.carPriceEur) },
-    { label: "Обща оферта", value: eur(row.totalEur) },
+    { label: "Цена на автомобил", value: usd(row.carPriceEur) },
+    { label: "Обща оферта", value: usd(row.totalEur) },
   ];
 
   // Itemised breakdown snapshot — exactly what the visitor saw/received.
   const breakdown = (row.breakdownJson ?? {}) as BreakdownJson;
   for (const line of breakdown.lines ?? []) {
-    details.push({ label: line.label, value: eur(line.amountEur) });
+    details.push({ label: line.label, value: usd(line.amountUsd) });
+  }
+  if (breakdown.ratesVerifiedAt) {
+    details.push({ label: "Тарифи към", value: breakdown.ratesVerifiedAt });
   }
   details.push(...metaDetails(row));
 
@@ -137,7 +146,7 @@ export function toCalculatorView(row: CalculatorOfferRow): AdminLeadView {
     createdAt: fmtDate(row.createdAt),
     updatedAt: fmtDate(row.updatedAt),
     adminNotes: row.adminNotes,
-    cells: [row.name, row.phone, marketLabel, eur(row.totalEur)],
+    cells: [row.name, row.phone, marketLabel, usd(row.totalEur)],
     details,
   };
 }

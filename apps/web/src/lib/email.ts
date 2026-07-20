@@ -19,9 +19,9 @@ import type { CarView } from "@/types/car.type";
  * clients that block HTML still get a readable fallback (and it helps
  * deliverability).
  *
- * The two info@selectauto.bg notifications (Carfax + inquiry) mirror the old
- * WordPress `wp_mail` summaries. Sending is best-effort at the call site — the
- * routes/actions log failures but never fail the submission on an email error.
+ * The two info@selectauto.bg notifications (Carfax + inquiry) are plain-text
+ * summaries. Sending is best-effort at the call site — the routes/actions log
+ * failures but never fail the submission on an email error.
  */
 
 // Sender address. Defaults to the production, domain-verified address. Override

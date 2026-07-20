@@ -18,4 +18,10 @@ export {
   type ModelYearPrice,
 } from "./get-model-sold-prices.query";
 export { getCarsCount, type CarsCount } from "./get-cars-count.query";
-export { CARS_PAGE_SIZE, getCarsPage, getCarsWindow, getPrevCarsPage } from "./get-cars-page.query";
+export {
+  CARS_PAGE_SIZE,
+  getCarsPage,
+  getCarsWindow,
+  getCarsWindowByIndex,
+  getPrevCarsPage,
+} from "./get-cars-page.query";

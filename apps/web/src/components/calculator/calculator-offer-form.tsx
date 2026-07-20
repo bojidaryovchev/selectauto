@@ -5,11 +5,11 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/common";
 import type { ImportCostInputs } from "@/data/import-rates";
-import { createCalculatorOffer } from "@/mutations/calculator-offers";
 import {
   calculatorOfferContactSchema,
   type CalculatorOfferContactValues,
 } from "@/schemas/calculator-offer.schema";
+import type { ActionResult } from "@/types";
 
 /**
  * The gated-offer lead form inside the estimator's result panel: name + phone +
@@ -48,11 +48,16 @@ export function CalculatorOfferForm({ inputs }: { inputs: ImportCostInputs }) {
   async function onSubmit(values: CalculatorOfferContactValues) {
     setStatus({ kind: "idle" });
     try {
-      const result = await createCalculatorOffer({
-        ...values,
-        inputs,
-        page_url: window.location.href,
+      const res = await fetch("/api/calculator-offer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...values,
+          inputs,
+          page_url: window.location.href,
+        }),
       });
+      const result = (await res.json()) as ActionResult;
       if (result.success) {
         setStatus({
           kind: "success",

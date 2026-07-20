@@ -33,7 +33,7 @@ function formatPrice(value: string | number | null): string | undefined {
   return `${Math.round(n).toLocaleString("bg-BG").replace(/ /g, " ")} $`;
 }
 
-/** 186795 → "186 795 km" (the rich card uses Latin "km", like the legacy markup). */
+/** 186795 → "186 795 km" (the rich card uses Latin "km"). */
 function formatKm(km: number | null): string {
   if (km === null || !Number.isFinite(km) || km < 0) return "";
   return `${Math.round(km).toLocaleString("bg-BG").replace(/ /g, " ")} km`;

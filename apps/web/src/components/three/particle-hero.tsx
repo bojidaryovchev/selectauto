@@ -7,9 +7,8 @@ import { useInquiry } from "@/contexts/inquiry-context";
 import { loadHeroPoints, type HeroTier } from "@/lib/baked-hero";
 
 /**
- * 3D particle hero — a faithful React port of the site's
- * `selectauto-particle-hero.php` Three.js scene. Each GLB car model is sampled
- * into a point cloud; particles morph from one model to the next on a loop.
+ * 3D particle hero — a Three.js scene where each GLB car model is sampled into a
+ * point cloud; particles morph from one model to the next on a loop.
  *
  * three is loaded dynamically inside the effect so it never lands in the server
  * bundle and the canvas only initialises in the browser.

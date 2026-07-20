@@ -4,9 +4,8 @@ import { useEffect, useState } from "react";
 
 /**
  * The active card's status/time bar CONTENTS (label on the left, value on the
- * right) — the legacy `.selectauto-auction-timer-bar`. Client-only because the
- * choice of what to show depends on the current time, which a cached SSR query
- * can't read.
+ * right). Client-only because the choice of what to show depends on the current
+ * time, which a cached SSR query can't read.
  *
  * Three cases:
  *  - **Future sale date** → "Време до търга" + a live ticking countdown.

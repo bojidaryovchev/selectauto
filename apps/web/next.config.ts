@@ -1,3 +1,4 @@
+import { withBotId } from "botid/next/config";
 import { existsSync } from "node:fs";
 import { loadEnvFile } from "node:process";
 import { resolve } from "node:path";
@@ -93,4 +94,11 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Wrap with BotID (Vercel Bot Management). `withBotId` injects the proxy rewrites
+// that serve the invisible-CAPTCHA challenge from a first-party path (under a
+// `/149e9513-…` prefix), so ad-blockers/third-party-script blockers can't defeat
+// it. The client challenge itself is registered in `src/instrumentation-client.ts`
+// (initBotId), and the protected routes call `checkBotId()` server-side. Basic
+// mode is enabled in the Vercel dashboard (free); `checkBotId()` incurs no charge
+// unless Deep Analysis is turned on. See docs/botid.
+export default withBotId(nextConfig);

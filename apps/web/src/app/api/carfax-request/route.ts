@@ -1,15 +1,27 @@
+import { checkBotId } from "botid/server";
 import { NextResponse } from "next/server";
 import { createCarfaxRequest } from "@/mutations/carfax";
 
 /**
- * Carfax inquiry endpoint. Replaces the original WordPress
- * `admin-ajax.php?action=sa_send_carfax_request` handler. The persistence +
- * email logic lives in `@/mutations/carfax` (`createCarfaxRequest`); this route
+ * Carfax inquiry endpoint. The persistence + email logic lives in
+ * `@/mutations/carfax` (`createCarfaxRequest`); this route
  * is a thin transport: parse the JSON body, capture the client IP, and map the
  * mutation's `{ success, message, status }` result to a JSON response with the
  * same `{ success, message }` shape and status codes the client form expects.
+ *
+ * BotID (Vercel Bot Management) guards this route: `checkBotId()` verifies the
+ * invisible-CAPTCHA proof attached by the client challenge (registered in
+ * `src/instrumentation-client.ts`) and 403s bots before any DB write or email.
  */
 export async function POST(request: Request) {
+  const { isBot } = await checkBotId();
+  if (isBot) {
+    return NextResponse.json(
+      { success: false, message: "Достъпът е отказан." },
+      { status: 403 },
+    );
+  }
+
   let body: unknown;
   try {
     body = await request.json();

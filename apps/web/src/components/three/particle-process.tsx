@@ -8,8 +8,7 @@ import { loadBakedGeometry } from "@/lib/baked-edges";
 import type * as THREE from "three";
 
 /**
- * Scroll-driven 3D particle process animation — a clean React port of the
- * theme's `process-animation-section.php` shortcode.
+ * Scroll-driven 3D particle process animation.
  *
  * The section is several viewports tall; an inner `position: sticky` stage pins
  * the canvas while you scroll past it. Scroll progress through the tall section

@@ -27,6 +27,7 @@ import {
   usdFromKrw,
 } from "@/lib/car-detail-encar";
 import { collapseLeadingDuplicate } from "@/lib/title-clean";
+import { calcVehicleTypeFromBody } from "@/data/import-rates";
 import type { CarDetail, CarDetailPrice, CarDetailSpec, CarMarket } from "@/types/car-detail.type";
 
 /** Auction source domain → market render mode. */
@@ -257,6 +258,10 @@ export function carDetailFromRows(opts: {
       ? vehicleTypeLabel(car.vehicleType)
       : bodyTypeLabel(car.bodyType);
   pushSpec("Тип", typeLabel || undefined);
+  // Transport-size bucket for the per-listing import calculator (Седан vs Джип/SUV),
+  // derived from the raw body/vehicle type so the calculator opens pre-seeded to
+  // this car's size class rather than the generic "sedan" default.
+  const calcVehicleType = calcVehicleTypeFromBody(car.bodyType, car.vehicleType);
   // Generation (name + year range) — resolved from vehicle_generations upstream.
   const gen = opts.generation;
   const genLabel = gen
@@ -415,6 +420,7 @@ export function carDetailFromRows(opts: {
     marketAvg: opts.marketAvg ? { value: eur(opts.marketAvg.avg)!, count: opts.marketAvg.count } : undefined,
     highlights,
     specs,
+    calcVehicleType,
     location,
     geo,
     media,

@@ -3,9 +3,9 @@ import type { CarDetailSpec } from "@/types/car-detail.type";
 
 /**
  * The full specification sheet — a two-column labelled list (label left, value
- * right) of every present spec for the car. Server-rendered. Long values wrap;
- * the layout collapses to a single column on narrow screens. Mirrors the legacy
- * "📋 Основна информация" info table, modernized.
+ * right) of every present spec for the car — the „📋 Основна информация" table.
+ * Server-rendered. Long values wrap; the layout collapses to a single column on
+ * narrow screens.
  */
 export function CarSpecSheet({ specs }: { specs: CarDetailSpec[] }) {
   if (specs.length === 0) return null;

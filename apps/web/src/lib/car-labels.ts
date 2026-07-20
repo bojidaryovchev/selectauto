@@ -269,7 +269,7 @@ export const keysLabel = (v: boolean | null | undefined): string =>
 
 /**
  * raw_json.airbags.name → BG. Full AirbagEnum (intact/deployed/missing/none) per the
- * AuctionsAPI enum reference; `not_deployed` kept as a harmless legacy alias.
+ * AuctionsAPI enum reference; `not_deployed` kept as an accepted alias.
  */
 const AIRBAGS_BG: Record<string, string> = {
   intact: "Налични",

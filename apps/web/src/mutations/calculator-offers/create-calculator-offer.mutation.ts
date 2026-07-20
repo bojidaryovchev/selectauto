@@ -1,5 +1,3 @@
-"use server";
-
 import { headers } from "next/headers";
 import { computeImportBreakdown, type ImportCostInputs, MARKETS, RATES_VERIFIED_AT } from "@/data/import-rates";
 import { getDb, schema } from "@/lib/db";
@@ -24,6 +22,11 @@ function usdStr(n: number): string {
  * breakdown + internal notification). Mirrors `createInquiry`'s shape: validate
  * (phone re-normalised defensively) → capture IP → insert (required) → email
  * (best-effort, never fails the submission).
+ *
+ * A plain async function (NOT a `"use server"` action): invoked by the
+ * `/api/calculator-offer` route handler so BotID can protect a stable path (the
+ * estimator is embedded on many pages and had no single action path). `headers()`
+ * still resolves — the call runs inside the route's request scope.
  *
  * The breakdown is RECOMPUTED here from the raw inputs via the same pure
  * `computeImportBreakdown` the UI uses — the client sends only inputs, never
@@ -84,8 +87,8 @@ export async function createCalculatorOffer(input: unknown): Promise<ActionResul
         phone: data.phone,
         email: data.email,
         market: data.inputs.market,
-        // Columns are legacy-named *Eur but the calculator is USD end-to-end;
-        // we store the USD values (no schema rename to avoid a migration).
+        // The `*_eur` columns store USD (the calculator is USD end-to-end; no
+        // schema rename to avoid a migration).
         carPriceEur: data.inputs.priceUsd,
         totalEur: breakdown.totalUsd,
         breakdownJson: {

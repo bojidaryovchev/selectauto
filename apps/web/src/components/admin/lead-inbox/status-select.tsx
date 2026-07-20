@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { Combobox } from "@/components/common";
 import { updateLead } from "@/mutations/admin";
 import { LEAD_STATUSES, LEAD_STATUS_META, type LeadStatus, type LeadType } from "@/constants/admin";
 
@@ -44,18 +45,12 @@ export function StatusSelect({
 
   return (
     <div className="flex flex-col gap-1">
-      <select
+      <Combobox
+        options={LEAD_STATUSES.map((s) => ({ value: s, label: LEAD_STATUS_META[s].label }))}
         value={current}
+        onValueChange={(v) => change(v as LeadStatus)}
         disabled={pending}
-        onChange={(e) => change(e.target.value as LeadStatus)}
-        className="h-10 rounded-lg border border-line bg-white px-3 text-sm font-semibold text-ink outline-none focus:border-brand disabled:opacity-60"
-      >
-        {LEAD_STATUSES.map((s) => (
-          <option key={s} value={s}>
-            {LEAD_STATUS_META[s].label}
-          </option>
-        ))}
-      </select>
+      />
       {error && <span className="text-xs text-rose-600">{error}</span>}
     </div>
   );

@@ -1,3 +1,4 @@
+import type { VehicleType } from "@/data/import-rates";
 import type { CarView } from "./car.type";
 
 /**
@@ -195,6 +196,12 @@ export type CarDetail = {
   highlights: CarDetailSpec[];
   /** The full spec sheet (mileage, drivetrain, damage, title, branch, …). */
   specs: CarDetailSpec[];
+  /**
+   * Transport-size bucket for the per-listing import calculator (Седан vs Джип/SUV),
+   * derived from the raw body/vehicle type (`calcVehicleTypeFromBody`). Lets the
+   * calculator open pre-seeded to this car's size class. Always set by the mapper.
+   */
+  calcVehicleType?: VehicleType;
 
   // ── Location (for the "Локация" row + JSON-LD availableAtOrFrom) ──
   location?: string;

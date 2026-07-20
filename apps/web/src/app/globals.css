@@ -50,6 +50,14 @@ body {
   background: #fff;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  /*
+    Base UI portal setup (Combobox popups portal to <body>): `isolation: isolate`
+    gives the body its own stacking context so popups layer above page content
+    without z-index fights; `position: relative` keeps `position: absolute`
+    backdrops correct on iOS Safari 26+. See base-ui.com quick-start.
+  */
+  isolation: isolate;
+  position: relative;
 }
 
 /*

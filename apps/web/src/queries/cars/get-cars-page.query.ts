@@ -228,3 +228,112 @@ export async function getCarsWindow(
     aboveCount,
   };
 }
+
+/**
+ * The final page of the feed (its smallest `sort_id`s), for a random-access jump
+ * that landed past the (possibly over-counted) reserved space. Fetches the last
+ * PAGE ASC then flips to DESC, plus one page ABOVE via keyset (smooth upward
+ * scroll after landing), and counts the rows above `cars[0]` so the grid pins the
+ * window at its exact absolute depth. `nextCursor` is null — this IS the bottom.
+ */
+async function getLastCarsWindow(filters: CarFilters): Promise<CarsPage & { aboveCount: number }> {
+  const db = getDb();
+  const t = tableFor(filters);
+  const isPast = filters.status === "past";
+  const conds = buildConditions(filters, t);
+
+  const tailRows = await db
+    .select()
+    .from(t)
+    .where(conds.length > 0 ? and(...conds) : undefined)
+    .orderBy(asc(t.sortId))
+    .limit(CARS_PAGE_SIZE);
+  const tail = tailRows.slice().reverse(); // ASC → DESC (newest-first)
+
+  const above =
+    tail.length > 0
+      ? await keysetPage(filters, String(tail[0].sortId), "backward")
+      : { cars: [], nextCursor: null, prevCursor: null };
+
+  const cars = [...above.cars, ...tail.map((r) => carListingToView(r, isPast))];
+
+  let aboveCount = 0;
+  const windowTop = cars[0]?.sortId;
+  if (windowTop !== undefined) {
+    const aboveConds = buildConditions(filters, t);
+    aboveConds.push(gt(t.sortId, windowTop));
+    const res = await db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(t)
+      .where(and(...aboveConds));
+    aboveCount = res[0]?.n ?? 0;
+  }
+
+  return { cars, nextCursor: null, prevCursor: above.prevCursor ?? null, aboveCount };
+}
+
+/**
+ * Seed a WINDOW of the feed at an absolute feed POSITION (a row index), for a
+ * RANDOM-ACCESS jump — the user drags the scrollbar (or hits End) to a spot far
+ * from the loaded window. Unlike `getCarsWindow` (which anchors on a `sort_id`),
+ * there is no card id at a scrollbar position, only its ordinal in the feed, so
+ * this uses a one-shot `OFFSET`. Without it the fixed-space grid can only grow
+ * its single window one contiguous page at a time, so reaching a deep row means
+ * firing hundreds of sequential page loads to walk everything in between.
+ *
+ * Fetches the anchor page (`OFFSET index LIMIT PAGE+1`, DESC) plus one page ABOVE
+ * it via cheap keyset (no second deep offset), stitched newest-first. Returns
+ * `cars`, the two cursors, and `aboveCount` = the window's absolute position
+ * (`index − above.length`, i.e. rows above `cars[0]`). An `index` past the feed
+ * end (reserved space can over-count vs live rows) falls back to the true last
+ * page. Search has no feed → the normal capped search page (aboveCount 0).
+ *
+ * The deep offset scans `index` index entries on the same `(…, sort_id DESC)`
+ * B-tree — O(index) but a single user-initiated jump, vs the hundreds of keyset
+ * round-trips it replaces. Not cached — reads Neon directly, like getCarsPage.
+ */
+export async function getCarsWindowByIndex(
+  filters: CarFilters,
+  index: number,
+): Promise<CarsPage & { aboveCount: number }> {
+  if (filters.search && filters.search.trim() !== "") {
+    const page = await searchPage(filters);
+    return { ...page, aboveCount: 0 };
+  }
+
+  const db = getDb();
+  const t = tableFor(filters);
+  const isPast = filters.status === "past";
+  const conds = buildConditions(filters, t);
+  const offset = Number.isFinite(index) && index > 0 ? Math.floor(index) : 0;
+
+  // Anchor page: the PAGE cars starting at absolute feed position `offset`.
+  // PAGE+1 to know whether more exist further down.
+  const belowRows = await db
+    .select()
+    .from(t)
+    .where(conds.length > 0 ? and(...conds) : undefined)
+    .orderBy(desc(t.sortId))
+    .limit(CARS_PAGE_SIZE + 1)
+    .offset(offset);
+
+  // Offset landed past the feed end (over-count) → land on the true last page.
+  if (belowRows.length === 0) return getLastCarsWindow(filters);
+
+  const belowHasMore = belowRows.length > CARS_PAGE_SIZE;
+  const belowPage = belowHasMore ? belowRows.slice(0, CARS_PAGE_SIZE) : belowRows;
+  const nextCursor = belowHasMore ? String(belowPage[belowPage.length - 1].sortId) : null;
+
+  // One page ABOVE the window's first card via keyset (newer, `sort_id > top`).
+  // Skipped at the feed top (offset 0). Cheap — no second deep offset scan.
+  const above =
+    offset > 0
+      ? await keysetPage(filters, String(belowPage[0].sortId), "backward")
+      : { cars: [], nextCursor: null, prevCursor: null };
+
+  const cars = [...above.cars, ...belowPage.map((r) => carListingToView(r, isPast))];
+  // cars[0] sits `offset − above.length` rows below the feed top.
+  const aboveCount = Math.max(0, offset - above.cars.length);
+
+  return { cars, nextCursor, prevCursor: above.prevCursor ?? null, aboveCount };
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/common";
+import { Button, Combobox } from "@/components/common";
 import {
   type CalcConfig,
   computeImportBreakdown,
@@ -92,7 +92,8 @@ function NumberField({
   );
 }
 
-/** A styled <select>. Module-scoped for the same focus-preservation reason. */
+/** A labelled dropdown built on the shared {@link Combobox}. Module-scoped so the
+ *  caption + control read as one field (like {@link NumberField}). */
 function SelectField<T extends string>({
   label,
   value,
@@ -105,33 +106,30 @@ function SelectField<T extends string>({
   options: { id: T; label: string }[];
 }) {
   return (
-    <label className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1">
       <span className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</span>
-      <select
+      <Combobox
+        options={options.map((o) => ({ value: o.id, label: o.label }))}
         value={value}
-        onChange={(e) => onChange(e.target.value as T)}
-        className="w-full rounded-xl border border-line bg-white px-3 py-2 text-base font-bold text-ink outline-none focus:border-brand"
-      >
-        {options.map((o) => (
-          <option key={o.id} value={o.id}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </label>
+        onValueChange={(v) => onChange(v as T)}
+      />
+    </div>
   );
 }
 
 /**
  * `defaultMarket` presets the market control; `defaultPrice` (USD) presets the
  * car price (the car-detail „Калкулирай вноса" deep link). Both are initial
- * values, not locks.
+ * values, not locks. `bare` drops the outer card chrome (border/shadow/padding)
+ * when the estimator is embedded in a surface that already provides it — e.g. the
+ * per-listing calculator dialog.
  */
 export function CostEstimator({
   defaultMarket = "kr",
   defaultPrice,
   defaultVehicleType = "sedan",
-}: { defaultMarket?: MarketId; defaultPrice?: number; defaultVehicleType?: VehicleType } = {}) {
+  bare = false,
+}: { defaultMarket?: MarketId; defaultPrice?: number; defaultVehicleType?: VehicleType; bare?: boolean } = {}) {
   const [market, setMarket] = useState<MarketId>(defaultMarket);
   const [price, setPrice] = useState(defaultPrice && defaultPrice > 0 ? defaultPrice : 15000);
   const [vehicleType, setVehicleType] = useState<VehicleType>(defaultVehicleType);
@@ -228,7 +226,13 @@ export function CostEstimator({
   );
 
   return (
-    <div className="grid grid-cols-1 gap-6 rounded-card border border-line bg-white p-6 shadow-card lg:grid-cols-[1fr_1fr] max-md:p-5">
+    <div
+      className={
+        bare
+          ? "grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1fr]"
+          : "grid grid-cols-1 gap-6 rounded-card border border-line bg-white p-6 shadow-card lg:grid-cols-[1fr_1fr] max-md:p-5"
+      }
+    >
       {/* Inputs */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
@@ -264,33 +268,26 @@ export function CostEstimator({
 
         {/* US: auction location → terminal/inland/container lookup */}
         {market === "us" ? (
-          <label className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1">
             <span className="text-xs font-semibold uppercase tracking-wide text-muted">Локация на аукциона</span>
-            <select
+            <Combobox
+              options={locationOptions.map((loc) => ({ value: loc, label: loc }))}
               value={effectiveLocation}
-              onChange={(e) => setLocation(e.target.value)}
+              onValueChange={setLocation}
               disabled={tariffsPending || tariffErr}
-              className="w-full rounded-xl border border-line bg-white px-3 py-2 text-base font-bold text-ink outline-none focus:border-brand disabled:opacity-60"
-            >
-              {tariffsPending ? (
-                <option>Зареждане на локации…</option>
-              ) : tariffErr ? (
-                <option>Грешка при зареждане</option>
-              ) : (
-                locationOptions.map((loc) => (
-                  <option key={loc} value={loc}>
-                    {loc}
-                  </option>
-                ))
-              )}
-            </select>
+              placeholder={
+                tariffsPending ? "Зареждане на локации…" : tariffErr ? "Грешка при зареждане" : "Избери локация"
+              }
+              searchPlaceholder="Търсене на локация…"
+              emptyText="Няма намерена локация"
+            />
             {usTransport && !usTransport.notFound ? (
               <span className="text-[11px]/relaxed text-muted">
                 Терминал: <strong>{usTransport.terminal}</strong> · вътрешен {usdFmt(usTransport.inland)} + контейнер{" "}
                 {usdFmt(usTransport.container)}
               </span>
             ) : null}
-          </label>
+          </div>
         ) : null}
 
         {/* Korea duty toggle — the EU–KR FTA origin-declaration nuance. */}

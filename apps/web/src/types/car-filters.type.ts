@@ -7,9 +7,9 @@
 import type { CarView } from "./car.type";
 
 /**
- * The user's current filter selection. Mirrors the legacy `[mixed_cars_grid]`
- * filter set; every field maps 1:1 to a `car_listings` column (see
- * docs/05-projection-tables-car-listings.md §5). All optional — an empty object = "all cars".
+ * The user's current filter selection. Every field maps 1:1 to a `car_listings`
+ * column (see docs/05-projection-tables-car-listings.md §5). All optional — an
+ * empty object = "all cars".
  */
 export type CarFilters = {
   /**

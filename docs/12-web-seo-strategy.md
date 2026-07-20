@@ -541,10 +541,10 @@ for a new site is lower than classic SEO. ~88% of AIO-triggering queries are inf
 - Add canonical + OG to `/za-nas`, `/carfax`, `/proces`.
 - Listing-title enrichment (price/fuel/source) + visible masked VIN on listings.
 - Organization `sameAs` + Google Business Profile + „отзиви" brand assets (§2.0 disambiguation).
-- Legacy WP site: **decision 2026-07 — WordPress will be removed entirely at cutover**, so no
-  WP-side fixes; instead ship the redirect/410 cutover map from the rebuild on day one — see
-  [13-seo-action-plan.md](13-seo-action-plan.md) Phase 0 (static 301s, `/car/{slug}`→model-hub
-  301s via slug parsing, 410 for junk/`auction-car`/unparseable, GSC sitemap swap + removals).
+- Legacy WP site: **decision 2026-07 — WordPress removed entirely at cutover**. A redirect/410
+  cutover map was built then **removed 2026-07-18** at the owner's request (old site gone, ~zero
+  equity/backlinks) — old legacy URLs now 404. See
+  [13-seo-action-plan.md](13-seo-action-plan.md) Phase 0.
 
 **Phase B — money-page depth (weeks 1–6) — primary goal: leads**
 - Deepen Korea/USA/Canada hubs to 2,000–3,000 words with the 2026-verified cost/regulatory pack

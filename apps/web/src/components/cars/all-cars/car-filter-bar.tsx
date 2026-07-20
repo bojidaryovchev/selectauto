@@ -2,7 +2,7 @@
 
 import type { ComponentType } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Button } from "@/components/common";
+import { Button, Combobox } from "@/components/common";
 import { FlagCaIcon, FlagKrIcon, FlagUsIcon } from "@/components/icons";
 import { useFilterNav } from "@/contexts/filter-nav-context";
 import { serializeCarFilters } from "@/lib/car-filters";
@@ -37,8 +37,6 @@ const AUCTION_WINDOWS: { value: CarFilters["auctionWindow"]; label: string }[] =
 /** Text inputs apply after the user stops typing (the rest apply instantly). */
 const TEXT_DEBOUNCE_MS = 1500;
 
-const selectCls =
-  "h-11 w-full appearance-none rounded-[10px] border border-[#ddd] bg-white px-3.5 pr-9 text-sm font-medium text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/15 [background-image:url(\"data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='12'%20height='8'%20viewBox='0%200%2012%208'%3E%3Cpath%20d='M1%201l5%205%205-5'%20stroke='%23999'%20stroke-width='1.5'%20fill='none'%20stroke-linecap='round'/%3E%3C/svg%3E')] [background-position:right_14px_center] [background-repeat:no-repeat]";
 const inputCls =
   "h-11 w-full rounded-[10px] border border-[#ddd] bg-white px-3.5 text-sm font-medium text-ink outline-none transition placeholder:text-[#bbb] focus:border-brand focus:ring-2 focus:ring-brand/15";
 const labelCls = "mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted";
@@ -202,44 +200,43 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
       <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div>
           <label className={labelCls}>Марка</label>
-          <select className={selectCls} value={draft.brand ?? ""} onChange={(e) => setInstant("brand", numOrUndef(e.target.value))}>
-            <option value="">Всички марки</option>
-            {facets.brands.map((b) => (
-              <option key={b.value} value={b.value}>
-                {b.label}
-              </option>
-            ))}
-          </select>
+          <Combobox
+            options={[{ value: "", label: "Всички марки" }, ...facets.brands.map((b) => ({ value: b.value, label: b.label }))]}
+            value={draft.brand != null ? String(draft.brand) : ""}
+            onValueChange={(v) => setInstant("brand", v ? Number(v) : undefined)}
+            searchPlaceholder="Търсене на марка…"
+          />
         </div>
         <div>
           <label className={labelCls}>Модел</label>
-          <select
-            className={selectCls}
-            value={draft.model ?? ""}
+          <Combobox
+            options={[
+              { value: "", label: draft.brand === undefined ? "Първо избери марка" : "Всички модели" },
+              ...models.map((m) => ({ value: m.value, label: m.label })),
+            ]}
+            value={draft.model != null ? String(draft.model) : ""}
             disabled={draft.brand === undefined}
-            onChange={(e) => setInstant("model", numOrUndef(e.target.value))}
-          >
-            <option value="">{draft.brand === undefined ? "Първо избери марка" : "Всички модели"}</option>
-            {models.map((m) => (
-              <option key={m.value} value={m.value}>
-                {m.label}
-              </option>
-            ))}
-          </select>
+            onValueChange={(v) => setInstant("model", v ? Number(v) : undefined)}
+            searchPlaceholder="Търсене на модел…"
+          />
         </div>
         <div>
           <label className={labelCls}>Тип</label>
-          <select className={selectCls} value={draft.type ?? ""} onChange={(e) => setInstant("type", e.target.value || undefined)}>
-            <option value="">Всички типове</option>
-            {facets.types.map((t) => (
-              // Zero in the current (filtered) subset → disable so the user can't
-              // pick a dead-end combo; never disable the active selection itself.
-              <option key={t.value} value={t.value} disabled={t.count === 0 && t.value !== draft.type}>
-                {t.label}
-                {t.count !== undefined ? ` (${t.count})` : ""}
-              </option>
-            ))}
-          </select>
+          <Combobox
+            // Zero in the current (filtered) subset → disable so the user can't pick a
+            // dead-end combo; never disable the active selection itself.
+            options={[
+              { value: "", label: "Всички типове" },
+              ...facets.types.map((t) => ({
+                value: t.value,
+                label: t.label,
+                count: t.count,
+                disabled: t.count === 0 && t.value !== draft.type,
+              })),
+            ]}
+            value={draft.type ?? ""}
+            onValueChange={(v) => setInstant("type", v || undefined)}
+          />
         </div>
       </div>
 
@@ -357,55 +354,53 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
       <div className="mt-5 grid grid-cols-1 gap-4 border-t border-line pt-5 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <label className={labelCls}>Гориво</label>
-          <select className={selectCls} value={draft.fuel ?? ""} onChange={(e) => setInstant("fuel", e.target.value || undefined)}>
-            <option value="">Всички</option>
-            {facets.fuels.map((f) => (
-              // Zero in the current (filtered) subset → disable; never the active one.
-              <option key={f.value} value={f.value} disabled={f.count === 0 && f.value !== draft.fuel}>
-                {f.label}
-                {f.count !== undefined ? ` (${f.count})` : ""}
-              </option>
-            ))}
-          </select>
+          <Combobox
+            // Zero in the current (filtered) subset → disable; never the active one.
+            options={[
+              { value: "", label: "Всички" },
+              ...facets.fuels.map((f) => ({
+                value: f.value,
+                label: f.label,
+                count: f.count,
+                disabled: f.count === 0 && f.value !== draft.fuel,
+              })),
+            ]}
+            value={draft.fuel ?? ""}
+            onValueChange={(v) => setInstant("fuel", v || undefined)}
+          />
         </div>
         <div>
           <label className={labelCls}>Задвижване</label>
-          <select className={selectCls} value={draft.drive ?? ""} onChange={(e) => setInstant("drive", e.target.value || undefined)}>
-            <option value="">Всички</option>
-            {facets.drives.map((d) => (
-              <option key={d.value} value={d.value}>
-                {d.label}
-              </option>
-            ))}
-          </select>
+          <Combobox
+            options={[{ value: "", label: "Всички" }, ...facets.drives.map((d) => ({ value: d.value, label: d.label }))]}
+            value={draft.drive ?? ""}
+            onValueChange={(v) => setInstant("drive", v || undefined)}
+          />
         </div>
         <div>
           <label className={labelCls}>Състояние</label>
-          <select
-            className={selectCls}
+          <Combobox
+            // Zero in the current (filtered) subset → disable; never the active one.
+            options={[
+              { value: "", label: "Всички състояния" },
+              ...facets.conditions.map((c) => ({
+                value: c.value,
+                label: c.label,
+                count: c.count,
+                disabled: c.count === 0 && c.value !== draft.condition,
+              })),
+            ]}
             value={draft.condition ?? ""}
-            onChange={(e) => setInstant("condition", e.target.value || undefined)}
-          >
-            <option value="">Всички състояния</option>
-            {facets.conditions.map((c) => (
-              // Zero in the current (filtered) subset → disable; never the active one.
-              <option key={c.value} value={c.value} disabled={c.count === 0 && c.value !== draft.condition}>
-                {c.label}
-                {c.count !== undefined ? ` (${c.count})` : ""}
-              </option>
-            ))}
-          </select>
+            onValueChange={(v) => setInstant("condition", v || undefined)}
+          />
         </div>
         <div>
           <label className={labelCls}>Цвят</label>
-          <select className={selectCls} value={draft.color ?? ""} onChange={(e) => setInstant("color", e.target.value || undefined)}>
-            <option value="">Всички цветове</option>
-            {facets.colors.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-              </option>
-            ))}
-          </select>
+          <Combobox
+            options={[{ value: "", label: "Всички цветове" }, ...facets.colors.map((c) => ({ value: c.value, label: c.label }))]}
+            value={draft.color ?? ""}
+            onValueChange={(v) => setInstant("color", v || undefined)}
+          />
         </div>
       </div>
     </div>

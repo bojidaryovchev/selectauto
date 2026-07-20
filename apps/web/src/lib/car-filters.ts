@@ -5,7 +5,7 @@
  * symmetric (de)serializer keeps SSR and client navigation in lockstep.
  *
  * Validation/clamping lives in `@/schemas/car-filters.schema` (zod); this module
- * only does the string↔value plumbing. Keys are short and legacy-flavored.
+ * only does the string↔value plumbing. Keys are kept short.
  */
 import type { CarFilters } from "@/types/car-filters.type";
 
@@ -19,7 +19,7 @@ import type { CarFilters } from "@/types/car-filters.type";
  */
 export const AFTER_PARAM = "after";
 
-/** URL param keys (kept short; mirror the legacy `saa_*` intent without the prefix). */
+/** URL param keys (kept short). */
 const KEYS = {
   status: "status",
   auctionWindow: "auction",

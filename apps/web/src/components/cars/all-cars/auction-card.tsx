@@ -33,10 +33,10 @@ function InfoCell({ label, value, accent }: { label: string; value?: string; acc
 
 
 /**
- * The rich all-cars listing card — ports the legacy `selectauto-auction-card`
- * (image + source/BUY-NOW badges, per-card phone/Viber, status/countdown bar,
- * 2-col info grid, price row, "Подробности"). Server-rendered; only the live
- * countdown is a client child. Data is a `CarView` from `carListingToView`.
+ * The rich all-cars listing card (image + source/BUY-NOW badges, per-card
+ * phone/Viber, status/countdown bar, 2-col info grid, price row, "Подробности").
+ * Server-rendered; only the live countdown is a client child. Data is a `CarView`
+ * from `carListingToView`.
  *
  * `priority` is set on the first above-the-fold row so its photos eager-load
  * (the page's LCP candidate); all other cards lazy-load by default as they

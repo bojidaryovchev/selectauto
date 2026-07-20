@@ -27,7 +27,7 @@ import { FavoriteButton } from "@/components/cars/favorite-button";
 import { CarImportCalculator } from "@/components/calculator";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
-import type { MarketId } from "@/data/import-rates";
+import type { MarketId, VehicleType } from "@/data/import-rates";
 import { buildCarJsonLd } from "@/lib/car-detail-jsonld";
 import { modelHubPath } from "@/lib/car-slug";
 import { buildBreadcrumbJsonLd, type Breadcrumb } from "@/lib/site-jsonld";
@@ -185,7 +185,7 @@ async function CarDetailBody({ params }: { params: Params }) {
   // Active cars with a primary price only — a sold car's price isn't an input.
   // Listing prices are USD ("16 743 $") and the calculator is USD end-to-end, so
   // the price seeds directly. Active cars with a primary price only.
-  const calcSeed: { priceUsd: number; market?: MarketId } | null = (() => {
+  const calcSeed: { priceUsd: number; market?: MarketId; vehicleType?: VehicleType } | null = (() => {
     if (detail.isPast) return null;
     const priceDigits = detail.prices.find((p) => p.primary)?.value.replace(/[^\d]/g, "");
     const amountUsd = Number(priceDigits);
@@ -198,7 +198,7 @@ async function CarDetailBody({ params }: { params: Params }) {
           : detail.market === "us"
             ? "us"
             : undefined;
-    return { priceUsd: Math.round(amountUsd), market };
+    return { priceUsd: Math.round(amountUsd), market, vehicleType: detail.calcVehicleType };
   })();
 
   // Breadcrumb matching the visible nav EXACTLY (Catalog → [model hub] → this
@@ -355,10 +355,17 @@ async function CarDetailBody({ params }: { params: Params }) {
 
                 <CarPricePanel prices={detail.prices} liveBid={detail.liveBid} marketAvg={detail.marketAvg} />
 
-                {/* Per-listing landed-cost transparency: an inline collapsible
-                    calculator pre-seeded with THIS car's price + market. */}
+                {/* Per-listing landed-cost transparency: a button that opens the
+                    full import calculator in a dialog, pre-seeded with THIS car's
+                    price + market + vehicle-type size class. */}
                 {calcSeed ? (
-                  <CarImportCalculator defaultPrice={calcSeed.priceUsd} defaultMarket={calcSeed.market} />
+                  <CarImportCalculator
+                    defaultPrice={calcSeed.priceUsd}
+                    defaultMarket={calcSeed.market}
+                    defaultVehicleType={calcSeed.vehicleType}
+                    carLabel={detail.title}
+                    lotNumber={detail.lotNumber}
+                  />
                 ) : null}
 
                 {detail.seller?.name || detail.seller?.logo ? (

@@ -2,6 +2,9 @@
   "name": "@auctions-ingestion/web",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=24.15.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -15,6 +18,7 @@
   "dependencies": {
     "@auctions-ingestion/db": "workspace:*",
     "@auth/drizzle-adapter": "1.11.2",
+    "@base-ui/react": "^1.6.0",
     "@hookform/resolvers": "5.4.0",
     "@neondatabase/serverless": "1.1.0",
     "@react-email/render": "2.1.0",
@@ -22,6 +26,7 @@
     "@vercel/analytics": "2.0.1",
     "@vercel/speed-insights": "2.0.0",
     "bcryptjs": "3.0.3",
+    "botid": "^1.5.11",
     "drizzle-orm": "0.45.2",
     "gray-matter": "4.0.3",
     "motion": "12.42.2",

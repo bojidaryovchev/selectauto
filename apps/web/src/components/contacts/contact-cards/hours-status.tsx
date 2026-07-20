@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 /**
  * Live "Отворено сега / Затворено" indicator for the working-hours card — a
  * coloured dot plus a line telling the visitor when the showroom next
- * opens/closes. Ported 1:1 from the WordPress contacts page's vanilla-JS clock.
+ * opens/closes.
  *
  * Schedule (local time): Mon–Fri 09:00–18:00, Sat 09:00–17:00, Sun 11:00–17:00.
  * Kept in sync with the `HOURS` table in contact-cards.tsx and with

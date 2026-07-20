@@ -18,7 +18,13 @@ The old site has ~zero equity to protect (no measurable authority, broken titles
 absent from every top-20 — see 12 §2.0), so this is a cleanup, not a preservation exercise.
 Goal: give Google an unambiguous, crawl-budget-cheap story for every legacy URL pattern.
 
-- [x] `[code]` **Redirect/410 map served by the rebuild from day one** — **DONE 2026-07-15**:
+> **UPDATE 2026-07-18 — REMOVED at the owner's request.** The old WordPress site is gone and
+> had ~zero equity/backlinks to preserve, so the legacy-redirect system was deleted:
+> `lib/legacy-redirects.ts` removed, `proxy.ts` no longer does WP redirects (it keeps only the
+> sold-lot 410 + admin gate). Old legacy URLs now fall through to a normal 404. The item and
+> as-built map below are retained only as a historical record of what once existed.
+
+- [x] `[code]` **Redirect/410 map served by the rebuild from day one** — **BUILT 2026-07-15, REMOVED 2026-07-18** (see note above):
       [`lib/legacy-redirects.ts`](../apps/web/src/lib/legacy-redirects.ts) wired into
       [`proxy.ts`](../apps/web/src/proxy.ts). Live-tested against the real DB (24+ cases incl.
       the actual Korean-character slugs from the audit) and hardened by an adversarial review

@@ -1,4 +1,5 @@
 export { BudgetCalculator } from "./budget-calculator";
+export { CalculatorDialog } from "./calculator-dialog";
 export { CalculatorOfferForm } from "./calculator-offer-form";
 export { CarImportCalculator } from "./car-import-calculator";
 export { CostEstimator } from "./cost-estimator";

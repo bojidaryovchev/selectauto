@@ -12,23 +12,20 @@ import {
   INQUIRY_FINANCE,
   INQUIRY_TIMES,
 } from "@/data/inquiry-brands";
-import { createInquiry } from "@/mutations/inquiries";
 import { inquiryContactSchema, type InquiryContactValues } from "@/schemas/inquiry.schema";
-import type { InquiryPrefill } from "@/types";
+import type { ActionResult, InquiryPrefill } from "@/types";
 import { MainButton } from "./main-button";
 import { QuizOption } from "./quiz-option";
 import { QuizStep } from "./quiz-step";
 
 /**
- * Site-wide "Безплатна консултация" modal wizard, ported 1:1 from the original
- * WordPress theme (`#sa-inquiry-modal` in footer.php + the quiz logic in
- * theme.js). It is rendered once near the root and opened by any "Запитване"
- * button via the `useInquiry()` context.
+ * Site-wide "Безплатна консултация" modal wizard. Rendered once near the root and
+ * opened by any "Запитване" button via the `useInquiry()` context.
  *
  * Flow: a start screen → seven quiz steps (specific model? → brand → model →
  * budget → time → finance → name/phone) → a success step that auto-closes.
  * Answering "Не" to the first question skips the brand/model steps and jumps
- * straight to budget, exactly like the original `data-skip="1"` branch.
+ * straight to budget.
  *
  * Opened from a car page with a `prefill` (brand+model), it pre-answers the
  * specific-model/brand/model steps and starts at the budget step, showing a banner
@@ -38,7 +35,7 @@ import { QuizStep } from "./quiz-step";
  * `@/lib/phone`.
  */
 
-// Local copy — the old value hotlinked WP `wp-content/uploads`, which dies at cutover.
+// Local asset served from public/.
 const LOGO = "/images/inquiry-hero.jpg";
 
 type Screen = "start" | "quiz";
@@ -198,17 +195,22 @@ export function InquiryModal({
   async function onSubmit(values: InquiryContactValues) {
     setError("");
     try {
-      const result = await createInquiry({
-        name: values.name,
-        phone: values.phone,
-        specific_model: data.specific_model,
-        brand: data.brand,
-        model: data.model,
-        budget: data.budget,
-        time: data.time,
-        finance: data.finance,
-        page_url: window.location.href,
+      const res = await fetch("/api/inquiry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: values.name,
+          phone: values.phone,
+          specific_model: data.specific_model,
+          brand: data.brand,
+          model: data.model,
+          budget: data.budget,
+          time: data.time,
+          finance: data.finance,
+          page_url: window.location.href,
+        }),
       });
+      const result = (await res.json()) as ActionResult;
 
       if (result.success) {
         setStep(7); // success

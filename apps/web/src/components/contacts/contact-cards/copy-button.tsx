@@ -8,11 +8,8 @@ import { CheckIcon, CopyIcon } from "@/components/icons";
  * Copies `value` to the clipboard, fires a top-right success toast, and swaps its
  * icon to a check for ~1.4s. Semantic `<button type="button">` with an aria-label
  * built from `label` (the copy buttons sit next to phone/email/address on the
- * contacts page). A brand-tinted ripple expands from the button on click.
- *
- * The 1:1 WordPress source used `data-copy` attributes + a global click handler +
- * a custom toast div; here each button owns its own state and we reuse the app's
- * single react-hot-toast <Toaster>.
+ * contacts page). A brand-tinted ripple expands from the button on click. Each
+ * button owns its own state and reuses the app's single react-hot-toast <Toaster>.
  */
 export function CopyButton({ value, label }: { value: string; label: string }) {
   const [copied, setCopied] = useState(false);

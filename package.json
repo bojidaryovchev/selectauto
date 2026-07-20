@@ -1,4 +1,7 @@
 {
+  "engines": {
+    "node": ">=24.15.0"
+  },
   "scripts": {
     "dev:web": "pnpm --filter @auctions-ingestion/web run dev",
     "build:web": "pnpm --filter @auctions-ingestion/web run build",
@@ -13,6 +16,7 @@
     "destroy": "pnpm --filter @auctions-ingestion/infra run pulumi:destroy",
     "dev:extension": "pnpm --filter @auctions-ingestion/extension run dev",
     "build:extension": "pnpm --filter @auctions-ingestion/extension run build",
+    "zip:extension": "pnpm --filter @auctions-ingestion/extension run zip",
     "type-check": "pnpm --filter @auctions-ingestion/web --filter @auctions-ingestion/functions --filter @auctions-ingestion/infra --filter @auctions-ingestion/db --filter @auctions-ingestion/extension run type-check",
     "lint": "eslint --fix && pnpm --filter @auctions-ingestion/web run lint:fix",
     "format": "prettier --write \"**/*.{ts,tsx,mjs,json}\"",

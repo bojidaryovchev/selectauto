@@ -5,9 +5,10 @@ import { useWindowVirtualizer, windowScroll } from "@tanstack/react-virtual";
 import { AuctionCard } from "@/components/cars/all-cars/auction-card";
 import { CardGlass } from "@/components/cars/all-cars/card-glass";
 import { SkeletonCard } from "@/components/cars/all-cars/car-grid-skeleton";
+import { CARS_PAGE_SIZE } from "@/constants";
 import { useFilterNav } from "@/contexts/filter-nav-context";
 import { AFTER_PARAM } from "@/lib/car-filters";
-import { loadMoreCars, loadPrevCars } from "@/mutations/cars";
+import { loadCarsWindowAt, loadMoreCars, loadPrevCars } from "@/mutations/cars";
 import type { CarFilters, CarsPage } from "@/types/car-filters.type";
 import type { CarView } from "@/types/car.type";
 
@@ -24,6 +25,13 @@ const ROW_GAP = 20; // px, matches gap-5
 // breakpoint). Cards are DETERMINISTIC-height (see AuctionCard), so a single
 // measured row makes the estimate exact for every row.
 const ESTIMATED_ROW_HEIGHT = 715;
+// How far (in cars) the rendered range must sit from the loaded window before we
+// treat it as a JUMP and re-seed the window there, rather than letting the
+// contiguous loaders walk page-by-page. Two full pages: a gap this large means
+// ≥3 sequential loads to bridge it, so one random-access re-seed wins. Smooth
+// scrolling keeps the window connected frame-to-frame and never trips this (and
+// the re-seed is debounced to fire only once a jump SETTLES).
+const RESEED_GAP = 2 * CARS_PAGE_SIZE;
 
 /**
  * Write the `?after=<sortId>` scroll page-pointer into the URL WITHOUT touching
@@ -108,6 +116,15 @@ function withoutLoaded(loaded: CarView[], incoming: CarView[]): CarView[] {
  * terminates early snaps `startCar` to 0. Both are ≤ a-few-cells, once, at the
  * extreme top — in exchange for pixel-stability everywhere else, always.
  *
+ * RANDOM ACCESS: because the window is a single contiguous run, a scrollbar drag
+ * (or End key) to a spot far from it would otherwise force the contiguous loaders
+ * to walk every page in between — hundreds of sequential requests. Instead, when
+ * the rendered range lands more than RESEED_GAP cars from the window, the window
+ * is RE-SEEDED at that absolute position in one round-trip (`loadCarsWindowAt` →
+ * `getCarsWindowByIndex`, an OFFSET seed); the passed-over region reverts to
+ * skeletons and reloads via `loadPrev` as the user scrolls back. Debounced to
+ * fire once the jump settles, so smooth scrolling never triggers it.
+ *
  * Two keyset cursors bound the loaded window (`bottomCursor` down, `topCursor`
  * up; null at the feed ends). As the viewport-top card crosses rows, `?after=`
  * is rewritten (history state, no navigation) so the URL always deep-links to
@@ -157,6 +174,13 @@ export function AllCarsGrid({
   // synchronously). Loads re-trigger via the render the commit itself causes.
   const appendingRef = useRef(false);
   const prependingRef = useRef(false);
+  // Random-access re-seed (scrollbar/End jump far from the loaded window) is
+  // authoritative: it replaces the whole window. `windowEpochRef` bumps on every
+  // re-seed commit; an append/prepend that was in flight across a re-seed checks
+  // the epoch after its await and discards its (now-stale) page rather than
+  // stitching it onto the wrong window. `reseedingRef` serializes re-seeds.
+  const reseedingRef = useRef(false);
+  const windowEpochRef = useRef(0);
 
   // Responsive column count + scroll offset from the container (tracked in state
   // so they're never read off the ref during render). `measured` flips true once
@@ -352,9 +376,11 @@ export function AllCarsGrid({
   const loadMore = useCallback(() => {
     if (bottomCursor === null || appendingRef.current) return;
     appendingRef.current = true;
+    const epoch = windowEpochRef.current;
     void (async () => {
       try {
         const next = await loadMoreCars(filters, bottomCursor);
+        if (windowEpochRef.current !== epoch) return; // a re-seed replaced the window — discard
         const fresh = withoutLoaded(carsRef.current, next.cars);
         if (fresh.length > 0) setCars((prev) => [...prev, ...fresh]);
         setBottomCursor(next.nextCursor);
@@ -369,9 +395,11 @@ export function AllCarsGrid({
   const loadPrev = useCallback(() => {
     if (topCursor === null || prependingRef.current) return;
     prependingRef.current = true;
+    const epoch = windowEpochRef.current;
     void (async () => {
       try {
         const page = await loadPrevCars(filters, topCursor);
+        if (windowEpochRef.current !== epoch) return; // a re-seed replaced the window — discard
         const fresh = withoutLoaded(carsRef.current, page.cars);
         const s = startCarRef.current;
         // Feed-churn drift, absorbed at the top (see header comment):
@@ -398,6 +426,38 @@ export function AllCarsGrid({
       }
     })();
   }, [filters, topCursor]);
+
+  // RANDOM-ACCESS re-seed. When the rendered range is a JUMP away from the loaded
+  // window (scrollbar drag / End key), replace the whole window with a fresh one
+  // seeded at that absolute feed position (`index`) — one round-trip instead of
+  // the hundreds of contiguous page loads it would take to walk there. Does NOT
+  // scroll: the user is already at this position, so the skeletons under the
+  // viewport simply swap to real cards in place (uniform heights → zero shift),
+  // and scrolling back up resumes normal contiguous `loadPrev`. Authoritative
+  // over any in-flight append/prepend via `windowEpochRef` (see the loaders).
+  const reseed = useCallback(
+    (index: number) => {
+      if (reseedingRef.current) return;
+      reseedingRef.current = true;
+      void (async () => {
+        try {
+          const win = await loadCarsWindowAt(filters, index);
+          if (win.cars.length > 0) {
+            windowEpochRef.current += 1; // invalidate any append/prepend in flight
+            setCars(win.cars);
+            setStartCar(win.aboveCount);
+            setBottomCursor(win.nextCursor);
+            setTopCursor(win.prevCursor ?? null);
+          }
+        } catch {
+          // Network hiccup — leave the window as-is; a later settle retries.
+        } finally {
+          reseedingRef.current = false;
+        }
+      })();
+    },
+    [filters],
+  );
 
   // ── Deep-link anchor: scroll the target card's row to the top once, AFTER
   // layout is measured (real column count + settled scrollMargin). The row
@@ -477,16 +537,49 @@ export function AllCarsGrid({
     const first = items[0];
     const last = items[items.length - 1];
     if (!first || !last) return;
+
+    const renderedTop = first.index * columns;
+    const renderedBottom = last.index * columns;
+    // Is the rendered range a JUMP away from the loaded window — more than
+    // RESEED_GAP cars below its end or above its start? That only happens on a
+    // discontinuous move (scrollbar drag / End); smooth scrolling advances the
+    // viewport gradually and the contiguous loaders below keep the window
+    // adjacent. Contiguous paging can't bridge a jump without walking every page
+    // between (the request-spam bug), so re-seed the window directly instead.
+    const jumped = renderedTop - loadedEnd > RESEED_GAP || startCar - renderedBottom > RESEED_GAP;
+    if (anchorSettled && jumped) {
+      if (reseedingRef.current) return; // a re-seed is already resolving
+      // Debounced: fire only once the jump SETTLES (items stop changing for
+      // 150ms). During an active drag/fling `items` changes every frame and this
+      // timer keeps resetting, so we re-seed once, at the final resting spot —
+      // and never during a fast-but-continuous scroll.
+      const target = Math.min(Math.max(0, renderedTop), Math.max(0, totalCells - 1));
+      const timer = setTimeout(() => reseed(target), 150);
+      return () => clearTimeout(timer);
+    }
+
     // Unloaded cells at/above the rendered top → fill upward (once the anchor
     // jump has settled, so the initial top-of-space render doesn't fetch).
-    if (anchorSettled && !topDone && !prependingRef.current && first.index * columns < startCar) {
+    if (anchorSettled && !topDone && !prependingRef.current && renderedTop < startCar) {
       loadPrev();
     }
     // Rendered range within ~3 rows of the loaded end → extend downward.
     if (!bottomDone && !appendingRef.current && (last.index + 3) * columns >= loadedEnd) {
       loadMore();
     }
-  }, [items, columns, startCar, loadedEnd, topDone, bottomDone, anchorSettled, loadPrev, loadMore]);
+  }, [
+    items,
+    columns,
+    startCar,
+    loadedEnd,
+    totalCells,
+    topDone,
+    bottomDone,
+    anchorSettled,
+    loadPrev,
+    loadMore,
+    reseed,
+  ]);
 
   // ── URL page-pointer: rewrite `?after=` to the sort_id of the card at the
   // VISUAL top (below the fixed-header line — the mirror of the restore's

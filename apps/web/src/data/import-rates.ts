@@ -95,6 +95,33 @@ export function isMarketId(v: unknown): v is MarketId {
   return v === "kr" || v === "us" || v === "ca";
 }
 
+/**
+ * Body types (cars.body_type / BodyTypeEnum, see lib/car-labels.ts) whose
+ * height/size puts them in the larger container-transport bucket. The calculator
+ * offers only a two-way Седан vs Джип/SUV choice — a proxy for the vehicle's
+ * shipping footprint, which sets the KR/BG transport figures and the US container
+ * tariff lookup — so tall/large bodies map to "suv" and everything else to "sedan".
+ */
+const SUV_BODY_TYPES = new Set(["suv", "pickup", "van", "furgon", "truck"]);
+
+/**
+ * Map a car's raw body/vehicle type to the calculator's `VehicleType` bucket.
+ * Used to pre-seed the per-listing calculator from THIS car's details. Anything
+ * not clearly large (or unknown) defaults to "sedan" — the conservative, smaller
+ * transport figure.
+ */
+export function calcVehicleTypeFromBody(
+  bodyType?: string | null,
+  vehicleType?: string | null,
+): VehicleType {
+  const body = bodyType?.toLowerCase();
+  if (body && SUV_BODY_TYPES.has(body)) return "suv";
+  // A non-automobile `vehicle_type` of "truck" is a large body even when the
+  // finer `body_type` is absent.
+  if (vehicleType?.toLowerCase() === "truck") return "suv";
+  return "sedan";
+}
+
 /** Convert EUR → whole USD at the config's fixed rate. */
 export function usd(eur: number, eurUsd: number): number {
   return Math.round(eur * eurUsd);

@@ -38,13 +38,11 @@ const CTA =
   "group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-brand px-[18px] py-2.5 text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(216,111,22,0.3)] transition-all duration-200 hover:bg-brand-dark hover:shadow-[0_14px_28px_rgba(216,111,22,0.4)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand active:scale-[0.98]";
 
 /**
- * The 2×2 grid of contact info cards (phone, address, hours, email). Ported 1:1
- * from the WordPress contacts page — copy-to-clipboard buttons, a live
- * open/closed badge on the hours card, and quick-action CTAs — but rebuilt with
- * semantic elements, the app's icons, brand Tailwind tokens, focus-visible
- * rings, and ripples instead of the WP inline-style/`data-copy`/global-JS
- * approach. Interactive bits live in sibling client sub-parts (CopyButton,
- * HoursStatus).
+ * The 2×2 grid of contact info cards (phone, address, hours, email) —
+ * copy-to-clipboard buttons, a live open/closed badge on the hours card, and
+ * quick-action CTAs, built with semantic elements, the app's icons, brand
+ * Tailwind tokens, focus-visible rings, and ripples. Interactive bits live in
+ * sibling client sub-parts (CopyButton, HoursStatus).
  */
 export function ContactCards() {
   return (
