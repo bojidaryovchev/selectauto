@@ -207,7 +207,6 @@ async function BrandHubBody({ params }: { params: Params }) {
                 initialPage={firstPage}
                 initialAnchor={null}
                 filters={filters}
-                totalCount={count}
                 aboveCount={0}
               />
             </Suspense>

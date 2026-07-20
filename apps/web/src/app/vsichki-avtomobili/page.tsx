@@ -156,10 +156,6 @@ export default async function AllCarsPage({ searchParams }: { searchParams: Prom
                   initialPage={firstPage}
                   initialAnchor={initialAnchor}
                   filters={filters}
-                  // Search is a capped lookup, not a feed — its "total" is just
-                  // what came back. The feed passes the exact filtered count so
-                  // the grid can reserve fixed space for the entire catalog.
-                  totalCount={isSearch ? firstPage.cars.length : count.count}
                   aboveCount={aboveCount}
                 />
               </Suspense>
