@@ -112,7 +112,12 @@ export function Combobox({
               </div>
             ) : null}
 
-            <BaseCombobox.Empty className="px-3.5 py-3 text-sm text-muted">{emptyText}</BaseCombobox.Empty>
+            {/* Empty must stay mounted (aria-live status region) — Base UI nulls only its
+                children when the list has matches. Keep padding on the inner node so the
+                container collapses to 0 height instead of reserving a blank gap. */}
+            <BaseCombobox.Empty>
+              <div className="px-3.5 py-3 text-sm text-muted">{emptyText}</div>
+            </BaseCombobox.Empty>
 
             <BaseCombobox.List>
               {(item: ComboboxOption) => (
