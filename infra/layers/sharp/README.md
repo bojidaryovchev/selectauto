@@ -5,7 +5,7 @@ which has **native binaries** and therefore cannot be bundled into the single-fi
 esbuild output the other handlers use. Instead it is shipped as a Lambda layer and
 marked `external` in `packages/functions/build.mjs`.
 
-## Prep (run BEFORE `pulumi up`, like `pnpm --filter @auctions-ingestion/functions build`)
+## Prep (run BEFORE `pulumi up`, like `pnpm --filter @selectauto/functions build`)
 
 The layer must contain the **Linux x64 glibc** build that matches the `nodejs20.x`
 runtime (Amazon Linux 2), regardless of the OS you deploy from:

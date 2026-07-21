@@ -1,4 +1,4 @@
-import { carfaxRequests } from "@auctions-ingestion/db/schema";
+import { carfaxRequests } from "@selectauto/db/schema";
 import { getDb } from "@/lib/db";
 import { sendCarfaxNotification } from "@/lib/email";
 import { carfaxSchema } from "@/schemas/carfax.schema";

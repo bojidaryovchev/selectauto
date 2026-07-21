@@ -27,8 +27,8 @@ so the panel shows byte-identical title/price/mileage. See
 ## Develop
 
 ```bash
-pnpm --filter @auctions-ingestion/extension dev        # Chrome, HMR
-pnpm --filter @auctions-ingestion/extension dev:firefox
+pnpm --filter @selectauto/extension dev        # Chrome, HMR
+pnpm --filter @selectauto/extension dev:firefox
 ```
 
 In dev the extension calls `http://localhost:3000` — run `pnpm dev:web`
@@ -38,8 +38,8 @@ Copart/IAAI/Encar lot page to see the panel.
 ## Build / package
 
 ```bash
-pnpm --filter @auctions-ingestion/extension build   # -> .output/chrome-mv3
-pnpm --filter @auctions-ingestion/extension zip     # -> .output/*.zip
+pnpm --filter @selectauto/extension build   # -> .output/chrome-mv3
+pnpm --filter @selectauto/extension zip     # -> .output/*.zip
 ```
 
 Load unpacked from `.output/chrome-mv3` via `chrome://extensions` (Developer

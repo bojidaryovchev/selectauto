@@ -6,18 +6,18 @@
 # Secrets Manager by the stack. See README.
 config:
   aws:region: eu-central-1
-  auctions-ingestion-infra:projectName: auctions-ingestion
-  auctions-ingestion-infra:environment: dev
-  auctions-ingestion-infra:auctionsApiBaseUrl: https://auctionsapi.com/api
-  auctions-ingestion-infra:hourlySyncScheduleExpression: rate(1 hour)
-  auctions-ingestion-infra:dailyReferenceSyncScheduleExpression: rate(1 day)
-  auctions-ingestion-infra:logRetentionDays: "14"
-  auctions-ingestion-infra:perPage: "1000"
-  auctions-ingestion-infra:incrementalMinutes: "75"
+  selectauto-infra:projectName: selectauto
+  selectauto-infra:environment: dev
+  selectauto-infra:auctionsApiBaseUrl: https://auctionsapi.com/api
+  selectauto-infra:hourlySyncScheduleExpression: rate(1 hour)
+  selectauto-infra:dailyReferenceSyncScheduleExpression: rate(1 day)
+  selectauto-infra:logRetentionDays: "14"
+  selectauto-infra:perPage: "1000"
+  selectauto-infra:incrementalMinutes: "75"
   # Secrets — set these with the CLI, they will appear here encrypted:
-  #   pulumi config set --secret auctions-ingestion-infra:auctionsApiKey  <key>
-  #   pulumi config set --secret auctions-ingestion-infra:neonDatabaseUrl <pooled-connection-string>
-  # auctions-ingestion-infra:auctionsApiKey:
+  #   pulumi config set --secret selectauto-infra:auctionsApiKey  <key>
+  #   pulumi config set --secret selectauto-infra:neonDatabaseUrl <pooled-connection-string>
+  # selectauto-infra:auctionsApiKey:
   #   secure: v1:...
-  # auctions-ingestion-infra:neonDatabaseUrl:
+  # selectauto-infra:neonDatabaseUrl:
   #   secure: v1:...

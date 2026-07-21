@@ -244,10 +244,10 @@ maintaining the read models ([04](04-ingestion-flows.md) / [05](05-projection-ta
 ## 8. Build / verify (web)
 
 ```bash
-pnpm --filter @auctions-ingestion/web run type-check
-pnpm --filter @auctions-ingestion/web run lint
-pnpm --filter @auctions-ingestion/web run build      # route should show ◐ (PPR)
-pnpm --filter @auctions-ingestion/web run dev         # http://localhost:3000/vsichki-avtomobili/
+pnpm --filter @selectauto/web run type-check
+pnpm --filter @selectauto/web run lint
+pnpm --filter @selectauto/web run build      # route should show ◐ (PPR)
+pnpm --filter @selectauto/web run dev         # http://localhost:3000/vsichki-avtomobili/
 ```
 
 > **Caching note:** the catalog queries are **uncached** (they read Neon every

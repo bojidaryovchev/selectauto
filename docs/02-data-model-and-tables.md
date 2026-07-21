@@ -19,7 +19,7 @@ relationships, and population model**.
   `_migrations`.
 - **The live database itself** — since migration 0024, every terse/EAV/footgun
   column carries a `COMMENT ON COLUMN`. View them with `\d+ <table>` in psql,
-  Drizzle Studio (`pnpm --filter @auctions-ingestion/db db:studio`), or
+  Drizzle Studio (`pnpm --filter @selectauto/db db:studio`), or
   `col_description()`. If this doc and the DB ever disagree, the DB wins — treat
   that as drift to fix (a `drizzle-kit`/`\d` snapshot check in CI is on the wish
   list; see [Cross-cutting invariants](#cross-cutting-invariants--gotchas)).

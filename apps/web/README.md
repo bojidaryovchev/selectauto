@@ -48,3 +48,14 @@ To generate a value for `CRON_SECRET` open a Git Bash and use `openssl rand -hex
 Dry run: `curl -s "http://localhost:3000/api/cron/favorite-auction-alerts?dryRun=1" -H "Authorization: Bearer $CRON_SECRET" | jq`
 
 Real run: `curl -s "http://localhost:3000/api/cron/favorite-auction-alerts" -H "Authorization: Bearer $CRON_SECRET" | jq`
+
+# AWS SSO
+
+```
+[profile selectauto]
+sso_start_url = https://d-99674de826.awsapps.com/start
+sso_region = eu-central-1
+sso_account_id = 844486820840
+sso_role_name = AdministratorAccess
+region = eu-central-1
+```

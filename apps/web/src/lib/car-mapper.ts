@@ -1,4 +1,4 @@
-import type { CarListing, CarListingArchived } from "@auctions-ingestion/db/schema";
+import type { CarListing, CarListingArchived } from "@selectauto/db/schema";
 import {
   bodyTypeLabel,
   colorLabel,

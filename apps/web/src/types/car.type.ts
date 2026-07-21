@@ -1,6 +1,6 @@
 /**
  * UI view-model for a car listing card. Named `CarView` (not `Car`) on purpose:
- * the DB layer (`@auctions-ingestion/db/schema`) already exports a `Car` type for
+ * the DB layer (`@selectauto/db/schema`) already exports a `Car` type for
  * a `cars` table row, and the listing card is a *projection* of a car + its
  * auction lot, not that row. The car queries (`@/queries/cars`) map DB rows to
  * this shape via `@/lib/car-mapper`; the static fallback data uses it directly.

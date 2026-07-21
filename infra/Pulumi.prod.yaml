@@ -1,0 +1,20 @@
+config:
+  aws:region: eu-central-1
+  selectauto-infra:projectName: selectauto
+  selectauto-infra:environment: prod
+  selectauto-infra:auctionsApiBaseUrl: https://auctionsapi.com/api
+  selectauto-infra:hourlySyncScheduleExpression: rate(1 hour)
+  selectauto-infra:dailyReferenceSyncScheduleExpression: rate(1 day)
+  selectauto-infra:logRetentionDays: "14"
+  selectauto-infra:perPage: "1000"
+  selectauto-infra:incrementalMinutes: "75"
+  # Secrets are NOT stored here. Set them once with the CLI (values live in the
+  # repo-root .env); Pulumi encrypts them into this file against the stack's salt:
+  #   pulumi config set --secret selectauto-infra:auctionsApiKey  <key>
+  #   pulumi config set --secret selectauto-infra:neonDatabaseUrl <pooled-neon-url>
+
+  selectauto-infra:auctionsApiKey:
+    secure: v1:g5gTtX7cKyDJH93U:JRYkp9oshA9JMXMmJZ7GA9R+LFqz9Bhevkiuk4uH48RSA/dsJp2L3TlRTJdp0IyX
+  selectauto-infra:neonDatabaseUrl:
+    secure: v1:fe8Ot+aEyVfPJN9n:awcSzX6Pr9Gd4O9buGem94VaqlM5xUSRp3krkkVfEu9uVaD+qL+q1ARgudf67FEhkG9TiV7RfEFqGQ4rvjbVYEKRtBIu1ZgYMWPzDs49e19vrw9Bx+2y5wm2OifLL1VQzCRxWVB8v9kA+uR9Hbukhy9dP4tflk5D/vfWgoV9/1laMwaQQnFpgnzl8TtFIb/mQc0EkNanXj5ArEmeAEFQqi86F/N/
+encryptionsalt: v1:bVvEwXv0ScU=:v1:PLqBK+YKYduNiL8W:ys16iDGITpsVtcCIUhZVZ4t3uJalNw==

@@ -21,11 +21,11 @@ pnpm monorepo (`pnpm-workspace.yaml`): `apps/*`, `packages/*`, and `infra`.
 ├── pnpm-workspace.yaml          # workspace globs (apps/*, packages/*, infra)
 │
 ├── apps/
-│   └── web/                     # Next.js frontend (@auctions-ingestion/web)
+│   └── web/                     # Next.js frontend (@selectauto/web)
 │                                #   reads Neon directly + imports the shared db schema
 │
 ├── packages/
-│   ├── db/                      # @auctions-ingestion/db — schema + migrations (SHARED)
+│   ├── db/                      # @selectauto/db — schema + migrations (SHARED)
 │   │   ├── schema.ts            # Drizzle schema (source of truth; exported to apps/web)
 │   │   ├── migrations/*.sql     # Plain SQL run in production (migrate.mjs)
 │   │   ├── migrate.mjs          # Tiny idempotent SQL migration runner
@@ -33,7 +33,7 @@ pnpm monorepo (`pnpm-workspace.yaml`): `apps/*`, `packages/*`, and `infra`.
 │   │   ├── backfill-thumbnails.mjs    # Enqueue un-baked lots to the thumbnail bake queue
 │   │   └── drizzle.config.ts    # Drizzle Kit config (dev-time generation)
 │   │
-│   └── functions/               # @auctions-ingestion/functions — Lambda source (esbuild)
+│   └── functions/               # @selectauto/functions — Lambda source (esbuild)
 │       ├── shared/
 │       │   ├── types.ts             # API payload + Lambda<->SFN message types
 │       │   ├── auctionsApiClient.ts # HTTP client (x-api-key, retry, pagination)
@@ -52,7 +52,7 @@ pnpm monorepo (`pnpm-workspace.yaml`): `apps/*`, `packages/*`, and `infra`.
 │       ├── driftSweep/handler.ts            # weekly DB-only projection self-heal (init/step/finalize)
 │       └── build.mjs                # esbuild bundler -> packages/functions/dist/<name>.js
 │
-├── infra/                       # @auctions-ingestion/infra — Pulumi program (CommonJS)
+├── infra/                       # @selectauto/infra — Pulumi program (CommonJS)
 │   ├── src/{index,config,iam,secrets,lambdas,queues,storage,step-functions,schedules}.ts
 │   ├── layers/sharp/            # native sharp Lambda layer (npm install --os=linux before deploy)
 │   ├── Pulumi.yaml
@@ -297,16 +297,16 @@ pulumi stack init dev          # you'll be asked for a PULUMI_CONFIG_PASSPHRASE
 
 # Non-secret config (defaults already in the example file):
 pulumi config set aws:region eu-central-1
-pulumi config set auctions-ingestion-infra:projectName auctions-ingestion
-pulumi config set auctions-ingestion-infra:environment dev
-pulumi config set auctions-ingestion-infra:auctionsApiBaseUrl https://auctionsapi.com/api
-pulumi config set auctions-ingestion-infra:hourlySyncScheduleExpression "rate(1 hour)"
-pulumi config set auctions-ingestion-infra:dailyReferenceSyncScheduleExpression "rate(1 day)"
-pulumi config set auctions-ingestion-infra:logRetentionDays 14
+pulumi config set selectauto-infra:projectName selectauto
+pulumi config set selectauto-infra:environment dev
+pulumi config set selectauto-infra:auctionsApiBaseUrl https://auctionsapi.com/api
+pulumi config set selectauto-infra:hourlySyncScheduleExpression "rate(1 hour)"
+pulumi config set selectauto-infra:dailyReferenceSyncScheduleExpression "rate(1 day)"
+pulumi config set selectauto-infra:logRetentionDays 14
 
 # Secrets (encrypted into Pulumi state; pushed to Secrets Manager + Lambda env):
-pulumi config set --secret auctions-ingestion-infra:auctionsApiKey  <YOUR_API_KEY>
-pulumi config set --secret auctions-ingestion-infra:neonDatabaseUrl <NEON_POOLED_URL>
+pulumi config set --secret selectauto-infra:auctionsApiKey  <YOUR_API_KEY>
+pulumi config set --secret selectauto-infra:neonDatabaseUrl <NEON_POOLED_URL>
 ```
 
 > **Neon URL:** use the **pooled** connection string (host contains `-pooler`),
@@ -474,7 +474,7 @@ Remove-Item ref.json
 with a bound (kept for fast tests — not deprecated, just not for the full catalog):
 ```powershell
 '{"force":true,"maxManufacturers":5}' | Out-File -Encoding ascii payload.json
-aws lambda invoke --function-name auctions-ingestion-dev-syncReferenceData `
+aws lambda invoke --function-name selectauto-dev-syncReferenceData `
   --payload file://payload.json --cli-binary-format raw-in-base64-out out.json
 Remove-Item payload.json
 ```
@@ -583,9 +583,9 @@ layer. Reads are always from our DB, never AuctionsAPI.
 
 ```ts
 // Server component / route handler. Import the SHARED workspace schema
-// (apps/web depends on @auctions-ingestion/db; transpilePackages compiles it).
+// (apps/web depends on @selectauto/db; transpilePackages compiles it).
 import { db } from "@/lib/db"; // your Drizzle client (pooled Neon connection)
-import { auctionLots, cars, manufacturers } from "@auctions-ingestion/db/schema";
+import { auctionLots, cars, manufacturers } from "@selectauto/db/schema";
 import { and, eq } from "drizzle-orm";
 
 const [lot] = await db

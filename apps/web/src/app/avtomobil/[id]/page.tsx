@@ -178,18 +178,19 @@ async function CarDetailBody({ params }: { params: Params }) {
     return `/vsichki-avtomobili?${p.toString()}`;
   })();
 
-  // „Калкулирай вноса" deep link → /kalkulator?market=&price= (per-listing
-  // landed-cost transparency — docs/13-seo-action-plan.md Phase B). Market maps
-  // kr → kr; US-market lots split us/ca by the mapper's sourceCountry (Copart/
-  // IAAI run branches in both); unknown → no market param (calculator default).
-  // Active cars with a primary price only — a sold car's price isn't an input.
-  // Listing prices are USD ("16 743 $") and the calculator is USD end-to-end, so
-  // the price seeds directly. Active cars with a primary price only.
-  const calcSeed: { priceUsd: number; market?: MarketId; vehicleType?: VehicleType } | null = (() => {
+  // „Калкулирай вноса" seed for the per-listing calculator dialog (landed-cost
+  // transparency — docs/13-seo-action-plan.md Phase B). Market maps kr → kr;
+  // US-market lots split us/ca by the mapper's sourceCountry (Copart/IAAI run
+  // branches in both); unknown → no market param (calculator default). Shown for
+  // EVERY active car — most US/CA auction lots have no bid yet (no primary price
+  // row), but the dialog's price field is an editable input, so the buyer types
+  // the bid they plan to win at. When the listing does carry a primary price
+  // (USD, "16 743 $" — the calculator is USD end-to-end) it pre-seeds the field.
+  // Past cars only excluded — a sold car's price isn't an input.
+  const calcSeed: { priceUsd?: number; market?: MarketId; vehicleType?: VehicleType } | null = (() => {
     if (detail.isPast) return null;
     const priceDigits = detail.prices.find((p) => p.primary)?.value.replace(/[^\d]/g, "");
     const amountUsd = Number(priceDigits);
-    if (!Number.isFinite(amountUsd) || amountUsd <= 0) return null;
     const market: MarketId | undefined =
       detail.market === "kr"
         ? "kr"
@@ -198,7 +199,11 @@ async function CarDetailBody({ params }: { params: Params }) {
           : detail.market === "us"
             ? "us"
             : undefined;
-    return { priceUsd: Math.round(amountUsd), market, vehicleType: detail.calcVehicleType };
+    return {
+      priceUsd: Number.isFinite(amountUsd) && amountUsd > 0 ? Math.round(amountUsd) : undefined,
+      market,
+      vehicleType: detail.calcVehicleType,
+    };
   })();
 
   // Breadcrumb matching the visible nav EXACTLY (Catalog → [model hub] → this

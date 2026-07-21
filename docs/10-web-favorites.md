@@ -115,9 +115,9 @@ The page is `robots: { index: false, follow: false }` (a private, per-user list)
 ## 5. Build / verify
 
 ```bash
-pnpm --filter @auctions-ingestion/web run type-check
-pnpm --filter @auctions-ingestion/web run lint
-pnpm --filter @auctions-ingestion/web run dev        # sign in, then http://localhost:3000/lyubimi
+pnpm --filter @selectauto/web run type-check
+pnpm --filter @selectauto/web run lint
+pnpm --filter @selectauto/web run dev        # sign in, then http://localhost:3000/lyubimi
 ```
 
 **Verified end-to-end in a real browser (2026-07-14):** a signed-in user with 3

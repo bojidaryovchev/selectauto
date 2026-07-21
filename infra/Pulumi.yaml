@@ -1,4 +1,4 @@
-name: auctions-ingestion-infra
+name: selectauto-infra
 runtime:
   name: nodejs
   options:

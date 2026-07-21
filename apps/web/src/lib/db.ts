@@ -1,10 +1,10 @@
 import { Pool } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-serverless";
-import * as schema from "@auctions-ingestion/db/schema";
+import * as schema from "@selectauto/db/schema";
 
 /**
  * Drizzle client for the website's server-side database access (Neon Postgres),
- * sharing the `@auctions-ingestion/db` schema with the ingestion pipeline.
+ * sharing the `@selectauto/db` schema with the ingestion pipeline.
  *
  * Uses the **Neon serverless driver** (`@neondatabase/serverless`), not
  * `node-postgres`. On Vercel each function instance is a short-lived process, so

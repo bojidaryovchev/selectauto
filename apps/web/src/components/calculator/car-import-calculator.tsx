@@ -19,7 +19,8 @@ export function CarImportCalculator({
   carLabel,
   lotNumber,
 }: {
-  defaultPrice: number;
+  /** USD pre-seed for the price field; auction lots without a bid have none. */
+  defaultPrice?: number;
   defaultMarket?: MarketId;
   defaultVehicleType?: VehicleType;
   carLabel?: string;

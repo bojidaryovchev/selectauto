@@ -14,8 +14,8 @@ if (existsSync(rootEnv)) loadEnvFile(rootEnv);
 
 const nextConfig: NextConfig = {
   // Compile the shared workspace package (TS source, not pre-built) so the app
-  // can import the Drizzle schema/types from @auctions-ingestion/db.
-  transpilePackages: ["@auctions-ingestion/db"],
+  // can import the Drizzle schema/types from @selectauto/db.
+  transpilePackages: ["@selectauto/db"],
   // Cache Components (Next 16, stable; the v16 flag that unifies the old
   // experimental ppr/useCache/dynamicIO): data is dynamic-by-default with Partial
   // Prerendering — pages render a static shell and stream request-time data under

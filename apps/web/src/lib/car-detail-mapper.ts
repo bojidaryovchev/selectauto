@@ -1,4 +1,4 @@
-import type { Car, AuctionLot } from "@auctions-ingestion/db/schema";
+import type { Car, AuctionLot } from "@selectauto/db/schema";
 import {
   airbagsLabel,
   auctionTypeLabel,

@@ -38,7 +38,7 @@ config.
 | Setting | Source | Default |
 |---|---|---|
 | `region` | `aws:region` | (required) — convention `eu-central-1` |
-| `projectName` | `projectName` | `auctions-ingestion` |
+| `projectName` | `projectName` | `selectauto` |
 | `environment` | `environment` | the stack name |
 | `auctionsApiBaseUrl` | `auctionsApiBaseUrl` | `https://auctionsapi.com/api` |
 | `hourlySyncScheduleExpression` | config | `rate(1 hour)` |
@@ -51,7 +51,7 @@ config.
 | `neonDatabaseUrl` | **secret** | — |
 
 - **Name prefix:** `${projectName}-${environment}` (e.g.
-  `auctions-ingestion-dev`). Every resource name uses it.
+  `selectauto-dev`). Every resource name uses it.
 - **Standard tags:** `Project`, `Environment`, `ManagedBy: pulumi`.
 - **State backend & auth** follow the shared Pulumi conventions: **S3 state
   backend** (not Pulumi Cloud), `PULUMI_CONFIG_PASSPHRASE` encryption, local **SSO**

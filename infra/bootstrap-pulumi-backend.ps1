@@ -4,9 +4,18 @@
 param(
     [Parameter(Mandatory=$false)]
     [string]$Region = "eu-central-1",
-    
+
     [Parameter(Mandatory=$false)]
-    [string]$Profile
+    [string]$Profile,
+
+    # State bucket name. S3 bucket names are GLOBALLY unique, so a fixed name
+    # (e.g. "pulumi-state-selectauto") can only ever exist in ONE account and
+    # collides when you bootstrap a second account. Leave this empty to get an
+    # account-scoped default ("pulumi-state-selectauto-<accountId>"), which is
+    # collision-free across accounts and matches the login URL the README shows.
+    # Pass an explicit value only to reuse a pre-existing bucket name.
+    [Parameter(Mandatory=$false)]
+    [string]$BucketName
 )
 
 # Build base AWS CLI arguments
@@ -24,7 +33,10 @@ if ($LASTEXITCODE -ne 0) {
 
 $callerIdentity = $callerIdentityJson | ConvertFrom-Json
 $AccountId = $callerIdentity.Account
-$BucketName = "pulumi-state-selectauto"
+if (-not $BucketName) {
+    # Account-scoped default keeps each account's state bucket globally unique.
+    $BucketName = "pulumi-state-selectauto-$AccountId"
+}
 
 Write-Host "AWS Account: $AccountId" -ForegroundColor Cyan
 Write-Host "Creating Pulumi state bucket: $BucketName in $Region" -ForegroundColor Cyan
@@ -49,10 +61,14 @@ Write-Host "Enabling versioning..." -ForegroundColor Cyan
 Write-Host "Blocking public access..." -ForegroundColor Cyan
 & aws s3api put-public-access-block --bucket $BucketName --public-access-block-configuration "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true" --region $Region @awsArgs
 
-# Enable server-side encryption
+# Enable server-side encryption.
+# NOTE: S3 already applies SSE-S3 (AES256) to every new bucket by default (since
+# Jan 2023), so this is belt-and-suspenders. We pass AWS CLI *shorthand* rather
+# than a JSON string because Windows PowerShell strips the inner double quotes
+# from an inline JSON arg before the native `aws` exe sees it (Invalid JSON).
 Write-Host "Enabling encryption..." -ForegroundColor Cyan
-$encryptionConfig = '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
-& aws s3api put-bucket-encryption --bucket $BucketName --server-side-encryption-configuration $encryptionConfig --region $Region @awsArgs
+& aws s3api put-bucket-encryption --bucket $BucketName --region $Region @awsArgs `
+    --server-side-encryption-configuration 'Rules=[{ApplyServerSideEncryptionByDefault={SSEAlgorithm=AES256}}]'
 
 Write-Host ""
 Write-Host "Pulumi backend bucket ready!" -ForegroundColor Green

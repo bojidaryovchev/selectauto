@@ -17,7 +17,7 @@
  * from the Pulumi output `bakeThumbnailQueueUrl`).
  *
  * Usage:
- *   BAKE_QUEUE_URL="https://sqs.eu-central-1.amazonaws.com/123/auctions-ingestion-prod-bake-thumbnail" \
+ *   BAKE_QUEUE_URL="https://sqs.eu-central-1.amazonaws.com/123/selectauto-prod-bake-thumbnail" \
  *     node --env-file-if-exists=../../.env backfill-thumbnails.mjs
  *   node --env-file-if-exists=../../.env backfill-thumbnails.mjs --queue-url=... --limit=100   # smoke test
  *

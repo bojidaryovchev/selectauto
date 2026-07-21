@@ -44,7 +44,7 @@ importers:
 
   apps/web:
     dependencies:
-      '@auctions-ingestion/db':
+      '@selectauto/db':
         specifier: workspace:*
         version: link:../../packages/db
       '@auth/drizzle-adapter':

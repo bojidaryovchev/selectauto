@@ -31,7 +31,8 @@ export function CalculatorDialog({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  defaultPrice: number;
+  /** USD pre-seed for the price field; omitted when the lot has no price yet. */
+  defaultPrice?: number;
   defaultMarket?: MarketId;
   defaultVehicleType?: VehicleType;
   carLabel?: string;

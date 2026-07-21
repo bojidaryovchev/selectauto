@@ -241,9 +241,9 @@ See [`.env.example`](../.env.example). Auth-email helpers + `appUrl()` live in
 ## 5. Build / verify
 
 ```bash
-pnpm --filter @auctions-ingestion/web run type-check
-pnpm --filter @auctions-ingestion/web run lint
-pnpm --filter @auctions-ingestion/web run dev        # http://localhost:3000/sign-in
+pnpm --filter @selectauto/web run type-check
+pnpm --filter @selectauto/web run lint
+pnpm --filter @selectauto/web run dev        # http://localhost:3000/sign-in
 ```
 
 **Driving the flows locally** needs `APP_URL` set (else email links point at prod)

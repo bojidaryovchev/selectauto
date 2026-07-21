@@ -9,7 +9,7 @@
  */
 import * as pulumi from "@pulumi/pulumi";
 
-const cfg = new pulumi.Config(); // project-scoped: auctions-ingestion-infra:*
+const cfg = new pulumi.Config(); // project-scoped: selectauto-infra:*
 const awsCfg = new pulumi.Config("aws");
 
 export const stack = pulumi.getStack();
@@ -17,7 +17,7 @@ export const stack = pulumi.getStack();
 export const config = {
   region: awsCfg.require("region"),
 
-  projectName: cfg.get("projectName") ?? "auctions-ingestion",
+  projectName: cfg.get("projectName") ?? "selectauto",
   environment: cfg.get("environment") ?? stack,
 
   auctionsApiBaseUrl: cfg.get("auctionsApiBaseUrl") ?? "https://auctionsapi.com/api",
@@ -40,7 +40,7 @@ export const config = {
   neonDatabaseUrl: cfg.requireSecret("neonDatabaseUrl"),
 };
 
-/** Convenience prefix for naming resources, e.g. "auctions-ingestion-dev". */
+/** Convenience prefix for naming resources, e.g. "selectauto-dev". */
 export const namePrefix = `${config.projectName}-${config.environment}`;
 
 /** Standard tags applied to all resources. */

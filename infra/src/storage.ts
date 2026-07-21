@@ -30,9 +30,17 @@ export interface Storage {
 }
 
 export function createStorage(): Storage {
+  // S3 bucket names are GLOBALLY unique, so a name derived purely from the
+  // (project, environment) prefix — identical across accounts — collides the
+  // moment a second account deploys the same stack. Scope it to the account id
+  // so each account gets its own bucket. The name is not referenced anywhere by
+  // value (the bake worker gets it via the THUMBNAIL_BUCKET env output, the app
+  // serves from the CloudFront domain), so this is transparent to consumers.
+  const accountId = aws.getCallerIdentityOutput({}).accountId;
+
   // ── Private bucket ──────────────────────────────────────────────────────────
   const thumbnailBucket = new aws.s3.Bucket("thumbnail-bucket", {
-    bucket: `${namePrefix}-thumbnails`,
+    bucket: pulumi.interpolate`${namePrefix}-thumbnails-${accountId}`,
     tags,
   });
 

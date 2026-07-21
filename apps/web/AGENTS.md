@@ -38,7 +38,7 @@ dedicated `src/` folders (modeled on the `ecommerce-store` repo):
 
 Cache invalidation: when listings change, call
 `revalidateTag(CACHE_TAGS.buyNowCars | auctionCars, "max")` (the single-arg form
-is deprecated). DB schema/types come from `@auctions-ingestion/db/schema`; the
+is deprecated). DB schema/types come from `@selectauto/db/schema`; the
 UI listing type is `CarView` (distinct from the DB `Car` row).
 
 `RESTRUCTURE-PLAN.md` documents the full migration that produced this layout.

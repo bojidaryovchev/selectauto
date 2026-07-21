@@ -1,5 +1,5 @@
 {
-  "name": "@auctions-ingestion/web",
+  "name": "@selectauto/web",
   "version": "0.1.0",
   "private": true,
   "engines": {
@@ -16,7 +16,7 @@
     "bake:hero": "node scripts/bake-hero-points.mjs"
   },
   "dependencies": {
-    "@auctions-ingestion/db": "workspace:*",
+    "@selectauto/db": "workspace:*",
     "@auth/drizzle-adapter": "1.11.2",
     "@base-ui/react": "^1.6.0",
     "@hookform/resolvers": "5.4.0",
