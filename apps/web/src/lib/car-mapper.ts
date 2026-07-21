@@ -102,7 +102,11 @@ export function carListingToView(row: AnyCarListing, isPast = false): CarView {
     mileage: formatKm(row.odometerKm),
     engine: row.engine ?? undefined, // verbatim spec string ("2.0l 4"); not translated
     source: sourceBadge(row.domainName),
-    image: row.imageUrl ?? null,
+    // Prefer the baked CloudFront thumbnail (served `unoptimized`, off Vercel's
+    // image optimizer); fall back to the raw upstream URL (optimized) until the
+    // bake worker fills thumbnail_url in.
+    image: row.thumbnailUrl ?? row.imageUrl ?? null,
+    imageBaked: !!row.thumbnailUrl,
     // Past cards always show a result label ("Продаден"/…); active cards show the
     // buy badge or the live status.
     badge: isPast

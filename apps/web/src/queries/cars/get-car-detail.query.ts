@@ -1,7 +1,9 @@
 import { cache } from "react";
+import { cacheLife, cacheTag } from "next/cache";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { carDetailFromRows } from "@/lib/car-detail-mapper";
 import { carListingToView } from "@/lib/car-mapper";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { getDb, schema } from "@/lib/db";
 import { getModelYearSoldStat } from "./get-model-sold-prices.query";
 import type { CarDetailPayload } from "@/types/car-detail.type";
@@ -29,16 +31,28 @@ const RELATED_LIMIT = 8;
  * so the join to `cars` + the chosen `auction_lots` row (for the raw_json gallery
  * + appraisal prices) is cheap.
  *
- * Wrapped in React `cache()` so the `avtomobil/[id]` route — which reads this in
- * BOTH `generateMetadata` and the page body — runs the whole multi-round-trip read
- * ONCE per request, not twice (Next auto-memoizes `fetch`, but not ORM/DB calls —
- * see the generate-metadata docs). `cache()` is request-scoped ONLY: it does not
- * cache across requests (there are ~945k detail pages — unsuitable for the
- * per-instance in-memory LRU that a durable `"use cache"` would use here), so each
- * new request still reads Neon directly.
+ * Two cache layers, doing different jobs:
+ *  - React `cache()` (request-scoped): the `avtomobil/[id]` route reads this in
+ *    BOTH `generateMetadata` and the page body — dedup to ONE read per request
+ *    (Next auto-memoizes `fetch`, but not ORM/DB calls).
+ *  - `"use cache: remote"` (cross-request, per carId): the payload is stored in
+ *    the Vercel Runtime Cache — durable and shared across instances in the
+ *    region, handler provided automatically under `cacheComponents` (see
+ *    cache-tags.ts). The ~945k-page long tail is crawler-hammered; without this
+ *    every bot hit was a fresh multi-round-trip Neon read. Plain `"use cache"`
+ *    was unsuitable here (per-instance LRU, ~zero hit rate over 945k keys), but
+ *    a shared remote store keyed per id is exactly the rate-limited-backend case
+ *    the use-cache-remote docs describe. `cacheLife("hours")` costs no real
+ *    freshness: listing data changes ONLY via the hourly ingestion sync (the
+ *    detail-refresh queue has no producer), so detail pages were already at most
+ *    hourly-fresh. Tagged `cars` as the kill-switch if an ingestion webhook ever
+ *    lands. Id validation stays OUTSIDE the cached scope so garbage ids don't
+ *    burn cache writes.
  */
-export const getCarDetail = cache(async (carId: number): Promise<CarDetailPayload | null> => {
-  if (!Number.isInteger(carId) || carId <= 0) return null;
+async function getCarDetailCached(carId: number): Promise<CarDetailPayload | null> {
+  "use cache: remote";
+  cacheTag(CACHE_TAGS.cars);
+  cacheLife("hours");
 
   const db = getDb();
 
@@ -182,6 +196,13 @@ export const getCarDetail = cache(async (carId: number): Promise<CarDetailPayloa
   const related = await getRelatedCars(carId, listing.modelId, listing.manufacturerId);
 
   return { detail, related };
+}
+
+/** Request-scoped dedup over the remote-cached read; id validation OUT here so
+ *  garbage ids (bot noise) return null without touching the cache. */
+export const getCarDetail = cache(async (carId: number): Promise<CarDetailPayload | null> => {
+  if (!Number.isInteger(carId) || carId <= 0) return null;
+  return getCarDetailCached(carId);
 });
 
 /**

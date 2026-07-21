@@ -16,6 +16,8 @@ import { namePrefix, tags } from "./config";
 export interface Queues {
   detailRefreshQueue: aws.sqs.Queue;
   detailRefreshDlq: aws.sqs.Queue;
+  bakeThumbnailQueue: aws.sqs.Queue;
+  bakeThumbnailDlq: aws.sqs.Queue;
 }
 
 export function createQueues(): Queues {
@@ -42,5 +44,28 @@ export function createQueues(): Queues {
     tags,
   });
 
-  return { detailRefreshQueue, detailRefreshDlq };
+  // ── Thumbnail-bake queue (standard, NOT FIFO) ───────────────────────────────
+  // The bake worker fetches from the source image CDN (not the rate-limited
+  // AuctionsAPI /api), so it isn't bound by the 1 req/sec budget and can drain at
+  // its own concurrency. Bakes are idempotent and order-independent (each message
+  // is one lot id, content-addressed output), so a standard queue is correct —
+  // and standard queues support SendMessageBatch cheaply for the enqueuers.
+  const bakeThumbnailDlq = new aws.sqs.Queue("bake-thumbnail-dlq", {
+    name: `${namePrefix}-bake-thumbnail-dlq`,
+    messageRetentionSeconds: 1209600, // 14 days
+    tags,
+  });
+
+  const bakeThumbnailQueue = new aws.sqs.Queue("bake-thumbnail-queue", {
+    name: `${namePrefix}-bake-thumbnail`,
+    // Must exceed the worker's max processing time (source fetch + resize + PutObject).
+    visibilityTimeoutSeconds: 120,
+    messageRetentionSeconds: 345600, // 4 days
+    redrivePolicy: bakeThumbnailDlq.arn.apply((dlqArn) =>
+      JSON.stringify({ deadLetterTargetArn: dlqArn, maxReceiveCount: 3 }),
+    ),
+    tags,
+  });
+
+  return { detailRefreshQueue, detailRefreshDlq, bakeThumbnailQueue, bakeThumbnailDlq };
 }

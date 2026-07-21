@@ -22,11 +22,15 @@ export interface IamRoles {
 /**
  * Create the Lambda execution role with logs + secrets access.
  * @param secretArns ARNs of the Secrets Manager secrets the Lambdas may read.
- * @param queueArns ARNs of SQS queues the Lambdas consume (detail-refresh worker).
+ * @param queueArns ARNs of SQS queues the Lambdas CONSUME (detail-refresh + bake workers).
+ * @param sendQueueArns ARNs of SQS queues the Lambdas SEND to (enqueuers → bake queue).
+ * @param putObjectArns S3 object ARNs (e.g. `<bucket>/thumb/*`) the Lambdas may write.
  */
 export function createLambdaRole(
   secretArns: pulumi.Output<string>[],
   queueArns: pulumi.Output<string>[] = [],
+  sendQueueArns: pulumi.Output<string>[] = [],
+  putObjectArns: pulumi.Input<string>[] = [],
 ): IamRoles {
   const lambdaRole = new aws.iam.Role("ingestion-lambda-role", {
     name: `${namePrefix}-lambda-role`,
@@ -74,8 +78,8 @@ export function createLambdaRole(
     }),
   });
 
-  // SQS consume permissions for the detail-refresh drain worker (the event
-  // source mapping needs these to receive/delete messages and read attributes).
+  // SQS consume permissions for the drain workers (the event source mappings
+  // need these to receive/delete messages and read attributes).
   if (queueArns.length > 0) {
     new aws.iam.RolePolicy("ingestion-lambda-sqs", {
       role: lambdaRole.id,
@@ -91,6 +95,42 @@ export function createLambdaRole(
               "sqs:ChangeMessageVisibility",
             ],
             Resource: queueArns,
+          },
+        ],
+      }),
+    });
+  }
+
+  // SQS send permissions for the enqueuers (syncCarsPage / refreshListingDetail
+  // batch-enqueue lot ids to the bake queue after each upsert page).
+  if (sendQueueArns.length > 0) {
+    new aws.iam.RolePolicy("ingestion-lambda-sqs-send", {
+      role: lambdaRole.id,
+      policy: pulumi.jsonStringify({
+        Version: "2012-10-17",
+        Statement: [
+          {
+            Effect: "Allow",
+            Action: ["sqs:SendMessage", "sqs:SendMessageBatch", "sqs:GetQueueAttributes"],
+            Resource: sendQueueArns,
+          },
+        ],
+      }),
+    });
+  }
+
+  // S3 write permissions for the bake worker (PutObject into the thumbnail bucket,
+  // scoped to the thumb/ prefix).
+  if (putObjectArns.length > 0) {
+    new aws.iam.RolePolicy("ingestion-lambda-s3-put", {
+      role: lambdaRole.id,
+      policy: pulumi.jsonStringify({
+        Version: "2012-10-17",
+        Statement: [
+          {
+            Effect: "Allow",
+            Action: ["s3:PutObject"],
+            Resource: putObjectArns,
           },
         ],
       }),

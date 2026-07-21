@@ -44,6 +44,25 @@ const nextConfig: NextConfig = {
   // error. The set was derived by scanning auction_lots.raw_json.images (the
   // gallery source) + the listing tables' image_url against the live DB.
   images: {
+    // Auction lot photos are IMMUTABLE once ingested (a lot's images never
+    // change). Next 16 defaults `minimumCacheTTL` to 14400s (4h), so a
+    // continuously-viewed image goes STALE and is re-optimized every 4h — each
+    // STALE hit is billed by Vercel as a transformation + a cache write, for
+    // zero benefit. 31 days (Vercel's documented value for "doesn't change in a
+    // month") means each optimized variant is billed ~once/month instead. This
+    // is the single biggest lever on Image Optimization cost.
+    minimumCacheTTL: 2678400, // 31 days
+    // Restrict the responsive width ladder to what we actually render. Cards top
+    // out at 25vw and the detail-gallery main image at 60vw (≤~1150px on a 1920
+    // viewport), so 1920 is the realistic ceiling — 2048/3840 were never served
+    // and 1200 is redundant next to 1080/1920. Fewer widths = fewer distinct
+    // optimized variants per source image = fewer transformations/cache writes.
+    // (Default was [640,750,828,1080,1200,1920,2048,3840].)
+    deviceSizes: [640, 750, 828, 1080, 1920],
+    // Only the 88px detail-gallery thumbnails use this list (sizes="88px").
+    // Trim the default 8-entry ladder to the few sizes those thumbnails hit.
+    // (Default was [16,32,48,64,96,128,256,384].)
+    imageSizes: [96, 128, 256],
     // Next 16 defaults `qualities` to `[75]` and rejects any other `quality`
     // prop (coercing it to the nearest allowed value). The dense thumbnail grid
     // on /vsichki-avtomobili uses q=60 (smaller bytes, no visible loss at card

@@ -1,0 +1,9 @@
+{
+  "name": "sharp-lambda-layer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Native sharp for the bakeThumbnail Lambda, shipped as a layer.",
+  "dependencies": {
+    "sharp": "^0.34.4"
+  }
+}

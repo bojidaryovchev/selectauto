@@ -16,6 +16,7 @@
  * All writes are idempotent upserts (INSERT ... ON CONFLICT DO UPDATE) keyed on
  * the unique indexes defined in db/migrations/0001_initial.sql.
  */
+import { SendMessageBatchCommand, SQSClient } from "@aws-sdk/client-sqs";
 import pg from "pg";
 import { Logger } from "./logger.js";
 import { normalizeArchivedLot, normalizeCar, normalizeLot } from "./normalize.js";
@@ -79,6 +80,39 @@ function stripSslMode(connectionString: string): string {
     return url.toString();
   } catch {
     return connectionString.replace(/([?&])sslmode=[^&]*(&|$)/i, (_m, pre, post) => (post === "&" ? pre : ""));
+  }
+}
+
+// ── Thumbnail-bake enqueue ────────────────────────────────────────────────────
+// After each upsert page we notify the bake worker which lots have a new/changed
+// source image (needs_bake). Best-effort: a send failure must NEVER fail
+// ingestion — the next sync re-detects needs_bake and the one-off backfill
+// (packages/db/backfill-thumbnails.mjs) covers any gap. No-ops when BAKE_QUEUE_URL
+// is unset (local runs / tests).
+let sqs: SQSClient | null = null;
+function getSqs(): SQSClient {
+  if (!sqs) sqs = new SQSClient({});
+  return sqs;
+}
+
+async function enqueueBakes(lotIds: number[]): Promise<void> {
+  const queueUrl = process.env.BAKE_QUEUE_URL;
+  const ids = Array.from(new Set(lotIds.filter((id) => Number.isInteger(id))));
+  if (!queueUrl || ids.length === 0) return;
+  try {
+    // SendMessageBatch accepts at most 10 entries per call.
+    for (let i = 0; i < ids.length; i += 10) {
+      const chunk = ids.slice(i, i + 10);
+      await getSqs().send(
+        new SendMessageBatchCommand({
+          QueueUrl: queueUrl,
+          Entries: chunk.map((lotId) => ({ Id: String(lotId), MessageBody: JSON.stringify({ lotId }) })),
+        }),
+      );
+    }
+    dbLog.info("bake_enqueue", { count: ids.length });
+  } catch (err) {
+    dbLog.error("bake_enqueue_failed", { error: (err as Error).message, count: ids.length });
   }
 }
 
@@ -173,6 +207,9 @@ export async function upsertCarsAndLots(rawCars: ApiCar[]): Promise<number> {
   // Cars whose lots were (re)written this page → recompute their projection rows
   // (both the active and archived read models) once at the end (set-based).
   const touchedCarIds = new Set<number>();
+  // Lots whose source image is new/changed → enqueue a thumbnail (re)bake after
+  // the page loop (batched). See enqueueBakes.
+  const bakeLotIds: number[] = [];
 
   try {
     for (const rawCar of rawCars) {
@@ -237,7 +274,7 @@ export async function upsertCarsAndLots(rawCars: ApiCar[]): Promise<number> {
           continue;
         }
 
-        await client.query(
+        const lotRes = await client.query<{ id: number; needs_bake: boolean }>(
           `INSERT INTO auction_lots
              (external_lot_id, car_id, lot_number, domain_id, domain_name, status, sale_date,
               odometer_km, bid_price, buy_now_price, final_bid, buy_now, condition, damage_main,
@@ -264,6 +301,12 @@ export async function upsertCarsAndLots(rawCars: ApiCar[]): Promise<number> {
              location_state = EXCLUDED.location_state,
              location_city = EXCLUDED.location_city,
              image_url = EXCLUDED.image_url,
+             -- Invalidate the baked thumbnail when the source image changes, so the
+             -- card falls back to the FRESH raw image until the bake worker rebakes.
+             -- thumbnail_source_url is left untouched — the worker sets it on rebake.
+             thumbnail_url = CASE
+               WHEN auction_lots.thumbnail_source_url IS DISTINCT FROM EXCLUDED.image_url
+               THEN NULL ELSE auction_lots.thumbnail_url END,
              -- Reflect the API's archived flag. The /cars feed sends archived=false
              -- for active lots and (via search-* detail) archived=true for a
              -- concluded lot, so honor whatever the payload reports. When the lot
@@ -272,7 +315,11 @@ export async function upsertCarsAndLots(rawCars: ApiCar[]): Promise<number> {
              archived = CASE WHEN $20::boolean IS NULL THEN auction_lots.archived ELSE $20::boolean END,
              archived_at = COALESCE(EXCLUDED.archived_at, auction_lots.archived_at),
              raw_json = EXCLUDED.raw_json,
-             updated_at = now()`,
+             updated_at = now()
+           -- RETURNING reads FINAL-row columns (image_url already = the incoming
+           -- value; thumbnail_source_url = the last-baked source, or NULL for a new
+           -- lot), so this is true exactly when the current image isn't yet baked.
+           RETURNING id, (thumbnail_source_url IS DISTINCT FROM image_url) AS needs_bake`,
           [
             lot.externalLotId,
             carId,
@@ -301,6 +348,9 @@ export async function upsertCarsAndLots(rawCars: ApiCar[]): Promise<number> {
         lotsWritten += 1;
         // This car now has a (re)written lot; mark it for car_listings recompute.
         if (carId !== null) touchedCarIds.add(carId);
+        // New/changed source image → (re)bake its card thumbnail.
+        const lotRow = lotRes.rows[0];
+        if (lotRow?.needs_bake) bakeLotIds.push(lotRow.id);
       }
     }
 
@@ -311,6 +361,9 @@ export async function upsertCarsAndLots(rawCars: ApiCar[]): Promise<number> {
     // in the same transaction (migration 0016), so broad-view counts stay exact.
     await recomputeListings(client, "recompute_car_listings_counted", touchedCarIds);
     await recomputeListings(client, "recompute_archived_car_listings_counted", touchedCarIds);
+
+    // Notify the bake worker of new/changed images (best-effort; never blocks).
+    await enqueueBakes(bakeLotIds);
 
     return lotsWritten;
   } finally {

@@ -162,6 +162,16 @@ export function ParticleHero() {
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, size, size);
         const tex = new THREE.CanvasTexture(c);
+        // The sprite is a radially-symmetric gradient, so a vertical flip is a
+        // visual no-op. Keeping flipY/premultiplyAlpha off means this 2D upload
+        // never leaves UNPACK_FLIP_Y_WEBGL enabled on the (browser-pooled) WebGL
+        // context — which otherwise trips "texImage3D: FLIP_Y or PREMULTIPLY_ALPHA
+        // isn't allowed" when a *later* WebGLRenderer inits its empty 3D/array
+        // placeholder textures on the reused context. Repro: home → other page →
+        // home soft-nav remount (three assumes a fresh context has flipY off and
+        // doesn't reset it before those init uploads).
+        tex.flipY = false;
+        tex.premultiplyAlpha = false;
         tex.needsUpdate = true;
         return tex;
       }

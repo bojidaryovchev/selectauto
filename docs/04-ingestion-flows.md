@@ -86,6 +86,35 @@ same state machine shape; only `mode` + `minutes` differ.
 > warning. Cars with a null `external_car_id` still insert (NULLs distinct in the
 > unique index) and dedupe via their lots.
 
+### Thumbnail-bake enqueue (best-effort, off the write path)
+
+To cut Vercel Image Optimization cost (it was ~80% of the web bill), catalog card
+images are baked into WebP thumbnails on our **own S3+CloudFront** and served
+bypassing Vercel's optimizer ([08 §5](08-web-all-cars-page.md)). Ingestion feeds
+that pipeline:
+
+- The lot upsert also
+  `RETURNING id, (thumbnail_source_url IS DISTINCT FROM image_url) AS needs_bake`,
+  and **NULLs the stale `thumbnail_url`** whenever the source `image_url` changed
+  (so the card falls back to the *fresh* raw image until the new thumbnail lands).
+- After each page, `upsertCarsAndLots` **batch-enqueues** the `needs_bake` lot ids
+  to a **standard SQS queue** (`BAKE_QUEUE_URL`) via `SendMessageBatch`. This is
+  **best-effort** — a send failure is logged and swallowed, **never** failing
+  ingestion — and it fires on the same write path for **Flow 2** (hourly cars sync)
+  **and Flow 5** (`refreshListingDetail`).
+- The **`bakeThumbnail` SQS worker** ([`bakeThumbnail/handler.ts`](../packages/functions/bakeThumbnail/handler.ts))
+  drains the queue (batchSize 10, `ReportBatchItemFailures`, no reserved
+  concurrency). Per lot id it reads `image_url`, fetches the source image from its
+  **CDN** (`i.auctionsapi.com` etc. — *not* the rate-limited AuctionsAPI `/api`, so
+  it doesn't spend the 1 req/sec budget), resizes with **sharp** to two widths
+  (640×416 + 1280×832) as WebP q62, uploads both to S3 as content-addressed
+  `thumb/<sha256(image_url)>-640.webp` / `-1280.webp` (Cache-Control immutable 1yr
+  → no CDN invalidation ever), then writes `thumbnail_url` (the 640 URL) +
+  `thumbnail_source_url` back to `auction_lots` (guarded by `AND image_url =
+  <source>` so a slow bake can't clobber a newer image) and updates the two
+  projection rows directly. Failures retry via SQS → DLQ; `thumbnail_url` stays NULL
+  and the card falls back to the raw optimized image.
+
 **Full backfill (Flow 1)** = the same machine started manually with
 `mode:"full"`, `page:1`, `perPage:1000`, **no `minutes`**. It walks every active
 car. Resumable via `sync_runs.last_page_processed` ([07](07-operations-runbook.md)).

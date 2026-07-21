@@ -38,6 +38,17 @@ flowchart TD
 hash changes, so Pulumi re-publishes the function with **no infra edit**. (`pulumi
 up` runs in `infra/`; ensure AWS auth — `aws sso login` / `$env:AWS_PROFILE`.)
 
+> **sharp layer prep (one-time / on version bump).** The `bakeThumbnail` worker
+> needs the native `sharp` Lambda layer built with the **Linux** binary before the
+> first `pulumi up` (and whenever the `sharp` version changes):
+> ```powershell
+> cd infra/layers/sharp/nodejs
+> npm install --os=linux --cpu=x64 --libc=glibc sharp
+> ```
+> Installing the plain host binary instead makes the worker crash at import with
+> `Could not load the "sharp" module`. `node_modules/` there is git-ignored — rerun
+> on a fresh checkout / in CI. See `infra/layers/sharp/README.md`.
+
 > ⚠️ The `car_listings` ingestion hooks only go live after a `pulumi up` that
 > deploys the current `db.ts`/`normalize.ts`. Until then the projection tables are
 > a **static backfilled snapshot**, not kept live.
@@ -164,6 +175,32 @@ projections + updates the summaries incrementally), then **(2)** `reseed-summari
 backfill re-populated `vehicle_type`/`body_type` and pruned the non-concluded
 archived rows; the reseed made counts/facets exact (verified drift-free).
 
+### 5.2 Backfilling card thumbnails
+
+Ingestion only enqueues a bake when a lot's source image is **new/changed**, so
+the existing catalog needs a one-time backfill to enqueue every un-baked lot.
+[`backfill-thumbnails.mjs`](../packages/db/backfill-thumbnails.mjs) keyset-walks
+`auction_lots WHERE thumbnail_url IS NULL AND image_url IS NOT NULL` and
+`SendMessageBatch`-es lot ids to the bake queue; the `bakeThumbnail` worker drains
+it (resize → S3 → write `thumbnail_url` back). Cards fall back to the raw optimized
+image until each lands, so it's non-blocking and safe against prod.
+
+Needs `BAKE_QUEUE_URL` (Pulumi output `bakeThumbnailQueueUrl`) + AWS creds
+(same SSO profile as `pulumi up`):
+
+```powershell
+# from packages/db/  (AWS_PROFILE active, e.g. after `aws sso login`)
+$env:BAKE_QUEUE_URL = (cd ../../infra; pulumi stack output bakeThumbnailQueueUrl)
+node --env-file-if-exists=../../.env backfill-thumbnails.mjs --region=eu-central-1 --limit=100   # smoke test
+node --env-file-if-exists=../../.env backfill-thumbnails.mjs --region=eu-central-1               # full run
+```
+
+Verify the smoke batch baked before the full run: the queue drains toward zero
+(`aws sqs get-queue-attributes … ApproximateNumberOfMessages`), objects appear
+(`aws s3 ls s3://<prefix>-thumbnails/thumb/ --summarize`), and the DLQ stays empty
+(a full DLQ ⇒ the sharp layer is wrong — see §8). Flags: `--batch` (ids/page),
+`--start` (resume cursor), `--sleep`, `--limit` (cap, for testing).
+
 ---
 
 ## 6. Resume a failed run
@@ -222,6 +259,9 @@ is order-independent, so an overlapping resume produces no duplicates.
 | A newly-listed car is missing from the "Тип"/"Гориво" filter | a recompute fn stopped populating `vehicle_type`/`body_type`/`fuel_type` (see `0022` regression) | Confirm the live fn body (`\df+ recompute_car_listings`), ship a fixed `CREATE OR REPLACE`, then repair via §5.1. |
 | Detail refreshes overwhelming the API | concurrency/pacing misconfigured | Confirm `refreshListingDetail` `reservedConcurrency = 1` and `DETAIL_REFRESH_PACE_MS`. |
 | AuctionsApiError 4xx (not 429) failing a run | terminal upstream error (bad key/param) | Check the key/params; 4xx is non-retryable by design. |
+| `bakeThumbnail` errors `Could not load the "sharp" module` / bake DLQ filling | the sharp layer holds the wrong-platform binary | Rebuild the layer with `npm install --os=linux --cpu=x64 --libc=glibc sharp` in `infra/layers/sharp/nodejs`, then `pulumi up` (§2). |
+| Cards still hit `/_next/image` (not CloudFront) | that lot isn't baked yet (`thumbnail_url` NULL) | Expected until the bake lands — run the thumbnail backfill (§5.2); check `bake_enqueue`/`bake_done` in the `...-bakeThumbnail` log group and the bake DLQ. |
+| A card image looks stale after the source image changed | the upsert NULLs `thumbnail_url` on change, then re-bakes | Transient: the card shows the fresh raw image until the re-bake lands. If it persists, confirm the lot re-enqueued (`needs_bake`) and the bake DLQ is empty. |
 
 ---
 
@@ -233,5 +273,6 @@ is order-independent, so an overlapping resume produces no duplicates.
 | Add/adjust a read-model column or pick-strategy | a new `00NN_*.sql` (`CREATE OR REPLACE` the recompute fn) + `schema.ts` + re-run backfill |
 | Change sync cadence / window / page size | Pulumi config (`hourlySyncScheduleExpression`, `incrementalMinutes`, `perPage`) → `pulumi up` |
 | Add a new Lambda/handler | `packages/functions/<name>/handler.ts` → add to `build.mjs` entries → `lambdas.ts` |
+| Change the baked thumbnail size(s)/quality | `THUMB_SIZES`/`THUMB_QUALITY` in `packages/functions/bakeThumbnail/handler.ts` → `pnpm run deploy` → re-run the thumbnail backfill (§5.2) so existing lots re-bake |
 | Change a state machine | `infra/src/step-functions.ts` |
 | Rotate a secret | update Pulumi config secret → `pulumi up` (and rotate in Secrets Manager) |

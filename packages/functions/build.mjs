@@ -23,6 +23,10 @@ const entries = [
   { name: "syncRunLifecycle", entry: "syncRunLifecycle/handler.ts" },
   // Periodic projection drift-repair sweep (looped state machine; 3 handlers).
   { name: "driftSweep", entry: "driftSweep/handler.ts" },
+  // Async card-thumbnail baker. `sharp` is NATIVE and cannot be bundled into a
+  // single ESM file — it is provided at runtime by the sharp Lambda layer (see
+  // infra/src/lambdas.ts), so mark it external here.
+  { name: "bakeThumbnail", entry: "bakeThumbnail/handler.ts", external: ["sharp"] },
 ];
 
 // Clean first so renamed/removed handlers don't leave stale bundles behind.
@@ -40,8 +44,9 @@ await Promise.all(
       format: "esm",
       sourcemap: true,
       minify: false,
-      // nodejs20.x provides these natively; do not bundle.
-      external: ["@aws-sdk/*"],
+      // nodejs20.x provides @aws-sdk/* natively; plus any per-entry externals
+      // (e.g. `sharp`, which ships via a Lambda layer instead of the bundle).
+      external: ["@aws-sdk/*", ...(e.external ?? [])],
       // ESM interop shim so bundled CJS deps (pg) resolve require/__dirname.
       banner: {
         js: [

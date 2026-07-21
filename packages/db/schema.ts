@@ -102,6 +102,13 @@ export const auctionLots = pgTable(
     locationState: text("location_state"),
     locationCity: text("location_city"),
     imageUrl: text("image_url"),
+    // Card thumbnail baked at ingestion (640×416 WebP on our S3+CloudFront),
+    // served `unoptimized` so the catalog grid bypasses Vercel Image
+    // Optimization entirely. `thumbnailSourceUrl` records which `image_url` the
+    // current thumbnail was baked from — the change-detection key: the bake
+    // worker only (re)bakes when image_url differs from it (migration 0035).
+    thumbnailUrl: text("thumbnail_url"),
+    thumbnailSourceUrl: text("thumbnail_source_url"),
     archived: boolean("archived").default(false).notNull(),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
     rawJson: jsonb("raw_json"),
@@ -583,6 +590,10 @@ export const carListings = pgTable("car_listings", {
   // it). Powers the catalog "Гориво" filter single-table (migration 0020).
   fuelType: text("fuel_type"),
   imageUrl: text("image_url"),
+  // Baked card thumbnail (CloudFront URL), projected from auction_lots by the
+  // recompute fns. NULL until the bake worker fills it in; the card falls back
+  // to the optimized `image_url` while null (migration 0035).
+  thumbnailUrl: text("thumbnail_url"),
   odometerKm: bigint("odometer_km", { mode: "number" }),
   saleDate: timestamp("sale_date", { withTimezone: true }),
   status: text("status"),
@@ -629,6 +640,8 @@ export const carListingsArchived = pgTable("car_listings_archived", {
   engine: text("engine"),
   fuelType: text("fuel_type"),
   imageUrl: text("image_url"),
+  // Baked card thumbnail (CloudFront URL); see car_listings note above (migration 0035).
+  thumbnailUrl: text("thumbnail_url"),
   odometerKm: bigint("odometer_km", { mode: "number" }),
   saleDate: timestamp("sale_date", { withTimezone: true }),
   status: text("status"),

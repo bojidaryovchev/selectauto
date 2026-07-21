@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, ilike, lt, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, like, lt, lte, or, sql } from "drizzle-orm";
 import { CARS_PAGE_SIZE } from "@/constants";
 import { buildListingConditions as buildConditions, tableFor } from "@/lib/car-listing-conditions";
 import { carListingToView } from "@/lib/car-mapper";
@@ -37,6 +37,17 @@ function decodeCursor(cursor: string | null): number | null {
  * The exact-lookup search branch, shared by every entry point. Search is not a
  * feed (see DB-design §5): an exact lot-prefix / VIN match, capped, with no
  * keyset in either direction (`prevCursor`/`nextCursor` both null).
+ *
+ * The lot prefix uses case-SENSITIVE `LIKE`, not `ILIKE`, deliberately: the
+ * `cl_lotnumber`/`cla_lotnumber` text_pattern_ops indexes can only serve a
+ * pattern whose prefix has no case variants. Digit prefixes (99.98% of lot
+ * numbers — 951 054 of 951 221 are digits-only) plan identically either way,
+ * but a LETTER prefix — i.e. every pasted VIN — defeated the ILIKE range
+ * derivation and fell to a parallel seq scan: EXPLAIN ANALYZE 2026-07-21 showed
+ * a VIN search at 5 706ms (full 951k-row scan) vs 2.5ms as LIKE (BitmapOr of
+ * the lot + vin indexes). VINs themselves still match case-insensitively via
+ * the uppercased `eq(vin)` branch; only the ~167 letter-cased lot numbers lose
+ * case-insensitive PREFIX matching, which is not a real lookup path.
  */
 async function searchPage(filters: CarFilters): Promise<CarsPage> {
   const db = getDb();
@@ -46,7 +57,7 @@ async function searchPage(filters: CarFilters): Promise<CarsPage> {
   const rows = await db
     .select()
     .from(t)
-    .where(or(ilike(t.lotNumber, `${q}%`), eq(t.vin, q.toUpperCase())))
+    .where(or(like(t.lotNumber, `${q}%`), eq(t.vin, q.toUpperCase())))
     .limit(CARS_PAGE_SIZE);
   return { cars: rows.map((r) => carListingToView(r, isPast)), nextCursor: null, prevCursor: null };
 }

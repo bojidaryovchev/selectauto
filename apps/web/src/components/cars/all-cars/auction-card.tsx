@@ -71,20 +71,45 @@ function AuctionCardImpl({
       <div className="relative bg-[#f4f4f4]">
         <Link href={car.href} className="block">
           {car.image ? (
-            <Image
-              src={car.image}
-              alt={car.title}
-              width={400}
-              height={260}
-              sizes={CARD_IMAGE_SIZES}
-              quality={60}
-              // First row eager-loads (LCP); the rest lazy-load as they
-              // virtualize in. `priority` is deprecated in Next 16, so set the
-              // underlying loading/fetchPriority hints directly.
-              loading={priority ? "eager" : "lazy"}
-              fetchPriority={priority ? "high" : "auto"}
-              className="block aspect-40/26 w-full object-cover"
-            />
+            car.imageBaked ? (
+              // Baked thumbnails live on OUR CloudFront (two widths: …-640.webp /
+              // …-1280.webp). Serve them as a responsive <img srcset> — a plain
+              // <img>, not next/image, because `<Image unoptimized>` emits no
+              // srcset. This bypasses Vercel Image Optimization entirely (the
+              // point) while still letting the browser pick 640 for desktop grid
+              // cells and 1280 for high-DPI/full-width phones — matching what
+              // next/image did per-device. `car.image` is the 640 URL; derive 1280.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={car.image}
+                srcSet={`${car.image} 640w, ${car.image.replace("-640.webp", "-1280.webp")} 1280w`}
+                sizes={CARD_IMAGE_SIZES}
+                alt={car.title}
+                width={400}
+                height={260}
+                loading={priority ? "eager" : "lazy"}
+                fetchPriority={priority ? "high" : "auto"}
+                decoding="async"
+                className="block aspect-40/26 w-full object-cover"
+              />
+            ) : (
+              <Image
+                src={car.image}
+                alt={car.title}
+                width={400}
+                height={260}
+                sizes={CARD_IMAGE_SIZES}
+                quality={60}
+                // Un-baked rows (thumbnail_url still NULL) go through the Vercel
+                // optimizer on the raw upstream URL until the bake worker fills in.
+                // First row eager-loads (LCP); the rest lazy-load as they
+                // virtualize in. `priority` is deprecated in Next 16, so set the
+                // underlying loading/fetchPriority hints directly.
+                loading={priority ? "eager" : "lazy"}
+                fetchPriority={priority ? "high" : "auto"}
+                className="block aspect-40/26 w-full object-cover"
+              />
+            )
           ) : (
             <div className="flex aspect-40/26 w-full items-center justify-center bg-linear-to-br from-[#2a2d33] to-[#15171b] text-xs font-semibold uppercase tracking-wider text-white/35">
               Снимка при поискване

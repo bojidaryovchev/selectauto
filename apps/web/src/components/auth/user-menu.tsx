@@ -56,7 +56,7 @@ export function UserMenu({ tone = "light" }: { tone?: "light" | "dark" }) {
           role="menu"
           className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-line bg-white p-2 shadow-[0_18px_40px_rgba(0,0,0,0.16)]"
         >
-          <div className="border-b border-line px-3 py-2.5">
+          <div className="border-b border-line px-3 pb-2.5 pt-3">
             <p className="truncate text-sm font-bold text-ink">{user?.name || "Профил"}</p>
             {user?.email ? <p className="truncate text-xs text-muted">{user.email}</p> : null}
           </div>

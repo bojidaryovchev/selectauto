@@ -115,7 +115,8 @@ export async function getCarBrands(): Promise<FacetOption[]> {
  * Color/drive/condition/type get BG labels here. modelsByBrand is keyed by
  * manufacturer external id (string).
  *
- * Still NOT app-cached: each read is a cheap index scan, so it reads Neon directly.
+ * The GLOBAL base (`computeCarFacets`) is `"use cache"`-cached (see its comment);
+ * only the filter-aware live overlay reads Neon per request.
  *
  * ── Filter-aware counts (Тип / Гориво / Състояние) ──
  * The precomputed summary is GLOBAL (whole active catalog), so its counts go stale
@@ -147,7 +148,25 @@ export async function getCarFacets(filters: CarFilters = {}): Promise<FacetOptio
   }
 }
 
+/**
+ * The GLOBAL facet base — same result for every visitor (no arguments → a single
+ * cache key), so it's `"use cache: remote"` + `cacheLife("hours")`: at most ~one
+ * re-run of the 9 concurrent summary reads per hour per region instead of on
+ * every catalog request. The catalog route is dynamic (reads searchParams), so
+ * this is RUNTIME caching — `remote` stores it in the Vercel Runtime Cache
+ * (durable, shared across all instances in the region; Vercel provides the
+ * handler automatically under `cacheComponents`, no self-managed store — see
+ * cache-tags.ts). "hours" matches the hourly ingestion sync that moves the
+ * underlying summary. Tagged `cars` so a future ingestion webhook can expire it
+ * with the other listing reads. NOTE: errors inside a cached scope are not
+ * cached — a failed run falls through to `getCarFacets`'s catch and the next
+ * request retries.
+ */
 async function computeCarFacets(): Promise<FacetOptions> {
+  "use cache: remote";
+  cacheTag(CACHE_TAGS.cars);
+  cacheLife("hours");
+
   const db = getDb();
 
   // All reads hit the tiny car_listing_facets summary (~2.1k rows for 'active'),

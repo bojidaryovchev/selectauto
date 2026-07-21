@@ -6,7 +6,9 @@ Postgres**. Our website/backend queries **our own database**, never AuctionsAPI
 directly — AuctionsAPI is treated purely as an external supplier sync API.
 
 Built with **Pulumi (TypeScript) + AWS Lambda (Node 20) + Step Functions +
-EventBridge Scheduler + Secrets Manager + CloudWatch**.
+EventBridge Scheduler + Secrets Manager + CloudWatch**, plus an **S3 + CloudFront**
+card-thumbnail pipeline (baked from source images by a `sharp` Lambda) that serves
+the web catalog's card images off Vercel's image optimizer.
 
 ---
 
@@ -28,6 +30,7 @@ pnpm monorepo (`pnpm-workspace.yaml`): `apps/*`, `packages/*`, and `infra`.
 │   │   ├── migrations/*.sql     # Plain SQL run in production (migrate.mjs)
 │   │   ├── migrate.mjs          # Tiny idempotent SQL migration runner
 │   │   ├── backfill-car-listings.mjs # Rebuild BOTH projection read models (--fn; _counted wrapper)
+│   │   ├── backfill-thumbnails.mjs    # Enqueue un-baked lots to the thumbnail bake queue
 │   │   └── drizzle.config.ts    # Drizzle Kit config (dev-time generation)
 │   │
 │   └── functions/               # @auctions-ingestion/functions — Lambda source (esbuild)
@@ -44,12 +47,14 @@ pnpm monorepo (`pnpm-workspace.yaml`): `apps/*`, `packages/*`, and `infra`.
 │       ├── syncArchivedLotsPage/handler.ts  # fetch + archive one /archived-lots page
 │       ├── syncReferenceData/handler.ts     # reference sync (legacy + looped handlers)
 │       ├── refreshListingDetail/handler.ts  # SQS FIFO drain worker (1 req/sec)
+│       ├── bakeThumbnail/handler.ts         # SQS worker: sharp-resize source img -> S3/CloudFront thumbnail
 │       ├── syncRunLifecycle/handler.ts      # create / finalize / fail (3 exports)
 │       ├── driftSweep/handler.ts            # weekly DB-only projection self-heal (init/step/finalize)
 │       └── build.mjs                # esbuild bundler -> packages/functions/dist/<name>.js
 │
 ├── infra/                       # @auctions-ingestion/infra — Pulumi program (CommonJS)
-│   ├── src/{index,config,iam,secrets,lambdas,queues,step-functions,schedules}.ts
+│   ├── src/{index,config,iam,secrets,lambdas,queues,storage,step-functions,schedules}.ts
+│   ├── layers/sharp/            # native sharp Lambda layer (npm install --os=linux before deploy)
 │   ├── Pulumi.yaml
 │   ├── Pulumi.dev.yaml.example
 │   ├── bootstrap-pulumi-backend.ps1  # one-time: S3 state bucket
@@ -191,6 +196,15 @@ sweep all share). **Summary tables** `car_listing_counts` and
 in sync with the projections **in the same transaction** by the `_counted`
 wrappers (a before/after snapshot-diff serialized by an advisory lock), so they're
 correct by construction — no periodic reseed.
+
+**Card thumbnails (migration 0035).** `auction_lots` also carries `thumbnail_url`
+(CloudFront URL of a baked 640/1280 WebP card thumbnail) + `thumbnail_source_url`
+(the image it was baked from — the re-bake trigger); the recompute functions
+project `thumbnail_url` onto `car_listings`/`car_listings_archived`. The bake is
+async: `upsertCarsAndLots` batch-enqueues changed lots to an SQS queue and the
+`bakeThumbnail` worker resizes with `sharp` and uploads to S3/CloudFront (see
+[04](docs/04-ingestion-flows.md#thumbnail-bake-enqueue-best-effort-off-the-write-path) / [06](docs/06-infrastructure-aws-pulumi.md#3a-s3--cloudfront--thumbnail-storage)).
+The web catalog serves those thumbnails off Vercel's image optimizer.
 
 The schema also holds **auth** (`users`, `accounts`, `verification_tokens`,
 `password_reset_tokens`), **`favorites`**, **website leads** (`carfax_requests`,
@@ -380,6 +394,14 @@ Remove-Item ref.json
 cd packages/db
 node --env-file-if-exists=../../.env backfill-car-listings.mjs                                 # -> car_listings
 node --env-file-if-exists=../../.env backfill-car-listings.mjs --fn=recompute_archived_car_listings  # -> car_listings_archived
+
+# 4. (Optional) Backfill card thumbnails: enqueue every un-baked lot to the bake
+#    queue; the bakeThumbnail worker fills auction_lots.thumbnail_url. Cards fall
+#    back to the raw optimized image until baked, so this is non-blocking. Needs
+#    the sharp layer built + deployed first (see docs/07 §2). BAKE_QUEUE_URL is the
+#    `bakeThumbnailQueueUrl` Pulumi output.
+$env:BAKE_QUEUE_URL = (cd ../../infra; pulumi stack output bakeThumbnailQueueUrl)
+node --env-file-if-exists=../../.env backfill-thumbnails.mjs --region=eu-central-1 --limit=100  # smoke, then drop --limit
 ```
 
 Watch progress in the **Step Functions console**, or in Neon:

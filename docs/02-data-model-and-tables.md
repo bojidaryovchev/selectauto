@@ -188,6 +188,8 @@ even when external ids/VIN are missing, so it is the upsert key (not
 | `location_country` | text | | → website **market** tab (USA/Canada/kr) |
 | `location_state` / `location_city` | text | | |
 | `image_url` | text | | one image (prefer CDN `downloaded[0]`, else `normal[0]`) |
+| `thumbnail_url` | text | | CloudFront URL of a baked 640/1280 WebP card thumbnail (0035). **NULL until baked** by the `bakeThumbnail` SQS worker → card falls back to the optimized `image_url`. |
+| `thumbnail_source_url` | text | | the `image_url` the current thumbnail was baked **FROM** — the change-detection key: `image_url` is overwritten every sync, so the bake worker re-bakes only when it differs from this. |
 | `archived` | boolean | NN | sold/withdrawn flag from upstream (default `false`) |
 | `archived_at` | timestamptz | | upstream archive time when present |
 | `raw_json` | jsonb | | full upstream lot (the TOAST bulk — see note) |
@@ -253,7 +255,7 @@ Both share an identical column set (except `car_listings_archived.archived_at`):
 | identity | `car_id` PK (FK→cars, CASCADE), `lot_id` (FK→auction_lots, CASCADE — the lot that won the collapse) |
 | filters | `manufacturer_id`, `model_id` (external ids), `car_year`, `car_color`, `drive_wheel`, `vehicle_type`, `body_type`, `fuel_type`, `buy_now`, `domain_name`, `location_country`, `lot_number`, `vin`, `effective_price` |
 | sort | `sort_id` (int NN) = chosen lot id → keyset cursor **and** newest-first sort key |
-| display | `title`, `engine`, `image_url`, `odometer_km`, `sale_date`, `status`, `condition`, `damage_main`, `seller`, `transmission`, `buy_now_price`, `bid_price`, `final_bid` |
+| display | `title`, `engine`, `image_url`, `thumbnail_url` (projected baked-thumbnail CloudFront URL; NULL until baked), `odometer_km`, `sale_date`, `status`, `condition`, `damage_main`, `seller`, `transmission`, `buy_now_price`, `bid_price`, `final_bid` |
 | meta | `updated_at`; **archived only:** `archived_at` (set-once, 0023) |
 
 - **`effective_price`** is derived and its **precedence differs by table**:

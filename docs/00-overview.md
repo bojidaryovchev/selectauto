@@ -62,6 +62,14 @@ flowchart TD
   neon -->|"SELECT (single-table, keyset)"| web
 ```
 
+> **Card-thumbnail bake (added 2026-07).** Alongside ingestion, changed lots are
+> enqueued to an SQS queue and a `bakeThumbnail` Lambda resizes each source image
+> with `sharp` into a WebP thumbnail on a private **S3 bucket fronted by
+> CloudFront**. The web catalog loads card images straight from CloudFront —
+> bypassing Vercel Image Optimization (which had been ~80% of the web bill). See
+> [04](04-ingestion-flows.md#thumbnail-bake-enqueue-best-effort-off-the-write-path) and
+> [06 §3a](06-infrastructure-aws-pulumi.md#3a-s3--cloudfront--thumbnail-storage).
+
 ## The kinds of tables (why each exists)
 
 The full per-table data dictionary lives in
@@ -114,7 +122,9 @@ See [02-data-model-and-tables.md](02-data-model-and-tables.md).
 | `packages/db/migrate.mjs` | Minimal append-only migration runner |
 | `packages/db/backfill-car-listings.mjs` | Projection backfill / drift-repair — rebuilds **both** read models via `--fn`; default calls the `_counted` wrapper so counts + facets stay in sync |
 | `packages/db/reseed-summaries.mjs` | Authoritative reseed of the summary tables (`--check` = drift / negative-`n` diagnostic). Only needed after a deliberate recompute-logic change |
-| `infra/src/` | Pulumi TS — Lambdas, Step Functions, schedules, IAM, secrets, SQS |
+| `packages/functions/bakeThumbnail/handler.ts` | Async SQS worker: `sharp`-resizes a lot's source image and uploads the WebP card thumbnail to S3/CloudFront |
+| `packages/db/backfill-thumbnails.mjs` | One-time: enqueue every un-baked lot to the thumbnail bake queue |
+| `infra/src/` | Pulumi TS — Lambdas, Step Functions, schedules, IAM, secrets, SQS, **S3 + CloudFront (thumbnails)** + the `sharp` layer (`infra/layers/sharp/`) |
 | `apps/web/` | Next.js frontend (reads Neon). The all-cars catalog → [08](08-web-all-cars-page.md). |
 | `docs/` | These docs + `sample-cars-response.json` (a real `/api/cars` record) |
 

@@ -11,15 +11,24 @@
  *     (`getModelHubStats` / `getModelSoldPricesByYear` / `getModelYearSoldStat`),
  *     and the sitemap hub/listing queries. Each takes a small, stable key (make/
  *     model ids) and tracks the daily reference/summary sync.
- * The catalog FEED queries (page/count/facets) and the per-car `getCarDetail` are
- * deliberately NOT `"use cache"`: their keys are per-request-unique (filters ×
- * cursor) or effectively unbounded (~945k car ids) so an app cache would hit
+ * The catalog FEED queries (page/count) are deliberately NOT `"use cache"`: their
+ * keys are per-request-unique (filters × cursor) so an app cache would hit
  * near-zero, and they're already DB-cheap (keyset reads + the counts/facets summary
- * tables, migrations 0016/0017, ~40ms). Where one of these uncached reads is used in
- * BOTH `generateMetadata` and the page body — `getCarDetail`, and `getCarsCount` via
- * the hub pages' request-scoped loaders — React `cache()` collapses it to a single
- * read per request. See the Next caching docs in node_modules/next/dist/docs
- * (use-cache, use-cache-remote).
+ * tables, migrations 0016/0017, ~40ms). Two runtime reads use `"use cache: remote"`
+ * instead — the Vercel Runtime Cache (durable, shared across instances in the
+ * region; the handler is provided automatically under `cacheComponents`, billed
+ * ~$0.52/M reads + $5.20/M writes in fra1 within the Pro credit):
+ *   - `getCarDetail` (per-carId key, `cacheLife("hours")`, tag `cars`): the ~945k
+ *     crawler-hammered detail pages each cost a multi-round-trip Neon read; a
+ *     SHARED per-id store fits where the per-instance LRU couldn't. Hourly
+ *     staleness is free — listings only change via the hourly ingestion sync.
+ *   - `computeCarFacets` (no key — one entry, `cacheLife("hours")`, tag `cars`):
+ *     the global filter-dropdown base, 9 summary reads otherwise re-run per
+ *     catalog request.
+ * Where an uncached read is used in BOTH `generateMetadata` and the page body —
+ * `getCarDetail`, and `getCarsCount` via the hub pages' request-scoped loaders —
+ * React `cache()` collapses it to a single read per request. See the Next caching
+ * docs in node_modules/next/dist/docs (use-cache, use-cache-remote).
  *
  * Invalidation today is purely TTL-based: the homepage queries set
  * `cacheLife("hours")`, and ingestion runs hourly, so the cache naturally tracks
@@ -31,13 +40,14 @@
  * immediately via `revalidateTag(CACHE_TAGS.buyNowCars)` instead of waiting out
  * the TTL.
  *
- * NOTE on persistence: the homepage queries use plain `"use cache"` (in-memory
- * LRU per server instance), NOT `"use cache: remote"`. On Vercel serverless that
- * means each warm instance keeps its own copy for the `cacheLife` window — good
- * enough for slow-changing, shared homepage data. A durable cross-instance cache
- * would require a configured `cacheHandlers.remote` (Redis/KV) — see the
- * use-cache-remote / cacheHandlers docs; intentionally not added (no KV service,
- * and the catalog perf was solved at the DB layer instead).
+ * NOTE on persistence: the homepage/hub/sitemap queries use plain `"use cache"` —
+ * they render into the STATIC SHELL, where the output is durably cached by
+ * Vercel's ISR infrastructure anyway; a remote lookup would add latency for
+ * nothing. `"use cache: remote"` is reserved for the two RUNTIME reads above,
+ * where plain `"use cache"` degrades to a per-instance in-memory LRU with ~zero
+ * cross-request hit rate on serverless. No self-managed Redis/KV: Vercel supplies
+ * the Runtime Cache handler automatically (see docs/caching/runtime-cache);
+ * catalog feed perf remains solved at the DB layer (projections + summaries).
  */
 export const CACHE_TAGS = {
   /** All car listings (both buy-now and auction). */

@@ -18,6 +18,7 @@ import { createQueues } from "./queues";
 import { createSchedules } from "./schedules";
 import { createSecrets, secretArns } from "./secrets";
 import { createStateMachines } from "./step-functions";
+import { createStorage } from "./storage";
 
 // Current AWS account ID (for scoping IAM resource ARNs to this account).
 const accountId = aws.getCallerIdentityOutput({}).accountId;
@@ -25,18 +26,36 @@ const accountId = aws.getCallerIdentityOutput({}).accountId;
 // 1. Secrets Manager secrets (AUCTIONS_API_KEY, NEON_DATABASE_URL).
 const secrets = createSecrets();
 
-// 2. SQS FIFO queue for detail-refresh requests (rate-limit chokepoint).
+// 2. SQS queues: FIFO detail-refresh (rate-limit chokepoint) + standard bake queue.
 const queues = createQueues();
 
-// 3. Lambda execution role (logs + read secrets + consume the detail queue).
-const { lambdaRole } = createLambdaRole(secretArns(secrets), [queues.detailRefreshQueue.arn]);
+// 2b. Thumbnail storage: private S3 bucket + CloudFront (the bake worker writes
+//     here; the web app serves card thumbnails directly from CloudFront).
+const storage = createStorage();
+
+// 3. Lambda execution role: logs + read secrets + consume the detail/bake queues
+//    + send to the bake queue (enqueuers) + PutObject into the thumbnail bucket.
+const { lambdaRole } = createLambdaRole(
+  secretArns(secrets),
+  [queues.detailRefreshQueue.arn, queues.bakeThumbnailQueue.arn],
+  [queues.bakeThumbnailQueue.arn],
+  [pulumi.interpolate`${storage.thumbnailBucket.arn}/thumb/*`],
+);
 
 // 4. Lambdas. Secret VALUES are injected as env vars (from Pulumi config
 //    secrets) so handlers don't need a runtime Secrets Manager call.
-const lambdas = createLambdas(lambdaRole.arn, {
-  auctionsApiKey: config.auctionsApiKey,
-  neonDatabaseUrl: config.neonDatabaseUrl,
-});
+const lambdas = createLambdas(
+  lambdaRole.arn,
+  {
+    auctionsApiKey: config.auctionsApiKey,
+    neonDatabaseUrl: config.neonDatabaseUrl,
+  },
+  {
+    bakeQueueUrl: queues.bakeThumbnailQueue.url,
+    thumbnailBucket: storage.thumbnailBucket.bucket,
+    thumbnailCdnBaseUrl: storage.cdnBaseUrl,
+  },
+);
 
 // The detail-refresh worker is driven by the SQS FIFO queue. batchSize 1 +
 // ReportBatchItemFailures: each message succeeds/fails independently, and the
@@ -45,6 +64,17 @@ new aws.lambda.EventSourceMapping("detail-refresh-esm", {
   eventSourceArn: queues.detailRefreshQueue.arn,
   functionName: lambdas.refreshListingDetail.arn,
   batchSize: 1,
+  functionResponseTypes: ["ReportBatchItemFailures"],
+});
+
+// Thumbnail-bake worker drains the standard bake queue. batchSize 10 +
+// ReportBatchItemFailures so a single bad message doesn't fail the whole batch;
+// no reservedConcurrency (the bake fetches the source-image CDN, not the
+// rate-limited AuctionsAPI, so it may run concurrently).
+new aws.lambda.EventSourceMapping("bake-thumbnail-esm", {
+  eventSourceArn: queues.bakeThumbnailQueue.arn,
+  functionName: lambdas.bakeThumbnail.arn,
+  batchSize: 10,
   functionResponseTypes: ["ReportBatchItemFailures"],
 });
 
@@ -119,6 +149,7 @@ export const lambdaNames = {
   referenceManufacturer: lambdas.referenceManufacturer.name,
   referenceFinalize: lambdas.referenceFinalize.name,
   refreshListingDetail: lambdas.refreshListingDetail.name,
+  bakeThumbnail: lambdas.bakeThumbnail.name,
   createSyncRun: lambdas.createSyncRun.name,
   finalizeSyncRun: lambdas.finalizeSyncRun.name,
   markSyncFailed: lambdas.markSyncFailed.name,
@@ -145,3 +176,15 @@ export const secretNames = {
 export const detailRefreshQueueUrl = queues.detailRefreshQueue.url;
 export const detailRefreshQueueArn = queues.detailRefreshQueue.arn;
 export const detailRefreshDlqUrl = queues.detailRefreshDlq.url;
+
+// Thumbnail-bake queue. The ingestion enqueuers batch-send lot ids here; the
+// backfill script (packages/db/backfill-thumbnails.mjs) also uses this URL.
+export const bakeThumbnailQueueUrl = queues.bakeThumbnailQueue.url;
+export const bakeThumbnailQueueArn = queues.bakeThumbnailQueue.arn;
+export const bakeThumbnailDlqUrl = queues.bakeThumbnailDlq.url;
+
+// Thumbnail storage. `thumbnailCdnBaseUrl` is the CloudFront origin the web app
+// loads card thumbnails from (add it to the app's env if referenced there).
+export const thumbnailBucketName = storage.thumbnailBucket.bucket;
+export const thumbnailCdnBaseUrl = storage.cdnBaseUrl;
+export const thumbnailCdnDistributionId = storage.distribution.id;

@@ -193,6 +193,23 @@ present), a price row, and a CTA.
 `next/image` remote hosts are whitelisted in `apps/web/next.config.ts`
 (`i.auctionsapi.com` is ~99.9%, plus encar/copart/iaai/ironplanet CDNs).
 
+- **Baked card thumbnails (bypassing Vercel Image Optimization).** Card images were
+  the biggest chunk of the web bill (~80% was Vercel Image Optimization), so cards now
+  **prefer a baked WebP thumbnail** served from our own S3+CloudFront. `car-mapper.ts`
+  sets `image = row.thumbnailUrl ?? row.imageUrl` and `imageBaked = !!row.thumbnailUrl`
+  (`CarView` gains `imageBaked`). When baked, `AuctionCard` renders a plain
+  `<img srcset="…-640.webp 640w, …-1280.webp 1280w" sizes={CARD_IMAGE_SIZES}>` — **not**
+  `next/image` (an `<Image unoptimized>` emits no `srcset`) — so it skips the Vercel
+  optimizer while the browser still picks 640 for desktop grid cells and 1280 for
+  high-DPI full-width phones. Un-baked rows stay on `next/image` (`q=60`) on the raw
+  upstream URL until their thumbnail lands (baked asynchronously by the ingestion →
+  `bakeThumbnail` pipeline, [04](04-ingestion-flows.md)). The detail-page gallery
+  (`car-gallery.tsx`, sourced from `raw_json`) is **unchanged** — still `next/image`.
+- **`next.config.ts` image tuning.** `minimumCacheTTL: 2678400` (31 days — auction
+  photos are immutable, so this kills the every-4h STALE re-optimization),
+  `deviceSizes: [640,750,828,1080,1920]` + `imageSizes: [96,128,256]` (trimmed from the
+  8-wide defaults to cut variant count); `qualities: [60,75]` unchanged.
+
 ---
 
 ## 6. SEO

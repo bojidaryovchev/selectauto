@@ -6,7 +6,7 @@ import { Container, LinkButton } from "@/components/common";
 import { AllCarsGrid, CarGridSkeleton } from "@/components/cars/all-cars";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { MIN_HUB_LISTINGS_TO_INDEX, SITE_URL } from "@/constants";
-import { brandHubPath, modelHubPath } from "@/lib/car-slug";
+import { brandHubPath, modelHubPath, slugify } from "@/lib/car-slug";
 import { buildBreadcrumbJsonLd, buildItemListJsonLd } from "@/lib/site-jsonld";
 import { buildSocialMeta } from "@/lib/social-meta";
 import {
@@ -17,9 +17,39 @@ import {
   resolveBrandHub,
   type BrandHubResolution,
 } from "@/queries/cars";
+import { getSitemapBrands } from "@/queries/sitemap";
 import type { CarFilters } from "@/types/car-filters.type";
 
 type Params = Promise<{ make: string }>;
+
+/**
+ * Prerender every brand hub that has live inventory at build time (~117 makes).
+ * Without this the route builds as ONE param-agnostic *fallback shell* that Next
+ * resumes per request — the fragile Partial-Prerender resume path that intermittently
+ * mismatched in production ("Couldn't find all resumable slots by key/index during
+ * replaying … fallback to client rendering"). With a concrete param list, each make
+ * gets its own fully-resolved prerendered shell, so the request-time resume is
+ * per-make and can't drift against a shared fallback. `dynamicParams` stays the Next
+ * default (`true`), so a make NOT in this list (e.g. a brand that gains its first
+ * listing after the build) still resolves on-demand rather than 404-ing.
+ *
+ * Slugs come from the SAME source the hub sitemap uses (`getSitemapBrands`) via the
+ * SAME `slugify`, so the prerendered params, the sitemap URLs, and each page's
+ * self-canonical always agree. `minListings: 1` covers every brand that actually
+ * shows cars (below the sitemap/index threshold but still a real, linkable hub). The
+ * query fails closed to `[]` on a DB hiccup → all makes fall back to on-demand (i.e.
+ * today's behaviour), so a transient DB error degrades gracefully, never a broken
+ * build. Slugs are de-duped (two brand names could slugify identically).
+ */
+export async function generateStaticParams(): Promise<{ make: string }[]> {
+  const brands = await getSitemapBrands(1);
+  const makes = new Set<string>();
+  for (const b of brands) {
+    const make = slugify(b.brandName);
+    if (make) makes.add(make);
+  }
+  return [...makes].map((make) => ({ make }));
+}
 
 /**
  * Request-scoped loader shared by `generateMetadata` and the page body so the slug

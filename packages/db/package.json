@@ -16,6 +16,7 @@
     "drizzle-orm": "0.38.3"
   },
   "devDependencies": {
+    "@aws-sdk/client-sqs": "3.777.0",
     "@types/node": "26.1.1",
     "@types/pg": "8.20.0",
     "drizzle-kit": "0.31.10",
