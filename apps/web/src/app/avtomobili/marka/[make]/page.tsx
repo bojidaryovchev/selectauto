@@ -205,6 +205,11 @@ async function BrandHubBody({ params }: { params: Params }) {
                   <LinkButton
                     key={m.href}
                     href={m.href}
+                    // A big make renders 100+ chips; default viewport prefetch fired
+                    // ~155 RSC requests (+ serverless invocations + DB reads) per hub
+                    // view and measurably delayed LCP on mobile. Hover/tap still
+                    // navigates instantly enough for a full page these users then read.
+                    prefetch={false}
                     rippleTheme="dark"
                     className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold text-ink transition-colors duration-200 hover:border-brand hover:text-brand-dark"
                   >

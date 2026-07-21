@@ -97,6 +97,22 @@ const nextConfig: NextConfig = {
   // WebGL/three assets, next/image remote auction hosts, the Google Maps embed,
   // Resend, and Auth.js endpoints — easy to get wrong and silently break the app.
   // That's a deliberate, separately-tested follow-up, not a Phase-0 one-liner.
+  // Recover visitors landing on URL shapes this site has never had. Speed
+  // Insights showed real users hitting `/car/{year-make-model-…}` (another
+  // site's / an AI-invented detail-URL format) and getting the 404 page; our
+  // detail pages live at `/avtomobil/[id]`. Send them to the catalog instead.
+  // Non-permanent (307) on purpose: nothing should be indexed under `/car/`,
+  // and if we later resolve these slugs to real listings we don't want the
+  // blunt catalog redirect cached in browsers/CDNs.
+  async redirects() {
+    return [
+      {
+        source: "/car/:slug*",
+        destination: "/vsichki-avtomobili",
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     return [
       {
