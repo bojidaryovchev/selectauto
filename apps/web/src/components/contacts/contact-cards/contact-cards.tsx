@@ -5,8 +5,8 @@ import { CopyButton } from "./copy-button";
 import { HoursStatus } from "./hours-status";
 
 /** Second phone line shown only on the contacts page. */
-const PHONE_2 = "+359 876 667 633";
-const PHONE_2_HREF = "tel:+359876667633";
+const PHONE_2 = "+359 898 808 661";
+const PHONE_2_HREF = "tel:+359898808661";
 
 const HOURS = [
   { day: "Понеделник – Петък", time: "09:00 – 18:00" },
@@ -61,7 +61,7 @@ export function ContactCards() {
               <ul className="grid list-none gap-2.5 p-0">
                 {[
                   { display: CONTACT.phone, href: CONTACT.phoneHref, raw: "+359898980011" },
-                  { display: PHONE_2, href: PHONE_2_HREF, raw: "+359876667633" },
+                  { display: PHONE_2, href: PHONE_2_HREF, raw: "+359898808661" },
                 ].map((p) => (
                   <li
                     key={p.raw}

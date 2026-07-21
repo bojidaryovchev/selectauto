@@ -14,6 +14,8 @@ export const calcConfigSchema = z.object({
   eurUsd: z.number({ message: "Невалиден курс." }).min(0.1).max(10),
   dutyPct: pct,
   vatPct: pct,
+  krEncarFeeEur: money,
+  krDocsPct: pct,
   krTransportEur: z.object({ sedan: money, suv: money }),
   commissionTiers: z
     .array(z.object({ maxPriceEur: money, commissionEur: money }))

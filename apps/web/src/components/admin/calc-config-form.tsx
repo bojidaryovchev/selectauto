@@ -101,7 +101,12 @@ export function CalcConfigForm({ initial }: { initial: CalcConfig }) {
         <Field label="Технотест" suffix="€" value={cfg.technotestEur} onChange={(v) => patch({ technotestEur: v })} step={10} />
       </Section>
 
-      <Section title="Корея — транспорт (€)">
+      <Section title="Корея — Плащане 1 (ENCAR + документи)">
+        <Field label="ENCAR такса" suffix="€" value={cfg.krEncarFeeEur} onChange={(v) => patch({ krEncarFeeEur: v })} step={10} />
+        <Field label="Документи" suffix="%" value={cfg.krDocsPct} onChange={(v) => patch({ krDocsPct: v })} step={0.1} />
+      </Section>
+
+      <Section title="Корея — морски транспорт (€)">
         <Field
           label="Седан"
           suffix="€"
@@ -170,10 +175,10 @@ export function CalcConfigForm({ initial }: { initial: CalcConfig }) {
         <Field label="Онлайн наддаване" suffix="$" value={cfg.usFixedFeesUsd.onlineBid} onChange={(v) => patch({ usFixedFeesUsd: { ...cfg.usFixedFeesUsd, onlineBid: v } })} />
       </Section>
 
-      <Section title="САЩ / Канада — след Холандия">
+      <Section title="След Холандия — агенция и автовоз до БГ (всички пазари)">
         <Field label="Митн. агенция" suffix="€" value={cfg.agencyEur} onChange={(v) => patch({ agencyEur: v })} step={10} />
-        <Field label="Транспорт БГ — седан" suffix="€" value={cfg.bgTransportEur.sedan} onChange={(v) => patch({ bgTransportEur: { ...cfg.bgTransportEur, sedan: v } })} step={10} />
-        <Field label="Транспорт БГ — джип" suffix="€" value={cfg.bgTransportEur.suv} onChange={(v) => patch({ bgTransportEur: { ...cfg.bgTransportEur, suv: v } })} step={10} />
+        <Field label="Автовоз БГ — седан" suffix="€" value={cfg.bgTransportEur.sedan} onChange={(v) => patch({ bgTransportEur: { ...cfg.bgTransportEur, sedan: v } })} step={10} />
+        <Field label="Автовоз БГ — джип" suffix="€" value={cfg.bgTransportEur.suv} onChange={(v) => patch({ bgTransportEur: { ...cfg.bgTransportEur, suv: v } })} step={10} />
         <Field label="Канада транспорт" suffix="$" value={cfg.caTransportUsd} onChange={(v) => patch({ caTransportUsd: v })} step={10} />
       </Section>
 

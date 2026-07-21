@@ -85,7 +85,7 @@ export const BUSINESS = {
   country: "BG",
   postalCode: "4003",
   /** Second public phone line (contacts page only). `CONTACT.phone` is primary. */
-  secondaryPhone: "+359 876 667 633",
+  secondaryPhone: "+359 898 808 661",
   /**
    * Exact showroom coordinates (Пловдив, ул. Север 64) — the pin the live
    * selectauto.bg Google Maps embed uses. Consumed by the contacts-page map

@@ -9,17 +9,20 @@
  * back to `DEFAULT_CALC_CONFIG` instantly, since it's tiny). Every money figure
  * flows from the config, so the /admin/tarifi form can change them with no deploy.
  *
- * Market models (unchanged):
- *  - 🇰🇷 Korea: price + commission (tiered) + transport + duty (0% with EU–KR
- *    origin declaration, else duty%) + VAT + optional technotest.
- *  - 🇺🇸 USA: [price + auction fee (tiered) + fixed fees + inland + container] to
- *    Holland → customs value (editable %) → duty + VAT + agency + BG transport +
+ * Market models (owner's payment structure, 21.07.2026):
+ *  - 🇰🇷 Korea — the old WP calculator's 4 payments: Плащане 1 = price + ENCAR
+ *    fee + docs% of (price + fee); Плащане 2 = sea transport; Плащане 3 = duty
+ *    (0% with EU–KR origin declaration) + VAT + customs agency; Плащане 4 =
+ *    autovoz Holland→BG. Commission (tiered) is shown LAST, before the total.
+ *  - 🇺🇸 USA: [price + auction fee (tiered) + fixed fees] as one "car + auction
+ *    fees" line + [inland + container] as one transport line to Holland →
+ *    customs value (editable %) → duty + VAT + agency + BG transport +
  *    optional technotest.
  *  - 🇨🇦 Canada: same as USA, flat transport.
  */
 
 /** Shown on the calculator ("Ставките са проверени към …"). */
-export const RATES_VERIFIED_AT = "17.07.2026";
+export const RATES_VERIFIED_AT = "21.07.2026";
 
 export type MarketId = "kr" | "us" | "ca";
 export type VehicleType = "sedan" | "suv";
@@ -36,7 +39,12 @@ export type CalcConfig = {
   dutyPct: number;
   /** Bulgarian VAT % on import. */
   vatPct: number;
-  /** Korea transport to the EU, EUR, by vehicle type. */
+  /** Korea fixed ENCAR (auction/purchase) fee, EUR — part of Плащане 1. */
+  krEncarFeeEur: number;
+  /** Korea documents % (дерегистрация, префактуриране, експортни документи),
+   *  charged on (price + ENCAR fee) — part of Плащане 1. */
+  krDocsPct: number;
+  /** Korea sea transport to the EU, EUR, by vehicle type. */
   krTransportEur: { sedan: number; suv: number };
   /** Korea mediation commission brackets (EUR) + cap for prices above the top bracket. */
   commissionTiers: CommissionTier[];
@@ -49,9 +57,9 @@ export type CalcConfig = {
   usFixedFeesUsd: { title: number; environmental: number; reinvoicing: number; onlineBid: number };
   /** Canada flat transport to the EU (USD). */
   caTransportUsd: number;
-  /** US/CA customs-agency fee (EUR). */
+  /** Customs-agency fee (EUR), all markets. */
   agencyEur: number;
-  /** US/CA Holland→Bulgaria transport (EUR) by vehicle type. */
+  /** Holland→Bulgaria autovoz (EUR) by vehicle type, all markets. */
   bgTransportEur: { sedan: number; suv: number };
   /** Optional технотест (EUR). */
   technotestEur: number;
@@ -62,6 +70,8 @@ export const DEFAULT_CALC_CONFIG: CalcConfig = {
   eurUsd: 1.08,
   dutyPct: 10,
   vatPct: 20,
+  krEncarFeeEur: 450,
+  krDocsPct: 2.5,
   krTransportEur: { sedan: 1630, suv: 1780 },
   commissionTiers: [
     { maxPriceEur: 10000, commissionEur: 800 },
@@ -191,23 +201,36 @@ export function computeImportBreakdown(
   const { dutyPct, vatPct } = config;
 
   if (i.market === "kr") {
-    const transport = usd(config.krTransportEur[i.vehicleType], config.eurUsd);
-    const commission = usd(commissionEur(i.priceUsd / config.eurUsd, config), config.eurUsd);
-    const taxable = i.priceUsd + transport;
+    // Плащане 1 — car + fixed ENCAR fee + docs% on (price + fee). The owner's
+    // dictated first payment: the 450 € / 2.5% apply as soon as a price is typed.
+    const encarFee = usd(config.krEncarFeeEur, config.eurUsd);
+    const docsFee = Math.round(((i.priceUsd + encarFee) * config.krDocsPct) / 100);
+    const payment1 = i.priceUsd + encarFee + docsFee;
+    // Плащане 2 — sea transport to the EU.
+    const payment2 = usd(config.krTransportEur[i.vehicleType], config.eurUsd);
+    // Плащане 3 — duty + VAT (on payment1 + payment2, scaled by the editable
+    // customs-base %) + customs agency.
+    const taxable = payment1 + payment2;
     const customsValue = Math.round((taxable * basePct) / 100);
     const appliedDuty = i.originDeclaration ? 0 : dutyPct;
     const duty = Math.round((customsValue * appliedDuty) / 100);
     const vat = Math.round(((customsValue + duty) * vatPct) / 100);
-    const total = i.priceUsd + commission + transport + duty + vat + tech;
+    const agency = usd(config.agencyEur, config.eurUsd);
+    const payment3 = duty + vat + agency;
+    // Плащане 4 — autovoz Holland→BG.
+    const payment4 = usd(config.bgTransportEur[i.vehicleType], config.eurUsd);
+    // Our commission — tiered, shown LAST ("нашата такса на последно място").
+    const commission = usd(commissionEur(i.priceUsd / config.eurUsd, config), config.eurUsd);
+    const total = payment1 + payment2 + payment3 + payment4 + commission + tech;
 
     const lines: ImportCostLine[] = [
-      { label: "Цена на автомобила", amountUsd: i.priceUsd },
-      { label: "Комисионна (нашата услуга)", amountUsd: commission },
-      { label: "Транспорт до ЕС", amountUsd: transport },
-      { label: `Мито (${appliedDuty}%)`, amountUsd: duty },
-      { label: `ДДС (${vatPct}%)`, amountUsd: vat },
+      { label: `Плащане 1 — автомобил, ENCAR такса и документи (${config.krDocsPct}%)`, amountUsd: payment1 },
+      { label: "Плащане 2 — морски транспорт", amountUsd: payment2 },
+      { label: `Плащане 3 — мито (${appliedDuty}%), ДДС (${vatPct}%) и агенция`, amountUsd: payment3 },
+      { label: "Плащане 4 — автовоз от Холандия", amountUsd: payment4 },
     ];
     if (tech) lines.push({ label: "Технотест (по желание)", amountUsd: tech });
+    lines.push({ label: "Комисионна (нашата услуга)", amountUsd: commission });
     if (basePct < 100)
       lines.push({ label: `Митническа основа (${basePct}%)`, amountUsd: customsValue, muted: true });
 
@@ -222,16 +245,18 @@ export function computeImportBreakdown(
     };
   }
 
-  // US / Canada
+  // US / Canada. Owner's row grouping: car + auction + fixed fees in ONE line,
+  // the transport legs in ONE line — a shorter breakdown list.
   const auction: UsAuction = i.auction ?? "copart";
   const auctionFee = usAuctionFeeUsd(i.priceUsd, auction, config);
   const f = config.usFixedFeesUsd;
   const fixed = f.title + f.environmental + f.reinvoicing + f.onlineBid;
 
   const lines: ImportCostLine[] = [
-    { label: "Цена на автомобила", amountUsd: i.priceUsd },
-    { label: `Аукционна такса (${auction === "copart" ? "Copart" : "IAAI"})`, amountUsd: auctionFee },
-    { label: "Фиксирани такси (title, еко, преиздаване, онлайн наддаване)", amountUsd: fixed },
+    {
+      label: `Автомобил и аукционни такси (${auction === "copart" ? "Copart" : "IAAI"}, title, еко, преиздаване, онлайн наддаване)`,
+      amountUsd: i.priceUsd + auctionFee + fixed,
+    },
   ];
 
   let transportTotal: number;
@@ -239,11 +264,8 @@ export function computeImportBreakdown(
     transportTotal = config.caTransportUsd;
     lines.push({ label: "Транспорт до ЕС", amountUsd: transportTotal });
   } else {
-    const inland = i.usInlandUsd ?? 0;
-    const container = i.usContainerUsd ?? 0;
-    transportTotal = inland + container;
-    lines.push({ label: "Вътрешен транспорт (САЩ)", amountUsd: inland });
-    lines.push({ label: "Контейнерен транспорт", amountUsd: container });
+    transportTotal = (i.usInlandUsd ?? 0) + (i.usContainerUsd ?? 0);
+    lines.push({ label: "Транспорт до Холандия (вътрешен + контейнер)", amountUsd: transportTotal });
   }
 
   const estimatedToHolland = i.priceUsd + auctionFee + fixed + transportTotal;

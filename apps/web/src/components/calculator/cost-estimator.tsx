@@ -21,12 +21,15 @@ import { CalculatorOfferForm } from "./calculator-offer-form";
 /**
  * Import-cost estimator v3 — USD throughout (car prices arrive from the API in
  * USD). Three market models (see data/import-rates.ts):
- *  - 🇰🇷 Korea: commission (our service) + transport + duty (0% with the EU–KR
- *    origin-declaration toggle) + VAT + optional technotest.
- *  - 🇺🇸 USA: auction fee (tiered) + fixed fees + inland+container transport
- *    (resolved from the 597-row location table) to Holland → duty + VAT + agency
- *    + Holland→BG transport + optional technotest. Shows "not found" and no total
- *    when the auction/location can't be matched (техн. задание §10).
+ *  - 🇰🇷 Korea: the owner's 4-payment structure — Плащане 1 (price + ENCAR fee +
+ *    docs%) / Плащане 2 (sea transport) / Плащане 3 (duty — 0% with the EU–KR
+ *    origin-declaration toggle — + VAT + agency) / Плащане 4 (autovoz to BG),
+ *    with the commission (our service) shown last + optional technotest.
+ *  - 🇺🇸 USA: [car + auction fee (tiered) + fixed fees] in one line +
+ *    inland+container transport (resolved from the 597-row location table) to
+ *    Holland → duty + VAT + agency + Holland→BG transport + optional technotest.
+ *    Shows "not found" and no total when the auction/location can't be matched
+ *    (техн. задание §10).
  *  - 🇨🇦 Canada: same as USA but a flat transport figure (no location lookup).
  *
  * The customs-base % field lowers only the duty/VAT base. Still an ESTIMATE, not
