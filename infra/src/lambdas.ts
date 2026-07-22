@@ -229,11 +229,16 @@ export function createLambdas(
       name: "bakeThumbnail",
       bundleFile: "bakeThumbnail.js",
       timeoutSeconds: 60,
-      memoryMb: 1024,
+      // 2GB so sharp has headroom to resize a batch of ~25 images concurrently.
+      memoryMb: 2048,
       layers: [sharpLayer.arn],
       extraEnv: {
         THUMBNAIL_BUCKET: thumbEnv.thumbnailBucket,
         THUMBNAIL_CDN_BASE_URL: thumbEnv.thumbnailCdnBaseUrl,
+        // Larger pool than the common "2": a parallel batch fires several quick
+        // single-row queries at once (connections are held only per-query, released
+        // during the long image I/O, so this stays well within Neon's limits).
+        PG_POOL_MAX: "6",
       },
     }),
     // sync-run lifecycle: three handlers exported from one bundle.
