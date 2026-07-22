@@ -70,32 +70,19 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
     throw new Error("THUMBNAIL_BUCKET and THUMBNAIL_CDN_BASE_URL must be set");
   }
 
-  // Process the whole SQS batch CONCURRENTLY. Each bake is dominated by network
-  // I/O (source fetch + 2× S3 upload) with only trivial single-row DB queries, so
-  // running the batch in parallel — instead of one lot at a time — lets a single
-  // Lambda slot drain `batchSize` images in ~one image-time rather than N × it.
-  // Per-item failures are still reported individually (ReportBatchItemFailures) so
-  // one bad message never fails its batch-mates.
-  const results = await Promise.allSettled(
-    event.Records.map(async (record) => {
-      const log = new Logger({ flowType: "bake_thumbnail", messageId: record.messageId });
+  const failures: { itemIdentifier: string }[] = [];
+
+  for (const record of event.Records) {
+    const log = new Logger({ flowType: "bake_thumbnail", messageId: record.messageId });
+    try {
       const { lotId } = JSON.parse(record.body) as BakeMessage;
       if (!Number.isInteger(lotId)) throw new Error(`invalid lotId: ${record.body}`);
       await bakeOne(lotId, log);
-    }),
-  );
-
-  const failures: { itemIdentifier: string }[] = [];
-  results.forEach((result, i) => {
-    if (result.status === "rejected") {
-      const record = event.Records[i];
-      new Logger({ flowType: "bake_thumbnail", messageId: record.messageId }).error(
-        "bake_thumbnail_message_failed",
-        { error: (result.reason as Error)?.message ?? String(result.reason) },
-      );
+    } catch (err) {
+      log.error("bake_thumbnail_message_failed", { error: (err as Error).message });
       failures.push({ itemIdentifier: record.messageId });
     }
-  });
+  }
 
   return { batchItemFailures: failures };
 };

@@ -74,15 +74,7 @@ new aws.lambda.EventSourceMapping("detail-refresh-esm", {
 new aws.lambda.EventSourceMapping("bake-thumbnail-esm", {
   eventSourceArn: queues.bakeThumbnailQueue.arn,
   functionName: lambdas.bakeThumbnail.arn,
-  // 25 lots per invocation, processed concurrently inside the handler (see
-  // bakeThumbnail: each bake is network-bound, so a bigger parallel batch drains
-  // far more per Lambda slot). SQS requires a batching window once batchSize > 10.
-  batchSize: 25,
-  maximumBatchingWindowInSeconds: 2,
-  // Cap fan-out so we don't overwhelm the SOURCE image CDN (i.auctionsapi.com) or
-  // Neon's pooled endpoint — 80 × 25 in-flight is already very high throughput and
-  // stays stable (the earlier uncapped ramp caused connect timeouts → DLQ churn).
-  scalingConfig: { maximumConcurrency: 80 },
+  batchSize: 10,
   functionResponseTypes: ["ReportBatchItemFailures"],
 });
 
