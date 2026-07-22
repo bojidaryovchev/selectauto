@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/common";
 import { CloseIcon } from "@/components/icons";
-import type { MarketId, VehicleType } from "@/data/import-rates";
+import type { MarketId, UsAuction, VehicleType } from "@/data/import-rates";
 import { CostEstimator } from "./cost-estimator";
 
 /**
@@ -26,6 +26,8 @@ export function CalculatorDialog({
   defaultPrice,
   defaultMarket,
   defaultVehicleType,
+  defaultAuction,
+  defaultUsLocation,
   carLabel,
   lotNumber,
 }: {
@@ -35,6 +37,10 @@ export function CalculatorDialog({
   defaultPrice?: number;
   defaultMarket?: MarketId;
   defaultVehicleType?: VehicleType;
+  /** This lot's auction house (Copart/IAAI) — presets the auction control. */
+  defaultAuction?: UsAuction;
+  /** This lot's yard zip/city/state — preselects the US location dropdown. */
+  defaultUsLocation?: { zip?: string; city?: string; state?: string };
   carLabel?: string;
   lotNumber?: string;
 }) {
@@ -98,6 +104,8 @@ export function CalculatorDialog({
             defaultPrice={defaultPrice}
             defaultMarket={defaultMarket}
             defaultVehicleType={defaultVehicleType}
+            defaultAuction={defaultAuction}
+            defaultUsLocation={defaultUsLocation}
           />
         </div>
       </div>

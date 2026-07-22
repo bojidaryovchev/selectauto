@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/common";
-import type { MarketId, VehicleType } from "@/data/import-rates";
+import type { MarketId, UsAuction, VehicleType } from "@/data/import-rates";
 import { CalculatorDialog } from "./calculator-dialog";
 
 /**
@@ -16,6 +16,8 @@ export function CarImportCalculator({
   defaultPrice,
   defaultMarket,
   defaultVehicleType,
+  defaultAuction,
+  defaultUsLocation,
   carLabel,
   lotNumber,
 }: {
@@ -23,6 +25,10 @@ export function CarImportCalculator({
   defaultPrice?: number;
   defaultMarket?: MarketId;
   defaultVehicleType?: VehicleType;
+  /** This lot's auction house (Copart/IAAI) — presets the auction control. */
+  defaultAuction?: UsAuction;
+  /** This lot's yard zip/city/state — preselects the US location dropdown. */
+  defaultUsLocation?: { zip?: string; city?: string; state?: string };
   carLabel?: string;
   lotNumber?: string;
 }) {
@@ -43,6 +49,8 @@ export function CarImportCalculator({
         defaultPrice={defaultPrice}
         defaultMarket={defaultMarket}
         defaultVehicleType={defaultVehicleType}
+        defaultAuction={defaultAuction}
+        defaultUsLocation={defaultUsLocation}
         carLabel={carLabel}
         lotNumber={lotNumber}
       />

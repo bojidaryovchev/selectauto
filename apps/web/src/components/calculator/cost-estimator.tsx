@@ -15,7 +15,7 @@ import {
   usd,
   type VehicleType,
 } from "@/data/import-rates";
-import { resolveUsTransport, type UsTariffData, usLocationsForAuction } from "@/lib/us-transport";
+import { findUsLocation, resolveUsTransport, type UsTariffData, usLocationsForAuction } from "@/lib/us-transport";
 import { CalculatorOfferForm } from "./calculator-offer-form";
 
 /**
@@ -148,12 +148,23 @@ export function CostEstimator({
   defaultMarket = "kr",
   defaultPrice,
   defaultVehicleType = "sedan",
+  defaultAuction,
+  defaultUsLocation,
   bare = false,
-}: { defaultMarket?: MarketId; defaultPrice?: number; defaultVehicleType?: VehicleType; bare?: boolean } = {}) {
+}: {
+  defaultMarket?: MarketId;
+  defaultPrice?: number;
+  defaultVehicleType?: VehicleType;
+  /** The seeding car's auction house (Copart/IAAI) — presets the auction control. */
+  defaultAuction?: UsAuction;
+  /** The seeding car's yard zip/city/state — preselects the US location dropdown. */
+  defaultUsLocation?: { zip?: string; city?: string; state?: string };
+  bare?: boolean;
+} = {}) {
   const [market, setMarket] = useState<MarketId>(defaultMarket);
   const [price, setPrice] = useState(defaultPrice && defaultPrice > 0 ? defaultPrice : 15000);
   const [vehicleType, setVehicleType] = useState<VehicleType>(defaultVehicleType);
-  const [auction, setAuction] = useState<UsAuction>("copart");
+  const [auction, setAuction] = useState<UsAuction>(defaultAuction ?? "copart");
   const [location, setLocation] = useState<string>("");
   const [customsBasePct, setCustomsBasePct] = useState<number>(DEFAULT_CUSTOMS_BASE_PCT);
   const [technotest, setTechnotest] = useState(false);
@@ -204,14 +215,30 @@ export function CostEstimator({
 
   const tariffsPending = market === "us" && !tariffs && !tariffErr;
 
+  // THIS car's auction yard resolved to a dropdown value — matched zip-first,
+  // then city+state (`findUsLocation`; the API's branch names don't equal the
+  // workbook's location strings). Derived, not stored: it only fills in while
+  // the user hasn't picked a location, so a manual pick always wins.
+  const seededLocation = useMemo(
+    () =>
+      market === "us" && tariffs && defaultUsLocation
+        ? findUsLocation(defaultUsLocation, auction, tariffs)
+        : undefined,
+    [market, tariffs, defaultUsLocation, auction],
+  );
+
   // US auction-location options (auction-specific). Keep the selected location
-  // valid for the chosen auction; fall back to the first available.
+  // valid for the chosen auction; fall back to the car's own yard, then the first.
   const locationOptions = useMemo(
     () => (market === "us" && tariffs ? usLocationsForAuction(auction, tariffs) : []),
     [market, auction, tariffs],
   );
   const effectiveLocation =
-    market === "us" ? (locationOptions.includes(location) ? location : (locationOptions[0] ?? "")) : "";
+    market === "us"
+      ? locationOptions.includes(location)
+        ? location
+        : (seededLocation ?? locationOptions[0] ?? "")
+      : "";
 
   // Resolve US inland + container transport for the current selection.
   const usTransport = useMemo(

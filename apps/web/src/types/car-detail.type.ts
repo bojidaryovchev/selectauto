@@ -1,4 +1,4 @@
-import type { VehicleType } from "@/data/import-rates";
+import type { UsAuction, VehicleType } from "@/data/import-rates";
 import type { CarView } from "./car.type";
 
 /**
@@ -202,6 +202,14 @@ export type CarDetail = {
    * calculator open pre-seeded to this car's size class. Always set by the mapper.
    */
   calcVehicleType?: VehicleType;
+  /** Calculator auction preset — this lot's auction house (Copart/IAAI lots only). */
+  calcAuction?: UsAuction;
+  /**
+   * This lot's auction-yard zip/city/state (from raw_json `location.*`) — lets the
+   * calculator preselect the matching row of the US transport-tariff table
+   * (`findUsLocation`) instead of defaulting to the first location alphabetically.
+   */
+  calcUsLocation?: { zip?: string; city?: string; state?: string };
 
   // ── Location (for the "Локация" row + JSON-LD availableAtOrFrom) ──
   location?: string;

@@ -135,6 +135,43 @@ export function resolveUsTransport(
   };
 }
 
+/** Digits-only first-5 of a zip ("18073 2303" → "18073"). */
+function zip5(s: string): string {
+  return s.replace(/[^0-9]/g, "").slice(0, 5);
+}
+
+/**
+ * Find the dataset's location STRING for a car's auction yard — used to preselect
+ * the calculator's location dropdown from a lot's raw location. The API's branch
+ * names ("pa - philadelphia") don't match the workbook's location strings
+ * ("PHILADELPHIA (PA) 18073"), so match by yard ZIP first (digits-only first 5 —
+ * lot zips arrive as "18073 2303"), then by yard city+state. ~96% of live US
+ * lots resolve (measured 2026-07-22); unmatched → undefined (manual pick).
+ */
+export function findUsLocation(
+  seed: { zip?: string; city?: string; state?: string },
+  auction: string,
+  data: UsTariffData,
+): string | undefined {
+  const a = key(auction);
+  if (seed.zip) {
+    const z = zip5(seed.zip);
+    if (z.length === 5) {
+      for (const row of data.inland) {
+        if (key(row.auction) === a && row.zip && zip5(row.zip) === z) return row.location;
+      }
+    }
+  }
+  if (seed.city && seed.state) {
+    const c = key(seed.city);
+    const st = key(seed.state);
+    for (const row of data.inland) {
+      if (key(row.auction) === a && key(row.city) === c && key(row.state) === st) return row.location;
+    }
+  }
+  return undefined;
+}
+
 /** Distinct auctions present in the dataset (for the auction dropdown). */
 export function usAuctions(data: UsTariffData): string[] {
   return [...new Set(data.inland.map((r) => r.auction))].sort();

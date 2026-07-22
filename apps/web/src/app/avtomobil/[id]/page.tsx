@@ -27,7 +27,7 @@ import { FavoriteButton } from "@/components/cars/favorite-button";
 import { CarImportCalculator } from "@/components/calculator";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
-import type { MarketId, VehicleType } from "@/data/import-rates";
+import type { MarketId, UsAuction, VehicleType } from "@/data/import-rates";
 import { buildCarJsonLd } from "@/lib/car-detail-jsonld";
 import { modelHubPath } from "@/lib/car-slug";
 import { buildBreadcrumbJsonLd, type Breadcrumb } from "@/lib/site-jsonld";
@@ -187,7 +187,13 @@ async function CarDetailBody({ params }: { params: Params }) {
   // the bid they plan to win at. When the listing does carry a primary price
   // (USD, "16 743 $" — the calculator is USD end-to-end) it pre-seeds the field.
   // Past cars only excluded — a sold car's price isn't an input.
-  const calcSeed: { priceUsd?: number; market?: MarketId; vehicleType?: VehicleType } | null = (() => {
+  const calcSeed: {
+    priceUsd?: number;
+    market?: MarketId;
+    vehicleType?: VehicleType;
+    auction?: UsAuction;
+    usLocation?: { zip?: string; city?: string; state?: string };
+  } | null = (() => {
     if (detail.isPast) return null;
     const priceDigits = detail.prices.find((p) => p.primary)?.value.replace(/[^\d]/g, "");
     const amountUsd = Number(priceDigits);
@@ -203,6 +209,8 @@ async function CarDetailBody({ params }: { params: Params }) {
       priceUsd: Number.isFinite(amountUsd) && amountUsd > 0 ? Math.round(amountUsd) : undefined,
       market,
       vehicleType: detail.calcVehicleType,
+      auction: detail.calcAuction,
+      usLocation: detail.calcUsLocation,
     };
   })();
 
@@ -368,6 +376,8 @@ async function CarDetailBody({ params }: { params: Params }) {
                     defaultPrice={calcSeed.priceUsd}
                     defaultMarket={calcSeed.market}
                     defaultVehicleType={calcSeed.vehicleType}
+                    defaultAuction={calcSeed.auction}
+                    defaultUsLocation={calcSeed.usLocation}
                     carLabel={detail.title}
                     lotNumber={detail.lotNumber}
                   />

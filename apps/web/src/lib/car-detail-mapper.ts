@@ -318,6 +318,16 @@ export function carDetailFromRows(opts: {
     .filter(Boolean) as string[];
   const location = locParts.length > 0 ? titleCaseLoose(locParts.join(", ")) : undefined;
 
+  // Calculator presets: this lot's auction house + its yard's zip/city/state (raw
+  // `location.*`) so the import calculator can preselect the matching row of the
+  // US transport-tariff table (`findUsLocation`) instead of the first location.
+  const domain = lot.domainName?.toLowerCase();
+  const calcAuction = domain === "copart_com" ? ("copart" as const) : domain === "iaai_com" ? ("iaai" as const) : undefined;
+  const usZip = s(get(rawLot, "location.postal_code"));
+  const usCity = s(get(rawLot, "location.city.name"));
+  const usState = s(get(rawLot, "location.state.code"));
+  const calcUsLocation = usZip || (usCity && usState) ? { zip: usZip, city: usCity, state: usState } : undefined;
+
   // Lot coordinates → map. Present on US Copart/IAAI branches (ENCAR sends null).
   // Validate range and reject a null-island (0,0) so we never map the Atlantic.
   const latRaw = get(rawLot, "location.latitude");
@@ -421,6 +431,8 @@ export function carDetailFromRows(opts: {
     highlights,
     specs,
     calcVehicleType,
+    calcAuction,
+    calcUsLocation,
     location,
     geo,
     media,
