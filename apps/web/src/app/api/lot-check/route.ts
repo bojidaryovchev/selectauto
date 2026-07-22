@@ -143,6 +143,11 @@ export async function GET(request: Request) {
       price: view.price ?? null,
       mileage: view.mileage || null,
       image: view.image ?? null,
+      // Raw upstream image, sent ONLY when `image` is a baked CloudFront thumbnail,
+      // so the extension can fall back to it client-side if that thumbnail fails to
+      // load (e.g. an object not yet propagated during a CDN migration). Mirrors the
+      // site's server-side `thumbnailUrl ?? imageUrl` fallback at the client level.
+      imageFallback: view.imageBaked ? (row.imageUrl ?? null) : null,
       source: view.source,
       phone: CONTACT.phone,
     });

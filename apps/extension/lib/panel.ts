@@ -145,6 +145,12 @@ export function renderPanel(container: HTMLElement, opts: PanelOptions): void {
       img.src = res.image;
       img.alt = "";
       img.referrerPolicy = "no-referrer";
+      // Mirror the site's thumbnail→raw fallback: if the baked CloudFront thumbnail
+      // fails to load (e.g. a not-yet-propagated object during a CDN migration), swap
+      // once to the raw upstream image instead of showing a broken thumbnail.
+      if (res.imageFallback && res.imageFallback !== res.image) {
+        img.addEventListener("error", () => { img.src = res.imageFallback!; }, { once: true });
+      }
       body.appendChild(img);
     }
     const metaBox = document.createElement("div");

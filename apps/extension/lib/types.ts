@@ -34,6 +34,9 @@ export interface LotCheckResponse {
   price?: string | null;
   mileage?: string | null;
   image?: string | null;
+  // Raw upstream image URL, present only when `image` is a baked CloudFront
+  // thumbnail — used as the client-side onError fallback (see panel.ts).
+  imageFallback?: string | null;
   source?: string;
   phone?: string;
   error?: string;
