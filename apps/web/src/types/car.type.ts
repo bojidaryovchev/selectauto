@@ -13,16 +13,9 @@ export type CarView = {
   /** Engine displacement/type — shows a "Двигател:" line when present. */
   engine?: string;
   source: string;
-  /** Local image under /public, a remote URL, or null when none is available.
-   *  When `imageBaked` is true this is our own CloudFront thumbnail URL. */
+  /** Card image URL — served directly from the source CDN (per-source ~500px
+   *  variant), a local image under /public, or null when none is available. */
   image: string | null;
-  /**
-   * True when `image` is a pre-baked thumbnail on our S3+CloudFront (built at
-   * ingestion). The card then renders it with `<Image unoptimized>`, bypassing
-   * Vercel Image Optimization entirely. False/undefined → `image` is a raw
-   * upstream/local URL that still goes through the optimizer (q=60).
-   */
-  imageBaked?: boolean;
   /** Buy-now listings show "BUY NOW"; auction listings show an end time. */
   badge: { kind: "buy" } | { kind: "time"; label: string };
 

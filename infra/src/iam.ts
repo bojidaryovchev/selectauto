@@ -140,6 +140,47 @@ export function createLambdaRole(
   return { lambdaRole };
 }
 
+export interface WebAppUser {
+  user: aws.iam.User;
+  accessKey: aws.iam.AccessKey;
+}
+
+/**
+ * IAM user for the Vercel-hosted web app (the contracts & payments module).
+ * The app mints presigned S3 URLs from admin server actions — upload of
+ * proof-of-payment files and download of generated PDFs — so the browser never
+ * sees AWS credentials. Long-lived access keys are unavoidable here (Vercel
+ * can't assume a role via OIDC into this account today); scope is least
+ * privilege: object read/write in the documents bucket only.
+ *
+ * The key id/secret are exported by index.ts (secret outputs) and set manually
+ * as Vercel env vars: SA_AWS_ACCESS_KEY_ID / SA_AWS_SECRET_ACCESS_KEY.
+ */
+export function createWebAppUser(documentsBucketArn: pulumi.Output<string>): WebAppUser {
+  const user = new aws.iam.User("web-app-user", {
+    name: `${namePrefix}-web-app`,
+    tags,
+  });
+
+  new aws.iam.UserPolicy("web-app-documents-s3", {
+    user: user.name,
+    policy: pulumi.jsonStringify({
+      Version: "2012-10-17",
+      Statement: [
+        {
+          Effect: "Allow",
+          Action: ["s3:PutObject", "s3:GetObject"],
+          Resource: pulumi.interpolate`${documentsBucketArn}/*`,
+        },
+      ],
+    }),
+  });
+
+  const accessKey = new aws.iam.AccessKey("web-app-access-key", { user: user.name });
+
+  return { user, accessKey };
+}
+
 /**
  * Create the Step Functions execution role. Scoped to invoke exactly the given
  * Lambda function ARNs, plus its own CloudWatch Logs delivery.

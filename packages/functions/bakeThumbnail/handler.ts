@@ -34,7 +34,7 @@ import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import type { SQSBatchResponse, SQSEvent } from "aws-lambda";
 import { createHash } from "node:crypto";
 import sharp from "sharp";
-import { getPool } from "../shared/db.js";
+import { neon } from "@neondatabase/serverless";
 import { Logger } from "../shared/logger.js";
 
 // Card display is 400×260 (aspect ≈ 1.538). We bake TWO widths at that exact
@@ -54,6 +54,15 @@ const CDN_BASE_URL = process.env.THUMBNAIL_CDN_BASE_URL; // e.g. https://d1234.c
 // Module-scoped for warm-invocation reuse. Region is provided by the Lambda env.
 const s3 = new S3Client({});
 
+// Neon over HTTP: every query is a stateless HTTPS request — NO connection pool,
+// so there are no Postgres connections to exhaust however wide we fan out. That's
+// what lets this worker run the batch (and scale to high concurrency) in parallel
+// without the PgBouncer connect-timeout storms a pg.Pool causes at Lambda scale.
+// `fullResults` returns { rows, rowCount } like node-postgres. (The sync Lambdas
+// keep pg.Pool via shared/db.ts — they run one page at a time, so pooling is fine
+// there and multi-row bulk upserts stay on the wire protocol.)
+const sql = neon(process.env.NEON_DATABASE_URL!, { fullResults: true });
+
 interface BakeMessage {
   lotId: number;
 }
@@ -70,31 +79,41 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
     throw new Error("THUMBNAIL_BUCKET and THUMBNAIL_CDN_BASE_URL must be set");
   }
 
-  const failures: { itemIdentifier: string }[] = [];
-
-  for (const record of event.Records) {
-    const log = new Logger({ flowType: "bake_thumbnail", messageId: record.messageId });
-    try {
+  // Process the whole SQS batch CONCURRENTLY. Each bake is network-bound (source
+  // fetch + 2× S3 upload + a few stateless HTTP DB queries), so a parallel batch
+  // drains far more per Lambda slot. Safe now that the DB is connectionless.
+  // Per-item failures are reported individually (ReportBatchItemFailures) so one
+  // bad message never fails its batch-mates.
+  const results = await Promise.allSettled(
+    event.Records.map(async (record) => {
+      const log = new Logger({ flowType: "bake_thumbnail", messageId: record.messageId });
       const { lotId } = JSON.parse(record.body) as BakeMessage;
       if (!Number.isInteger(lotId)) throw new Error(`invalid lotId: ${record.body}`);
       await bakeOne(lotId, log);
-    } catch (err) {
-      log.error("bake_thumbnail_message_failed", { error: (err as Error).message });
+    }),
+  );
+
+  const failures: { itemIdentifier: string }[] = [];
+  results.forEach((result, i) => {
+    if (result.status === "rejected") {
+      const record = event.Records[i];
+      new Logger({ flowType: "bake_thumbnail", messageId: record.messageId }).error(
+        "bake_thumbnail_message_failed",
+        { error: (result.reason as Error)?.message ?? String(result.reason) },
+      );
       failures.push({ itemIdentifier: record.messageId });
     }
-  }
+  });
 
   return { batchItemFailures: failures };
 };
 
 async function bakeOne(lotId: number, log: Logger): Promise<void> {
-  const db = getPool();
-
-  const res = await db.query<LotRow>(
+  const res = await sql.query(
     `SELECT image_url, thumbnail_url, thumbnail_source_url FROM auction_lots WHERE id = $1`,
     [lotId],
   );
-  const row = res.rows[0];
+  const row = res.rows[0] as LotRow | undefined;
 
   // Lot gone (deleted between enqueue and processing) or has no source image.
   if (!row) {
@@ -124,7 +143,12 @@ async function bakeOne(lotId: number, log: Logger): Promise<void> {
   await log.time(
     "bake_fetch_resize",
     async () => {
-      const resp = await fetch(src);
+      // 8s cap: a real image fetch is ~1-2s, but the source CDN under load STALLS
+      // (no response) rather than erroring — and fetch() has no default timeout, so
+      // one hung fetch would block the whole parallel batch for the full 60s Lambda
+      // timeout. Abort at 8s so a straggler fails fast and retries instead of
+      // dragging its 14 batch-mates down with it.
+      const resp = await fetch(src, { signal: AbortSignal.timeout(8000) });
       if (!resp.ok) throw new Error(`source fetch ${resp.status} for ${src}`);
       const input = Buffer.from(await resp.arrayBuffer());
       await Promise.all(
@@ -151,7 +175,7 @@ async function bakeOne(lotId: number, log: Logger): Promise<void> {
   // 4) Write back. The `image_url = $2` guard prevents a slow bake from clobbering
   //    a NEWER image ingested meanwhile (that newer image re-enqueues + NULLs the
   //    thumbnail, so we converge). Only writes when the source still matches.
-  const upd = await db.query(
+  const upd = await sql.query(
     `UPDATE auction_lots
        SET thumbnail_url = $1, thumbnail_source_url = $2
      WHERE id = $3 AND image_url = $2`,
@@ -167,8 +191,8 @@ async function bakeOne(lotId: number, log: Logger): Promise<void> {
   // 5) Keep the read models in sync directly (cheaper than a full recompute;
   //    thumbnails don't affect counts/facets). At most one row per table has this
   //    lot as its chosen lot_id.
-  await db.query(`UPDATE car_listings SET thumbnail_url = $1 WHERE lot_id = $2`, [cdnUrl, lotId]);
-  await db.query(`UPDATE car_listings_archived SET thumbnail_url = $1 WHERE lot_id = $2`, [cdnUrl, lotId]);
+  await sql.query(`UPDATE car_listings SET thumbnail_url = $1 WHERE lot_id = $2`, [cdnUrl, lotId]);
+  await sql.query(`UPDATE car_listings_archived SET thumbnail_url = $1 WHERE lot_id = $2`, [cdnUrl, lotId]);
 
   log.info("bake_done", { lotId, baseKey });
 }

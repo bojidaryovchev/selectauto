@@ -11,7 +11,7 @@ const CATALOG_PATH = "/vsichki-avtomobili";
 /**
  * Popular-brands grid — ports the `selectauto_popular_brands` plugin's
  * `sab-brands-*` markup and CSS: a header with a navy title + "Виж всички →"
- * link, then a flex grid (6 per row → 5 → 4 → 3) of cards with grayscale logos
+ * link, then a flex grid (6 per row → 5 → 4 → 2 on mobile) of cards with grayscale logos
  * that turn full-colour on hover.
  *
  * The flex item widths use the plugin's exact `calc()` formulas, expressed as
@@ -58,7 +58,7 @@ export async function BrandsGrid() {
               key={brand.slug}
               href={hrefFor(brand.name)}
               aria-label={brand.name}
-              className="group block min-w-0 basis-[calc((100%-90px)/6)] max-[1600px]:basis-[calc((100%-72px)/5)] max-[1280px]:basis-[calc((100%-54px)/4)] max-[991px]:basis-[calc((100%-28px)/3)]"
+              className="group block min-w-0 basis-[calc((100%-90px)/6)] max-[1600px]:basis-[calc((100%-72px)/5)] max-[1280px]:basis-[calc((100%-54px)/4)] max-[991px]:basis-[calc((100%-14px)/2)]"
             >
               <div className="relative flex h-49 flex-col items-center justify-center overflow-hidden rounded-[22px] border border-[#d8e0ea] bg-white px-3.5 pb-4.5 pt-5.5 text-center shadow-[0_1px_2px_rgba(15,23,42,0.03)] transition-[border-color,box-shadow,transform] duration-200 group-hover:-translate-y-0.75 group-hover:border-[#c86116] group-hover:shadow-[0_14px_28px_rgba(20,34,66,0.08)] max-[1280px]:h-46.5">
                 <div className="mb-4 flex h-17 w-full flex-[0_0_auto] items-center justify-center">
@@ -70,7 +70,7 @@ export async function BrandsGrid() {
                     className="block max-h-12 max-w-21 object-contain opacity-[0.72] grayscale transition-[filter,opacity,transform] duration-200 group-hover:scale-[1.04] group-hover:opacity-100 group-hover:grayscale-0"
                   />
                 </div>
-                <div className="wrap-break-word text-lg font-extrabold leading-[1.28] text-[#2c3b57] transition-colors duration-200 group-hover:text-[#c86116]">
+                <div className="w-full wrap-break-word text-lg font-extrabold leading-[1.28] text-[#2c3b57] transition-colors duration-200 group-hover:text-[#c86116] max-[1280px]:text-base">
                   {brand.name}
                 </div>
                 <Ripple theme="dark" />

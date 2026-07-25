@@ -6,7 +6,7 @@ function Stat({ value, label, tone = "ink" }: { value: string; label: string; to
   const color = tone === "brand" ? "text-brand" : tone === "warn" ? "text-[#c2410c]" : "text-ink";
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl bg-[#f7f8fa] px-4 py-5 text-center ring-1 ring-line">
-      <span className={`text-2xl font-black ${color}`}>{value}</span>
+      <span className={`text-xl font-black tabular-nums sm:text-2xl ${color}`}>{value}</span>
       <span className="mt-1 text-xs/tight font-semibold uppercase tracking-wide text-muted">{label}</span>
     </div>
   );

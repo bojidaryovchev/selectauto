@@ -1,5 +1,4 @@
 import { memo } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { LinkButton } from "@/components/common";
 import { PhoneIcon, ViberIcon } from "@/components/icons";
@@ -43,14 +42,6 @@ function InfoCell({ label, value, accent }: { label: string; value?: string; acc
  * virtualize into view.
  */
 
-/**
- * `sizes` mirrors the grid's responsive column count (1/2/3/4 by the same
- * breakpoints as `columnsForWidth`), so the optimizer picks a card-sized
- * variant instead of assuming each image is full-viewport-wide (the `next/image`
- * default when `sizes` is omitted, which over-fetches badly in a multi-col grid).
- */
-const CARD_IMAGE_SIZES = "(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 560px) 50vw, 100vw";
-
 function AuctionCardImpl({
   car,
   priority = false,
@@ -71,45 +62,22 @@ function AuctionCardImpl({
       <div className="relative bg-[#f4f4f4]">
         <Link href={car.href} className="block">
           {car.image ? (
-            car.imageBaked ? (
-              // Baked thumbnails live on OUR CloudFront (two widths: …-640.webp /
-              // …-1280.webp). Serve them as a responsive <img srcset> — a plain
-              // <img>, not next/image, because `<Image unoptimized>` emits no
-              // srcset. This bypasses Vercel Image Optimization entirely (the
-              // point) while still letting the browser pick 640 for desktop grid
-              // cells and 1280 for high-DPI/full-width phones — matching what
-              // next/image did per-device. `car.image` is the 640 URL; derive 1280.
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={car.image}
-                srcSet={`${car.image} 640w, ${car.image.replace("-640.webp", "-1280.webp")} 1280w`}
-                sizes={CARD_IMAGE_SIZES}
-                alt={car.title}
-                width={400}
-                height={260}
-                loading={priority ? "eager" : "lazy"}
-                fetchPriority={priority ? "high" : "auto"}
-                decoding="async"
-                className="block aspect-40/26 w-full object-cover"
-              />
-            ) : (
-              <Image
-                src={car.image}
-                alt={car.title}
-                width={400}
-                height={260}
-                sizes={CARD_IMAGE_SIZES}
-                quality={60}
-                // Un-baked rows (thumbnail_url still NULL) go through the Vercel
-                // optimizer on the raw upstream URL until the bake worker fills in.
-                // First row eager-loads (LCP); the rest lazy-load as they
-                // virtualize in. `priority` is deprecated in Next 16, so set the
-                // underlying loading/fetchPriority hints directly.
-                loading={priority ? "eager" : "lazy"}
-                fetchPriority={priority ? "high" : "auto"}
-                className="block aspect-40/26 w-full object-cover"
-              />
-            )
+            // Served DIRECTLY from the source CDN (no bake, no Vercel optimizer):
+            // `car.image` is the per-source ~500px card URL. A plain <img> — an
+            // unoptimized next/image would be the same thing with extra weight.
+            // First row eager-loads (LCP); the rest lazy-load as they virtualize in.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={car.image}
+              alt={car.title}
+              width={400}
+              height={260}
+              loading={priority ? "eager" : "lazy"}
+              fetchPriority={priority ? "high" : "auto"}
+              decoding="async"
+              referrerPolicy="no-referrer"
+              className="block aspect-40/26 w-full object-cover"
+            />
           ) : (
             <div className="flex aspect-40/26 w-full items-center justify-center bg-linear-to-br from-[#2a2d33] to-[#15171b] text-xs font-semibold uppercase tracking-wider text-white/35">
               Снимка при поискване

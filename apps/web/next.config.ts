@@ -36,6 +36,21 @@ const nextConfig: NextConfig = {
   //     not added (catalog perf was solved at the DB layer). See cache-tags.ts and
   //     node_modules/next/dist/docs (use-cache, use-cache-remote, cacheHandlers).
   cacheComponents: true,
+  // The payment-notice PDF templates (src/pdf) register their Cyrillic TTFs by
+  // filesystem path at runtime — nothing imports the .ttf files, so output
+  // tracing would drop them from the serverless bundle. Include them for the
+  // routes that render PDFs: the admin contract pages (server actions generate
+  // notices there) and the download route.
+  outputFileTracingIncludes: {
+    "/admin/dogovori/**": ["./src/pdf/fonts/*.ttf"],
+    "/api/payment-document/**": ["./src/pdf/fonts/*.ttf"],
+  },
+  // Proof-of-payment uploads (прикачен платежен документ, contracts module) go
+  // through a server action as multipart FormData; the default 1MB body cap is
+  // too small for phone photos of payment slips.
+  experimental: {
+    serverActions: { bodySizeLimit: "8mb" },
+  },
   // Auction-listing photos are served from the upstream source hosts that
   // AuctionsAPI aggregates (encar, copart, iaai, ironplanet, plus its own CDN).
   // next/image requires each remote host to be whitelisted. We use per-source

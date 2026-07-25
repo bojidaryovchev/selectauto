@@ -7,7 +7,9 @@
     "type-check": "tsc --noEmit",
     "pulumi:up": "dotenv -e ../.env -- pulumi up",
     "pulumi:preview": "dotenv -e ../.env -- pulumi preview",
-    "pulumi:destroy": "dotenv -e ../.env -- pulumi destroy"
+    "pulumi:destroy": "dotenv -e ../.env -- pulumi destroy",
+    "pulumi:outputs": "dotenv -e ../.env -- pulumi stack output",
+    "secret:web-app-key": "dotenv -e ../.env -- pulumi stack output webAppSecretAccessKey --show-secrets"
   },
   "dependencies": {
     "@pulumi/aws": "7.37.0",

@@ -69,7 +69,7 @@ export function usdFromKrw(krw: unknown): string | undefined {
   if (n == null || n <= 0) return undefined;
   const usd = Math.round(n / KRW_PER_USD);
   if (usd <= 0) return undefined;
-  return `~${usd.toLocaleString("bg-BG").replace(/ /g, " ")} $`;
+  return `~${usd.toLocaleString("bg-BG").replace(/ /g, " ")} $`;
 }
 
 /** details.history[] → the vehicle-history timeline entries. */

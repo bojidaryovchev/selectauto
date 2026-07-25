@@ -50,15 +50,19 @@ const AUCTIONS: { id: UsAuction; label: string }[] = [
 /** "15 751 $" — space-grouped + $ suffix, matching the site's price style. */
 function usdFmt(n: number): string {
   if (!Number.isFinite(n) || n < 0) return "—";
-  return `${Math.round(n).toLocaleString("bg-BG").replace(/\s/g, " ")} $`;
+  // Non-breaking spaces (U+00A0) for both the thousands separator and the ` $`
+  // suffix so the amount never wraps across lines (e.g. "16 490 $" stays intact).
+  return `${Math.round(n).toLocaleString("bg-BG").replace(/\s/g, " ")} $`;
 }
 
 /** A label/value breakdown row. Module-scoped to avoid remounting on each render. */
 function Row({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-line py-2 last:border-0">
-      <span className={`text-sm ${muted ? "text-muted" : "text-[#5a5d64]"}`}>{label}</span>
-      <span className={`text-sm font-bold tabular-nums ${muted ? "text-muted" : "text-ink"}`}>{value}</span>
+    <div className="flex items-center justify-between gap-3 border-b border-line py-2 last:border-0">
+      <span className={`min-w-0 text-sm ${muted ? "text-muted" : "text-[#5a5d64]"}`}>{label}</span>
+      <span className={`shrink-0 whitespace-nowrap text-sm font-bold tabular-nums ${muted ? "text-muted" : "text-ink"}`}>
+        {value}
+      </span>
     </div>
   );
 }
@@ -407,9 +411,11 @@ export function CostEstimator({
             {b.lines.map((l) => (
               <Row key={l.label} label={l.label} value={usdFmt(l.amountUsd)} muted={l.muted} />
             ))}
-            <div className="mt-4 flex items-center justify-between gap-4 rounded-xl bg-[#2f343c] px-4 py-3">
-              <span className="text-sm font-semibold uppercase tracking-wide text-white/70">Общо (ориентир)</span>
-              <span className="block text-xl font-black text-white tabular-nums">{usdFmt(b.totalUsd)}</span>
+            <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-[#2f343c] px-4 py-3">
+              <span className="min-w-0 text-sm font-semibold uppercase tracking-wide text-white/70">Общо (ориентир)</span>
+              <span className="shrink-0 whitespace-nowrap text-xl font-black text-white tabular-nums">
+                {usdFmt(b.totalUsd)}
+              </span>
             </div>
             <p className="mt-2 text-xs font-semibold text-[#3d4046]">
               Ориентировъчен срок за доставка: {activeMarket.transit}

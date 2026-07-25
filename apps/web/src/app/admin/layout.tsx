@@ -20,7 +20,12 @@ export const metadata: Metadata = {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#f4f4f5] text-ink">
-      <AdminNav />
+      {/* Own boundary: usePathname() inside the nav is request-time data on
+          DYNAMIC segments (/admin/dogovori/[id]) — without it the whole shell
+          fails the cacheComponents prerender for those routes. */}
+      <Suspense fallback={null}>
+        <AdminNav />
+      </Suspense>
       <main className="mx-auto max-w-7xl px-4 py-6">
         <Suspense fallback={<AdminLoading />}>
           <AdminGate>{children}</AdminGate>

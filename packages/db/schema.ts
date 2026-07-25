@@ -10,8 +10,10 @@
  * Every record stores `raw_json` so we can reprocess/backfill new columns later
  * without re-pulling from AuctionsAPI.
  */
+import { sql } from "drizzle-orm";
 import {
   bigint,
+  bigserial,
   boolean,
   date,
   index,
@@ -720,6 +722,301 @@ export const carListingFacets = pgTable(
   ],
 );
 
+/**
+ * Contracts & payments module (техническо задание "договори и плащания" — see
+ * docs/contracts-payments-plan.md and migrations/0038_contracts_payments.sql,
+ * keep in sync). The mediation contract is the single source of truth: client,
+ * car and the five financial points are entered once; saving auto-creates the
+ * four payment stages; notices are generated as immutable versioned snapshots.
+ */
+
+/**
+ * clients — one row per client (физическо/юридическо лице). Gives the deposit
+ * flow a client identity across contracts; every contract also freezes a
+ * `client_snapshot` so later edits here never change existing documents.
+ */
+export const clients = pgTable(
+  "clients",
+  {
+    id: serial("id").primaryKey(),
+    /** 'individual' (физическо лице) | 'company' (юридическо лице). */
+    kind: text("kind").notNull(),
+    /** Three names or company name, depending on kind. */
+    name: text("name").notNull(),
+    egn: text("egn"),
+    eik: text("eik"),
+    vatNumber: text("vat_number"),
+    address: text("address"),
+    representative: text("representative"),
+    phone: text("phone"),
+    email: text("email"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("clients_name_idx").on(t.name), index("clients_egn_idx").on(t.egn), index("clients_eik_idx").on(t.eik)],
+);
+
+/**
+ * payment_recipients — the admin-managed "Получатели" settings (spec §8): the
+ * bank/company details a payment notice is addressed to. Seeded with SelectAuto,
+ * Auto America B.V and Lean Customs BV (migration 0038); international partners
+ * are added by admins. Generation blocks while required bank fields are empty.
+ */
+export const paymentRecipients = pgTable(
+  "payment_recipients",
+  {
+    id: serial("id").primaryKey(),
+    /** Stable ref for built-ins ('selectauto' | 'auto_america' | 'lean_customs'); NULL for partners. */
+    slug: text("slug").unique(),
+    /** 'selectauto' | 'international_partner' | 'customs_broker'. */
+    kind: text("kind").notNull(),
+    name: text("name").notNull(),
+    country: text("country"),
+    address: text("address"),
+    vatNumber: text("vat_number"),
+    bankName: text("bank_name"),
+    bankAddress: text("bank_address"),
+    iban: text("iban"),
+    swiftBic: text("swift_bic"),
+    currency: text("currency"),
+    /** Разноски на превода — OUR/SHA or verbatim text ("За сметка на изпращача"). */
+    chargesInstruction: text("charges_instruction"),
+    /** Вид плащане shown on the notice (e.g. "BLINK" for SelectAuto). */
+    paymentMethod: text("payment_method"),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("payment_recipients_kind_idx").on(t.kind, t.active)],
+);
+
+/**
+ * contract_counters — per-series/year number minting for the two independent
+ * document series ('contract' | 'deposit'). Numbers like "2026-088" are minted
+ * atomically via INSERT .. ON CONFLICT .. SET last_no = last_no + 1 RETURNING.
+ */
+export const contractCounters = pgTable(
+  "contract_counters",
+  {
+    series: text("series").notNull(),
+    year: integer("year").notNull(),
+    lastNo: integer("last_no").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.series, t.year] })],
+);
+
+/**
+ * deposit_contracts — the deposit-contract module (spec §14): a preliminary
+ * contract with its own lifecycle and number series. When used, the mediation
+ * contract points here via `contracts.deposit_contract_id` (a UNIQUE index
+ * there enforces single use; the link is NOT mirrored here to avoid a circular FK).
+ */
+export const depositContracts = pgTable(
+  "deposit_contracts",
+  {
+    id: serial("id").primaryKey(),
+    /** Visible number, e.g. '2026-047' (own series). */
+    number: text("number").notNull().unique(),
+    depositDate: date("deposit_date").notNull(),
+    clientId: integer("client_id")
+      .notNull()
+      .references(() => clients.id),
+    /** Client data frozen at creation. */
+    clientSnapshot: jsonb("client_snapshot").notNull(),
+    /** Free-text vehicle description from чл.1 (e.g. "ЛЕК АВТОМОБИЛ"). */
+    vehicleDescription: text("vehicle_description"),
+    budgetAmount: numeric("budget_amount", { precision: 12, scale: 2 }),
+    budgetCurrency: text("budget_currency").notNull().default("EUR"),
+    depositAmount: numeric("deposit_amount", { precision: 12, scale: 2 }).notNull(),
+    /** 'draft' | 'signed' | 'paid' | 'used' | 'returned' | 'cancelled'. */
+    status: text("status").notNull().default("draft"),
+    createdBy: text("created_by"),
+    updatedBy: text("updated_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("deposit_contracts_client_idx").on(t.clientId, t.status),
+    index("deposit_contracts_created_at_idx").on(t.createdAt),
+  ],
+);
+
+/**
+ * contracts — the mediation contract (договор за посредничество). One row per
+ * deal; documents link by `id` (the internal key), `number` is for humans/print.
+ * The five points (§3.5) live here and are entered ONCE; the four payment stages
+ * are derived rows in contract_payments created in the same transaction.
+ */
+export const contracts = pgTable(
+  "contracts",
+  {
+    id: serial("id").primaryKey(),
+    /** Visible number, e.g. '2026-088'. */
+    number: text("number").notNull().unique(),
+    contractDate: date("contract_date").notNull(),
+    /** 'us_ca' (САЩ/Канада, USD) | 'kr' (Корея, EUR) — fixes template + currency. */
+    market: text("market").notNull(),
+    currency: text("currency").notNull(),
+    clientId: integer("client_id")
+      .notNull()
+      .references(() => clients.id),
+    clientSnapshot: jsonb("client_snapshot").notNull(),
+    carYear: integer("car_year"),
+    carMake: text("car_make"),
+    carModel: text("car_model"),
+    vin: text("vin"),
+    purchaseMarket: text("purchase_market"),
+    auctionPlatform: text("auction_platform"),
+    // The five financial points (§3.5). NUMERIC → string in selects (money-safe).
+    amountCar: numeric("amount_car", { precision: 12, scale: 2 }).notNull().default("0"),
+    amountTransport: numeric("amount_transport", { precision: 12, scale: 2 }).notNull().default("0"),
+    amountCustomsVat: numeric("amount_customs_vat", { precision: 12, scale: 2 }).notNull().default("0"),
+    amountTransportEuBg: numeric("amount_transport_eu_bg", { precision: 12, scale: 2 }).notNull().default("0"),
+    amountCommission: numeric("amount_commission", { precision: 12, scale: 2 }).notNull().default("0"),
+    totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull().default("0"),
+    /** Основание за плащане; defaults to "Договор № {number}" at creation. */
+    paymentBasis: text("payment_basis"),
+    /** Set when an active deposit is applied to payment 1 (§14); UNIQUE partial index = single use. */
+    depositContractId: integer("deposit_contract_id").references(() => depositContracts.id),
+    depositDeduction: numeric("deposit_deduction", { precision: 12, scale: 2 }).notNull().default("0"),
+    /** 'draft' | 'active' | 'fully_paid' | 'cancelled'. */
+    status: text("status").notNull().default("active"),
+    createdBy: text("created_by"),
+    updatedBy: text("updated_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("contracts_deposit_contract_ux")
+      .on(t.depositContractId)
+      .where(sql`deposit_contract_id IS NOT NULL`),
+    index("contracts_client_idx").on(t.clientId),
+    index("contracts_status_idx").on(t.status),
+    index("contracts_created_at_idx").on(t.createdAt),
+    index("contracts_vin_idx").on(t.vin),
+  ],
+);
+
+/**
+ * contract_payments — exactly four stage rows per contract (Кола, Транспорт,
+ * Мито и ДДС, Финално = т.4 + т.5), auto-created on contract save (§4). The
+ * recipient is validated per stage (§5): vehicle/transport → selectauto or
+ * international_partner; customs_vat → auto_america/lean_customs; final →
+ * always selectauto. remaining = due_amount − paid_amount (computed, not stored).
+ */
+export const contractPayments = pgTable(
+  "contract_payments",
+  {
+    id: serial("id").primaryKey(),
+    contractId: integer("contract_id")
+      .notNull()
+      .references(() => contracts.id, { onDelete: "cascade" }),
+    /** 'vehicle' (т.1) | 'transport' (т.2) | 'customs_vat' (т.3) | 'final' (т.4+т.5). */
+    stage: text("stage").notNull(),
+    dueAmount: numeric("due_amount", { precision: 12, scale: 2 }).notNull(),
+    currency: text("currency").notNull(),
+    recipientId: integer("recipient_id").references(() => paymentRecipients.id),
+    /** Per-stage основание (customs operations get their own reference — §5.3). */
+    basis: text("basis"),
+    dueDate: date("due_date"),
+    /** 'not_requested' | 'awaiting_payment' | 'partially_paid' | 'paid' | 'overdue' | 'cancelled'. */
+    status: text("status").notNull().default("not_requested"),
+    paidAmount: numeric("paid_amount", { precision: 12, scale: 2 }).notNull().default("0"),
+    paidAt: date("paid_at"),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("contract_payments_contract_id_stage_key").on(t.contractId, t.stage),
+    index("contract_payments_status_idx").on(t.status),
+  ],
+);
+
+/**
+ * generated_documents — append-only, versioned generated PDFs: payment notices
+ * plus the contract/deposit-contract documents themselves. `snapshot` freezes
+ * the COMPLETE render payload at generation time (§2 — a contract edit or
+ * recipient edit never changes an already generated document); regeneration
+ * inserts version+1, nothing is overwritten or deleted (§9). The USD columns
+ * snapshot the §16 conversion (us_ca notices to SelectAuto only).
+ */
+export const generatedDocuments = pgTable(
+  "generated_documents",
+  {
+    id: serial("id").primaryKey(),
+    /** 'payment_notice' | 'contract' | 'deposit_contract'. */
+    kind: text("kind").notNull(),
+    contractId: integer("contract_id").references(() => contracts.id),
+    paymentId: integer("payment_id").references(() => contractPayments.id),
+    depositContractId: integer("deposit_contract_id").references(() => depositContracts.id),
+    version: integer("version").notNull(),
+    recipientId: integer("recipient_id").references(() => paymentRecipients.id),
+    snapshot: jsonb("snapshot").notNull(),
+    amountUsd: numeric("amount_usd", { precision: 12, scale: 2 }),
+    usdEurRate: numeric("usd_eur_rate", { precision: 12, scale: 6 }),
+    amountEur: numeric("amount_eur", { precision: 12, scale: 2 }),
+    pdfS3Key: text("pdf_s3_key"),
+    generatedBy: text("generated_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("generated_documents_payment_version_ux")
+      .on(t.paymentId, t.version)
+      .where(sql`payment_id IS NOT NULL`),
+    uniqueIndex("generated_documents_deposit_version_ux")
+      .on(t.depositContractId, t.version)
+      .where(sql`deposit_contract_id IS NOT NULL AND kind = 'deposit_contract'`),
+    uniqueIndex("generated_documents_contract_version_ux")
+      .on(t.contractId, t.kind, t.version)
+      .where(sql`contract_id IS NOT NULL AND payment_id IS NULL`),
+    index("generated_documents_contract_idx").on(t.contractId),
+  ],
+);
+
+/**
+ * payment_attachments — uploaded proof-of-payment files per payment stage
+ * (платежни документи, §4.3). Binary lives in the private documents S3 bucket;
+ * this row is the metadata + key.
+ */
+export const paymentAttachments = pgTable(
+  "payment_attachments",
+  {
+    id: serial("id").primaryKey(),
+    paymentId: integer("payment_id")
+      .notNull()
+      .references(() => contractPayments.id, { onDelete: "cascade" }),
+    s3Key: text("s3_key").notNull(),
+    filename: text("filename").notNull(),
+    contentType: text("content_type"),
+    sizeBytes: bigint("size_bytes", { mode: "number" }),
+    uploadedBy: text("uploaded_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("payment_attachments_payment_idx").on(t.paymentId)],
+);
+
+/**
+ * contract_events — append-only audit trail for the module (§9): who created/
+ * edited what, status changes, generated versions, mark-paid actions. Written in
+ * the same transaction as the mutation it records. Never updated or deleted.
+ */
+export const contractEvents = pgTable(
+  "contract_events",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    /** 'contract' | 'payment' | 'deposit' | 'recipient' | 'client'. */
+    entity: text("entity").notNull(),
+    entityId: integer("entity_id").notNull(),
+    /** e.g. 'created' | 'updated' | 'status_changed' | 'document_generated' | 'marked_paid'. */
+    action: text("action").notNull(),
+    actorId: text("actor_id"),
+    data: jsonb("data"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("contract_events_entity_idx").on(t.entity, t.entityId, t.createdAt)],
+);
+
 // Inferred types for use in queries elsewhere in the app.
 export type Car = typeof cars.$inferSelect;
 export type NewCar = typeof cars.$inferInsert;
@@ -749,3 +1046,18 @@ export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type CarListing = typeof carListings.$inferSelect;
 export type NewCarListing = typeof carListings.$inferInsert;
 export type CarListingArchived = typeof carListingsArchived.$inferSelect;
+export type Client = typeof clients.$inferSelect;
+export type NewClient = typeof clients.$inferInsert;
+export type PaymentRecipient = typeof paymentRecipients.$inferSelect;
+export type NewPaymentRecipient = typeof paymentRecipients.$inferInsert;
+export type Contract = typeof contracts.$inferSelect;
+export type NewContract = typeof contracts.$inferInsert;
+export type ContractPayment = typeof contractPayments.$inferSelect;
+export type NewContractPayment = typeof contractPayments.$inferInsert;
+export type DepositContract = typeof depositContracts.$inferSelect;
+export type NewDepositContract = typeof depositContracts.$inferInsert;
+export type GeneratedDocument = typeof generatedDocuments.$inferSelect;
+export type NewGeneratedDocument = typeof generatedDocuments.$inferInsert;
+export type PaymentAttachment = typeof paymentAttachments.$inferSelect;
+export type ContractEvent = typeof contractEvents.$inferSelect;
+export type NewContractEvent = typeof contractEvents.$inferInsert;

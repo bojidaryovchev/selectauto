@@ -29,6 +29,45 @@ export interface Storage {
   cdnBaseUrl: pulumi.Output<string>;
 }
 
+export interface DocumentsStorage {
+  documentsBucket: aws.s3.Bucket;
+}
+
+/**
+ * Private bucket for the contracts & payments module (docs/
+ * contracts-payments-plan.md): generated PDFs (payment notices, contracts) and
+ * uploaded proof-of-payment files. No CloudFront — these are sensitive
+ * documents, reachable ONLY via short-lived presigned URLs minted by admin
+ * server actions in the web app (see the web-app IAM user in iam.ts).
+ * Versioning is on as belt-and-braces for the module's append-only guarantee.
+ */
+export function createDocumentsStorage(): DocumentsStorage {
+  // Account-scoped name for global uniqueness — same reasoning as the
+  // thumbnail bucket above.
+  const accountId = aws.getCallerIdentityOutput({}).accountId;
+
+  const documentsBucket = new aws.s3.Bucket("documents-bucket", {
+    bucket: pulumi.interpolate`${namePrefix}-documents-${accountId}`,
+    tags,
+  });
+
+  // Separate resource (the inline `versioning` bucket arg is deprecated).
+  new aws.s3.BucketVersioning("documents-bucket-versioning", {
+    bucket: documentsBucket.id,
+    versioningConfiguration: { status: "Enabled" },
+  });
+
+  new aws.s3.BucketPublicAccessBlock("documents-bucket-pab", {
+    bucket: documentsBucket.id,
+    blockPublicAcls: true,
+    blockPublicPolicy: true,
+    ignorePublicAcls: true,
+    restrictPublicBuckets: true,
+  });
+
+  return { documentsBucket };
+}
+
 export function createStorage(): Storage {
   // S3 bucket names are GLOBALLY unique, so a name derived purely from the
   // (project, environment) prefix — identical across accounts — collides the
@@ -93,23 +132,21 @@ export function createStorage(): Storage {
   // ── Bucket policy: allow ONLY this distribution to read objects ──────────────
   new aws.s3.BucketPolicy("thumbnail-bucket-policy", {
     bucket: thumbnailBucket.id,
-    policy: pulumi
-      .all([thumbnailBucket.arn, distribution.arn])
-      .apply(([bucketArn, distArn]) =>
-        JSON.stringify({
-          Version: "2012-10-17",
-          Statement: [
-            {
-              Sid: "AllowCloudFrontServicePrincipalReadOnly",
-              Effect: "Allow",
-              Principal: { Service: "cloudfront.amazonaws.com" },
-              Action: ["s3:GetObject"],
-              Resource: `${bucketArn}/*`,
-              Condition: { StringEquals: { "AWS:SourceArn": distArn } },
-            },
-          ],
-        }),
-      ),
+    policy: pulumi.all([thumbnailBucket.arn, distribution.arn]).apply(([bucketArn, distArn]) =>
+      JSON.stringify({
+        Version: "2012-10-17",
+        Statement: [
+          {
+            Sid: "AllowCloudFrontServicePrincipalReadOnly",
+            Effect: "Allow",
+            Principal: { Service: "cloudfront.amazonaws.com" },
+            Action: ["s3:GetObject"],
+            Resource: `${bucketArn}/*`,
+            Condition: { StringEquals: { "AWS:SourceArn": distArn } },
+          },
+        ],
+      }),
+    ),
   });
 
   const cdnBaseUrl = pulumi.interpolate`https://${distribution.domainName}`;

@@ -50,6 +50,10 @@ export interface NormalizedLot {
   locationState: string | null;
   locationCity: string | null;
   imageUrl: string | null;
+  // The card thumbnail URL — a ~500px image served DIRECTLY from the source CDN
+  // (no baking, no Vercel optimizer). See cardImageUrl() for the per-source logic.
+  // Stored in auction_lots.thumbnail_url; the catalog card renders it in a plain <img>.
+  cardImageUrl: string | null;
   // The lot's archived state, carried by the API on every lot object (both
   // /api/cars and the search-* detail endpoints — e.g. a directly looked-up lot
   // can be `archived: true, status: "sold"`). Persist it so the active upsert
@@ -112,6 +116,7 @@ export function normalizeLot(raw: ApiLot): NormalizedLot {
     // Prefer the CDN-hosted "downloaded" copies (stable, our-domain). Fall back
     // to the first "normal" URL. TODO: decide if we want to store all images.
     imageUrl: firstImage(raw),
+    cardImageUrl: cardImageUrl(raw, str(raw.domain?.name), firstImage(raw)),
     // `archived` is a boolean on the lot; coerce defensively (absent -> null).
     archived: typeof raw.archived === "boolean" ? raw.archived : null,
     archivedAt: str(raw.archived_at),
@@ -250,4 +255,32 @@ function firstImage(raw: ApiLot): string | null {
   const normal = Array.isArray(imgs.normal) ? imgs.normal : [];
   if (normal.length > 0 && typeof normal[0] === "string") return normal[0];
   return null;
+}
+
+/**
+ * The card thumbnail URL — a ~500px image served DIRECTLY from the source CDN
+ * (no baking, no Vercel optimization). Each source exposes sizing differently:
+ *   - copart: `images.small[0]` is already a small thumbnail (`_thb.jpg`).
+ *   - iaai:   `images.normal[0]` is a `vis.iaai.com/resizer?...&width=…` URL — ask
+ *             it for a card-sized render by rewriting width/height (~500px, ~30KB).
+ *   - encar (and any other source): its CDN 403s cross-origin hotlinks intermittently,
+ *             so use the reliable i.auctionsapi.com copy (the `fallback` = image_url).
+ * Stored in auction_lots.thumbnail_url; the catalog card renders it in a plain <img>.
+ */
+function cardImageUrl(raw: ApiLot, domainName: string | null, fallback: string | null): string | null {
+  const imgs = raw.images as Record<string, unknown> | undefined;
+  if (imgs) {
+    if (domainName === "copart_com") {
+      const small = Array.isArray(imgs.small) ? imgs.small : [];
+      if (small.length > 0 && typeof small[0] === "string") return small[0];
+    } else if (domainName === "iaai_com") {
+      const normal = Array.isArray(imgs.normal) ? imgs.normal : [];
+      if (normal.length > 0 && typeof normal[0] === "string") {
+        return normal[0]
+          .replace(/([?&]width=)\d+/, (_m, p: string) => `${p}500`)
+          .replace(/([?&]height=)\d+/, (_m, p: string) => `${p}375`);
+      }
+    }
+  }
+  return fallback;
 }

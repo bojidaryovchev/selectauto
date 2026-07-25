@@ -69,7 +69,7 @@ export function ContactCards() {
                   >
                     <a
                       href={p.href}
-                      className="text-[19px] font-black text-[#17181b] transition-colors hover:text-brand-dark max-md:text-[17px]"
+                      className="whitespace-nowrap text-[19px] font-black text-[#17181b] transition-colors hover:text-brand-dark max-md:text-[17px]"
                     >
                       {p.display}
                     </a>
@@ -132,10 +132,10 @@ export function ContactCards() {
                 {HOURS.map((h) => (
                   <li
                     key={h.day}
-                    className="flex items-center justify-between gap-4 border-b border-line pb-2.5 text-[15px] font-bold text-[#17181b] last:border-0 last:pb-0"
+                    className="flex items-center justify-between gap-3 border-b border-line pb-2.5 text-[15px] font-bold text-[#17181b] last:border-0 last:pb-0"
                   >
-                    <span>{h.day}</span>
-                    <span className="text-brand-dark">{h.time}</span>
+                    <span className="min-w-0">{h.day}</span>
+                    <span className="shrink-0 whitespace-nowrap text-brand-dark">{h.time}</span>
                   </li>
                 ))}
               </ul>

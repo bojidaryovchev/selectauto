@@ -53,7 +53,7 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
       ) : (
         <CopyIcon className="size-3.5" />
       )}
-      <span className="relative">{copied ? "Копирано" : "Копирай"}</span>
+      <span className="relative max-[479px]:hidden">{copied ? "Копирано" : "Копирай"}</span>
     </button>
   );
 }

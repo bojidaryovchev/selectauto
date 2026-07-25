@@ -229,7 +229,8 @@ export function createLambdas(
       name: "bakeThumbnail",
       bundleFile: "bakeThumbnail.js",
       timeoutSeconds: 60,
-      memoryMb: 1024,
+      // 2GB gives sharp headroom + more vCPU to resize a parallel batch quickly.
+      memoryMb: 2048,
       layers: [sharpLayer.arn],
       extraEnv: {
         THUMBNAIL_BUCKET: thumbEnv.thumbnailBucket,

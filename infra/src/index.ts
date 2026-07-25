@@ -12,13 +12,13 @@
 import * as aws from "@pulumi/aws";
 import * as pulumi from "@pulumi/pulumi";
 import { config, namePrefix } from "./config";
-import { createLambdaRole, createSchedulerRole, createStepFunctionsRole } from "./iam";
+import { createLambdaRole, createSchedulerRole, createStepFunctionsRole, createWebAppUser } from "./iam";
 import { allLambdaArns, createLambdas } from "./lambdas";
 import { createQueues } from "./queues";
 import { createSchedules } from "./schedules";
 import { createSecrets, secretArns } from "./secrets";
 import { createStateMachines } from "./step-functions";
-import { createStorage } from "./storage";
+import { createDocumentsStorage, createStorage } from "./storage";
 
 // Current AWS account ID (for scoping IAM resource ARNs to this account).
 const accountId = aws.getCallerIdentityOutput({}).accountId;
@@ -32,6 +32,12 @@ const queues = createQueues();
 // 2b. Thumbnail storage: private S3 bucket + CloudFront (the bake worker writes
 //     here; the web app serves card thumbnails directly from CloudFront).
 const storage = createStorage();
+
+// 2c. Documents storage (contracts & payments module): private, versioned S3
+//     bucket for generated PDFs + uploaded payment proofs, accessed only via
+//     presigned URLs minted by the web app's IAM user.
+const documentsStorage = createDocumentsStorage();
+const webAppUser = createWebAppUser(documentsStorage.documentsBucket.arn);
 
 // 3. Lambda execution role: logs + read secrets + consume the detail/bake queues
 //    + send to the bake queue (enqueuers) + PutObject into the thumbnail bucket.
@@ -74,7 +80,16 @@ new aws.lambda.EventSourceMapping("detail-refresh-esm", {
 new aws.lambda.EventSourceMapping("bake-thumbnail-esm", {
   eventSourceArn: queues.bakeThumbnailQueue.arn,
   functionName: lambdas.bakeThumbnail.arn,
-  batchSize: 10,
+  // 15 lots per invocation, processed in parallel inside the handler. The bake
+  // worker's DB is now connectionless (Neon HTTP), so the binding limit is the
+  // SOURCE image CDN (Cloudflare-fronted i.auctionsapi.com): its ceiling is
+  // undocumented and adaptive (520 = origin overload). ~300 fetches ran clean,
+  // ~1,200 revolted; probing upward — 30 × 15 ≈ 450 concurrent fetches. Watch the
+  // source-fetch 520 rate; back off if it climbs. SQS needs a batching window once
+  // batchSize > 10.
+  batchSize: 15,
+  maximumBatchingWindowInSeconds: 2,
+  scalingConfig: { maximumConcurrency: 25 },
   functionResponseTypes: ["ReportBatchItemFailures"],
 });
 
@@ -188,3 +203,11 @@ export const bakeThumbnailDlqUrl = queues.bakeThumbnailDlq.url;
 export const thumbnailBucketName = storage.thumbnailBucket.bucket;
 export const thumbnailCdnBaseUrl = storage.cdnBaseUrl;
 export const thumbnailCdnDistributionId = storage.distribution.id;
+
+// Documents storage (contracts & payments). Set these in the web app's Vercel
+// env: SA_AWS_REGION, SA_DOCUMENTS_BUCKET, SA_AWS_ACCESS_KEY_ID,
+// SA_AWS_SECRET_ACCESS_KEY. Read the secret with:
+//   pulumi stack output webAppSecretAccessKey --show-secrets
+export const documentsBucketName = documentsStorage.documentsBucket.bucket;
+export const webAppAccessKeyId = webAppUser.accessKey.id;
+export const webAppSecretAccessKey = pulumi.secret(webAppUser.accessKey.secret);

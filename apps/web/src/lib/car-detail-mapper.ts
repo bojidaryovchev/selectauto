@@ -89,7 +89,7 @@ function posNum(v: unknown): number | undefined {
 /** "16 743 $" (thin-space grouping, matching the card mapper). */
 function eur(n: number | undefined): string | undefined {
   if (n === undefined) return undefined;
-  return `${Math.round(n).toLocaleString("bg-BG").replace(/ /g, " ")} $`;
+  return `${Math.round(n).toLocaleString("bg-BG").replace(/ /g, " ")} $`;
 }
 
 /** Latin "km" grouping, matching the rich card. */

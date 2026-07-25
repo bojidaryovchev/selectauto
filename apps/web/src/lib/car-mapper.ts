@@ -102,11 +102,11 @@ export function carListingToView(row: AnyCarListing, isPast = false): CarView {
     mileage: formatKm(row.odometerKm),
     engine: row.engine ?? undefined, // verbatim spec string ("2.0l 4"); not translated
     source: sourceBadge(row.domainName),
-    // Prefer the baked CloudFront thumbnail (served `unoptimized`, off Vercel's
-    // image optimizer); fall back to the raw upstream URL (optimized) until the
-    // bake worker fills thumbnail_url in.
+    // Card image, served DIRECTLY from the source CDN (no bake, no Vercel
+    // optimizer): thumbnail_url now holds the per-source ~500px card URL (see
+    // functions/shared/normalize.ts → cardImageUrl); image_url is the reliable
+    // i.auctionsapi.com fallback.
     image: row.thumbnailUrl ?? row.imageUrl ?? null,
-    imageBaked: !!row.thumbnailUrl,
     // Past cards always show a result label ("Продаден"/…); active cards show the
     // buy badge or the live status.
     badge: isPast

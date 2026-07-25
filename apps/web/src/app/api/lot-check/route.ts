@@ -147,7 +147,9 @@ export async function GET(request: Request) {
       // so the extension can fall back to it client-side if that thumbnail fails to
       // load (e.g. an object not yet propagated during a CDN migration). Mirrors the
       // site's server-side `thumbnailUrl ?? imageUrl` fallback at the client level.
-      imageFallback: view.imageBaked ? (row.imageUrl ?? null) : null,
+      // Raw i.auctionsapi.com fallback for the extension's onError — sent only
+      // when the card image is a different (source-CDN) URL than image_url.
+      imageFallback: row.imageUrl && row.imageUrl !== view.image ? row.imageUrl : null,
       source: view.source,
       phone: CONTACT.phone,
     });

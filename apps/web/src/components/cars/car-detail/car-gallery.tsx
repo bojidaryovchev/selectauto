@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/common";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
@@ -19,9 +18,6 @@ import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
  * Client component (the page's only interactive part) — it owns the selected-index
  * and zoom state.
  */
-
-/** sizes for the main image: full column width up to the 2-col layout breakpoint. */
-const MAIN_SIZES = "(min-width: 1024px) 60vw, 100vw";
 
 /** How far the hover lens magnifies (2.4× reads as "premium store" without losing context). */
 const ZOOM = 2.4;
@@ -73,15 +69,18 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
         onMouseMove={onMove}
         className="group relative cursor-zoom-in overflow-hidden rounded-2xl border border-line bg-[#f4f4f4]"
       >
-        <Image
+        {/* Served directly from the source CDN — no Vercel optimizer. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           key={src}
           src={src}
           alt={alt}
           width={960}
           height={720}
-          sizes={MAIN_SIZES}
           loading="eager"
           fetchPriority="high"
+          decoding="async"
+          referrerPolicy="no-referrer"
           className={`block aspect-4/3 w-full object-cover transition-opacity duration-200 ${
             zooming ? "opacity-0" : "opacity-100"
           }`}
@@ -150,13 +149,15 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
                 i === active ? "border-brand" : "border-transparent opacity-70 hover:opacity-100"
               }`}
             >
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={thumb}
                 alt=""
                 width={88}
                 height={66}
-                sizes="88px"
                 loading="lazy"
+                decoding="async"
+                referrerPolicy="no-referrer"
                 className="block aspect-4/3 w-22 object-cover"
               />
             </Button>
