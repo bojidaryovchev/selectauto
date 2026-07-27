@@ -86,34 +86,30 @@ same state machine shape; only `mode` + `minutes` differ.
 > warning. Cars with a null `external_car_id` still insert (NULLs distinct in the
 > unique index) and dedupe via their lots.
 
-### Thumbnail-bake enqueue (best-effort, off the write path)
+### Card image URL (populated at ingestion)
 
-To cut Vercel Image Optimization cost (it was ~80% of the web bill), catalog card
-images are baked into WebP thumbnails on our **own S3+CloudFront** and served
-bypassing Vercel's optimizer ([08 §5](08-web-all-cars-page.md)). Ingestion feeds
-that pipeline:
+Catalog card images are served **directly from the source CDN** through a plain
+`<img>` — no baking, no S3/CloudFront, and **not** through Vercel's image
+optimizer (which had been ~80% of the web bill; see [08 §5](08-web-all-cars-page.md)).
+There is **no extra write path** for this: `normalize.ts`'s `cardImageUrl()`
+derives a per-source ~500px card image URL and the lot upsert stores it in
+`auction_lots.thumbnail_url` alongside `image_url`, like any other normalized
+column (`thumbnail_url = EXCLUDED.thumbnail_url` on conflict). The per-source
+logic:
 
-- The lot upsert also
-  `RETURNING id, (thumbnail_source_url IS DISTINCT FROM image_url) AS needs_bake`,
-  and **NULLs the stale `thumbnail_url`** whenever the source `image_url` changed
-  (so the card falls back to the *fresh* raw image until the new thumbnail lands).
-- After each page, `upsertCarsAndLots` **batch-enqueues** the `needs_bake` lot ids
-  to a **standard SQS queue** (`BAKE_QUEUE_URL`) via `SendMessageBatch`. This is
-  **best-effort** — a send failure is logged and swallowed, **never** failing
-  ingestion — and it fires on the same write path for **Flow 2** (hourly cars sync)
-  **and Flow 5** (`refreshListingDetail`).
-- The **`bakeThumbnail` SQS worker** ([`bakeThumbnail/handler.ts`](../packages/functions/bakeThumbnail/handler.ts))
-  drains the queue (batchSize 10, `ReportBatchItemFailures`, no reserved
-  concurrency). Per lot id it reads `image_url`, fetches the source image from its
-  **CDN** (`i.auctionsapi.com` etc. — *not* the rate-limited AuctionsAPI `/api`, so
-  it doesn't spend the 1 req/sec budget), resizes with **sharp** to two widths
-  (640×416 + 1280×832) as WebP q62, uploads both to S3 as content-addressed
-  `thumb/<sha256(image_url)>-640.webp` / `-1280.webp` (Cache-Control immutable 1yr
-  → no CDN invalidation ever), then writes `thumbnail_url` (the 640 URL) +
-  `thumbnail_source_url` back to `auction_lots` (guarded by `AND image_url =
-  <source>` so a slow bake can't clobber a newer image) and updates the two
-  projection rows directly. Failures retry via SQS → DLQ; `thumbnail_url` stays NULL
-  and the card falls back to the raw optimized image.
+- **copart** (`domain_name='copart_com'`): `raw_json->images->small[0]` (already a
+  ready ~thumbnail URL).
+- **iaai** (`domain_name='iaai_com'`): `raw_json->images->normal[0]` with its
+  `width=`/`height=` query params rewritten to `500`/`375`.
+- **everything else** (encar, …): falls back to `image_url` (the reliable
+  `i.auctionsapi.com` copy).
+
+The recompute functions project `thumbnail_url` onto both read models, and the web
+mapper resolves the card image as `thumbnailUrl ?? imageUrl` — so it is
+**effectively never NULL** (there is no "NULL until baked" state anymore). A
+one-time backfill for pre-existing lots is
+[`backfill-card-images.mjs`](../packages/db/backfill-card-images.mjs), which
+mirrors `cardImageUrl()` server-side.
 
 **Full backfill (Flow 1)** = the same machine started manually with
 `mode:"full"`, `page:1`, `perPage:1000`, **no `minutes`**. It walks every active

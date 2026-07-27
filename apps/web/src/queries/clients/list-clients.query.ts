@@ -1,5 +1,5 @@
 import { asc } from "drizzle-orm";
-import { getAdminSession } from "@/lib/admin";
+import { getBackOfficeSession } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 
 export type ClientRow = typeof schema.clients.$inferSelect;
@@ -12,7 +12,7 @@ export type ClientRow = typeof schema.clients.$inferSelect;
  * admin-only). Admin-gated defensively.
  */
 export async function listClients(): Promise<ClientRow[]> {
-  if (!(await getAdminSession())) throw new Error("FORBIDDEN");
+  if (!(await getBackOfficeSession())) throw new Error("FORBIDDEN");
 
   const t = schema.clients;
   return getDb().select().from(t).orderBy(asc(t.name));

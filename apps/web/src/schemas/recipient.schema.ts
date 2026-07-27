@@ -31,6 +31,7 @@ export const recipientSchema = z.object({
     .regex(/^[A-Z0-9]*$/, { message: "SWIFT/BIC може да съдържа само букви и цифри." })
     .max(20)
     .optional(),
+  routingCode: z.string().trim().max(50).optional(),
   currency: z.string().trim().toUpperCase().max(10).optional(),
   chargesInstruction: z.string().trim().max(200).optional(),
   paymentMethod: z.string().trim().max(100).optional(),

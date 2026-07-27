@@ -1,4 +1,5 @@
 import { LeadInbox } from "@/components/admin";
+import { requireAdminPage } from "@/lib/admin";
 import { LEAD_TYPE_META } from "@/constants/admin";
 import { INQUIRY_COLUMNS, toInquiryView } from "@/lib/admin-lead-view";
 import { parseLeadFilters, type LeadSearchParams } from "@/lib/admin-lead-filters";
@@ -13,6 +14,7 @@ export default async function AdminInquiriesPage({
 }: {
   searchParams: Promise<LeadSearchParams>;
 }) {
+  await requireAdminPage();
   const sp = await searchParams;
   const filters = parseLeadFilters(sp);
   const { rows, total, page, pageCount } = await listInquiries(filters);

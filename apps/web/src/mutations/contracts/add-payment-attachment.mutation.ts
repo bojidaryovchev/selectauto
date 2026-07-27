@@ -2,7 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { getAdminSession } from "@/lib/admin";
+import { getBackOfficeSession, isAdmin } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import { isDocumentStorageConfigured, putDocument } from "@/lib/s3";
 import type { ActionResult } from "@/types/action-result.type";
@@ -31,9 +31,13 @@ function sanitizeFilename(name: string): string {
  * snapshot), an uploaded file exists ONLY in S3 — so here the upload must
  * succeed before the DB row is written, and a missing storage config is a hard
  * error rather than a silent skip.
+ *
+ * A „Наблюдаващ" MAY attach payment documents (owner, 07.2026 — "няма право да
+ * генерира платежно и да отбелязва статут на плащането, но да може да прикача
+ * платежни към известието"), but only on contracts they created.
  */
 export async function addPaymentAttachment(formData: FormData): Promise<ActionResult<{ id: number }>> {
-  const session = await getAdminSession();
+  const session = await getBackOfficeSession();
   if (!session) return { success: false, error: "Нямате достъп до тази операция." };
 
   if (!isDocumentStorageConfigured()) {
@@ -66,6 +70,16 @@ export async function addPaymentAttachment(formData: FormData): Promise<ActionRe
     const p = schema.contractPayments;
     const [payment] = await db.select().from(p).where(eq(p.id, paymentId));
     if (!payment) return { success: false, error: "Плащането не е намерено." };
+
+    if (!isAdmin(session)) {
+      const [contract] = await db
+        .select({ createdBy: schema.contracts.createdBy })
+        .from(schema.contracts)
+        .where(eq(schema.contracts.id, payment.contractId));
+      if (contract?.createdBy !== session.user?.id) {
+        return { success: false, error: "Нямате достъп до този договор." };
+      }
+    }
 
     const filename = sanitizeFilename(file.name);
     // Unique key per upload so nothing is ever overwritten (§9 — attachments

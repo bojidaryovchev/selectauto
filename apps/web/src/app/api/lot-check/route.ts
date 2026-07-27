@@ -143,12 +143,10 @@ export async function GET(request: Request) {
       price: view.price ?? null,
       mileage: view.mileage || null,
       image: view.image ?? null,
-      // Raw upstream image, sent ONLY when `image` is a baked CloudFront thumbnail,
-      // so the extension can fall back to it client-side if that thumbnail fails to
-      // load (e.g. an object not yet propagated during a CDN migration). Mirrors the
-      // site's server-side `thumbnailUrl ?? imageUrl` fallback at the client level.
-      // Raw i.auctionsapi.com fallback for the extension's onError — sent only
-      // when the card image is a different (source-CDN) URL than image_url.
+      // Raw i.auctionsapi.com fallback for the extension's onError handler — the
+      // card image (`view.image`) is a per-source CDN URL that can occasionally
+      // fail to load; `image_url` is the reliable AuctionsAPI copy. Sent only when
+      // it's actually a different URL than the card image.
       imageFallback: row.imageUrl && row.imageUrl !== view.image ? row.imageUrl : null,
       source: view.source,
       phone: CONTACT.phone,

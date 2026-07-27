@@ -44,6 +44,7 @@ export function RecipientForm({
   const [bankAddress, setBankAddress] = useState(recipient?.bankAddress ?? "");
   const [iban, setIban] = useState(recipient?.iban ?? "");
   const [swiftBic, setSwiftBic] = useState(recipient?.swiftBic ?? "");
+  const [routingCode, setRoutingCode] = useState(recipient?.routingCode ?? "");
   const [currency, setCurrency] = useState(recipient?.currency ?? "EUR");
   const [chargesInstruction, setChargesInstruction] = useState(recipient?.chargesInstruction ?? "");
   const [paymentMethod, setPaymentMethod] = useState(recipient?.paymentMethod ?? "");
@@ -68,6 +69,7 @@ export function RecipientForm({
           bankAddress,
           iban,
           swiftBic,
+          routingCode,
           currency,
           chargesInstruction,
           paymentMethod,
@@ -148,6 +150,17 @@ export function RecipientForm({
         <div className="flex flex-col gap-1">
           <label className="text-sm font-semibold text-ink">SWIFT / BIC</label>
           <input type="text" value={swiftBic} onChange={(e) => setSwiftBic(e.target.value)} className={INPUT} />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-semibold text-ink">Routing code (за неевропейски преводи)</label>
+          <input
+            type="text"
+            value={routingCode}
+            onChange={(e) => setRoutingCode(e.target.value)}
+            placeholder="напр. CC000100381"
+            className={INPUT}
+          />
         </div>
 
         <div className="flex flex-col gap-1">

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { requireAdminPage } from "@/lib/admin";
+import { auth } from "@/auth";
+import { isAdmin, requireBackOfficePage } from "@/lib/admin";
 import { AdminNav } from "@/components/admin";
 
 export const metadata: Metadata = {
@@ -24,7 +25,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           DYNAMIC segments (/admin/dogovori/[id]) — without it the whole shell
           fails the cacheComponents prerender for those routes. */}
       <Suspense fallback={null}>
-        <AdminNav />
+        <AdminNavForRole />
       </Suspense>
       <main className="mx-auto max-w-7xl px-4 py-6">
         <Suspense fallback={<AdminLoading />}>
@@ -43,8 +44,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
  * already blocks `/admin/**`; this is the per-render defence-in-depth.
  */
 async function AdminGate({ children }: { children: React.ReactNode }) {
-  await requireAdminPage();
+  await requireBackOfficePage();
   return <>{children}</>;
+}
+
+/**
+ * The nav needs to know the role: an observer („Наблюдаващ") sees only the
+ * contract/deposit sections, not the lead inboxes or the settings screens.
+ */
+async function AdminNavForRole() {
+  const session = await auth();
+  return <AdminNav isAdmin={isAdmin(session)} />;
 }
 
 function AdminLoading() {

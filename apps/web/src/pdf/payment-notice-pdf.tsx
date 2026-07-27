@@ -59,16 +59,18 @@ function rateLabel(rate: number): string {
 }
 
 export function PaymentNoticePdf({ snapshot }: { snapshot: NoticeSnapshot }) {
-  const isUsd = snapshot.variant === "selectauto_usd";
+  // The rate table and the bank block are independent: Канада prints the three
+  // columns while addressing an EXTERNAL recipient (ALCO IMPEX).
+  const isUsd = snapshot.showRateColumns ?? snapshot.variant === "selectauto_usd";
   const isSelectAuto = snapshot.variant !== "external";
   const r = snapshot.recipient;
 
   const totalLabel = `${formatCentsDoc(snapshot.totalCents)} ${snapshot.totalCurrencyLabel}`;
-  const bgnSuffix =
-    snapshot.totalBgnCents !== undefined ? ` / ${formatCentsDoc(snapshot.totalBgnCents)} лв.` : "";
 
   // The recipient/bank block rows, per variant (order matches the samples).
-  const bankRows: [string, string][] = isSelectAuto
+  // Rows with no value are dropped — an international partner may have no VAT
+  // number, and an empty labelled row looks like missing data on a legal document.
+  const bankRowsRaw: [string, string][] = isSelectAuto
     ? [
         ["Банка", r.bankName],
         ["SWIFT/BIC", r.swiftBic],
@@ -84,9 +86,13 @@ export function PaymentNoticePdf({ snapshot }: { snapshot: NoticeSnapshot }) {
         ["Адрес на банката", r.bankAddress],
         [`Сметка IBAN ${snapshot.currency === "EUR" ? "EURO" : snapshot.currency}`, r.iban],
         ["SWIFT/BIC", r.swiftBic],
+        // Non-SEPA wires (e.g. Canada) quote a clearing code as well as SWIFT.
+        ...(r.routingCode ? ([["Routing code", r.routingCode]] as [string, string][]) : []),
         ["Основание", snapshot.basis],
         ["Разноски на превода", r.chargesInstruction || "За сметка на изпращача"],
       ];
+
+  const bankRows = bankRowsRaw.filter(([, value]) => value.trim() !== "");
 
   return (
     <Document title={`Известие за плащане — Договор № ${snapshot.contractNumber}`}>
@@ -138,7 +144,7 @@ export function PaymentNoticePdf({ snapshot }: { snapshot: NoticeSnapshot }) {
             <Text style={[s.th, s.cDesc]}>Наименование на услугите</Text>
             {isUsd ? (
               <>
-                <Text style={[s.th, s.cA]}>Стойност / USD</Text>
+                <Text style={[s.th, s.cA]}>Стойност / {snapshot.currency}</Text>
                 <Text style={[s.th, s.cB]}>Курс</Text>
                 <Text style={[s.th, s.cC]}>Стойност / Евро</Text>
               </>
@@ -174,10 +180,7 @@ export function PaymentNoticePdf({ snapshot }: { snapshot: NoticeSnapshot }) {
         {/* Payment + bank block */}
         <View style={s.box}>
           <Text style={s.fullRow}>Плащане: по банков път</Text>
-          <Text style={[s.fullRow, s.bold]}>
-            Обща сума за плащане: {totalLabel}
-            {bgnSuffix}
-          </Text>
+          <Text style={[s.fullRow, s.bold]}>Обща сума за плащане: {totalLabel}</Text>
           {bankRows.map(([key, value], i) => (
             <View key={key} style={i === bankRows.length - 1 ? s.infoRowLast : s.infoRow}>
               <Text style={s.infoKey}>{key}</Text>

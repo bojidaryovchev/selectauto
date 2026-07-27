@@ -25,6 +25,20 @@ export function isAdmin(session: Session | null): boolean {
 }
 
 /**
+ * True for „Наблюдаващ" (observer) — the accountant-style role that may create
+ * and follow contracts but never edit them. An admin is NOT implicitly an
+ * observer; use `canUseBackOffice` for "may see the back office at all".
+ */
+export function isObserver(session: Session | null): boolean {
+  return hasRole(session, "observer");
+}
+
+/** True when the session may enter /admin at all (either elevated role). */
+export function canUseBackOffice(session: Session | null): boolean {
+  return isAdmin(session) || isObserver(session);
+}
+
+/**
  * For admin PAGES (server components): returns the admin session or redirects.
  * A signed-out visitor goes to sign-in (with a return path); a signed-in non-
  * admin goes home (they have no business seeing the back office exists).
@@ -48,4 +62,30 @@ export async function requireAdminPage(): Promise<Session> {
 export async function getAdminSession(): Promise<Session | null> {
   const session = await auth();
   return isAdmin(session) ? session : null;
+}
+
+/**
+ * For BACK-OFFICE pages an observer may also see (contracts, deposits): returns
+ * the session or redirects, exactly like `requireAdminPage`.
+ */
+export async function requireBackOfficePage(): Promise<Session> {
+  const session = await auth();
+  if (!session?.user) {
+    redirect("/sign-in?redirectTo=/admin");
+  }
+  if (!canUseBackOffice(session)) {
+    redirect("/");
+  }
+  return session;
+}
+
+/**
+ * For QUERIES/ACTIONS an observer may also perform (reads, and creating a
+ * contract/deposit): the session, or `null` when the caller holds neither
+ * elevated role. Anything that EDITS existing data must keep using
+ * `getAdminSession` instead — that split is the whole point of the role.
+ */
+export async function getBackOfficeSession(): Promise<Session | null> {
+  const session = await auth();
+  return canUseBackOffice(session) ? session : null;
 }

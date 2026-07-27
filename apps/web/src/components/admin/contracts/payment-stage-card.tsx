@@ -4,8 +4,11 @@ import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import {
+  DEFAULT_PAYMENT_TERM_DAYS,
   PAYMENT_STAGE_META,
   STAGE_ALLOWED_RECIPIENT_KINDS,
+  stageLabel,
+  type ContractMarket,
   type PaymentStage,
 } from "@/constants/contracts";
 import { dbToCents, formatCents, formatDbAmount } from "@/lib/money";
@@ -31,12 +34,20 @@ function todayIso(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Sofia" }).format(new Date());
 }
 
+/** Standard payment term from today (mirrors the server-side default). */
+function defaultDueDate(): string {
+  const d = new Date(`${todayIso()}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + DEFAULT_PAYMENT_TERM_DAYS);
+  return d.toISOString().slice(0, 10);
+}
+
 export function PaymentStageCard({
   payment,
   contract,
   recipients,
   documents,
   attachments,
+  canManage,
 }: {
   payment: ContractPaymentWithRecipient;
   contract: { id: number; number: string; market: string; currency: string; status: string };
@@ -46,10 +57,16 @@ export function PaymentStageCard({
   documents: GeneratedDocumentRow[];
   /** Uploaded proof-of-payment files for THIS payment, newest first. */
   attachments: PaymentAttachmentRow[];
+  /**
+   * Admin: may issue notices and record payments. „Наблюдаващ" sees everything
+   * read-only (the mutations re-check server-side regardless).
+   */
+  canManage: boolean;
 }) {
   const router = useRouter();
   const stage = payment.stage as PaymentStage;
   const stageMeta = PAYMENT_STAGE_META[stage];
+  const heading = stageLabel(contract.market as ContractMarket, stage);
 
   // §5: only the allowed kinds are ever shown; final = fixed SelectAuto.
   const allowed = useMemo(() => {
@@ -65,7 +82,7 @@ export function PaymentStageCard({
   );
   const [rate, setRate] = useState("");
   const [basis, setBasis] = useState(payment.basis ?? "");
-  const [dueDate, setDueDate] = useState(payment.dueDate ?? "");
+  const [dueDate, setDueDate] = useState(payment.dueDate ?? defaultDueDate());
   const [paidAmount, setPaidAmount] = useState("");
   const [paidAt, setPaidAt] = useState(todayIso());
   const [note, setNote] = useState("");
@@ -73,9 +90,10 @@ export function PaymentStageCard({
   const [busy, setBusy] = useState(false);
   const [revertOpen, setRevertOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const attachOnlyRef = useRef<HTMLInputElement>(null);
 
   const chosen = allowed.find((r) => r.id === (isFinalStage ? fixedFinal?.id : recipientId));
-  const needsRate = contract.market === "us_ca" && chosen?.kind === "selectauto";
+  const needsRate = contract.market === "us" && chosen?.kind === "selectauto";
   const remainingCents = dbToCents(payment.dueAmount) - dbToCents(payment.paidAmount);
   const versionCount = documents.length;
   const cancelled = contract.status === "cancelled";
@@ -151,6 +169,33 @@ export function PaymentStageCard({
     }
   }
 
+  /**
+   * Standalone upload — the only payment action a „Наблюдаващ" has (they may
+   * attach bank documents to a notice, but not issue notices or set statuses).
+   */
+  async function onAttachOnly(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const fd = new FormData();
+      fd.set("paymentId", String(payment.id));
+      fd.set("file", file);
+      const result = await addPaymentAttachment(fd);
+      if (result.success) {
+        router.refresh();
+      } else {
+        setError(result.error);
+      }
+    } catch {
+      setError("Възникна грешка при прикачването.");
+    } finally {
+      setBusy(false);
+      if (attachOnlyRef.current) attachOnlyRef.current.value = "";
+    }
+  }
+
   async function onRevert() {
     setBusy(true);
     try {
@@ -171,7 +216,7 @@ export function PaymentStageCard({
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-line bg-white p-4">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="font-black text-ink">{stageMeta?.label ?? payment.stage}</h3>
+        <h3 className="font-black text-ink">{heading}</h3>
         <PaymentStatusBadge status={payment.status} />
       </div>
       <p className="text-xs text-muted">{stageMeta?.description}</p>
@@ -311,7 +356,7 @@ export function PaymentStageCard({
             <input type="text" value={basis} onChange={(e) => setBasis(e.target.value)} className={INPUT} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className={LABEL}>Падеж (по избор)</label>
+            <label className={LABEL}>Падеж (по подразбиране 10 дни)</label>
             <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={INPUT} />
           </div>
           {error ? (
@@ -444,7 +489,7 @@ export function PaymentStageCard({
       ) : null}
 
       {/* ── Actions ── */}
-      {panel === "none" && !cancelled ? (
+      {panel === "none" && !cancelled && canManage ? (
         <div className="mt-auto flex flex-wrap gap-2 pt-2">
           <button
             type="button"
@@ -477,6 +522,23 @@ export function PaymentStageCard({
               Върни статус
             </button>
           ) : null}
+        </div>
+      ) : null}
+
+      {/* „Наблюдаващ": attaching bank documents is their one write action. */}
+      {!canManage && !cancelled ? (
+        <div className="mt-auto pt-2">
+          <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-bold text-brand hover:underline">
+            <input
+              ref={attachOnlyRef}
+              type="file"
+              accept="application/pdf,image/jpeg,image/png,image/webp"
+              disabled={busy}
+              onChange={(e) => void onAttachOnly(e)}
+              className="hidden"
+            />
+            {busy ? "Качване…" : "＋ Прикачи платежен документ"}
+          </label>
         </div>
       ) : null}
 

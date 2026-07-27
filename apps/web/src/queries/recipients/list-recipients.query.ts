@@ -1,5 +1,5 @@
 import { asc } from "drizzle-orm";
-import { getAdminSession } from "@/lib/admin";
+import { getBackOfficeSession } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 
 export type RecipientRow = typeof schema.paymentRecipients.$inferSelect;
@@ -11,7 +11,7 @@ export type RecipientRow = typeof schema.paymentRecipients.$inferSelect;
  * proxy already gate).
  */
 export async function listRecipients(): Promise<RecipientRow[]> {
-  if (!(await getAdminSession())) throw new Error("FORBIDDEN");
+  if (!(await getBackOfficeSession())) throw new Error("FORBIDDEN");
 
   const t = schema.paymentRecipients;
   return getDb().select().from(t).orderBy(asc(t.kind), asc(t.name));

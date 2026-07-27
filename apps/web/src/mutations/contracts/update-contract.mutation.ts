@@ -2,6 +2,7 @@
 
 import { and, eq, notInArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { CONTRACT_MARKET_META, type ContractAmountKey, type ContractMarket } from "@/constants/contracts";
 import { getAdminSession } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import { centsToDb, dbToCents, parseAmountToCents } from "@/lib/money";
@@ -40,21 +41,40 @@ export async function updateContract(id: number, input: unknown): Promise<Action
   const values = parsed.data;
   const actorId = session.user?.id ?? null;
 
-  const amounts = {
-    car: cents(values.amountCar),
-    transport: cents(values.amountTransport),
-    customsVat: cents(values.amountCustomsVat),
-    transportEuBg: cents(values.amountTransportEuBg),
-    commission: cents(values.amountCommission),
-  };
-  const totalCents = amounts.car + amounts.transport + amounts.customsVat + amounts.transportEuBg + amounts.commission;
-
   const db = getDb();
   const c = schema.contracts;
 
   try {
     const [existing] = await db.select().from(c).where(eq(c.id, id));
     if (!existing) return { success: false, error: "Договорът не е намерен." };
+
+    // The market decides which пера exist and how they roll up into stages.
+    const market = CONTRACT_MARKET_META[existing.market as ContractMarket];
+    if (!market) return { success: false, error: "Непознат тип договор." };
+
+    // Канада: перо 1 stays driven by CAD × rate, so an edit recomputes the euro
+    // value rather than trusting the (read-only) EUR box.
+    const foreignPoint = market.points.find((p) => p.foreignCurrency);
+    const editedRate = values.foreignRate?.trim() ? Number(values.foreignRate.replace(",", ".")) : null;
+    const rate = editedRate ?? (existing.foreignRate ? Number(existing.foreignRate) : null);
+    const carForeignCents = values.amountCarForeign?.trim()
+      ? cents(values.amountCarForeign)
+      : dbToCents(existing.amountCarForeign);
+    const derivedCarCents =
+      foreignPoint && rate && carForeignCents ? Math.round((carForeignCents * rate) / 100) * 100 : null;
+
+    const marketPointKeys = new Set<ContractAmountKey>(market.points.map((p) => p.key));
+    const raw: Record<ContractAmountKey, number> = {
+      amountCar: derivedCarCents ?? cents(values.amountCar),
+      amountTransport: cents(values.amountTransport),
+      amountCustomsVat: cents(values.amountCustomsVat),
+      amountTransportEuBg: cents(values.amountTransportEuBg),
+      amountCommission: cents(values.amountCommission),
+    };
+    const amounts = Object.fromEntries(
+      (Object.keys(raw) as ContractAmountKey[]).map((k) => [k, marketPointKeys.has(k) ? raw[k] : 0]),
+    ) as Record<ContractAmountKey, number>;
+    const totalCents = market.points.reduce((sum, p) => sum + amounts[p.key], 0);
 
     const patch = {
       contractDate: values.contractDate || existing.contractDate,
@@ -64,14 +84,17 @@ export async function updateContract(id: number, input: unknown): Promise<Action
       vin: values.vin || null,
       purchaseMarket: values.purchaseMarket || null,
       auctionPlatform: values.auctionPlatform || null,
-      amountCar: centsToDb(amounts.car),
-      amountTransport: centsToDb(amounts.transport),
-      amountCustomsVat: centsToDb(amounts.customsVat),
-      amountTransportEuBg: centsToDb(amounts.transportEuBg),
-      amountCommission: centsToDb(amounts.commission),
+      amountCar: centsToDb(amounts.amountCar),
+      amountTransport: centsToDb(amounts.amountTransport),
+      amountCustomsVat: centsToDb(amounts.amountCustomsVat),
+      amountTransportEuBg: centsToDb(amounts.amountTransportEuBg),
+      amountCommission: centsToDb(amounts.amountCommission),
       totalAmount: centsToDb(totalCents),
       paymentBasis: values.paymentBasis?.trim() || existing.paymentBasis,
       status: values.status,
+      ...(derivedCarCents !== null
+        ? { amountCarForeign: centsToDb(carForeignCents), foreignRate: rate ? String(rate) : existing.foreignRate }
+        : {}),
     };
 
     await db.transaction(async (tx) => {
@@ -82,18 +105,14 @@ export async function updateContract(id: number, input: unknown): Promise<Action
 
       // Re-sync due amounts on stages that are still payable (not paid/cancelled).
       const depositDeductionCents = dbToCents(existing.depositDeduction);
-      const dueByStage = {
-        vehicle: Math.max(0, amounts.car - depositDeductionCents),
-        transport: amounts.transport,
-        customs_vat: amounts.customsVat,
-        final: amounts.transportEuBg + amounts.commission,
-      } as const;
       const p = schema.contractPayments;
-      for (const [stage, due] of Object.entries(dueByStage)) {
+      for (const def of market.stages) {
+        const sum = def.points.reduce((s, key) => s + amounts[key], 0);
+        const due = def.stage === "vehicle" ? Math.max(0, sum - depositDeductionCents) : sum;
         await tx
           .update(p)
           .set({ dueAmount: centsToDb(due), updatedAt: new Date() })
-          .where(and(eq(p.contractId, id), eq(p.stage, stage), notInArray(p.status, ["paid", "cancelled"])));
+          .where(and(eq(p.contractId, id), eq(p.stage, def.stage), notInArray(p.status, ["paid", "cancelled"])));
       }
 
       await tx.insert(schema.contractEvents).values({

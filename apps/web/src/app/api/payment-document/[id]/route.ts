@@ -1,8 +1,9 @@
 import { eq } from "drizzle-orm";
-import { getAdminSession } from "@/lib/admin";
+import { getBackOfficeSession, isAdmin } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import { getDocument, isDocumentStorageConfigured } from "@/lib/s3";
-import { renderPaymentNoticePdf } from "@/pdf/render";
+import { renderContractPdf, renderPaymentNoticePdf } from "@/pdf/render";
+import type { ContractDocSnapshot } from "@/types/contract-snapshot.type";
 import type { NoticeSnapshot } from "@/types/notice-snapshot.type";
 
 /**
@@ -17,7 +18,8 @@ import type { NoticeSnapshot } from "@/types/notice-snapshot.type";
  * Admin-gated (the proxy doesn't cover /api).
  */
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!(await getAdminSession())) {
+  const session = await getBackOfficeSession();
+  if (!session) {
     return new Response("Forbidden", { status: 403 });
   }
 
@@ -27,13 +29,27 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     return new Response("Not found", { status: 404 });
   }
 
+  const db = getDb();
   const g = schema.generatedDocuments;
-  const [doc] = await getDb().select().from(g).where(eq(g.id, docId));
-  if (!doc || doc.kind !== "payment_notice") {
+  const [doc] = await db.select().from(g).where(eq(g.id, docId));
+  // Serves both the payment notices and the contract documents themselves —
+  // same versioning, same archive, same access rules.
+  if (!doc || (doc.kind !== "payment_notice" && doc.kind !== "contract")) {
     return new Response("Not found", { status: 404 });
   }
 
-  const snapshot = doc.snapshot as NoticeSnapshot;
+  // A „Наблюдаващ" may download notices only for contracts they created.
+  if (!isAdmin(session) && doc.contractId) {
+    const [contract] = await db
+      .select({ createdBy: schema.contracts.createdBy })
+      .from(schema.contracts)
+      .where(eq(schema.contracts.id, doc.contractId));
+    if (contract?.createdBy !== session.user?.id) {
+      return new Response("Not found", { status: 404 });
+    }
+  }
+
+  const isContract = doc.kind === "contract";
 
   let pdf: Buffer | null = null;
   if (doc.pdfS3Key && isDocumentStorageConfigured()) {
@@ -43,9 +59,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       console.error("[payment-document] archived copy unreadable, re-rendering", error);
     }
   }
-  pdf ??= await renderPaymentNoticePdf(snapshot);
+  pdf ??= isContract
+    ? await renderContractPdf(doc.snapshot as ContractDocSnapshot)
+    : await renderPaymentNoticePdf(doc.snapshot as NoticeSnapshot);
 
-  const filename = `izvestie-${snapshot.contractNumber}-${snapshot.stage}-v${doc.version}.pdf`;
+  const filename = isContract
+    ? `dogovor-${(doc.snapshot as ContractDocSnapshot).number}-v${doc.version}.pdf`
+    : `izvestie-${(doc.snapshot as NoticeSnapshot).contractNumber}-${(doc.snapshot as NoticeSnapshot).stage}-v${doc.version}.pdf`;
   return new Response(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",

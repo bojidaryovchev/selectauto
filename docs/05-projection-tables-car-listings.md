@@ -138,8 +138,9 @@ full column list). The **derived** parts:
   (`buy_now`, `domain_name`, `location_country`, `lot_number`, prices, image,
   `thumbnail_url`, odometer, sale_date, status, condition, damage_main, seller)
   come from the **chosen lot** (`thumbnail_url` projected from the chosen lot's
-  `auction_lots.thumbnail_url` alongside `image_url`, since 0035 — NULL until the
-  `bakeThumbnail` worker bakes it); `title`/`engine`/`transmission` come from `cars`.
+  `auction_lots.thumbnail_url` alongside `image_url`, since 0035 — the per-source
+  card image URL served straight from the source CDN, effectively never NULL);
+  `title`/`engine`/`transmission` come from `cars`.
   `car_listings_archived` additionally carries a **set-once `archived_at`** (0023,
   see §6) projected from the chosen lot's `archived_at`.
 
@@ -202,10 +203,12 @@ whatever the intervening migrations added. That is exactly what happened once:
   archived on 0023's — to thread **`thumbnail_url`** from the chosen lot's
   `auction_lots.thumbnail_url` through the `chosen` CTE, INSERT list, SELECT and
   `ON CONFLICT` SET (following `image_url`). The `_counted` wrappers are untouched
-  (a thumbnail never changes counts/facets). NULL until the `bakeThumbnail` SQS
-  worker bakes the card thumbnail to S3+CloudFront (so the catalog grid bypasses
-  Vercel Image Optimization — ~80% of the web bill); the card falls back to the
-  optimized `image_url` meanwhile.
+  (the card image URL never changes counts/facets). `thumbnail_url` holds the
+  per-source ~500px card image URL served **directly from the source CDN**
+  (populated at ingestion by `cardImageUrl()`), which the catalog renders in a
+  plain `<img>` — bypassing Vercel Image Optimization (~80% of the web bill). It is
+  effectively never NULL; the web mapper resolves the card image as
+  `thumbnailUrl ?? imageUrl`.
 
 ---
 

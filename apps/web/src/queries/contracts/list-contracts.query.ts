@@ -1,7 +1,7 @@
 import { and, count, desc, eq, ilike, inArray, or, type SQL } from "drizzle-orm";
 import { ADMIN_PAGE_SIZE } from "@/constants/admin";
 import { PAYMENT_STAGES, type PaymentStage, type PaymentStatus } from "@/constants/contracts";
-import { getAdminSession } from "@/lib/admin";
+import { getBackOfficeSession, isAdmin } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 
 export type ContractListRow = {
@@ -32,7 +32,8 @@ export type ContractListPage = {
  * no per-row roundtrips. NOT cached (request-scoped, admin-only, low volume).
  */
 export async function listContracts(filters: ContractListFilters = {}): Promise<ContractListPage> {
-  if (!(await getAdminSession())) throw new Error("FORBIDDEN");
+  const session = await getBackOfficeSession();
+  if (!session) throw new Error("FORBIDDEN");
 
   const db = getDb();
   const c = schema.contracts;
@@ -40,6 +41,11 @@ export async function listContracts(filters: ContractListFilters = {}): Promise<
   const page = Math.max(1, filters.page ?? 1);
 
   const conds: SQL[] = [];
+  // „Наблюдаващ" sees ONLY the contracts they created (owner spec 07.2026 — each
+  // agent follows their own deals); an admin sees everything.
+  if (!isAdmin(session)) {
+    conds.push(eq(c.createdBy, session.user?.id ?? ""));
+  }
   if (filters.status) {
     conds.push(eq(c.status, filters.status));
   }

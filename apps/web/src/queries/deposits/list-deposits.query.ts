@@ -1,5 +1,5 @@
 import { desc, eq } from "drizzle-orm";
-import { getAdminSession } from "@/lib/admin";
+import { getBackOfficeSession, isAdmin } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 
 export type DepositListRow = {
@@ -16,7 +16,8 @@ export type DepositListRow = {
  * deposit↔contract relation visible). Admin-gated defensively.
  */
 export async function listDeposits(): Promise<DepositListRow[]> {
-  if (!(await getAdminSession())) throw new Error("FORBIDDEN");
+  const session = await getBackOfficeSession();
+  if (!session) throw new Error("FORBIDDEN");
 
   const d = schema.depositContracts;
   const c = schema.contracts;
@@ -32,6 +33,8 @@ export async function listDeposits(): Promise<DepositListRow[]> {
     .from(d)
     .innerJoin(cl, eq(cl.id, d.clientId))
     .leftJoin(c, eq(c.depositContractId, d.id))
+    // „Наблюдаващ" sees only their own deposits (same rule as contracts).
+    .where(isAdmin(session) ? undefined : eq(d.createdBy, session.user?.id ?? ""))
     .orderBy(desc(d.createdAt));
 
   return rows.map((r) => ({

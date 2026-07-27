@@ -18,7 +18,7 @@ import { createQueues } from "./queues";
 import { createSchedules } from "./schedules";
 import { createSecrets, secretArns } from "./secrets";
 import { createStateMachines } from "./step-functions";
-import { createDocumentsStorage, createStorage } from "./storage";
+import { createDocumentsStorage } from "./storage";
 
 // Current AWS account ID (for scoping IAM resource ARNs to this account).
 const accountId = aws.getCallerIdentityOutput({}).accountId;
@@ -26,12 +26,8 @@ const accountId = aws.getCallerIdentityOutput({}).accountId;
 // 1. Secrets Manager secrets (AUCTIONS_API_KEY, NEON_DATABASE_URL).
 const secrets = createSecrets();
 
-// 2. SQS queues: FIFO detail-refresh (rate-limit chokepoint) + standard bake queue.
+// 2. SQS queue: FIFO detail-refresh (the AuctionsAPI 1 req/sec chokepoint).
 const queues = createQueues();
-
-// 2b. Thumbnail storage: private S3 bucket + CloudFront (the bake worker writes
-//     here; the web app serves card thumbnails directly from CloudFront).
-const storage = createStorage();
 
 // 2c. Documents storage (contracts & payments module): private, versioned S3
 //     bucket for generated PDFs + uploaded payment proofs, accessed only via
@@ -39,29 +35,15 @@ const storage = createStorage();
 const documentsStorage = createDocumentsStorage();
 const webAppUser = createWebAppUser(documentsStorage.documentsBucket.arn);
 
-// 3. Lambda execution role: logs + read secrets + consume the detail/bake queues
-//    + send to the bake queue (enqueuers) + PutObject into the thumbnail bucket.
-const { lambdaRole } = createLambdaRole(
-  secretArns(secrets),
-  [queues.detailRefreshQueue.arn, queues.bakeThumbnailQueue.arn],
-  [queues.bakeThumbnailQueue.arn],
-  [pulumi.interpolate`${storage.thumbnailBucket.arn}/thumb/*`],
-);
+// 3. Lambda execution role: logs + read secrets + consume the detail-refresh queue.
+const { lambdaRole } = createLambdaRole(secretArns(secrets), [queues.detailRefreshQueue.arn]);
 
 // 4. Lambdas. Secret VALUES are injected as env vars (from Pulumi config
 //    secrets) so handlers don't need a runtime Secrets Manager call.
-const lambdas = createLambdas(
-  lambdaRole.arn,
-  {
-    auctionsApiKey: config.auctionsApiKey,
-    neonDatabaseUrl: config.neonDatabaseUrl,
-  },
-  {
-    bakeQueueUrl: queues.bakeThumbnailQueue.url,
-    thumbnailBucket: storage.thumbnailBucket.bucket,
-    thumbnailCdnBaseUrl: storage.cdnBaseUrl,
-  },
-);
+const lambdas = createLambdas(lambdaRole.arn, {
+  auctionsApiKey: config.auctionsApiKey,
+  neonDatabaseUrl: config.neonDatabaseUrl,
+});
 
 // The detail-refresh worker is driven by the SQS FIFO queue. batchSize 1 +
 // ReportBatchItemFailures: each message succeeds/fails independently, and the
@@ -70,26 +52,6 @@ new aws.lambda.EventSourceMapping("detail-refresh-esm", {
   eventSourceArn: queues.detailRefreshQueue.arn,
   functionName: lambdas.refreshListingDetail.arn,
   batchSize: 1,
-  functionResponseTypes: ["ReportBatchItemFailures"],
-});
-
-// Thumbnail-bake worker drains the standard bake queue. batchSize 10 +
-// ReportBatchItemFailures so a single bad message doesn't fail the whole batch;
-// no reservedConcurrency (the bake fetches the source-image CDN, not the
-// rate-limited AuctionsAPI, so it may run concurrently).
-new aws.lambda.EventSourceMapping("bake-thumbnail-esm", {
-  eventSourceArn: queues.bakeThumbnailQueue.arn,
-  functionName: lambdas.bakeThumbnail.arn,
-  // 15 lots per invocation, processed in parallel inside the handler. The bake
-  // worker's DB is now connectionless (Neon HTTP), so the binding limit is the
-  // SOURCE image CDN (Cloudflare-fronted i.auctionsapi.com): its ceiling is
-  // undocumented and adaptive (520 = origin overload). ~300 fetches ran clean,
-  // ~1,200 revolted; probing upward — 30 × 15 ≈ 450 concurrent fetches. Watch the
-  // source-fetch 520 rate; back off if it climbs. SQS needs a batching window once
-  // batchSize > 10.
-  batchSize: 15,
-  maximumBatchingWindowInSeconds: 2,
-  scalingConfig: { maximumConcurrency: 25 },
   functionResponseTypes: ["ReportBatchItemFailures"],
 });
 
@@ -164,7 +126,6 @@ export const lambdaNames = {
   referenceManufacturer: lambdas.referenceManufacturer.name,
   referenceFinalize: lambdas.referenceFinalize.name,
   refreshListingDetail: lambdas.refreshListingDetail.name,
-  bakeThumbnail: lambdas.bakeThumbnail.name,
   createSyncRun: lambdas.createSyncRun.name,
   finalizeSyncRun: lambdas.finalizeSyncRun.name,
   markSyncFailed: lambdas.markSyncFailed.name,
@@ -191,18 +152,6 @@ export const secretNames = {
 export const detailRefreshQueueUrl = queues.detailRefreshQueue.url;
 export const detailRefreshQueueArn = queues.detailRefreshQueue.arn;
 export const detailRefreshDlqUrl = queues.detailRefreshDlq.url;
-
-// Thumbnail-bake queue. The ingestion enqueuers batch-send lot ids here; the
-// backfill script (packages/db/backfill-thumbnails.mjs) also uses this URL.
-export const bakeThumbnailQueueUrl = queues.bakeThumbnailQueue.url;
-export const bakeThumbnailQueueArn = queues.bakeThumbnailQueue.arn;
-export const bakeThumbnailDlqUrl = queues.bakeThumbnailDlq.url;
-
-// Thumbnail storage. `thumbnailCdnBaseUrl` is the CloudFront origin the web app
-// loads card thumbnails from (add it to the app's env if referenced there).
-export const thumbnailBucketName = storage.thumbnailBucket.bucket;
-export const thumbnailCdnBaseUrl = storage.cdnBaseUrl;
-export const thumbnailCdnDistributionId = storage.distribution.id;
 
 // Documents storage (contracts & payments). Set these in the web app's Vercel
 // env: SA_AWS_REGION, SA_DOCUMENTS_BUCKET, SA_AWS_ACCESS_KEY_ID,

@@ -7,3 +7,4 @@ export { TariffUploadForm } from "./tariff-upload-form";
 export { RecipientForm, RecipientsManager } from "./recipients";
 export { ContractFilters, ContractForm, PaymentStatusBadge } from "./contracts";
 export { DepositForm, DepositRowActions } from "./deposits";
+export { UsersManager } from "./users";

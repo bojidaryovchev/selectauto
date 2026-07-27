@@ -17,6 +17,11 @@ function usdStr(n: number): string {
   return `${Math.round(n).toLocaleString("bg-BG").replace(/\s/g, " ")} $`;
 }
 
+/** "1 630 €" — EUR-quoted fees are shown unconverted (see ImportCostLine.amountEur). */
+function eurStr(n: number): string {
+  return `${Math.round(n).toLocaleString("bg-BG").replace(/\s/g, " ")} €`;
+}
+
 /**
  * Persists a /kalkulator gated-offer lead and sends the two emails (customer
  * breakdown + internal notification). Mirrors `createInquiry`'s shape: validate
@@ -115,7 +120,10 @@ export async function createCalculatorOffer(input: unknown): Promise<ActionResul
     phone: data.phone,
     email: data.email,
     marketLabel: market.label,
-    lines: breakdown.lines.map((l) => ({ label: l.label, amount: usdStr(l.amountUsd) })),
+    lines: breakdown.lines.map((l) => ({
+      label: l.label,
+      amount: l.amountEur != null ? eurStr(l.amountEur) : usdStr(l.amountUsd),
+    })),
     totalFormatted: usdStr(breakdown.totalUsd),
     transit: market.transit,
     ratesVerifiedAt: RATES_VERIFIED_AT,

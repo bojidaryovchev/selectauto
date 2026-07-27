@@ -159,6 +159,9 @@ importers:
       eslint-plugin-better-tailwindcss:
         specifier: 4.6.1
         version: 4.6.1(eslint@9.36.0(jiti@2.7.0)(supports-color@7.2.0))(tailwindcss@4.3.3)(typescript@5.9.3)
+      sharp:
+        specifier: 0.34.4
+        version: 0.34.4
       tailwindcss:
         specifier: 4.3.3
         version: 4.3.3

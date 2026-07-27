@@ -57,6 +57,7 @@ export async function saveRecipient(input: SaveRecipientInput): Promise<ActionRe
     bankAddress: values.bankAddress || null,
     iban: values.iban || null,
     swiftBic: values.swiftBic || null,
+    routingCode: values.routingCode || null,
     currency: values.currency || null,
     chargesInstruction: values.chargesInstruction || null,
     paymentMethod: values.paymentMethod || null,

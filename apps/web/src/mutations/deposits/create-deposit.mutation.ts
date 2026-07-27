@@ -2,7 +2,7 @@
 
 import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { getAdminSession } from "@/lib/admin";
+import { getBackOfficeSession } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import { centsToDb, parseAmountToCents } from "@/lib/money";
 import { createDepositSchema } from "@/schemas/deposit.schema";
@@ -20,7 +20,9 @@ function todaySofia(): string {
  * updateDepositStatus; 'used' is set only by contract creation (§14.3).
  */
 export async function createDeposit(input: unknown): Promise<ActionResult<{ id: number; number: string }>> {
-  const session = await getAdminSession();
+  // Creating is allowed for „Наблюдаващ" too; the status lifecycle
+  // (update-deposit-status) stays admin-only.
+  const session = await getBackOfficeSession();
   if (!session) return { success: false, error: "Нямате достъп до тази операция." };
 
   const parsed = createDepositSchema.safeParse(input);

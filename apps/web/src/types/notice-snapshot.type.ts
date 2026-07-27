@@ -10,7 +10,7 @@
 export type NoticeVariant =
   /** US/CA contract paid to SelectAuto: USD column + курс + computed EUR (§16.1). */
   | "selectauto_usd"
-  /** EUR notice to SelectAuto (Korea contracts): EUR line + лв. equivalent. */
+  /** Plain EUR notice to SelectAuto (Korea contracts). */
   | "selectauto_eur"
   /** External recipient (international partner / customs broker): single-currency. */
   | "external";
@@ -37,7 +37,13 @@ export type NoticeSnapshot = {
   client: { name: string; egnOrEik: string; isCompany: boolean; address: string };
   stage: string;
   variant: NoticeVariant;
-  /** Contract currency of the line amounts ("USD" | "EUR"). */
+  /**
+   * Independent of `variant`: print the три-колонна таблица
+   * (стойност / курс / стойност евро). True for САЩ→SelectAuto and for the
+   * Канада „кола+транспорт" stage paid in CAD to ALCO IMPEX.
+   */
+  showRateColumns?: boolean;
+  /** Currency of the FIRST amount column ("USD" | "CAD" | "EUR"). */
   currency: string;
   lines: NoticeLine[];
   /** selectauto_usd only: the applied курс USD→EUR (§16), as entered. */
@@ -46,8 +52,6 @@ export type NoticeSnapshot = {
   totalCents: number;
   /** BG label of the payable currency ("евро" | "USD"). */
   totalCurrencyLabel: string;
-  /** selectauto_eur only: the лв. equivalent of the total (fixed 1.95583). */
-  totalBgnCents?: number;
   /** The recipient/bank block, denormalized at generation (§6.2). */
   recipient: {
     name: string;
@@ -61,6 +65,8 @@ export type NoticeSnapshot = {
     paymentMethod: string;
     /** "Разноски на превода" row — external variant only. */
     chargesInstruction: string;
+    /** Extra clearing code for non-SEPA wires (e.g. Canadian routing code). */
+    routingCode: string;
   };
   basis: string;
 };

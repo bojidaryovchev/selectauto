@@ -1,4 +1,5 @@
 import { CalcConfigForm, TariffUploadForm } from "@/components/admin";
+import { requireAdminPage } from "@/lib/admin";
 import { getCalcConfig, listTariffUploads } from "@/queries/tariffs";
 
 /**
@@ -11,6 +12,7 @@ import { getCalcConfig, listTariffUploads } from "@/queries/tariffs";
  * route to admins.
  */
 export default async function AdminTariffsPage() {
+  await requireAdminPage();
   const [config, uploads] = await Promise.all([getCalcConfig(), listTariffUploads()]);
 
   return (

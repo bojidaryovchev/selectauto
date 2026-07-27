@@ -778,6 +778,8 @@ export const paymentRecipients = pgTable(
     bankAddress: text("bank_address"),
     iban: text("iban"),
     swiftBic: text("swift_bic"),
+    /** Extra clearing code some non-SEPA wires need (e.g. Canadian routing code). */
+    routingCode: text("routing_code"),
     currency: text("currency"),
     /** Разноски на превода — OUR/SHA or verbatim text ("За сметка на изпращача"). */
     chargesInstruction: text("charges_instruction"),
@@ -854,7 +856,11 @@ export const contracts = pgTable(
     /** Visible number, e.g. '2026-088'. */
     number: text("number").notNull().unique(),
     contractDate: date("contract_date").notNull(),
-    /** 'us_ca' (САЩ/Канада, USD) | 'kr' (Корея, EUR) — fixes template + currency. */
+    /**
+     * 'us' | 'ca' | 'kr' | 'eu' — drives the document type, the currency, the
+     * list of пера and how many payment stages exist (migration 0041; the
+     * definitions live in apps/web/src/constants/contracts.ts).
+     */
     market: text("market").notNull(),
     currency: text("currency").notNull(),
     clientId: integer("client_id")
@@ -874,6 +880,11 @@ export const contracts = pgTable(
     amountTransportEuBg: numeric("amount_transport_eu_bg", { precision: 12, scale: 2 }).notNull().default("0"),
     amountCommission: numeric("amount_commission", { precision: 12, scale: 2 }).notNull().default("0"),
     totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull().default("0"),
+    // Канада: перо 1 is wired in CAD; amountCar holds its EUR equivalent (the
+    // contract's leading amount) computed with foreignRate at creation (0041).
+    amountCarForeign: numeric("amount_car_foreign", { precision: 12, scale: 2 }),
+    foreignCurrency: text("foreign_currency"),
+    foreignRate: numeric("foreign_rate", { precision: 12, scale: 6 }),
     /** Основание за плащане; defaults to "Договор № {number}" at creation. */
     paymentBasis: text("payment_basis"),
     /** Set when an active deposit is applied to payment 1 (§14); UNIQUE partial index = single use. */

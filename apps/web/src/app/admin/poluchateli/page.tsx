@@ -1,4 +1,5 @@
 import { RecipientsManager } from "@/components/admin/recipients";
+import { requireAdminPage } from "@/lib/admin";
 import { listRecipients } from "@/queries/recipients";
 
 /**
@@ -10,6 +11,7 @@ import { listRecipients } from "@/queries/recipients";
  * the route to admins.
  */
 export default async function AdminRecipientsPage() {
+  await requireAdminPage();
   const recipients = await listRecipients();
 
   return (

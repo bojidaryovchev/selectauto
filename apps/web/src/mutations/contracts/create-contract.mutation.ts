@@ -2,8 +2,8 @@
 
 import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { PAYMENT_STAGES } from "@/constants/contracts";
-import { getAdminSession } from "@/lib/admin";
+import { CONTRACT_MARKET_META, type ContractAmountKey } from "@/constants/contracts";
+import { getBackOfficeSession } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import { centsToDb, dbToCents, parseAmountToCents } from "@/lib/money";
 import { createContractSchema } from "@/schemas/contract.schema";
@@ -38,7 +38,9 @@ function cents(value: string | undefined): number {
  * Returns the new contract id for the redirect to /admin/dogovori/[id].
  */
 export async function createContract(input: unknown): Promise<ActionResult<{ id: number; number: string }>> {
-  const session = await getAdminSession();
+  // Creating is allowed for „Наблюдаващ" too (owner spec 07.2026); EDITING the
+  // contract afterwards stays admin-only — see update-contract.mutation.ts.
+  const session = await getBackOfficeSession();
   if (!session) return { success: false, error: "Нямате достъп до тази операция." };
 
   const parsed = createContractSchema.safeParse(input);
@@ -48,15 +50,30 @@ export async function createContract(input: unknown): Promise<ActionResult<{ id:
   const values = parsed.data;
   const actorId = session.user?.id ?? null;
 
-  const amounts = {
-    car: cents(values.amountCar),
-    transport: cents(values.amountTransport),
-    customsVat: cents(values.amountCustomsVat),
-    transportEuBg: cents(values.amountTransportEuBg),
-    commission: cents(values.amountCommission),
+  const market = CONTRACT_MARKET_META[values.market];
+  const currency = market.currency;
+
+  // Канада: перо 1 is entered in CAD + rate; its EUR value (the contract's
+  // leading amount) is DERIVED and rounded to the whole euro, like the notices.
+  const foreignRate = values.foreignRate?.trim() ? Number(values.foreignRate.replace(",", ".")) : null;
+  const carForeignCents = values.amountCarForeign?.trim() ? cents(values.amountCarForeign) : null;
+  const derivedCarCents =
+    foreignRate !== null && carForeignCents !== null ? Math.round((carForeignCents * foreignRate) / 100) * 100 : null;
+
+  // Only the пера this market actually has are stored; the rest stay zero.
+  const marketPointKeys = new Set<ContractAmountKey>(market.points.map((p) => p.key));
+  const raw: Record<ContractAmountKey, number> = {
+    amountCar: derivedCarCents ?? cents(values.amountCar),
+    amountTransport: cents(values.amountTransport),
+    amountCustomsVat: cents(values.amountCustomsVat),
+    amountTransportEuBg: cents(values.amountTransportEuBg),
+    amountCommission: cents(values.amountCommission),
   };
-  const totalCents = amounts.car + amounts.transport + amounts.customsVat + amounts.transportEuBg + amounts.commission;
-  const currency = values.market === "us_ca" ? "USD" : "EUR";
+  const amountByKey = Object.fromEntries(
+    (Object.keys(raw) as ContractAmountKey[]).map((k) => [k, marketPointKeys.has(k) ? raw[k] : 0]),
+  ) as Record<ContractAmountKey, number>;
+
+  const totalCents = market.points.reduce((sum, p) => sum + amountByKey[p.key], 0);
   const contractDate = values.contractDate || todaySofia();
   const year = Number(contractDate.slice(0, 4));
 
@@ -113,7 +130,7 @@ export async function createContract(input: unknown): Promise<ActionResult<{ id:
           .where(eq(schema.contracts.depositContractId, deposit.id));
         if (usedBy) throw new Error("BG:Депозитът вече е използван по друг договор.");
 
-        depositDeductionCents = Math.min(dbToCents(deposit.depositAmount), amounts.car);
+        depositDeductionCents = Math.min(dbToCents(deposit.depositAmount), amountByKey.amountCar);
         depositNumber = deposit.number;
         await tx
           .update(schema.depositContracts)
@@ -164,12 +181,19 @@ export async function createContract(input: unknown): Promise<ActionResult<{ id:
           vin: values.vin || null,
           purchaseMarket: values.purchaseMarket || null,
           auctionPlatform: values.auctionPlatform || null,
-          amountCar: centsToDb(amounts.car),
-          amountTransport: centsToDb(amounts.transport),
-          amountCustomsVat: centsToDb(amounts.customsVat),
-          amountTransportEuBg: centsToDb(amounts.transportEuBg),
-          amountCommission: centsToDb(amounts.commission),
+          amountCar: centsToDb(amountByKey.amountCar),
+          amountTransport: centsToDb(amountByKey.amountTransport),
+          amountCustomsVat: centsToDb(amountByKey.amountCustomsVat),
+          amountTransportEuBg: centsToDb(amountByKey.amountTransportEuBg),
+          amountCommission: centsToDb(amountByKey.amountCommission),
           totalAmount: centsToDb(totalCents),
+          ...(carForeignCents !== null && foreignRate !== null
+            ? {
+                amountCarForeign: centsToDb(carForeignCents),
+                foreignCurrency: market.points.find((p) => p.foreignCurrency)?.foreignCurrency ?? null,
+                foreignRate: String(foreignRate),
+              }
+            : {}),
           paymentBasis,
           depositContractId: values.depositContractId ?? null,
           depositDeduction: centsToDb(depositDeductionCents),
@@ -179,22 +203,21 @@ export async function createContract(input: unknown): Promise<ActionResult<{ id:
         })
         .returning({ id: schema.contracts.id, number: schema.contracts.number });
 
-      // 5. The four payment stages (§4). Vehicle carries the deposit deduction.
-      const dueByStage: Record<(typeof PAYMENT_STAGES)[number], number> = {
-        vehicle: Math.max(0, amounts.car - depositDeductionCents),
-        transport: amounts.transport,
-        customs_vat: amounts.customsVat,
-        final: amounts.transportEuBg + amounts.commission,
-      };
+      // 5. The payment stages THIS market has (4 for САЩ/Корея, 3 for Канада,
+      //    2 for Европа — §4). The vehicle stage carries the deposit deduction.
       await tx.insert(schema.contractPayments).values(
-        PAYMENT_STAGES.map((stage) => ({
-          contractId: contract!.id,
-          stage,
-          dueAmount: centsToDb(dueByStage[stage]),
-          currency,
-          basis: paymentBasis,
-          status: "not_requested",
-        })),
+        market.stages.map((def) => {
+          const sum = def.points.reduce((s, key) => s + amountByKey[key], 0);
+          const due = def.stage === "vehicle" ? Math.max(0, sum - depositDeductionCents) : sum;
+          return {
+            contractId: contract!.id,
+            stage: def.stage,
+            dueAmount: centsToDb(due),
+            currency,
+            basis: paymentBasis,
+            status: "not_requested",
+          };
+        }),
       );
 
       // 6. Audit.

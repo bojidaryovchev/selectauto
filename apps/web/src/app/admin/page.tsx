@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
+import { isAdmin } from "@/lib/admin";
 import { getAdminOverview } from "@/queries/admin";
 import {
   LEAD_STATUSES,
@@ -11,9 +14,14 @@ import type { StatusCounts } from "@/queries/admin";
 /**
  * /admin dashboard — a summary card per lead type (total + a highlighted "new"
  * count + the full status breakdown), each linking to its inbox. Data is a live
- * grouped-count query (not cached); the layout already gates the route to admins.
+ * grouped-count query (not cached); the layout gates the route to the back
+ * office, and this page is admin-only: leads are sales data, so a „Наблюдаващ"
+ * lands on the contracts register instead.
  */
 export default async function AdminDashboardPage() {
+  if (!isAdmin(await auth())) {
+    redirect("/admin/dogovori");
+  }
   const overview = await getAdminOverview();
   const totalNew = LEAD_TYPES.reduce((sum, t) => sum + overview[t].new, 0);
 

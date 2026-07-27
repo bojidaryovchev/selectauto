@@ -1,4 +1,0 @@
-# Regenerated per-deploy via `npm install --os=linux --cpu=x64 --libc=glibc sharp`
-# (see README.md). Not committed — contains a large platform-specific binary.
-nodejs/node_modules/
-nodejs/package-lock.json

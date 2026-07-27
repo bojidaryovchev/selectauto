@@ -41,9 +41,6 @@ export interface LambdaSet {
   referenceManufacturer: aws.lambda.Function;
   referenceFinalize: aws.lambda.Function;
   refreshListingDetail: aws.lambda.Function;
-  // Async card-thumbnail baker (SQS-driven; resizes source images with sharp and
-  // uploads WebP to the thumbnail bucket). Packaged with a sharp layer.
-  bakeThumbnail: aws.lambda.Function;
   createSyncRun: aws.lambda.Function;
   finalizeSyncRun: aws.lambda.Function;
   markSyncFailed: aws.lambda.Function;
@@ -67,34 +64,13 @@ interface MakeFnOpts {
   reservedConcurrency?: number;
   /** Extra env vars merged on top of the common set. */
   extraEnv?: Record<string, pulumi.Input<string>>;
-  /** Lambda layer ARNs to attach (e.g. the sharp native layer for the baker). */
-  layers?: pulumi.Input<string>[];
 }
 
 export function createLambdas(
   /** ARN of the shared Lambda execution role (from iam.ts). */
   role: pulumi.Input<string>,
   secretEnv: { auctionsApiKey: pulumi.Output<string>; neonDatabaseUrl: pulumi.Output<string> },
-  /** Thumbnail-bake wiring: the bake queue URL (enqueuers) + the bucket/CDN (worker). */
-  thumbEnv: {
-    bakeQueueUrl: pulumi.Input<string>;
-    thumbnailBucket: pulumi.Input<string>;
-    thumbnailCdnBaseUrl: pulumi.Input<string>;
-  },
 ): LambdaSet {
-  // The sharp native layer. Built BEFORE `pulumi up` into infra/layers/sharp/
-  // with the Linux x64 glibc binary that matches nodejs20.x (Amazon Linux 2):
-  //   mkdir -p infra/layers/sharp/nodejs && cd infra/layers/sharp/nodejs \
-  //     && npm install --os=linux --cpu=x64 --libc=glibc sharp
-  // The AssetArchive ships the layer dir as-is; Lambda expects the
-  // `nodejs/node_modules/...` layout, which the command above produces.
-  const sharpLayer = new aws.lambda.LayerVersion("sharp-layer", {
-    layerName: `${namePrefix}-sharp`,
-    compatibleRuntimes: ["nodejs20.x"],
-    compatibleArchitectures: ["x86_64"],
-    code: new pulumi.asset.FileArchive(path.resolve(__dirname, "..", "layers", "sharp")),
-  });
-
   const commonEnvVars: Record<string, pulumi.Input<string>> = {
     AUCTIONS_API_BASE_URL: config.auctionsApiBaseUrl,
     // Secret values injected from Pulumi config secrets. They are marked secret
@@ -104,9 +80,6 @@ export function createLambdas(
     // Keep the pg pool tiny in Lambda.
     PG_POOL_MAX: "2",
     NODE_OPTIONS: "--enable-source-maps",
-    // The enqueuers (syncCarsPage, refreshListingDetail) batch-send lot ids here
-    // after each upsert page. Harmless for the other handlers.
-    BAKE_QUEUE_URL: thumbEnv.bakeQueueUrl,
   };
 
   const makeFn = (opts: MakeFnOpts): aws.lambda.Function => {
@@ -143,7 +116,6 @@ export function createLambdas(
         }),
         timeout: opts.timeoutSeconds ?? 60,
         memorySize: opts.memoryMb ?? 256,
-        ...(opts.layers ? { layers: opts.layers } : {}),
         ...(opts.reservedConcurrency !== undefined ? { reservedConcurrentExecutions: opts.reservedConcurrency } : {}),
         environment: {
           variables: opts.extraEnv ? { ...commonEnvVars, ...opts.extraEnv } : commonEnvVars,
@@ -220,22 +192,6 @@ export function createLambdas(
       timeoutSeconds: 30,
       reservedConcurrency: 1,
       extraEnv: { DETAIL_REFRESH_PACE_MS: "1000" },
-    }),
-    // Async card-thumbnail baker. SQS-driven, fetches source images from the CDN
-    // (not the rate-limited AuctionsAPI), resizes with sharp (native, via layer),
-    // and uploads WebP to the thumbnail bucket. 1024MB for fast sharp decode/encode;
-    // 60s covers a source fetch + resize + PutObject with wide margin.
-    bakeThumbnail: makeFn({
-      name: "bakeThumbnail",
-      bundleFile: "bakeThumbnail.js",
-      timeoutSeconds: 60,
-      // 2GB gives sharp headroom + more vCPU to resize a parallel batch quickly.
-      memoryMb: 2048,
-      layers: [sharpLayer.arn],
-      extraEnv: {
-        THUMBNAIL_BUCKET: thumbEnv.thumbnailBucket,
-        THUMBNAIL_CDN_BASE_URL: thumbEnv.thumbnailCdnBaseUrl,
-      },
     }),
     // sync-run lifecycle: three handlers exported from one bundle.
     createSyncRun: makeFn({

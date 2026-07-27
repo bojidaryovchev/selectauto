@@ -2,11 +2,23 @@
  * Elevated account roles (RBAC-ready). `users.roles` is a text[] holding any of
  * these; a normal visitor has none. To add a role, extend this list — then map
  * roles to capabilities in code as needed (no schema change, no join tables).
- * The only gate today is membership of 'admin' (the /admin back office).
+ *
+ *  admin    — full access to the back office.
+ *  observer — „Наблюдаващ" (e.g. accountants; owner spec 07.2026): may CREATE
+ *             and prepare contracts/deposits and follow contracts + payment
+ *             notices, but may not edit anything afterwards. Editing, issuing
+ *             notices, and marking payments paid/unpaid stay with admins.
+ *             Any number of observer accounts can exist.
  */
-export const APP_ROLES = ["admin"] as const;
+export const APP_ROLES = ["admin", "observer"] as const;
 
 export type AppRole = (typeof APP_ROLES)[number];
+
+/** BG label per role — for the back-office UI. */
+export const APP_ROLE_META: Record<AppRole, { label: string }> = {
+  admin: { label: "Администратор" },
+  observer: { label: "Наблюдаващ" },
+};
 
 /**
  * Shared constants for the owner-facing /admin back office (migration 0029).

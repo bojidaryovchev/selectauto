@@ -1,3 +1,4 @@
+export { ContractDocumentButton } from "./contract-document-button";
 export { ContractFilters } from "./contract-filters";
 export { ContractForm } from "./contract-form";
 export { PaymentStageCard } from "./payment-stage-card";

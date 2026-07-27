@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ContractForm } from "@/components/admin/contracts";
+import { ContractDocumentButton, ContractForm } from "@/components/admin/contracts";
 import { PaymentStageCard } from "@/components/admin/contracts/payment-stage-card";
 import {
   CLIENT_KIND_META,
@@ -10,6 +10,8 @@ import {
   type ContractMarket,
   type ContractStatus,
 } from "@/constants/contracts";
+import { auth } from "@/auth";
+import { isAdmin } from "@/lib/admin";
 import { dbToCents, formatDbAmount } from "@/lib/money";
 import { getContract } from "@/queries/contracts";
 import { listRecipients } from "@/queries/recipients";
@@ -34,19 +36,22 @@ const EVENT_LABELS: Record<string, string> = {
  */
 export default async function AdminContractDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [detail, allRecipients] = await Promise.all([getContract(Number(id)), listRecipients()]);
+  const [detail, allRecipients, session] = await Promise.all([getContract(Number(id)), listRecipients(), auth()]);
   if (!detail) notFound();
+  // Editing the contract, issuing notices and recording payments are admin-only
+  // (owner spec 07.2026); „Наблюдаващ" follows everything read-only.
+  const canManage = isAdmin(session);
   const { contract, client, payments, deposit, documents, attachments, events } = detail;
   const activeRecipients = allRecipients.filter((r) => r.active);
 
   const statusMeta = CONTRACT_STATUS_META[contract.status as ContractStatus];
-  const points: { label: string; value: string }[] = [
-    { label: "Точка 1 — Кола", value: contract.amountCar },
-    { label: "Точка 2 — Транспорт", value: contract.amountTransport },
-    { label: "Точка 3 — Мито и ДДС", value: contract.amountCustomsVat },
-    { label: "Точка 4 — Транспорт Европа → БГ", value: contract.amountTransportEuBg },
-    { label: "Точка 5 — Комисионна", value: contract.amountCommission },
-  ];
+  // The пера are whatever this market defines (5 / 4 / 3), not a fixed five.
+  const marketMeta = CONTRACT_MARKET_META[contract.market as ContractMarket];
+  const points = (marketMeta?.points ?? []).map((p) => ({
+    label: p.label,
+    value: contract[p.key],
+    foreignCurrency: p.foreignCurrency,
+  }));
 
   return (
     <div className="flex flex-col gap-6">
@@ -66,9 +71,17 @@ export default async function AdminContractDetailPage({ params }: { params: Prom
             {contract.contractDate}
           </p>
         </div>
-        <Link href="/admin/dogovori" className="text-sm font-semibold text-muted hover:text-ink">
-          ← Всички договори
-        </Link>
+        <div className="flex flex-col items-end gap-2">
+          <Link href="/admin/dogovori" className="text-sm font-semibold text-muted hover:text-ink">
+            ← Всички договори
+          </Link>
+          {canManage ? (
+            <ContractDocumentButton
+              contractId={contract.id}
+              documents={documents.filter((d) => d.kind === "contract")}
+            />
+          ) : null}
+        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -166,8 +179,14 @@ export default async function AdminContractDetailPage({ params }: { params: Prom
             {points.map((p) => (
               <div key={p.label} className="flex justify-between gap-2">
                 <dt className="text-muted">{p.label}</dt>
-                <dd className="whitespace-nowrap font-semibold text-ink">
+                <dd className="whitespace-nowrap text-right font-semibold text-ink">
                   {formatDbAmount(p.value)} {contract.currency}
+                  {p.foreignCurrency && contract.amountCarForeign ? (
+                    <div className="text-xs font-normal text-muted">
+                      ({formatDbAmount(contract.amountCarForeign)} {contract.foreignCurrency} × курс{" "}
+                      {contract.foreignRate})
+                    </div>
+                  ) : null}
                 </dd>
               </div>
             ))}
@@ -207,12 +226,14 @@ export default async function AdminContractDetailPage({ params }: { params: Prom
               recipients={activeRecipients}
               documents={documents.filter((d) => d.paymentId === p.id && d.kind === "payment_notice")}
               attachments={attachments.filter((a) => a.paymentId === p.id)}
+              canManage={canManage}
             />
           ))}
         </div>
       </section>
 
-      {/* ── Редакция ── */}
+      {/* ── Редакция (само админ) ── */}
+      {!canManage ? null : (
       <details className="rounded-xl border border-line bg-white">
         <summary className="cursor-pointer select-none px-5 py-4 text-lg font-black text-ink">
           Редакция на договора
@@ -225,6 +246,7 @@ export default async function AdminContractDetailPage({ params }: { params: Prom
           <ContractForm contract={contract} />
         </div>
       </details>
+      )}
 
       {/* ── История ── */}
       <section className="flex flex-col gap-3">

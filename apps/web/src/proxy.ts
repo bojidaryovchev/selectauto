@@ -54,7 +54,10 @@ export const proxy = auth(async (request) => {
       signIn.searchParams.set("redirectTo", "/admin");
       return NextResponse.redirect(signIn);
     }
-    if (!request.auth.user.roles?.includes("admin")) {
+    // Either elevated role may enter; what each may DO is enforced per page and
+    // per action (lib/admin: requireAdminPage vs requireBackOfficePage).
+    const roles = request.auth.user.roles ?? [];
+    if (!roles.includes("admin") && !roles.includes("observer")) {
       return NextResponse.redirect(new URL("/", request.nextUrl));
     }
   }

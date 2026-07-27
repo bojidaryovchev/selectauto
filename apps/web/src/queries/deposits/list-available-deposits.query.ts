@@ -1,5 +1,5 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
-import { getAdminSession } from "@/lib/admin";
+import { getBackOfficeSession, isAdmin } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 
 export type AvailableDepositRow = {
@@ -20,7 +20,8 @@ export type AvailableDepositRow = {
  * defensively.
  */
 export async function listAvailableDeposits(): Promise<AvailableDepositRow[]> {
-  if (!(await getAdminSession())) throw new Error("FORBIDDEN");
+  const session = await getBackOfficeSession();
+  if (!session) throw new Error("FORBIDDEN");
 
   const d = schema.depositContracts;
   const c = schema.contracts;
@@ -35,6 +36,14 @@ export async function listAvailableDeposits(): Promise<AvailableDepositRow[]> {
     })
     .from(d)
     .leftJoin(c, eq(c.depositContractId, d.id))
-    .where(and(eq(d.status, "paid"), isNull(c.id)))
+    .where(
+      and(
+        eq(d.status, "paid"),
+        isNull(c.id),
+        // Scoped like the deposit list: an observer can only apply a deposit
+        // they created themselves.
+        isAdmin(session) ? undefined : eq(d.createdBy, session.user?.id ?? ""),
+      ),
+    )
     .orderBy(desc(d.depositDate));
 }

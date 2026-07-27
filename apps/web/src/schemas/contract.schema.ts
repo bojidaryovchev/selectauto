@@ -45,6 +45,19 @@ const amountFields = {
   amountCustomsVat: amountField,
   amountTransportEuBg: amountField,
   amountCommission: amountField,
+  /**
+   * Канада: перо 1 is entered in CAD together with the rate, and `amountCar`
+   * is DERIVED (CAD × rate, rounded to the whole euro) rather than typed. Both
+   * are ignored for the other markets.
+   */
+  amountCarForeign: amountField.optional(),
+  foreignRate: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || (Number(v.replace(",", ".")) > 0 && Number(v.replace(",", ".")) < 1000), {
+      message: "Невалиден курс.",
+    }),
 };
 
 export const createContractSchema = z
@@ -66,6 +79,16 @@ export const createContractSchema = z
     }
     if (values.clientId && values.newClient) {
       ctx.addIssue({ code: "custom", path: ["clientId"], message: "Изберете само едно: съществуващ или нов клиент." });
+    }
+    // Канада: both the CAD amount and the rate are required — the EUR перо 1 is
+    // computed from them.
+    if (values.market === "ca") {
+      if (!values.amountCarForeign?.trim()) {
+        ctx.addIssue({ code: "custom", path: ["amountCarForeign"], message: "Въведете сумата в канадски долари." });
+      }
+      if (!values.foreignRate?.trim()) {
+        ctx.addIssue({ code: "custom", path: ["foreignRate"], message: "Въведете курс CAD/EUR." });
+      }
     }
   });
 

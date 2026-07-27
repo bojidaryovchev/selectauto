@@ -2,7 +2,7 @@
 
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { STAGE_ALLOWED_RECIPIENT_KINDS, type PaymentStage } from "@/constants/contracts";
+import { DEFAULT_PAYMENT_TERM_DAYS, STAGE_ALLOWED_RECIPIENT_KINDS, type PaymentStage } from "@/constants/contracts";
 import { getAdminSession } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import { centsToDb } from "@/lib/money";
@@ -25,6 +25,12 @@ export type GeneratePaymentNoticeInput = {
 /** Today as YYYY-MM-DD in Europe/Sofia. */
 function todaySofia(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Sofia" }).format(new Date());
+}
+
+function addDays(iso: string, days: number): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
 /**
@@ -53,8 +59,8 @@ export async function generatePaymentNotice(
   if (!Number.isInteger(paymentId) || paymentId <= 0 || !Number.isInteger(recipientId) || recipientId <= 0) {
     return { success: false, error: "Невалидни данни." };
   }
-  const dueDate = input?.dueDate?.trim() || null;
-  if (dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) {
+  const explicitDueDate = input?.dueDate?.trim() || null;
+  if (explicitDueDate && !/^\d{4}-\d{2}-\d{2}$/.test(explicitDueDate)) {
     return { success: false, error: "Невалиден падеж." };
   }
 
@@ -83,8 +89,10 @@ export async function generatePaymentNotice(
       return { success: false, error: "Този получател не е допустим за този етап на плащане." };
     }
 
-    // §16: курс required iff us_ca + SelectAuto; forbidden in every other case.
-    const needsRate = contract.market === "us_ca" && recipient.kind === "selectauto";
+    // §16: курс required iff САЩ + SelectAuto — that's the only case where the
+    // operator supplies it per notice. Канада also prints rate columns, but its
+    // rate is fixed on the contract at creation, so nothing is entered here.
+    const needsRate = contract.market === "us" && recipient.kind === "selectauto";
     let usdEurRate: number | null = null;
     if (needsRate) {
       const raw = input?.usdEurRate?.trim().replace(",", ".") ?? "";
@@ -121,6 +129,8 @@ export async function generatePaymentNotice(
         : null;
 
     const basis = input?.basis?.trim() || payment.basis || contract.paymentBasis || `Договор № ${contract.number}`;
+    const noticeDate = todaySofia();
+    const dueDate = explicitDueDate ?? addDays(noticeDate, DEFAULT_PAYMENT_TERM_DAYS);
     const snapshot = buildNoticeSnapshot({
       contract,
       payment,
@@ -128,7 +138,7 @@ export async function generatePaymentNotice(
       issuer,
       deposit,
       usdEurRate,
-      noticeDate: todaySofia(),
+      noticeDate,
       basis,
     });
 

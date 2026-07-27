@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { auth } from "@/auth";
 import { DepositForm, DepositRowActions } from "@/components/admin/deposits";
 import { DEPOSIT_STATUS_META, type DepositStatus } from "@/constants/contracts";
+import { isAdmin } from "@/lib/admin";
 import { formatDbAmount } from "@/lib/money";
 import { listClients } from "@/queries/clients";
 import { listDeposits } from "@/queries/deposits";
@@ -13,7 +15,9 @@ import { listDeposits } from "@/queries/deposits";
  * "Използван по" column). The layout gates the route to admins.
  */
 export default async function AdminDepositsPage() {
-  const [deposits, clients] = await Promise.all([listDeposits(), listClients()]);
+  const [deposits, clients, session] = await Promise.all([listDeposits(), listClients(), auth()]);
+  // „Наблюдаващ" may create deposits but not move them through the lifecycle.
+  const canManage = isAdmin(session);
 
   return (
     <div className="flex flex-col gap-6">
@@ -76,7 +80,11 @@ export default async function AdminDepositsPage() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <DepositRowActions depositId={deposit.id} status={deposit.status} />
+                    {canManage ? (
+                      <DepositRowActions depositId={deposit.id} status={deposit.status} />
+                    ) : (
+                      <span className="text-xs text-muted">—</span>
+                    )}
                   </td>
                 </tr>
               );

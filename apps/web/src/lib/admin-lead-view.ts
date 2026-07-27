@@ -22,11 +22,17 @@ function fmtDate(d: Date): string {
   return dateFmt.format(d);
 }
 
-/** The calculator is USD end-to-end; the `*_eur` columns store USD, so amounts
+/** The calculator computes in USD; the `*_eur` columns store USD, so amounts
  *  here are formatted with `$` to match the estimator and the customer email
  *  (`usdStr`). */
 function usd(n: number): string {
   return `${Math.round(n).toLocaleString("bg-BG")} $`;
+}
+
+/** EUR-quoted fee rows carry `amountEur` and are shown unconverted, matching
+ *  the estimator and the customer email. */
+function eur(n: number): string {
+  return `${Math.round(n).toLocaleString("bg-BG")} €`;
 }
 
 /** kr/us/ca → BG market name. */
@@ -111,10 +117,11 @@ export function toInquiryView(row: InquiryRow): AdminLeadView {
 }
 
 /** The shape create-calculator-offer.mutation stores in `breakdown_json`.
- *  `lines[].amountUsd` (USD, matching `ImportCostLine`), plus the raw estimator
- *  `inputs` and the rates version the numbers were computed against. */
+ *  `lines[]` matches `ImportCostLine` (USD always; `amountEur` on EUR-quoted fee
+ *  rows), plus the raw estimator `inputs` and the rates version the numbers
+ *  were computed against. */
 type BreakdownJson = {
-  lines?: { label: string; amountUsd: number }[];
+  lines?: { label: string; amountUsd: number; amountEur?: number }[];
   ratesVerifiedAt?: string;
 };
 
@@ -132,7 +139,10 @@ export function toCalculatorView(row: CalculatorOfferRow): AdminLeadView {
   // Itemised breakdown snapshot — exactly what the visitor saw/received.
   const breakdown = (row.breakdownJson ?? {}) as BreakdownJson;
   for (const line of breakdown.lines ?? []) {
-    details.push({ label: line.label, value: usd(line.amountUsd) });
+    details.push({
+      label: line.label,
+      value: line.amountEur != null ? eur(line.amountEur) : usd(line.amountUsd),
+    });
   }
   if (breakdown.ratesVerifiedAt) {
     details.push({ label: "Тарифи към", value: breakdown.ratesVerifiedAt });

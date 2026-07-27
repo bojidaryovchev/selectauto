@@ -23,10 +23,6 @@ const entries = [
   { name: "syncRunLifecycle", entry: "syncRunLifecycle/handler.ts" },
   // Periodic projection drift-repair sweep (looped state machine; 3 handlers).
   { name: "driftSweep", entry: "driftSweep/handler.ts" },
-  // Async card-thumbnail baker. `sharp` is NATIVE and cannot be bundled into a
-  // single ESM file — it is provided at runtime by the sharp Lambda layer (see
-  // infra/src/lambdas.ts), so mark it external here.
-  { name: "bakeThumbnail", entry: "bakeThumbnail/handler.ts", external: ["sharp"] },
 ];
 
 // Clean first so renamed/removed handlers don't leave stale bundles behind.

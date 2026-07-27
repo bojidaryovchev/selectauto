@@ -8,11 +8,10 @@ import type { NoticeLine, NoticeSnapshot, NoticeVariant } from "@/types/notice-s
  * assembles the exact payload the PDF renders from.
  *
  * Currency logic (§16): us_ca + SelectAuto → USD lines × курс = EUR total;
- * us_ca + partner → USD only; kr → EUR (SelectAuto notices add the лв. row,
- * fixed 1.95583 — kept from the live samples even post-euro-adoption).
+ * us_ca + partner → USD only; kr → EUR. The лв. equivalent that appeared on the
+ * older samples is deliberately NOT printed — the owner confirmed (07.2026) it
+ * no longer serves a purpose now that BG is in the eurozone.
  */
-
-export const BGN_PER_EUR = 1.95583;
 
 /** The client snapshot shape frozen on the contract row at creation. */
 type ClientSnapshot = {
@@ -40,7 +39,16 @@ export function buildNoticeSnapshot(args: {
   const { contract, payment, recipient, issuer, deposit, usdEurRate, noticeDate, basis } = args;
 
   const isSelectAuto = recipient.kind === "selectauto";
-  const variant: NoticeVariant = isSelectAuto ? (contract.market === "us_ca" ? "selectauto_usd" : "selectauto_eur") : "external";
+  // Two INDEPENDENT choices (owner, 07.2026):
+  //  · the bank block — SelectAuto's short form vs an external recipient's full block;
+  //  · the rate columns (стойност / курс / стойност евро) — shown for САЩ paid to
+  //    SelectAuto (§16.1) AND for the Канада „кола+транспорт" stage, which is
+  //    wired to ALCO IMPEX in CAD but carries a euro value in the contract.
+  const variant: NoticeVariant = isSelectAuto
+    ? usdEurRate !== null
+      ? "selectauto_usd"
+      : "selectauto_eur"
+    : "external";
 
   // Line items: the stage sum, plus the deposit as its own negative line on the
   // vehicle stage (§14.2 — the stored due_amount already nets it out, so the
@@ -52,28 +60,60 @@ export function buildNoticeSnapshot(args: {
   const description =
     payment.stage === "customs_vat" ? "Мито и ДДС" : `Разходи по договор №${contract.number}`;
 
-  const toEur = (cents: number) => Math.round(cents * (usdEurRate ?? 0));
+  /**
+   * КАНАДА, етап „кола + транспорт": the wire leaves in CAD (to ALCO IMPEX) while
+   * the contract's leading value is the euro equivalent, fixed by the rate
+   * entered at contract creation. The stage's stored due_amount is the EUR side.
+   */
+  const canadaFirstStage =
+    payment.stage === "vehicle" && Boolean(contract.foreignCurrency) && contract.amountCarForeign !== null;
+
+  const contractRate = contract.foreignRate ? Number(contract.foreignRate) : null;
+  /** The rate that drives the three-column table, whichever case we're in. */
+  const rate = canadaFirstStage ? contractRate : usdEurRate;
+  const showRateColumns = rate !== null && (canadaFirstStage || variant === "selectauto_usd");
+
+  /**
+   * Foreign currency → EUR, ROUNDED TO THE WHOLE EURO (owner, 07.2026 — "да се
+   * закръгля"; the notice for contract 2026-090 prints 6 245.00 × 0.889 as
+   * 5 552.00, not 5 551.81). Applied per line so the printed lines always sum to
+   * the printed total.
+   */
+  const toEur = (cents: number) => Math.round((cents * (rate ?? 0)) / 100) * 100;
+  /** …and back, for the deposit line on a Canadian first stage. */
+  const toForeign = (eurCents: number) => (rate ? Math.round(eurCents / rate / 100) * 100 : eurCents);
+
+  // First column = what actually leaves the bank: CAD for the Canadian first
+  // stage, the contract currency otherwise.
+  const mainFirstCol = canadaFirstStage ? dbToCents(contract.amountCarForeign) : stageMainCents;
+  const depositFirstCol = canadaFirstStage ? toForeign(depositCents) : depositCents;
 
   const lines: NoticeLine[] = [
     {
       description,
-      amountCents: stageMainCents,
+      amountCents: mainFirstCol,
       quantity: 1,
-      ...(variant === "selectauto_usd" ? { amountEurCents: toEur(stageMainCents) } : {}),
+      ...(showRateColumns
+        ? { amountEurCents: canadaFirstStage ? dbToCents(contract.amountCar) : toEur(mainFirstCol) }
+        : {}),
     },
   ];
   if (payment.stage === "vehicle" && deposit && depositCents > 0) {
     lines.push({
       description: `Депозит №${deposit.number}`,
-      amountCents: -depositCents,
+      amountCents: -depositFirstCol,
       quantity: 1,
-      ...(variant === "selectauto_usd" ? { amountEurCents: -toEur(depositCents) } : {}),
+      ...(showRateColumns ? { amountEurCents: canadaFirstStage ? -depositCents : -toEur(depositFirstCol) } : {}),
     });
   }
 
-  // Payable total: EUR for selectauto_usd (converted), contract currency otherwise.
-  const totalCents =
-    variant === "selectauto_usd" ? lines.reduce((s, l) => s + (l.amountEurCents ?? 0), 0) : lines.reduce((s, l) => s + l.amountCents, 0);
+  /**
+   * Payable total = the currency the client actually wires: EUR when paying
+   * SelectAuto against a USD contract (§16.1), and the first column otherwise —
+   * including Канада, where ALCO IMPEX holds a CAD-only account.
+   */
+  const totalInEur = variant === "selectauto_usd";
+  const totalCents = lines.reduce((s, l) => s + (totalInEur ? (l.amountEurCents ?? 0) : l.amountCents), 0);
 
   const clientSnap = (contract.clientSnapshot ?? {}) as ClientSnapshot;
   const isCompany = clientSnap.kind === "company";
@@ -98,12 +138,13 @@ export function buildNoticeSnapshot(args: {
     },
     stage: payment.stage,
     variant,
-    currency: contract.currency,
+    showRateColumns,
+    // The first column's currency: CAD on a Canadian first stage, else the contract's.
+    currency: canadaFirstStage ? (contract.foreignCurrency ?? contract.currency) : contract.currency,
     lines,
-    ...(variant === "selectauto_usd" && usdEurRate ? { usdEurRate } : {}),
+    ...(showRateColumns && rate ? { usdEurRate: rate } : {}),
     totalCents,
-    totalCurrencyLabel: variant === "external" ? contract.currency : "евро",
-    ...(variant === "selectauto_eur" ? { totalBgnCents: Math.round(totalCents * BGN_PER_EUR) } : {}),
+    totalCurrencyLabel: totalInEur ? "евро" : canadaFirstStage ? (contract.foreignCurrency ?? "") : contract.currency,
     recipient: {
       name: recipient.name,
       vatNumber: recipient.vatNumber ?? "",
@@ -114,6 +155,7 @@ export function buildNoticeSnapshot(args: {
       swiftBic: recipient.swiftBic ?? "",
       paymentMethod: recipient.paymentMethod ?? "",
       chargesInstruction: recipient.chargesInstruction ?? "",
+      routingCode: recipient.routingCode ?? "",
     },
     basis,
   };

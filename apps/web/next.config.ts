@@ -42,8 +42,8 @@ const nextConfig: NextConfig = {
   // routes that render PDFs: the admin contract pages (server actions generate
   // notices there) and the download route.
   outputFileTracingIncludes: {
-    "/admin/dogovori/**": ["./src/pdf/fonts/*.ttf"],
-    "/api/payment-document/**": ["./src/pdf/fonts/*.ttf"],
+    "/admin/dogovori/**": ["./src/pdf/fonts/*.ttf", "./src/pdf/assets/*.png"],
+    "/api/payment-document/**": ["./src/pdf/fonts/*.ttf", "./src/pdf/assets/*.png"],
   },
   // Proof-of-payment uploads (прикачен платежен документ, contracts module) go
   // through a server action as multipart FormData; the default 1MB body cap is
@@ -51,53 +51,23 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: { bodySizeLimit: "8mb" },
   },
-  // Auction-listing photos are served from the upstream source hosts that
-  // AuctionsAPI aggregates (encar, copart, iaai, ironplanet, plus its own CDN).
-  // next/image requires each remote host to be whitelisted. We use per-source
-  // wildcards (`**.` matches the apex + any subdomain depth) so new CDN
-  // subdomains a source rolls out don't trigger a runtime "unconfigured host"
-  // error. The set was derived by scanning auction_lots.raw_json.images (the
-  // gallery source) + the listing tables' image_url against the live DB.
+  // next/image now serves ONLY a handful of LOCAL, immutable static assets — the
+  // header/footer logo (/logo.png) and the brand-logo grid (/brand-logos/*.png);
+  // the inquiry hero is rendered `unoptimized`. Every auction/car photo is served
+  // DIRECTLY from its source CDN through a plain <img> (no optimizer), so no
+  // remote host needs whitelisting here anymore and the runaway per-car
+  // transformation cost that dominated the Vercel bill is gone.
   images: {
-    // Auction lot photos are IMMUTABLE once ingested (a lot's images never
-    // change). Next 16 defaults `minimumCacheTTL` to 14400s (4h), so a
-    // continuously-viewed image goes STALE and is re-optimized every 4h — each
-    // STALE hit is billed by Vercel as a transformation + a cache write, for
-    // zero benefit. 31 days (Vercel's documented value for "doesn't change in a
-    // month") means each optimized variant is billed ~once/month instead. This
-    // is the single biggest lever on Image Optimization cost.
+    // The logos are immutable, so cache each optimized variant for 31 days
+    // rather than Next 16's 4h default — otherwise a continuously-served logo
+    // goes STALE and is re-optimized (billed) every 4h for zero benefit.
     minimumCacheTTL: 2678400, // 31 days
-    // Restrict the responsive width ladder to what we actually render. Cards top
-    // out at 25vw and the detail-gallery main image at 60vw (≤~1150px on a 1920
-    // viewport), so 1920 is the realistic ceiling — 2048/3840 were never served
-    // and 1200 is redundant next to 1080/1920. Fewer widths = fewer distinct
-    // optimized variants per source image = fewer transformations/cache writes.
-    // (Default was [640,750,828,1080,1200,1920,2048,3840].)
+    // These logos render small (≤~170px wide, so 1x/2x tops out ~340px). Keep
+    // the trimmed width ladders so each logo yields only a couple of variants.
+    // (Defaults were deviceSizes [640,750,828,1080,1200,1920,2048,3840] and
+    // imageSizes [16,32,48,64,96,128,256,384].)
     deviceSizes: [640, 750, 828, 1080, 1920],
-    // Only the 88px detail-gallery thumbnails use this list (sizes="88px").
-    // Trim the default 8-entry ladder to the few sizes those thumbnails hit.
-    // (Default was [16,32,48,64,96,128,256,384].)
     imageSizes: [96, 128, 256],
-    // Next 16 defaults `qualities` to `[75]` and rejects any other `quality`
-    // prop (coercing it to the nearest allowed value). The dense thumbnail grid
-    // on /vsichki-avtomobili uses q=60 (smaller bytes, no visible loss at card
-    // size); 75 stays for everything else. Allowlist both.
-    qualities: [60, 75],
-    remotePatterns: [
-      { protocol: "https", hostname: "**.auctionsapi.com" }, // AuctionsAPI CDN
-      { protocol: "https", hostname: "**.encar.com" }, // Encar (Korea): ci., imgcar.
-      { protocol: "https", hostname: "**.copart.com" }, // Copart: cs., c-static.
-      { protocol: "https", hostname: "**.iaai.com" }, // IAAI: vis., mediaretriever.
-      { protocol: "https", hostname: "**.ironpla.net" }, // IronPlanet
-      // IAAI also serves media off Azure (media-retriever-prd-cus) + a one-off
-      // blob storage host; CloudFront serves the odd long-tail copy. These are
-      // generic provider domains, so scope the wildcard to the exact subdomain
-      // tree we've observed rather than the whole provider.
-      { protocol: "https", hostname: "**.azurewebsites.net" },
-      { protocol: "https", hostname: "**.blob.core.windows.net" },
-      { protocol: "https", hostname: "**.cloudfront.net" },
-      { protocol: "https", hostname: "www-ironplanet.s3-us-west-2.amazonaws.com" },
-    ],
   },
   // Baseline security headers on every route. Deliberately CONSERVATIVE — the
   // broadly-safe set that won't break anything here:

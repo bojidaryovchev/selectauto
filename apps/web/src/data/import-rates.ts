@@ -1,6 +1,8 @@
 /**
- * Import-cost calculator v4 — USD throughout, with all tunable numbers extracted
- * into an admin-editable `CalcConfig`.
+ * Import-cost calculator v4 — computed in USD (prices arrive in USD; the total
+ * is USD), but EUR-quoted fees are DISPLAYED in their native EUR via
+ * `ImportCostLine.amountEur` so each fee reads exactly as the owner quotes it.
+ * All tunable numbers are extracted into an admin-editable `CalcConfig`.
  *
  * `DEFAULT_CALC_CONFIG` holds the owner's dictated values (the fallback + the
  * seed the admin form starts from). At runtime the active config comes from the
@@ -175,7 +177,15 @@ export type ImportCostInputs = {
   usContainerUsd?: number;
 };
 
-export type ImportCostLine = { label: string; amountUsd: number; muted?: boolean };
+/**
+ * One breakdown row. `amountUsd` always carries the USD figure (the total sums
+ * these). `amountEur` is set ONLY on rows whose fee is quoted in EUR by the
+ * owner (transport, agency, autovoz, commission, technotest) — renderers show
+ * those rows as "1 630 €" instead of the converted dollars, so the user sees
+ * each fee in its native currency. Computed/mixed rows (car price, duty, VAT)
+ * stay USD-only.
+ */
+export type ImportCostLine = { label: string; amountUsd: number; amountEur?: number; muted?: boolean };
 
 export type ImportCostBreakdown = {
   lines: ImportCostLine[];
@@ -207,7 +217,8 @@ export function computeImportBreakdown(
     const docsFee = Math.round(((i.priceUsd + encarFee) * config.krDocsPct) / 100);
     const payment1 = i.priceUsd + encarFee + docsFee;
     // Плащане 2 — sea transport to the EU.
-    const payment2 = usd(config.krTransportEur[i.vehicleType], config.eurUsd);
+    const payment2Eur = config.krTransportEur[i.vehicleType];
+    const payment2 = usd(payment2Eur, config.eurUsd);
     // Плащане 3 — duty + VAT (on payment1 + payment2, scaled by the editable
     // customs-base %) + customs agency.
     const taxable = payment1 + payment2;
@@ -218,19 +229,27 @@ export function computeImportBreakdown(
     const agency = usd(config.agencyEur, config.eurUsd);
     const payment3 = duty + vat + agency;
     // Плащане 4 — autovoz Holland→BG.
-    const payment4 = usd(config.bgTransportEur[i.vehicleType], config.eurUsd);
+    const payment4Eur = config.bgTransportEur[i.vehicleType];
+    const payment4 = usd(payment4Eur, config.eurUsd);
     // Our commission — tiered, shown LAST ("нашата такса на последно място").
-    const commission = usd(commissionEur(i.priceUsd / config.eurUsd, config), config.eurUsd);
+    const commissionNativeEur = commissionEur(i.priceUsd / config.eurUsd, config);
+    const commission = usd(commissionNativeEur, config.eurUsd);
     const total = payment1 + payment2 + payment3 + payment4 + commission + tech;
 
     const lines: ImportCostLine[] = [
-      { label: `Плащане 1 — автомобил, ENCAR такса и документи (${config.krDocsPct}%)`, amountUsd: payment1 },
-      { label: "Плащане 2 — морски транспорт", amountUsd: payment2 },
-      { label: `Плащане 3 — мито (${appliedDuty}%), ДДС (${vatPct}%) и агенция`, amountUsd: payment3 },
-      { label: "Плащане 4 — автовоз от Холандия", amountUsd: payment4 },
+      {
+        label: `Плащане 1 — автомобил, ENCAR такса (${config.krEncarFeeEur} €) и документи (${config.krDocsPct}%)`,
+        amountUsd: payment1,
+      },
+      { label: "Плащане 2 — морски транспорт", amountUsd: payment2, amountEur: payment2Eur },
+      {
+        label: `Плащане 3 — мито (${appliedDuty}%), ДДС (${vatPct}%) и агенция (${config.agencyEur} €)`,
+        amountUsd: payment3,
+      },
+      { label: "Плащане 4 — автовоз от Холандия", amountUsd: payment4, amountEur: payment4Eur },
     ];
-    if (tech) lines.push({ label: "Технотест (по желание)", amountUsd: tech });
-    lines.push({ label: "Комисионна (нашата услуга)", amountUsd: commission });
+    if (tech) lines.push({ label: "Технотест (по желание)", amountUsd: tech, amountEur: config.technotestEur });
+    lines.push({ label: "Комисионна (нашата услуга)", amountUsd: commission, amountEur: commissionNativeEur });
     if (basePct < 100)
       lines.push({ label: `Митническа основа (${basePct}%)`, amountUsd: customsValue, muted: true });
 
@@ -279,9 +298,13 @@ export function computeImportBreakdown(
 
   lines.push({ label: `Мито (${dutyPct}%)`, amountUsd: duty });
   lines.push({ label: `ДДС (${vatPct}%)`, amountUsd: vat });
-  lines.push({ label: "Митническо обслужване (агенция)", amountUsd: agency });
-  lines.push({ label: "Транспорт до България", amountUsd: bgTransport });
-  if (tech) lines.push({ label: "Технотест (по желание)", amountUsd: tech });
+  lines.push({ label: "Митническо обслужване (агенция)", amountUsd: agency, amountEur: config.agencyEur });
+  lines.push({
+    label: "Транспорт до България",
+    amountUsd: bgTransport,
+    amountEur: config.bgTransportEur[i.vehicleType],
+  });
+  if (tech) lines.push({ label: "Технотест (по желание)", amountUsd: tech, amountEur: config.technotestEur });
   if (basePct < 100)
     lines.push({ label: `Митническа основа (${basePct}%)`, amountUsd: customsValue, muted: true });
 

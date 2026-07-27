@@ -12,7 +12,6 @@ import {
   type MarketId,
   RATES_VERIFIED_AT,
   type UsAuction,
-  usd,
   type VehicleType,
 } from "@/data/import-rates";
 import { findUsLocation, resolveUsTransport, type UsTariffData, usLocationsForAuction } from "@/lib/us-transport";
@@ -53,6 +52,12 @@ function usdFmt(n: number): string {
   // Non-breaking spaces (U+00A0) for both the thousands separator and the ` $`
   // suffix so the amount never wraps across lines (e.g. "16 490 $" stays intact).
   return `${Math.round(n).toLocaleString("bg-BG").replace(/\s/g, " ")} $`;
+}
+
+/** "1 630 €" — for the fees the owner quotes in EUR (shown unconverted). */
+function eurFmt(n: number): string {
+  if (!Number.isFinite(n) || n < 0) return "—";
+  return `${Math.round(n).toLocaleString("bg-BG")} €`.replace(/\s/g, " ");
 }
 
 /** A label/value breakdown row. Module-scoped to avoid remounting on each render. */
@@ -367,8 +372,8 @@ export function CostEstimator({
             className="mt-0.5 size-4 accent-brand"
           />
           <span className="text-[13px]/relaxed text-[#3d4046]">
-            <strong>Технотест (индивидуално одобряване)</strong> — по желание. Добавя ориентировъчно{" "}
-            <strong>{usdFmt(usd(config.technotestEur, config.eurUsd))}</strong> към калкулацията.
+            <strong>Технотест (индивидуално одобряване)</strong> — по желание. Добавя{" "}
+            <strong>{eurFmt(config.technotestEur)}</strong> към калкулацията.
           </span>
         </label>
 
@@ -386,8 +391,9 @@ export function CostEstimator({
         </div>
 
         <p className="text-xs/relaxed text-muted">
-          Всички суми са в щатски долари ($). Ставките са проверени към {RATES_VERIFIED_AT}. Това е ориентировъчна
-          оценка, не оферта.
+          Цените на автомобилите са в щатски долари ($); таксите, договорени в евро, са показани в евро (€). Общата
+          сума е в долари по курс 1 € ≈ {config.eurUsd} $. Ставките са проверени към {RATES_VERIFIED_AT}. Това е
+          ориентировъчна оценка, не оферта.
         </p>
       </div>
 
@@ -409,7 +415,12 @@ export function CostEstimator({
         ) : (
           <>
             {b.lines.map((l) => (
-              <Row key={l.label} label={l.label} value={usdFmt(l.amountUsd)} muted={l.muted} />
+              <Row
+                key={l.label}
+                label={l.label}
+                value={l.amountEur != null ? eurFmt(l.amountEur) : usdFmt(l.amountUsd)}
+                muted={l.muted}
+              />
             ))}
             <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-[#2f343c] px-4 py-3">
               <span className="min-w-0 text-sm font-semibold uppercase tracking-wide text-white/70">Общо (ориентир)</span>

@@ -10,17 +10,25 @@ import { LEAD_TYPE_META, LEAD_TYPES } from "@/constants/admin";
  * usePathname). Links: dashboard + one inbox per lead type + sign-out. Rendered
  * by the admin layout, which already gates the whole /admin tree to admins.
  */
-export function AdminNav() {
+export function AdminNav({ isAdmin = true }: { isAdmin?: boolean }) {
   const pathname = usePathname();
 
-  const links = [
-    { href: "/admin", label: "Табло" },
-    ...LEAD_TYPES.map((t) => ({ href: LEAD_TYPE_META[t].href, label: LEAD_TYPE_META[t].short })),
-    { href: "/admin/dogovori", label: "Договори" },
-    { href: "/admin/depoziti", label: "Депозити" },
-    { href: "/admin/tarifi", label: "Тарифи" },
-    { href: "/admin/poluchateli", label: "Получатели" },
-  ];
+  // „Наблюдаващ" only works with contracts and deposits; leads, tariffs and the
+  // recipient settings are admin-only (the pages re-check server-side).
+  const links = isAdmin
+    ? [
+        { href: "/admin", label: "Табло" },
+        ...LEAD_TYPES.map((t) => ({ href: LEAD_TYPE_META[t].href, label: LEAD_TYPE_META[t].short })),
+        { href: "/admin/dogovori", label: "Договори" },
+        { href: "/admin/depoziti", label: "Депозити" },
+        { href: "/admin/tarifi", label: "Тарифи" },
+        { href: "/admin/poluchateli", label: "Получатели" },
+        { href: "/admin/potrebiteli", label: "Потребители" },
+      ]
+    : [
+        { href: "/admin/dogovori", label: "Договори" },
+        { href: "/admin/depoziti", label: "Депозити" },
+      ];
 
   const renderLinks = () =>
     links.map((l) => {

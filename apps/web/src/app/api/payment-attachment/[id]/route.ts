@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { getAdminSession } from "@/lib/admin";
+import { getBackOfficeSession, isAdmin } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import { getDocumentDownloadUrl, isDocumentStorageConfigured } from "@/lib/s3";
 
@@ -11,7 +11,8 @@ import { getDocumentDownloadUrl, isDocumentStorageConfigured } from "@/lib/s3";
  * expires in 5 minutes). Admin-gated (the proxy doesn't cover /api).
  */
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!(await getAdminSession())) {
+  const session = await getBackOfficeSession();
+  if (!session) {
     return new NextResponse("Forbidden", { status: 403 });
   }
 
@@ -21,10 +22,23 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     return new NextResponse("Not found", { status: 404 });
   }
 
+  const db = getDb();
   const a = schema.paymentAttachments;
-  const [attachment] = await getDb().select().from(a).where(eq(a.id, attachmentId));
+  const [attachment] = await db.select().from(a).where(eq(a.id, attachmentId));
   if (!attachment) {
     return new NextResponse("Not found", { status: 404 });
+  }
+
+  // A „Наблюдаващ" may download attachments only for their own contracts.
+  if (!isAdmin(session)) {
+    const [row] = await db
+      .select({ createdBy: schema.contracts.createdBy })
+      .from(schema.contractPayments)
+      .innerJoin(schema.contracts, eq(schema.contracts.id, schema.contractPayments.contractId))
+      .where(eq(schema.contractPayments.id, attachment.paymentId));
+    if (row?.createdBy !== session.user?.id) {
+      return new NextResponse("Not found", { status: 404 });
+    }
   }
   if (!isDocumentStorageConfigured()) {
     return new NextResponse("Document storage is not configured", { status: 503 });

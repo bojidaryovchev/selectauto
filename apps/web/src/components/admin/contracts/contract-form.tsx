@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
   CLIENT_KIND_META,
+  type ContractAmountKey,
   CONTRACT_MARKET_META,
   CONTRACT_MARKETS,
   CONTRACT_STATUS_META,
@@ -52,7 +53,11 @@ export function ContractForm({
   const isEdit = Boolean(contract);
 
   // ── Contract head ──────────────────────────────────────────────────────────
-  const [market, setMarket] = useState<ContractMarket>((contract?.market as ContractMarket) ?? "us_ca");
+  // NB: the `as` cast can't be trusted for a default — read it defensively so an
+  // unknown/legacy market value can never index CONTRACT_MARKET_META as undefined.
+  const [market, setMarket] = useState<ContractMarket>(
+    CONTRACT_MARKETS.includes(contract?.market as ContractMarket) ? (contract!.market as ContractMarket) : "us",
+  );
   const [contractDate, setContractDate] = useState(contract?.contractDate ?? "");
   const [status, setStatus] = useState<ContractStatus>((contract?.status as ContractStatus) ?? "active");
 
@@ -85,7 +90,11 @@ export function ContractForm({
   const [purchaseMarket, setPurchaseMarket] = useState(contract?.purchaseMarket ?? "");
   const [auctionPlatform, setAuctionPlatform] = useState(contract?.auctionPlatform ?? "");
 
-  // ── The five points (§3.5) ─────────────────────────────────────────────────
+  // ── Пера — which ones exist depends on the market ──────────────────────────
+  const [amountCarForeign, setAmountCarForeign] = useState(
+    contract?.amountCarForeign ? formatDbAmount(contract.amountCarForeign) : "",
+  );
+  const [foreignRate, setForeignRate] = useState(contract?.foreignRate ?? "");
   const [amountCar, setAmountCar] = useState(contract ? formatDbAmount(contract.amountCar) : "");
   const [amountTransport, setAmountTransport] = useState(contract ? formatDbAmount(contract.amountTransport) : "");
   const [amountCustomsVat, setAmountCustomsVat] = useState(contract ? formatDbAmount(contract.amountCustomsVat) : "");
@@ -98,13 +107,34 @@ export function ContractForm({
   const [statusMsg, setStatusMsg] = useState<Status>({ kind: "idle" });
   const [busy, setBusy] = useState(false);
 
-  const currency = CONTRACT_MARKET_META[market].currency;
-  const totalCents =
-    amountCents(amountCar) +
-    amountCents(amountTransport) +
-    amountCents(amountCustomsVat) +
-    amountCents(amountTransportEuBg) +
-    amountCents(amountCommission);
+  const marketMeta = CONTRACT_MARKET_META[market];
+  const currency = marketMeta.currency;
+
+  // Канада: перо 1 is typed in CAD and the EUR value is derived (rounded to the
+  // whole euro, exactly as the server stores it).
+  const rateNumber = Number(foreignRate.replace(",", "."));
+  const rateOk = foreignRate.trim() !== "" && rateNumber > 0 && rateNumber < 1000;
+  const derivedCarCents = rateOk ? Math.round((amountCents(amountCarForeign) * rateNumber) / 100) * 100 : 0;
+
+  const valueByKey: Record<ContractAmountKey, string> = {
+    amountCar,
+    amountTransport,
+    amountCustomsVat,
+    amountTransportEuBg,
+    amountCommission,
+  };
+  const setterByKey: Record<ContractAmountKey, (v: string) => void> = {
+    amountCar: setAmountCar,
+    amountTransport: setAmountTransport,
+    amountCustomsVat: setAmountCustomsVat,
+    amountTransportEuBg: setAmountTransportEuBg,
+    amountCommission: setAmountCommission,
+  };
+
+  const totalCents = marketMeta.points.reduce(
+    (sum, p) => sum + (p.foreignCurrency ? derivedCarCents : amountCents(valueByKey[p.key])),
+    0,
+  );
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -125,6 +155,8 @@ export function ContractForm({
           amountCustomsVat,
           amountTransportEuBg,
           amountCommission,
+          amountCarForeign,
+          foreignRate,
           paymentBasis,
           status,
         });
@@ -163,6 +195,8 @@ export function ContractForm({
           amountCustomsVat,
           amountTransportEuBg,
           amountCommission,
+          amountCarForeign,
+          foreignRate,
           paymentBasis,
           depositContractId: clientMode === "existing" ? depositContractId : undefined,
         });
@@ -410,56 +444,63 @@ export function ContractForm({
       <section className="flex flex-col gap-4 rounded-xl border border-line bg-white p-5">
         <h2 className="text-lg font-black text-ink">{isEdit ? "Финансови точки" : "4. Финансови точки"} ({currency})</h2>
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="flex flex-col gap-1">
-            <label className={LABEL}>Точка 1 — Кола</label>
-            <input type="text" value={amountCar} onChange={(e) => setAmountCar(e.target.value)} placeholder="0.00" className={INPUT} />
-            {selectedDeposit ? (
-              <p className="text-xs font-semibold text-brand">
-                − Депозит № {selectedDeposit.number} ({formatDbAmount(selectedDeposit.depositAmount)}) ще се приспадне
-                от това плащане.
-              </p>
-            ) : null}
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className={LABEL}>Точка 2 — Транспорт</label>
-            <input
-              type="text"
-              value={amountTransport}
-              onChange={(e) => setAmountTransport(e.target.value)}
-              placeholder="0.00"
-              className={INPUT}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className={LABEL}>Точка 3 — Мито и ДДС (може ориентировъчно)</label>
-            <input
-              type="text"
-              value={amountCustomsVat}
-              onChange={(e) => setAmountCustomsVat(e.target.value)}
-              placeholder="0.00"
-              className={INPUT}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className={LABEL}>Точка 4 — Транспорт Европа → България</label>
-            <input
-              type="text"
-              value={amountTransportEuBg}
-              onChange={(e) => setAmountTransportEuBg(e.target.value)}
-              placeholder="0.00"
-              className={INPUT}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className={LABEL}>Точка 5 — Комисионна</label>
-            <input
-              type="text"
-              value={amountCommission}
-              onChange={(e) => setAmountCommission(e.target.value)}
-              placeholder="0.00"
-              className={INPUT}
-            />
-          </div>
+          {/* The пера come from the market definition: 5 for САЩ/Корея, 4 for
+              Канада (перо 1 in CAD + курс), 3 for Европа. */}
+          {marketMeta.points.map((point) =>
+            point.foreignCurrency ? (
+              <div key={point.key} className="flex flex-col gap-1 sm:col-span-2">
+                <label className={LABEL}>
+                  {point.label} — в {point.foreignCurrency}
+                </label>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <input
+                    type="text"
+                    value={amountCarForeign}
+                    onChange={(e) => setAmountCarForeign(e.target.value)}
+                    placeholder={`0.00 ${point.foreignCurrency}`}
+                    className={INPUT}
+                  />
+                  <input
+                    type="text"
+                    value={foreignRate}
+                    onChange={(e) => setForeignRate(e.target.value)}
+                    placeholder={`курс ${point.foreignCurrency}/EUR`}
+                    className={INPUT}
+                  />
+                  <p className="flex items-center rounded-lg bg-neutral-50 px-3 py-2 text-sm font-semibold text-ink">
+                    = {formatCents(derivedCarCents)} EUR
+                  </p>
+                </div>
+                <p className="text-xs text-muted">
+                  Плащането се превежда в {point.foreignCurrency}; евровата равностойност се изчислява по този курс и
+                  се записва в договора.
+                </p>
+                {selectedDeposit ? (
+                  <p className="text-xs font-semibold text-brand">
+                    − Депозит № {selectedDeposit.number} ({formatDbAmount(selectedDeposit.depositAmount)}) ще се
+                    приспадне от това плащане.
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <div key={point.key} className="flex flex-col gap-1">
+                <label className={LABEL}>{point.label}</label>
+                <input
+                  type="text"
+                  value={valueByKey[point.key]}
+                  onChange={(e) => setterByKey[point.key](e.target.value)}
+                  placeholder="0.00"
+                  className={INPUT}
+                />
+                {point.key === "amountCar" && selectedDeposit ? (
+                  <p className="text-xs font-semibold text-brand">
+                    − Депозит № {selectedDeposit.number} ({formatDbAmount(selectedDeposit.depositAmount)}) ще се
+                    приспадне от това плащане.
+                  </p>
+                ) : null}
+              </div>
+            ),
+          )}
           <div className="flex flex-col gap-1">
             <label className={LABEL}>Основание за плащане</label>
             <input

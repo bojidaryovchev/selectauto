@@ -1,6 +1,6 @@
 import { desc, eq, sql } from "drizzle-orm";
 import { PAYMENT_STAGES } from "@/constants/contracts";
-import { getAdminSession } from "@/lib/admin";
+import { getBackOfficeSession, isAdmin } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 
 export type ContractPaymentWithRecipient = typeof schema.contractPayments.$inferSelect & {
@@ -35,7 +35,8 @@ export type ContractDetail = {
  * null when the id doesn't exist. NOT cached; admin-gated defensively.
  */
 export async function getContract(id: number): Promise<ContractDetail | null> {
-  if (!(await getAdminSession())) throw new Error("FORBIDDEN");
+  const session = await getBackOfficeSession();
+  if (!session) throw new Error("FORBIDDEN");
   if (!Number.isInteger(id) || id <= 0) return null;
 
   const db = getDb();
@@ -43,6 +44,9 @@ export async function getContract(id: number): Promise<ContractDetail | null> {
 
   const [contract] = await db.select().from(c).where(eq(c.id, id));
   if (!contract) return null;
+  // A „Наблюдаващ" may only open their OWN contracts — same 404 as a missing id,
+  // so the URL doesn't reveal that someone else's contract exists.
+  if (!isAdmin(session) && contract.createdBy !== session.user?.id) return null;
 
   const p = schema.contractPayments;
   const r = schema.paymentRecipients;
