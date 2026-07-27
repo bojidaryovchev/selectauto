@@ -72,13 +72,24 @@ export async function createDeposit(input: unknown): Promise<ActionResult<{ id: 
         });
       }
 
-      const minted = await tx.execute(
-        sql`INSERT INTO contract_counters (series, year, last_no) VALUES ('deposit', ${year}, 1)
-            ON CONFLICT (series, year) DO UPDATE SET last_no = contract_counters.last_no + 1
-            RETURNING last_no`,
-      );
-      const lastNo = Number((minted.rows[0] as { last_no: number | string }).last_no);
-      const number = `${year}-${String(lastNo).padStart(3, "0")}`;
+      // Skip numbers already in use — the admin can move this counter from
+      // /admin/depoziti, and paper deposits may occupy numbers.
+      let number = "";
+      for (let attempt = 0; attempt < 100 && !number; attempt++) {
+        const minted = await tx.execute(
+          sql`INSERT INTO contract_counters (series, year, last_no) VALUES ('deposit', ${year}, 1)
+              ON CONFLICT (series, year) DO UPDATE SET last_no = contract_counters.last_no + 1
+              RETURNING last_no`,
+        );
+        const lastNo = Number((minted.rows[0] as { last_no: number | string }).last_no);
+        const candidate = `${year}-${String(lastNo).padStart(3, "0")}`;
+        const [used] = await tx
+          .select({ id: schema.depositContracts.id })
+          .from(schema.depositContracts)
+          .where(eq(schema.depositContracts.number, candidate));
+        if (!used) number = candidate;
+      }
+      if (!number) throw new Error("BG:Не може да се определи свободен номер на депозит.");
 
       const [deposit] = await tx
         .insert(schema.depositContracts)

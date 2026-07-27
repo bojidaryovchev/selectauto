@@ -11,3 +11,4 @@ export {
   type ContractListPage,
   type ContractListRow,
 } from "./list-contracts.query";
+export { currentSofiaYear, getNumbering, type NumberingRow, type NumberSeries } from "./get-numbering.query";

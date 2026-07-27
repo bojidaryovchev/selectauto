@@ -2,7 +2,10 @@
  * US/Canada inland transport tariffs — GENERATED from
  * SelectAuto_Calculator_Plus235_ContainerPlus105_Threshold10000.xlsx (sheet 'Local Data +235').
  * Inland prices already include the +$235 markup; container 3/4-car rows include +$105.
- * DO NOT hand-edit — regenerate from the source workbook when tariffs change.
+ * DO NOT hand-edit the generated rows — regenerate from the source workbook when
+ * tariffs change. EXCEPTION: the owner-quoted `flatUsdByType` block at the end of
+ * `US_INLAND_TARIFFS` is hand-maintained (yards absent from the workbook) — keep
+ * it when regenerating.
  */
 
 export type UsInlandTariff = {
@@ -13,6 +16,13 @@ export type UsInlandTariff = {
   zip: string;
   terminal: string;
   inland: number;
+  /**
+   * Owner-quoted ALL-IN transport to Holland by vehicle type (USD). Set only on
+   * the hand-added rows for yards missing from the workbook — their sedan/SUV
+   * quotes don't decompose into inland + per-terminal container, so the resolver
+   * uses this figure directly (container is NOT added on top).
+   */
+  flatUsdByType?: { sedan: number; suv: number };
 };
 
 export const US_INLAND_TARIFFS: UsInlandTariff[] = [
@@ -612,6 +622,18 @@ export const US_INLAND_TARIFFS: UsInlandTariff[] = [
   { location: "Wisconsin 53901", auction: "Adesa", city: "Portage", state: "WI", zip: "53901", terminal: "Indianapolis, IN", inland: 710 },
   { location: "YORK HAVEN (PA) 17370", auction: "Copart", city: "YORK HAVEN", state: "PA", zip: "17370", terminal: "Elizabeth, NJ", inland: 575 },
   { location: "York Springs, PA 17372", auction: "IAAI", city: "York Springs", state: "PA", zip: "17372", terminal: "Elizabeth, NJ", inland: 575 },
+  // ── Owner-quoted yards missing from the workbook (WhatsApp, 22.07.2026). ──
+  // `flatUsdByType` = ALL-IN transport to Holland per type (no container on top);
+  // `inland` mirrors the sedan figure only as a fallback and is unused while
+  // `flatUsdByType` is present. NOT regenerated from the workbook — re-add these
+  // rows if the file is ever regenerated, and include them in any admin TSV
+  // upload (a DB-activated upload replaces this seed entirely).
+  { location: "Las Vegas 89122", auction: "IAAI", city: "Las Vegas", state: "NV", zip: "89122", terminal: "Los Angeles, CA", inland: 2150, flatUsdByType: { sedan: 2150, suv: 2235 } },
+  { location: "Columbus 43223", auction: "IAAI", city: "Columbus", state: "OH", zip: "43223", terminal: "Indianapolis, IN", inland: 1980, flatUsdByType: { sedan: 1980, suv: 2035 } },
+  { location: "Tampa 33619", auction: "IAAI", city: "Tampa", state: "FL", zip: "33619", terminal: "Savannah, GA", inland: 1535, flatUsdByType: { sedan: 1535, suv: 1630 } },
+  { location: "Scott (LA) 70583", auction: "IAAI", city: "Scott", state: "LA", zip: "70583", terminal: "Houston, TX", inland: 1635, flatUsdByType: { sedan: 1635, suv: 1845 } },
+  { location: "Granite City (IL) 62040", auction: "IAAI", city: "Granite City", state: "IL", zip: "62040", terminal: "Indianapolis, IN", inland: 1735, flatUsdByType: { sedan: 1735, suv: 1870 } },
+  { location: "Detroit 48234", auction: "IAAI", city: "Detroit", state: "MI", zip: "48234", terminal: "Indianapolis, IN", inland: 1835, flatUsdByType: { sedan: 1835, suv: 1970 } },
 ];
 
 /** Container price per 1 car by configuration and terminal (USD, incl. +$105 on 3/4-car rows). */

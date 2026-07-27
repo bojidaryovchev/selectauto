@@ -121,6 +121,23 @@ export function resolveUsTransport(
   if (!row || !matchedBy) return { notFound: true };
 
   const containerConfig = CONTAINER_CONFIG_BY_TYPE[input.vehicleType];
+
+  // Owner-quoted flat rows: the figure is ALL-IN to Holland for this vehicle
+  // type — no container is added on top (container: 0 keeps every consumer's
+  // inland+container arithmetic correct).
+  if (row.flatUsdByType) {
+    const total = row.flatUsdByType[input.vehicleType];
+    return {
+      notFound: false,
+      matchedBy,
+      terminal: row.terminal,
+      inland: total,
+      containerConfig,
+      container: 0,
+      total,
+    };
+  }
+
   const container = data.container[containerConfig]?.[row.terminal];
   if (container === undefined) return { notFound: true };
 

@@ -1,5 +1,8 @@
 import Link from "next/link";
-import { ContractFilters, PaymentStatusBadge } from "@/components/admin/contracts";
+import { auth } from "@/auth";
+import { ContractFilters, NumberingSettings, PaymentStatusBadge } from "@/components/admin/contracts";
+import { isAdmin } from "@/lib/admin";
+import { getNumbering } from "@/queries/contracts";
 import {
   CONTRACT_MARKET_META,
   CONTRACT_STATUS_META,
@@ -25,6 +28,9 @@ export default async function AdminContractsPage({
   const sp = await searchParams;
   const page = Math.max(1, Number(sp.page) || 1);
   const { rows, total, pageCount } = await listContracts({ q: sp.q, status: sp.status, page });
+  // Numbering is an admin-only setting — an observer never sees or edits it.
+  const admin = isAdmin(await auth());
+  const numbering = admin ? await getNumbering("contract") : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -40,6 +46,8 @@ export default async function AdminContractsPage({
           + Нов договор
         </Link>
       </div>
+
+      {numbering ? <NumberingSettings numbering={numbering} /> : null}
 
       <ContractFilters q={sp.q} status={sp.status} />
 

@@ -339,8 +339,18 @@ export function CostEstimator({
             />
             {usTransport && !usTransport.notFound ? (
               <span className="text-[11px]/relaxed text-muted">
-                Терминал: <strong>{usTransport.terminal}</strong> · вътрешен {usdFmt(usTransport.inland)} + контейнер{" "}
-                {usdFmt(usTransport.container)}
+                {usTransport.container > 0 ? (
+                  <>
+                    Терминал: <strong>{usTransport.terminal}</strong> · вътрешен {usdFmt(usTransport.inland)} +
+                    контейнер {usdFmt(usTransport.container)}
+                  </>
+                ) : (
+                  // Owner-quoted flat yards: one all-in figure, no inland/container split.
+                  <>
+                    Терминал: <strong>{usTransport.terminal}</strong> · транспорт до Холандия{" "}
+                    {usdFmt(usTransport.total)} (обща цена)
+                  </>
+                )}
               </span>
             ) : null}
           </div>

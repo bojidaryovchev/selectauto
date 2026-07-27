@@ -5,3 +5,4 @@ export { generatePaymentNotice, type GeneratePaymentNoticeInput } from "./genera
 export { markPaymentPaid, type MarkPaymentPaidInput } from "./mark-payment-paid.mutation";
 export { revertPayment } from "./revert-payment.mutation";
 export { updateContract } from "./update-contract.mutation";
+export { setNextNumber, type SetNextNumberInput } from "./set-next-number.mutation";

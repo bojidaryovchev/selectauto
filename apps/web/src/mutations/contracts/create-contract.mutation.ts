@@ -145,14 +145,27 @@ export async function createContract(input: unknown): Promise<ActionResult<{ id:
         });
       }
 
-      // 3. Mint the visible number (atomic increment per series/year).
-      const minted = await tx.execute(
-        sql`INSERT INTO contract_counters (series, year, last_no) VALUES ('contract', ${year}, 1)
-            ON CONFLICT (series, year) DO UPDATE SET last_no = contract_counters.last_no + 1
-            RETURNING last_no`,
-      );
-      const lastNo = Number((minted.rows[0] as { last_no: number | string }).last_no);
-      const number = `${year}-${String(lastNo).padStart(3, "0")}`;
+      // 3. Mint the visible number (atomic increment per series/year). Numbers
+      //    already in use are SKIPPED — an admin can move the counter from
+      //    /admin/dogovori, and paper contracts may occupy numbers — so keep
+      //    incrementing until a free one comes up rather than failing on the
+      //    UNIQUE index after the operator has filled in the whole form.
+      let number = "";
+      for (let attempt = 0; attempt < 100 && !number; attempt++) {
+        const minted = await tx.execute(
+          sql`INSERT INTO contract_counters (series, year, last_no) VALUES ('contract', ${year}, 1)
+              ON CONFLICT (series, year) DO UPDATE SET last_no = contract_counters.last_no + 1
+              RETURNING last_no`,
+        );
+        const lastNo = Number((minted.rows[0] as { last_no: number | string }).last_no);
+        const candidate = `${year}-${String(lastNo).padStart(3, "0")}`;
+        const [used] = await tx
+          .select({ id: schema.contracts.id })
+          .from(schema.contracts)
+          .where(eq(schema.contracts.number, candidate));
+        if (!used) number = candidate;
+      }
+      if (!number) throw new Error("BG:Не може да се определи свободен номер на договор.");
       const paymentBasis = values.paymentBasis?.trim() || `Договор № ${number}`;
 
       // 4. The contract row, with the client snapshot frozen at creation (§2).

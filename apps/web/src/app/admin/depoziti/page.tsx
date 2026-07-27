@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { auth } from "@/auth";
+import { NumberingSettings } from "@/components/admin/contracts";
 import { DepositForm, DepositRowActions } from "@/components/admin/deposits";
 import { DEPOSIT_STATUS_META, type DepositStatus } from "@/constants/contracts";
 import { isAdmin } from "@/lib/admin";
 import { formatDbAmount } from "@/lib/money";
 import { listClients } from "@/queries/clients";
+import { getNumbering } from "@/queries/contracts";
 import { listDeposits } from "@/queries/deposits";
 
 /**
@@ -16,8 +18,10 @@ import { listDeposits } from "@/queries/deposits";
  */
 export default async function AdminDepositsPage() {
   const [deposits, clients, session] = await Promise.all([listDeposits(), listClients(), auth()]);
-  // „Наблюдаващ" may create deposits but not move them through the lifecycle.
+  // „Наблюдаващ" may create deposits but not move them through the lifecycle,
+  // and never sees the numbering setting.
   const canManage = isAdmin(session);
+  const numbering = canManage ? await getNumbering("deposit") : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -28,6 +32,8 @@ export default async function AdminDepositsPage() {
           посредничество за същия клиент. Използван депозит не може да се променя или ползва повторно.
         </p>
       </div>
+
+      {numbering ? <NumberingSettings numbering={numbering} /> : null}
 
       <div className="overflow-x-auto rounded-xl border border-line bg-white">
         <table className="w-full text-left text-sm">
