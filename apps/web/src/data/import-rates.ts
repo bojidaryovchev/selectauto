@@ -16,10 +16,10 @@
  *    fee + docs% of (price + fee); Плащане 2 = sea transport; Плащане 3 = duty
  *    (0% with EU–KR origin declaration) + VAT + customs agency; Плащане 4 =
  *    autovoz Holland→BG. Commission (tiered) is shown LAST, before the total.
- *  - 🇺🇸 USA: [price + auction fee (tiered) + fixed fees] as one "car + auction
- *    fees" line + [inland + container] as one transport line to Holland →
- *    customs value (editable %) → duty + VAT + agency + BG transport +
- *    optional technotest.
+ *  - 🇺🇸 USA — the same numbered payments: Плащане 1 = price + auction fee
+ *    (tiered) + fixed fees; Плащане 2 = inland + container to Holland; customs
+ *    value (editable %) → Плащане 3 = duty + VAT + agency; Плащане 4 = autovoz
+ *    to BG; optional technotest.
  *  - 🇨🇦 Canada: same as USA, flat transport.
  */
 
@@ -264,8 +264,10 @@ export function computeImportBreakdown(
     };
   }
 
-  // US / Canada. Owner's row grouping: car + auction + fixed fees in ONE line,
-  // the transport legs in ONE line — a shorter breakdown list.
+  // US / Canada — the same numbered 4-payment structure as Korea (owner's
+  // framing: "да го съберем в едно плащане"): Плащане 1 = car + auction + fixed
+  // fees, Плащане 2 = transport to the EU, Плащане 3 = duty + VAT + agency,
+  // Плащане 4 = Holland→BG autovoz.
   const auction: UsAuction = i.auction ?? "copart";
   const auctionFee = usAuctionFeeUsd(i.priceUsd, auction, config);
   const f = config.usFixedFeesUsd;
@@ -273,7 +275,7 @@ export function computeImportBreakdown(
 
   const lines: ImportCostLine[] = [
     {
-      label: `Автомобил и аукционни такси (${auction === "copart" ? "Copart" : "IAAI"}, title, еко, преиздаване, онлайн наддаване)`,
+      label: `Плащане 1 — автомобил и аукционни такси (${auction === "copart" ? "Copart" : "IAAI"})`,
       amountUsd: i.priceUsd + auctionFee + fixed,
     },
   ];
@@ -281,10 +283,10 @@ export function computeImportBreakdown(
   let transportTotal: number;
   if (i.market === "ca") {
     transportTotal = config.caTransportUsd;
-    lines.push({ label: "Транспорт до ЕС", amountUsd: transportTotal });
+    lines.push({ label: "Плащане 2 — транспорт до ЕС", amountUsd: transportTotal });
   } else {
     transportTotal = (i.usInlandUsd ?? 0) + (i.usContainerUsd ?? 0);
-    lines.push({ label: "Транспорт до Холандия (вътрешен + контейнер)", amountUsd: transportTotal });
+    lines.push({ label: "Плащане 2 — транспорт до Холандия", amountUsd: transportTotal });
   }
 
   const estimatedToHolland = i.priceUsd + auctionFee + fixed + transportTotal;
@@ -296,11 +298,12 @@ export function computeImportBreakdown(
   const agency = usd(config.agencyEur, config.eurUsd);
   const bgTransport = usd(config.bgTransportEur[i.vehicleType], config.eurUsd);
 
-  lines.push({ label: `Мито (${dutyPct}%)`, amountUsd: duty });
-  lines.push({ label: `ДДС (${vatPct}%)`, amountUsd: vat });
-  lines.push({ label: "Митническо обслужване (агенция)", amountUsd: agency, amountEur: config.agencyEur });
   lines.push({
-    label: "Транспорт до България",
+    label: `Плащане 3 — мито (${dutyPct}%), ДДС (${vatPct}%) и агенция (${config.agencyEur} €)`,
+    amountUsd: duty + vat + agency,
+  });
+  lines.push({
+    label: "Плащане 4 — автовоз от Холандия",
     amountUsd: bgTransport,
     amountEur: config.bgTransportEur[i.vehicleType],
   });

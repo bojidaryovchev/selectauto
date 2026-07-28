@@ -24,11 +24,11 @@ import { CalculatorOfferForm } from "./calculator-offer-form";
  *    docs%) / Плащане 2 (sea transport) / Плащане 3 (duty — 0% with the EU–KR
  *    origin-declaration toggle — + VAT + agency) / Плащане 4 (autovoz to BG),
  *    with the commission (our service) shown last + optional technotest.
- *  - 🇺🇸 USA: [car + auction fee (tiered) + fixed fees] in one line +
- *    inland+container transport (resolved from the 597-row location table) to
- *    Holland → duty + VAT + agency + Holland→BG transport + optional technotest.
- *    Shows "not found" and no total when the auction/location can't be matched
- *    (техн. задание §10).
+ *  - 🇺🇸 USA: the same numbered payments — Плащане 1 (car + auction fee +
+ *    fixed fees) / Плащане 2 (inland+container to Holland, resolved from the
+ *    ~600-row location table) / Плащане 3 (duty + VAT + agency) / Плащане 4
+ *    (autovoz to BG) + optional technotest. Shows "not found" and no total when
+ *    the auction/location can't be matched (техн. задание §10).
  *  - 🇨🇦 Canada: same as USA but a flat transport figure (no location lookup).
  *
  * The customs-base % field lowers only the duty/VAT base. Still an ESTIMATE, not

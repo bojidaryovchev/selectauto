@@ -67,10 +67,19 @@ export default async function AdminContractsPage({
           <tbody>
             {rows.map(({ contract, clientName, stages }) => {
               const statusMeta = CONTRACT_STATUS_META[contract.status as ContractStatus];
+              // The WHOLE row opens the contract: the number stays a real <Link>
+              // (so middle-click / "open in new tab" still work) and its ::after
+              // is stretched over the positioned row — no JS, no wrapper.
               return (
-                <tr key={contract.id} className="border-b border-line align-top last:border-0 hover:bg-neutral-50">
+                <tr
+                  key={contract.id}
+                  className="relative border-b border-line align-top last:border-0 hover:bg-neutral-50"
+                >
                   <td className="whitespace-nowrap px-4 py-3">
-                    <Link href={`/admin/dogovori/${contract.id}`} className="font-bold text-brand hover:underline">
+                    <Link
+                      href={`/admin/dogovori/${contract.id}`}
+                      className="font-bold text-brand after:absolute after:inset-0 after:content-[''] hover:underline"
+                    >
                       {contract.number}
                     </Link>
                     <div className="text-xs text-muted">{contract.contractDate}</div>
