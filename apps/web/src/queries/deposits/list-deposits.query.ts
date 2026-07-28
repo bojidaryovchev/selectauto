@@ -2,11 +2,15 @@ import { desc, eq } from "drizzle-orm";
 import { getBackOfficeSession, isAdmin } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 
+export type DepositDocumentRow = { id: number; version: number; createdAt: Date };
+
 export type DepositListRow = {
   deposit: typeof schema.depositContracts.$inferSelect;
   clientName: string;
   /** The mediation contract this deposit was deducted into, when 'used'. */
   usedBy: { id: number; number: string } | null;
+  /** Generated deposit-contract versions, newest first. */
+  documents: DepositDocumentRow[];
 };
 
 /**
@@ -37,9 +41,22 @@ export async function listDeposits(): Promise<DepositListRow[]> {
     .where(isAdmin(session) ? undefined : eq(d.createdBy, session.user?.id ?? ""))
     .orderBy(desc(d.createdAt));
 
+  // Generated deposit contracts for these rows, in one query.
+  const g = schema.generatedDocuments;
+  const docs = rows.length
+    ? await getDb()
+        .select({ id: g.id, depositId: g.depositContractId, version: g.version, createdAt: g.createdAt })
+        .from(g)
+        .where(eq(g.kind, "deposit_contract"))
+        .orderBy(desc(g.version))
+    : [];
+
   return rows.map((r) => ({
     deposit: r.deposit,
     clientName: r.clientName,
     usedBy: r.usedById && r.usedByNumber ? { id: r.usedById, number: r.usedByNumber } : null,
+    documents: docs
+      .filter((d) => d.depositId === r.deposit.id)
+      .map((d) => ({ id: d.id, version: d.version, createdAt: d.createdAt })),
   }));
 }

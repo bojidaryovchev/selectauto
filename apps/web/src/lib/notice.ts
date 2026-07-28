@@ -32,13 +32,26 @@ export function buildNoticeSnapshot(args: {
   deposit: typeof schema.depositContracts.$inferSelect | null;
   /** Курс USD→EUR — required iff us_ca + SelectAuto (validated by the caller). */
   usdEurRate: number | null;
+  /**
+   * The payable amount typed by the operator at generation, in the notice's own
+   * currency. Overrides the stage's contract amount — the customs sums are
+   * explicitly "ориентировъчни" and the broker's real invoice differs (owner,
+   * 07.2026: "да не взема сумата в договора в предвид").
+   */
+  overrideCents?: number | null;
   /** Today in Europe/Sofia, ISO. */
   noticeDate: string;
   basis: string;
 }): NoticeSnapshot {
-  const { contract, payment, recipient, issuer, deposit, usdEurRate, noticeDate, basis } = args;
+  const { contract, payment, recipient, issuer, deposit, usdEurRate, overrideCents, noticeDate, basis } = args;
 
   const isSelectAuto = recipient.kind === "selectauto";
+  /**
+   * Auto America B.V and Lean Customs BV invoice in EUR whatever the contract's
+   * currency is (owner, 07.2026: "плащанията към ауто америка и lean да са само
+   * в евро"), so a customs notice is a plain single-currency EUR document.
+   */
+  const isCustomsBroker = recipient.kind === "customs_broker";
   // Two INDEPENDENT choices (owner, 07.2026):
   //  · the bank block — SelectAuto's short form vs an external recipient's full block;
   //  · the rate columns (стойност / курс / стойност евро) — shown for САЩ paid to
@@ -71,7 +84,10 @@ export function buildNoticeSnapshot(args: {
   const contractRate = contract.foreignRate ? Number(contract.foreignRate) : null;
   /** The rate that drives the three-column table, whichever case we're in. */
   const rate = canadaFirstStage ? contractRate : usdEurRate;
-  const showRateColumns = rate !== null && (canadaFirstStage || variant === "selectauto_usd");
+  // A customs notice is EUR-only, and a typed amount replaces the conversion —
+  // in both cases there is nothing to show a курс column for.
+  const showRateColumns =
+    rate !== null && !isCustomsBroker && overrideCents == null && (canadaFirstStage || variant === "selectauto_usd");
 
   /**
    * Foreign currency → EUR, ROUNDED TO THE WHOLE EURO (owner, 07.2026 — "да се
@@ -83,9 +99,10 @@ export function buildNoticeSnapshot(args: {
   /** …and back, for the deposit line on a Canadian first stage. */
   const toForeign = (eurCents: number) => (rate ? Math.round(eurCents / rate / 100) * 100 : eurCents);
 
-  // First column = what actually leaves the bank: CAD for the Canadian first
-  // stage, the contract currency otherwise.
-  const mainFirstCol = canadaFirstStage ? dbToCents(contract.amountCarForeign) : stageMainCents;
+  // First column = what actually leaves the bank. A typed amount wins; then CAD
+  // for the Canadian first stage; otherwise the stage's contract amount.
+  const mainFirstCol =
+    overrideCents != null ? overrideCents : canadaFirstStage ? dbToCents(contract.amountCarForeign) : stageMainCents;
   const depositFirstCol = canadaFirstStage ? toForeign(depositCents) : depositCents;
 
   const lines: NoticeLine[] = [
@@ -139,12 +156,23 @@ export function buildNoticeSnapshot(args: {
     stage: payment.stage,
     variant,
     showRateColumns,
-    // The first column's currency: CAD on a Canadian first stage, else the contract's.
-    currency: canadaFirstStage ? (contract.foreignCurrency ?? contract.currency) : contract.currency,
+    // The notice's currency: EUR for the customs brokers, CAD on a Canadian
+    // first stage, else the contract's.
+    currency: isCustomsBroker
+      ? "EUR"
+      : canadaFirstStage
+        ? (contract.foreignCurrency ?? contract.currency)
+        : contract.currency,
     lines,
     ...(showRateColumns && rate ? { usdEurRate: rate } : {}),
     totalCents,
-    totalCurrencyLabel: totalInEur ? "евро" : canadaFirstStage ? (contract.foreignCurrency ?? "") : contract.currency,
+    totalCurrencyLabel: isCustomsBroker
+      ? "евро"
+      : totalInEur
+        ? "евро"
+        : canadaFirstStage
+          ? (contract.foreignCurrency ?? "")
+          : contract.currency,
     recipient: {
       name: recipient.name,
       vatNumber: recipient.vatNumber ?? "",

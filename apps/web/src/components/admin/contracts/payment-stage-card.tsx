@@ -81,6 +81,7 @@ export function PaymentStageCard({
     payment.recipientId ?? fixedFinal?.id ?? undefined,
   );
   const [rate, setRate] = useState("");
+  const [amountOverride, setAmountOverride] = useState("");
   const [basis, setBasis] = useState(payment.basis ?? "");
   const [dueDate, setDueDate] = useState(payment.dueDate ?? defaultDueDate());
   const [paidAmount, setPaidAmount] = useState("");
@@ -94,6 +95,14 @@ export function PaymentStageCard({
 
   const chosen = allowed.find((r) => r.id === (isFinalStage ? fixedFinal?.id : recipientId));
   const needsRate = contract.market === "us" && chosen?.kind === "selectauto";
+  /**
+   * Auto America / Lean Customs are always paid in EUR (owner, 07.2026), so on a
+   * non-EUR contract the euro sum has to be stated here. The field is offered on
+   * every notice though — the contract sums are estimates, and the operator may
+   * want to type the real amount instead of relying on the contract figure.
+   */
+  const payoutCurrency = chosen?.kind === "customs_broker" ? "EUR" : (chosen?.currency ?? contract.currency);
+  const amountRequired = chosen?.kind === "customs_broker" && contract.currency !== "EUR";
   const remainingCents = dbToCents(payment.dueAmount) - dbToCents(payment.paidAmount);
   const versionCount = documents.length;
   const cancelled = contract.status === "cancelled";
@@ -112,6 +121,7 @@ export function PaymentStageCard({
         paymentId: payment.id,
         recipientId: chosen.id,
         usdEurRate: needsRate ? rate : undefined,
+        amountOverride: amountOverride.trim() || undefined,
         basis,
         dueDate: dueDate || undefined,
       });
@@ -352,6 +362,23 @@ export function PaymentStageCard({
             </div>
           ) : null}
           <div className="flex flex-col gap-1">
+            <label className={LABEL}>
+              Сума за плащане ({payoutCurrency}){amountRequired ? " *" : " — по избор"}
+            </label>
+            <input
+              type="text"
+              value={amountOverride}
+              onChange={(e) => setAmountOverride(e.target.value)}
+              placeholder={amountRequired ? `сума в ${payoutCurrency}` : formatDbAmount(payment.dueAmount)}
+              className={INPUT}
+            />
+            <p className="text-xs text-muted">
+              {amountRequired
+                ? `Плащанията към ${chosen?.name} са в евро — въведете реалната сума по фактурата им.`
+                : "Празно = сумата от договора. Попълва се, когато реалната сума се различава."}
+            </p>
+          </div>
+          <div className="flex flex-col gap-1">
             <label className={LABEL}>Основание</label>
             <input type="text" value={basis} onChange={(e) => setBasis(e.target.value)} className={INPUT} />
           </div>
@@ -365,7 +392,7 @@ export function PaymentStageCard({
           <div className="flex gap-2">
             <button
               type="button"
-              disabled={busy || !chosen || (needsRate && !rateValid)}
+              disabled={busy || !chosen || (needsRate && !rateValid) || (amountRequired && !amountOverride.trim())}
               onClick={() => setPanel("preview")}
               className="rounded-full bg-brand px-4 py-1.5 text-sm font-extrabold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
             >
@@ -398,7 +425,9 @@ export function PaymentStageCard({
             <div>
               <dt className="inline text-muted">Сума: </dt>
               <dd className="inline font-semibold text-ink">
-                {formatDbAmount(payment.dueAmount)} {payment.currency}
+                {amountOverride.trim()
+                  ? `${amountOverride.trim()} ${payoutCurrency}`
+                  : `${formatDbAmount(payment.dueAmount)} ${payment.currency}`}
               </dd>
             </div>
             {needsRate ? (

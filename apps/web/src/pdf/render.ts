@@ -5,6 +5,7 @@ import { createElement, type ReactElement } from "react";
 import type { ContractDocSnapshot } from "@/types/contract-snapshot.type";
 import type { NoticeSnapshot } from "@/types/notice-snapshot.type";
 import { DeliveryContractPdf } from "./delivery-contract-pdf";
+import { DepositContractPdf } from "./deposit-contract-pdf";
 import { MediationContractPdf } from "./mediation-contract-pdf";
 import { PaymentNoticePdf } from "./payment-notice-pdf";
 
@@ -55,7 +56,12 @@ function stampImage(): { data: Buffer; format: "png" } | undefined {
 /** Renders a CONTRACT document (посредничество or доставка) from its snapshot. */
 export async function renderContractPdf(snapshot: ContractDocSnapshot): Promise<Buffer> {
   registerFonts();
-  const component = snapshot.kind === "delivery" ? DeliveryContractPdf : MediationContractPdf;
+  const component =
+    snapshot.kind === "deposit"
+      ? DepositContractPdf
+      : snapshot.kind === "delivery"
+        ? DeliveryContractPdf
+        : MediationContractPdf;
   return renderToBuffer(
     createElement(component, { snapshot, stampSrc: stampImage() }) as unknown as ReactElement<DocumentProps>,
   );

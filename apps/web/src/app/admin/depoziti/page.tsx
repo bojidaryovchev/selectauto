@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/auth";
 import { NumberingSettings } from "@/components/admin/contracts";
-import { DepositForm, DepositRowActions } from "@/components/admin/deposits";
+import { DepositDocumentButton, DepositForm, DepositRowActions } from "@/components/admin/deposits";
 import { DEPOSIT_STATUS_META, type DepositStatus } from "@/constants/contracts";
 import { isAdmin } from "@/lib/admin";
 import { formatDbAmount } from "@/lib/money";
@@ -45,11 +45,12 @@ export default async function AdminDepositsPage() {
               <th className="px-4 py-3 font-semibold">Депозит</th>
               <th className="px-4 py-3 font-semibold">Статус</th>
               <th className="px-4 py-3 font-semibold">Използван по</th>
+              <th className="px-4 py-3 font-semibold">Договор</th>
               <th className="px-4 py-3 font-semibold">Промяна</th>
             </tr>
           </thead>
           <tbody>
-            {deposits.map(({ deposit, clientName, usedBy }) => {
+            {deposits.map(({ deposit, clientName, usedBy, documents }) => {
               const meta = DEPOSIT_STATUS_META[deposit.status as DepositStatus];
               return (
                 <tr key={deposit.id} className="border-b border-line align-top last:border-0 hover:bg-neutral-50">
@@ -87,6 +88,13 @@ export default async function AdminDepositsPage() {
                   </td>
                   <td className="px-4 py-3">
                     {canManage ? (
+                      <DepositDocumentButton depositId={deposit.id} documents={documents} />
+                    ) : (
+                      <span className="text-xs text-muted">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {canManage ? (
                       <DepositRowActions depositId={deposit.id} status={deposit.status} />
                     ) : (
                       <span className="text-xs text-muted">—</span>
@@ -97,7 +105,7 @@ export default async function AdminDepositsPage() {
             })}
             {deposits.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted">
+                <td colSpan={8} className="px-4 py-8 text-center text-sm text-muted">
                   Още няма договори за депозит.
                 </td>
               </tr>

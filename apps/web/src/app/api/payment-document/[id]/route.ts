@@ -34,7 +34,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const [doc] = await db.select().from(g).where(eq(g.id, docId));
   // Serves both the payment notices and the contract documents themselves —
   // same versioning, same archive, same access rules.
-  if (!doc || (doc.kind !== "payment_notice" && doc.kind !== "contract")) {
+  if (!doc || (doc.kind !== "payment_notice" && doc.kind !== "contract" && doc.kind !== "deposit_contract")) {
     return new Response("Not found", { status: 404 });
   }
 
@@ -49,7 +49,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     }
   }
 
-  const isContract = doc.kind === "contract";
+  const isContract = doc.kind === "contract" || doc.kind === "deposit_contract";
 
   let pdf: Buffer | null = null;
   if (doc.pdfS3Key && isDocumentStorageConfigured()) {

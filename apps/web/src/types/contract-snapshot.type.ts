@@ -6,7 +6,7 @@
  * reproducible even after the template or the company data changes.
  */
 
-export type ContractDocKind = "mediation" | "delivery";
+export type ContractDocKind = "mediation" | "delivery" | "deposit";
 
 export type ContractDocLine = {
   /** "1." … or "2.1." for the delivery contract's sub-points. */
@@ -67,4 +67,10 @@ export type ContractDocSnapshot = {
   deliveryAddress: string;
   /** Delivery contract only: the total is quoted "с ДДС". */
   vatIncluded: boolean;
+  /** Deposit contract only (чл. 1): the client's budget, digits + words. */
+  budgetInWords?: string;
+  /** Deposit contract only (чл. 1): "ЛЕК АВТОМОБИЛ" and similar. */
+  vehicleDescription?: string;
+  /** Deposit contract only: SWIFT + payment method for the payment table. */
+  bank?: { swift: string; paymentMethod: string };
 };

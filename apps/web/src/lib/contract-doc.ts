@@ -25,6 +25,10 @@ export const CONTRACT_COMPANY = {
   phone: "+359899820982",
 } as const;
 
+/** Printed on the deposit contract's payment box, as on the signed original. */
+export const SELECTAUTO_SWIFT = "UBBSBGSF";
+export const SELECTAUTO_PAYMENT_METHOD = "BLINK";
+
 /** Where the car is handed over — Европа keeps its own address (owner, 07.2026). */
 export const DELIVERY_ADDRESS_EU = 'гр. Пловдив, ул. „Ушица Север" № 64А';
 export const DELIVERY_ADDRESS_DEFAULT = "гр. Пловдив, ул. Лазо Войвода № 19";
@@ -79,6 +83,57 @@ function withWords(cents: number, currency: string): string {
   const words = hasFraction ? amountToBgWords(cents, currency) : numberToBgWords(whole, gender);
   const noun = CURRENCY_NOUN[currency] ?? currency;
   return hasFraction ? `${digits} (${words})` : `${digits} (${words}) ${noun}`;
+}
+
+/**
+ * The frozen payload for a DEPOSIT contract (spec §14) — its own number series
+ * and its own template; always issued by СЕЛЕКТАУТО ИМПОРТ.
+ */
+export function buildDepositDocSnapshot(
+  deposit: typeof schema.depositContracts.$inferSelect,
+): ContractDocSnapshot {
+  const snap = (deposit.clientSnapshot ?? {}) as ClientSnapshot;
+  const isCompany = snap.kind === "company";
+  const currency = deposit.budgetCurrency || "EUR";
+  const depositCents = dbToCents(deposit.depositAmount);
+  const budgetCents = dbToCents(deposit.budgetAmount);
+
+  return {
+    kind: "deposit",
+    number: deposit.number,
+    date: deposit.depositDate,
+    city: "Пловдив",
+    company: { ...CONTRACT_COMPANY },
+    client: {
+      name: snap.name ?? "",
+      idNumber: (isCompany ? snap.eik : snap.egn) ?? "",
+      isCompany,
+      address: snap.address ?? "",
+      representative: snap.representative ?? "",
+      email: snap.email ?? "",
+      phone: snap.phone ?? "",
+    },
+    car: { title: "", vin: "" },
+    auctionPlatforms: "",
+    auctionCountry: "",
+    lines: [
+      {
+        number: "1.",
+        text: "Депозит",
+        amountCents: depositCents,
+        amountInWords: withWords(depositCents, currency),
+      },
+    ],
+    totalCents: depositCents,
+    totalInWords: withWords(depositCents, currency),
+    currency,
+    basis: `Депозит № ${deposit.number}`,
+    deliveryAddress: "",
+    vatIncluded: false,
+    ...(budgetCents > 0 ? { budgetInWords: withWords(budgetCents, currency) } : {}),
+    vehicleDescription: deposit.vehicleDescription ?? "ЛЕК АВТОМОБИЛ",
+    bank: { swift: SELECTAUTO_SWIFT, paymentMethod: SELECTAUTO_PAYMENT_METHOD },
+  };
 }
 
 export function buildContractDocSnapshot(contract: typeof schema.contracts.$inferSelect): ContractDocSnapshot {

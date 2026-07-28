@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { DEFAULT_PAYMENT_TERM_DAYS, STAGE_ALLOWED_RECIPIENT_KINDS, type PaymentStage } from "@/constants/contracts";
 import { getAdminSession } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
-import { centsToDb } from "@/lib/money";
+import { centsToDb, parseAmountToCents } from "@/lib/money";
 import { buildNoticeSnapshot } from "@/lib/notice";
 import { isDocumentStorageConfigured, putDocument } from "@/lib/s3";
 import { renderPaymentNoticePdf } from "@/pdf/render";
@@ -16,6 +16,12 @@ export type GeneratePaymentNoticeInput = {
   recipientId: number;
   /** Курс USD→EUR — REQUIRED iff us_ca contract + SelectAuto recipient (§16). */
   usdEurRate?: string;
+  /**
+   * The payable amount, typed by the operator. Overrides the contract's stage
+   * amount — required when paying a customs broker from a non-EUR contract,
+   * optional elsewhere (owner, 07.2026: the contract sums are estimates).
+   */
+  amountOverride?: string;
   /** Per-stage основание override (customs references etc. — §5.3). */
   basis?: string;
   /** Падеж (optional, ISO date). */
@@ -105,6 +111,25 @@ export async function generatePaymentNotice(
       return { success: false, error: "За този получател не се използва валутен курс." };
     }
 
+    // The operator's typed amount, in the notice's own currency. Auto America /
+    // Lean Customs are always paid in EUR, so a USD contract MUST state the euro
+    // sum (either typed, or converted with a rate).
+    const rawOverride = input?.amountOverride?.trim();
+    let overrideCents: number | null = null;
+    if (rawOverride) {
+      overrideCents = parseAmountToCents(rawOverride);
+      if (overrideCents === null || overrideCents <= 0) {
+        return { success: false, error: "Невалидна сума за плащане." };
+      }
+    }
+    const isCustomsBroker = recipient.kind === "customs_broker";
+    if (isCustomsBroker && contract.currency !== "EUR" && overrideCents === null) {
+      return {
+        success: false,
+        error: `Плащанията към ${recipient.name} са в евро — въведете сумата в евро.`,
+      };
+    }
+
     // §10: bank data must be complete before a notice can be generated.
     if (!recipient.bankName || !recipient.iban || !recipient.swiftBic) {
       return {
@@ -138,6 +163,7 @@ export async function generatePaymentNotice(
       issuer,
       deposit,
       usdEurRate,
+      overrideCents,
       noticeDate,
       basis,
     });
