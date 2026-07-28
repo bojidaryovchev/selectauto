@@ -42,6 +42,36 @@ function formatKm(km: number | null): string {
 /** A row from either projection table — identical shape (active or past/sold). */
 type AnyCarListing = CarListing | CarListingArchived;
 
+/**
+ * Upgrade a Copart `_thb.jpg` card URL to its `_ful.jpg` sibling.
+ *
+ * WHY: `_thb` is MEASURED at 144×108 (~4KB) but the card renders it at 305–490
+ * CSS px — a 2.1–3.4× upscale at 1x DPR, 4–7× on retina. `_ful` is 960×720
+ * (median ~133KB), which covers the widest card slot at 2x DPR exactly. Copart
+ * has no mid-size variant (`_ths`/`_med`/`_mid`/`_sml` all 404) and `_hrs` is
+ * 1280×960 — overkill for a card. Only ~473k Copart rows are affected; every
+ * other source already stores a 500–1280px URL and passes through untouched.
+ *
+ * Applied at READ time (not via a backfill) because the rewrite is a pure
+ * function of the stored URL, so it fixes existing rows and new ones alike;
+ * ingestion applies the identical rule going forward (functions/shared/
+ * normalize.ts → copartFullVariant), which makes this a no-op for rows written
+ * after that change.
+ *
+ * CONDITIONAL on the suffix, never a blind swap: some Copart assets exist only
+ * as `_vhrs.jpg` (where `_thb`/`_ful`/`_hrs` all 404), and a few hundred rows
+ * already store `_hrs`. Anything that is not a `_thb` URL is returned as-is.
+ * 491/491 distinct `_thb` assets sampled across the table (incl. archived
+ * months) also served `_ful` — strong, but a sample rather than a guarantee,
+ * which is why `imageFallback` below carries the stored image_url copy.
+ */
+const COPART_THUMB_SUFFIX = "_thb.jpg";
+
+function copartFullVariant(url: string): string {
+  if (!url.endsWith(COPART_THUMB_SUFFIX)) return url;
+  return `${url.slice(0, -COPART_THUMB_SUFFIX.length)}_ful.jpg`;
+}
+
 /** "YYYY Title" from the car_listings row (year + title), trimmed. Some upstream
  *  titles already start with the year (e.g. "2015 Nissan Frontier") — don't
  *  double it. Also collapses upstream-duplicated leading blocks
@@ -88,6 +118,15 @@ export function carListingToView(row: AnyCarListing, isPast = false): CarView {
       ? formatPrice(row.buyNowPrice)
       : formatPrice(row.effectivePrice);
 
+  // Card image. `thumbnail_url` is the per-source card URL; for Copart it is
+  // upgraded from the 144×108 `_thb` thumbnail to the 960×720 `_ful` sibling.
+  // The fallback is attached ONLY when that upgrade actually fired — a
+  // non-rewritten URL is the one the API gave us, so it needs no safety net,
+  // and keeping the field null everywhere else keeps it out of the RSC payload
+  // for the vast majority of cards in the infinite-scroll grid.
+  const thumbnail = row.thumbnailUrl ? copartFullVariant(row.thumbnailUrl) : null;
+  const rewrote = thumbnail !== null && thumbnail !== row.thumbnailUrl;
+
   return {
     id: row.carId,
     // Keyset value for the catalog grid's bidirectional cursor + `?after=` pointer.
@@ -103,10 +142,13 @@ export function carListingToView(row: AnyCarListing, isPast = false): CarView {
     engine: row.engine ?? undefined, // verbatim spec string ("2.0l 4"); not translated
     source: sourceBadge(row.domainName),
     // Card image, served DIRECTLY from the source CDN (no bake, no Vercel
-    // optimizer): thumbnail_url now holds the per-source ~500px card URL (see
+    // optimizer): thumbnail_url holds the per-source 500–960px card URL (see
     // functions/shared/normalize.ts → cardImageUrl); image_url is the reliable
     // i.auctionsapi.com fallback.
-    image: row.thumbnailUrl ?? row.imageUrl ?? null,
+    image: thumbnail ?? row.imageUrl ?? null,
+    // Only set for the speculative Copart `_ful` rewrite — CarCardImage swaps to
+    // it if that URL 404s. Null when `image` is already an API-supplied URL.
+    imageFallback: rewrote ? (row.imageUrl ?? null) : null,
     // Past cards always show a result label ("Продаден"/…); active cards show the
     // buy badge or the live status.
     badge: isPast

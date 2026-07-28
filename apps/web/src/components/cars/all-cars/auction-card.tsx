@@ -4,6 +4,7 @@ import { LinkButton } from "@/components/common";
 import { PhoneIcon, ViberIcon } from "@/components/icons";
 import { FavoriteButton } from "@/components/cars/favorite-button";
 import { AuctionCountdown } from "@/components/cars/all-cars/auction-countdown";
+import { CarCardImage } from "@/components/cars/all-cars/car-card-image";
 import { CONTACT, SOCIALS } from "@/constants";
 import type { CarView } from "@/types/car.type";
 
@@ -34,8 +35,10 @@ function InfoCell({ label, value, accent }: { label: string; value?: string; acc
 /**
  * The rich all-cars listing card (image + source/BUY-NOW badges, per-card
  * phone/Viber, status/countdown bar, 2-col info grid, price row, "Подробности").
- * Server-rendered; only the live countdown is a client child. Data is a `CarView`
- * from `carListingToView`.
+ * Renders on the server wherever it's used from one (the vnos hub pages); its
+ * interactive parts — the live countdown, the favourite heart and the photo (see
+ * CarCardImage) — are client children. Data is a `CarView` from
+ * `carListingToView`.
  *
  * `priority` is set on the first above-the-fold row so its photos eager-load
  * (the page's LCP candidate); all other cards lazy-load by default as they
@@ -63,20 +66,14 @@ function AuctionCardImpl({
         <Link href={car.href} className="block">
           {car.image ? (
             // Served DIRECTLY from the source CDN (no bake, no Vercel optimizer):
-            // `car.image` is the per-source ~500px card URL. A plain <img> — an
-            // unoptimized next/image would be the same thing with extra weight.
-            // First row eager-loads (LCP); the rest lazy-load as they virtualize in.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            // `car.image` is the per-source 500–960px card URL, with
+            // `car.imageFallback` set only where that URL was derived rather than
+            // API-supplied. See CarCardImage for why it owns an error fallback.
+            <CarCardImage
               src={car.image}
+              fallback={car.imageFallback}
               alt={car.title}
-              width={400}
-              height={260}
-              loading={priority ? "eager" : "lazy"}
-              fetchPriority={priority ? "high" : "auto"}
-              decoding="async"
-              referrerPolicy="no-referrer"
-              className="block aspect-40/26 w-full object-cover"
+              priority={priority}
             />
           ) : (
             <div className="flex aspect-40/26 w-full items-center justify-center bg-linear-to-br from-[#2a2d33] to-[#15171b] text-xs font-semibold uppercase tracking-wider text-white/35">

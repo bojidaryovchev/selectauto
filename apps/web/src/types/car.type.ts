@@ -13,9 +13,18 @@ export type CarView = {
   /** Engine displacement/type — shows a "Двигател:" line when present. */
   engine?: string;
   source: string;
-  /** Card image URL — served directly from the source CDN (per-source ~500px
+  /** Card image URL — served directly from the source CDN (per-source 500–960px
    *  variant), a local image under /public, or null when none is available. */
   image: string | null;
+  /**
+   * Swap-in URL for when `image` fails to load. Populated ONLY for Copart cards,
+   * whose `image` is derived by rewriting the stored `_thb.jpg` thumbnail to its
+   * sharper `_ful.jpg` sibling (see lib/car-mapper.ts → copartFullVariant) — an
+   * inference from the URL rather than something the API returned, so the card
+   * keeps the stored `image_url` copy on hand. Null/absent for every other card,
+   * where `image` is API-supplied and needs no safety net.
+   */
+  imageFallback?: string | null;
   /** Buy-now listings show "BUY NOW"; auction listings show an end time. */
   badge: { kind: "buy" } | { kind: "time"; label: string };
 

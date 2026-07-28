@@ -50,7 +50,7 @@ export interface NormalizedLot {
   locationState: string | null;
   locationCity: string | null;
   imageUrl: string | null;
-  // The card thumbnail URL — a ~500px image served DIRECTLY from the source CDN
+  // The card image URL — a 500–960px image served DIRECTLY from the source CDN
   // (no baking, no Vercel optimizer). See cardImageUrl() for the per-source logic.
   // Stored in auction_lots.thumbnail_url; the catalog card renders it in a plain <img>.
   cardImageUrl: string | null;
@@ -258,9 +258,37 @@ function firstImage(raw: ApiLot): string | null {
 }
 
 /**
- * The card thumbnail URL — a ~500px image served DIRECTLY from the source CDN
- * (no baking, no Vercel optimization). Each source exposes sizing differently:
- *   - copart: `images.small[0]` is already a small thumbnail (`_thb.jpg`).
+ * Copart's `images.small[0]` is the `_thb.jpg` variant — MEASURED at 144×108
+ * (~4KB), which the catalog card renders at 305–490 CSS px: a 2.1–3.4× upscale
+ * at 1x DPR and 4–7× on retina, i.e. visibly blurry. The same asset's `_ful.jpg`
+ * is 960×720 (median ~133KB) and covers the widest card slot (~490px) at 2x DPR
+ * exactly. Copart publishes no mid-size variant — `_ths`, `_med`, `_mid`, `_sml`
+ * and `_hrsl` all 404 — so `_ful` is the smallest sharp option (`_hrs` is
+ * 1280×960, overkill for a card).
+ *
+ * CONDITIONAL on the `_thb.jpg` suffix, never a blind swap: not every Copart
+ * asset belongs to that variant family (some exist ONLY as `_vhrs.jpg`, where
+ * `_thb`/`_ful`/`_hrs` all 404), so anything that isn't a `_thb` URL passes
+ * through untouched. Verified against the live CDN: 491/491 distinct `_thb`
+ * assets sampled across auction_lots — including archived months — also serve
+ * `_ful`. That is inference from a sample, not an API guarantee, so the card
+ * carries a fallback to the stored image_url copy (see web/lib/car-mapper.ts →
+ * copartFullVariant, which applies the SAME rule at read time to the ~473k rows
+ * already storing a `_thb` URL).
+ */
+const COPART_THUMB_SUFFIX = "_thb.jpg";
+
+function copartFullVariant(url: string): string {
+  if (!url.endsWith(COPART_THUMB_SUFFIX)) return url;
+  return `${url.slice(0, -COPART_THUMB_SUFFIX.length)}_ful.jpg`;
+}
+
+/**
+ * The card image URL, served DIRECTLY from the source CDN (no baking, no Vercel
+ * optimization). Each source exposes sizing differently:
+ *   - copart: `images.small[0]` is a 144×108 `_thb.jpg` thumbnail — too small for
+ *             the card, so it is upgraded to the 960×720 `_ful.jpg` sibling
+ *             (see copartFullVariant above).
  *   - iaai:   `images.normal[0]` is a `vis.iaai.com/resizer?...&width=…` URL — ask
  *             it for a card-sized render by rewriting width/height (~500px, ~30KB).
  *   - encar (and any other source): its CDN 403s cross-origin hotlinks intermittently,
@@ -272,7 +300,7 @@ function cardImageUrl(raw: ApiLot, domainName: string | null, fallback: string |
   if (imgs) {
     if (domainName === "copart_com") {
       const small = Array.isArray(imgs.small) ? imgs.small : [];
-      if (small.length > 0 && typeof small[0] === "string") return small[0];
+      if (small.length > 0 && typeof small[0] === "string") return copartFullVariant(small[0]);
     } else if (domainName === "iaai_com") {
       const normal = Array.isArray(imgs.normal) ? imgs.normal : [];
       if (normal.length > 0 && typeof normal[0] === "string") {
