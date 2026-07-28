@@ -95,7 +95,7 @@ export default async function AdminDepositsPage() {
                   </td>
                   <td className="px-4 py-3">
                     {canManage ? (
-                      <DepositRowActions depositId={deposit.id} status={deposit.status} />
+                      <DepositRowActions depositId={deposit.id} number={deposit.number} status={deposit.status} />
                     ) : (
                       <span className="text-xs text-muted">—</span>
                     )}

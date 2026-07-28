@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ContractDocumentButton, ContractForm } from "@/components/admin/contracts";
+import { ContractAdminTools, ContractDocumentButton, ContractForm } from "@/components/admin/contracts";
 import { PaymentStageCard } from "@/components/admin/contracts/payment-stage-card";
 import {
   CLIENT_KIND_META,
@@ -247,6 +247,16 @@ export default async function AdminContractDetailPage({ params }: { params: Prom
         </div>
       </details>
       )}
+
+      {/* ── Административни действия (номер / изтриване) ── */}
+      {canManage ? (
+        <ContractAdminTools
+          contractId={contract.id}
+          number={contract.number}
+          status={contract.status}
+          documentCount={documents.length}
+        />
+      ) : null}
 
       {/* ── История ── */}
       <section className="flex flex-col gap-3">

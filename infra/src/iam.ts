@@ -129,7 +129,9 @@ export function createWebAppUser(documentsBucketArn: pulumi.Output<string>): Web
       Statement: [
         {
           Effect: "Allow",
-          Action: ["s3:PutObject", "s3:GetObject"],
+          // DeleteObject is needed only to clean up after an admin deletes a
+          // CANCELLED contract/deposit; normal documents are never removed.
+          Action: ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
           Resource: pulumi.interpolate`${documentsBucketArn}/*`,
         },
       ],

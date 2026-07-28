@@ -6,3 +6,5 @@ export { markPaymentPaid, type MarkPaymentPaidInput } from "./mark-payment-paid.
 export { revertPayment } from "./revert-payment.mutation";
 export { updateContract } from "./update-contract.mutation";
 export { setNextNumber, type SetNextNumberInput } from "./set-next-number.mutation";
+export { deleteContract } from "./delete-contract.mutation";
+export { setContractNumber } from "./set-contract-number.mutation";

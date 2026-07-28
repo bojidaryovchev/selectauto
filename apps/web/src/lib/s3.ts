@@ -1,4 +1,4 @@
-import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 /**
@@ -59,6 +59,17 @@ export async function putDocument(args: {
     }),
   );
   return args.key;
+}
+
+/**
+ * Removes an object — only used when an admin deletes a CANCELLED contract or
+ * deposit, so its archived PDFs and attachments don't linger. Best-effort by
+ * design: the caller logs and carries on, since a stale object is harmless
+ * next to a failed delete. Needs s3:DeleteObject on the web-app IAM user
+ * (infra/src/iam.ts).
+ */
+export async function deleteDocument(key: string): Promise<void> {
+  await getClient().send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
 }
 
 /** Fetches an object's bytes (used to serve an archived PDF byte-for-byte). */
