@@ -258,7 +258,17 @@ export async function sendFavoriteAuctionDigest(
     url: car.href.startsWith("http") ? car.href : `${base}${car.href}`,
     // Absolute image URL for the email client (relative /public paths, used only
     // by the static fallback data, get the base prefixed; DB rows already carry
-    // an absolute AuctionsAPI CDN URL). Null image → omit the thumbnail.
+    // an absolute source-CDN URL). Null image → omit the thumbnail.
+    //
+    // Deliberately the SAME `car.image` the catalog card uses, which the digest
+    // template renders at 536px — WIDER than any card slot, so this surface was
+    // the one most hurt by the old 144×108 Copart thumbnail (a 3.7× upscale) and
+    // the one most improved by the `_ful` rewrite (see lib/car-mapper.ts).
+    // NOTE: `car.imageFallback` is intentionally NOT applied here — an email has
+    // no JS, so a dead URL degrades to the `alt` text rather than swapping. That
+    // is acceptable because the rewrite is only ever applied to Copart URLs,
+    // which were verified to serve 491/491, to survive 14+ months (no expiry),
+    // and to ignore referer/UA (no hotlink blocking, incl. Gmail's image proxy).
     image: car.image
       ? car.image.startsWith("http")
         ? car.image

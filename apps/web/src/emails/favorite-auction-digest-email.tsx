@@ -8,10 +8,12 @@ export type DigestCar = {
   /** Absolute link to the car's detail page. */
   url: string;
   /**
-   * Absolute image URL (the AuctionsAPI CDN `.webp`), or undefined when the
-   * listing has no photo. Rendered as a clickable thumbnail; `alt` carries the
-   * title so clients that don't render WebP (classic Outlook desktop) still show
-   * the car.
+   * Absolute image URL, or undefined when the listing has no photo. Rendered as
+   * a clickable thumbnail at 536px wide. Two shapes reach this, both large
+   * enough for that width: the AuctionsAPI CDN `.webp` (800–1280px) for most
+   * sources, and a Copart `_ful.jpg` (960×720) for Copart lots. `alt` carries
+   * the title so clients that don't render WebP (classic Outlook desktop) still
+   * show something — a concern that does NOT apply to the Copart JPEGs.
    */
   image?: string;
   /** Formatted price ("32 500 $") or undefined when unpriced. */
@@ -34,13 +36,19 @@ type FavoriteAuctionDigestEmailProps = {
 
 /**
  * Daily digest emailed to a user who opted in on /lyubimi: their favourited cars
- * whose auction lands today. Each car shows its photo (the AuctionsAPI CDN
- * `i.auctionsapi.com` `.webp` — a stable, hotlink-friendly URL, unlike the raw
- * Copart/IAAI URLs which expire/block hotlinking; the CDN fetch works from an
- * email client's image proxy), title, and auction details, and links to its
- * detail page. WebP renders in Gmail/Apple Mail/mobile/webmail; the `alt` (title)
- * covers clients that don't (classic Outlook desktop). A footer CTA links back to
- * the saved-cars list.
+ * whose auction lands today. Each car shows its photo, title, and auction
+ * details, and links to its detail page. A footer CTA links back to the
+ * saved-cars list.
+ *
+ * The photo is whatever the catalog card uses (`CarView.image`) — for most
+ * sources the AuctionsAPI CDN `i.auctionsapi.com` `.webp`, and for Copart lots a
+ * `cs.copart.com` `_ful.jpg`. Both are hotlink-friendly from an email client's
+ * image proxy: Copart's CDN was verified to serve 200 with no referer, no UA and
+ * a foreign referer (incl. Gmail's `GoogleImageProxy`), and its assets do not
+ * expire on any timescale that matters here (14-month-old lots still serve, and
+ * this digest only ever covers auctions happening TODAY). WebP renders in
+ * Gmail/Apple Mail/mobile/webmail; the `alt` (title) covers clients that don't
+ * (classic Outlook desktop) — the Copart JPEGs render there natively.
  */
 export function FavoriteAuctionDigestEmail({
   name,
