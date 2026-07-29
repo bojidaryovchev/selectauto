@@ -21,6 +21,16 @@ export const APP_ROLE_META: Record<AppRole, { label: string }> = {
 };
 
 /**
+ * True when these roles may enter /admin at all. Deliberately a PURE helper on a
+ * plain roles array: the site header needs this check in a CLIENT component, and
+ * `lib/admin.ts` can't be imported there (it pulls in `auth()` and `redirect`).
+ * Keep this list in step with the proxy's /admin gate.
+ */
+export function grantsBackOfficeAccess(roles: readonly string[] | null | undefined): boolean {
+  return Boolean(roles?.some((r) => r === "admin" || r === "observer"));
+}
+
+/**
  * Shared constants for the owner-facing /admin back office (migration 0029).
  *
  * The three lead tables (carfax_requests, inquiries, calculator_offers) share a

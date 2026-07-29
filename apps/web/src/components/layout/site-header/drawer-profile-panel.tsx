@@ -3,6 +3,7 @@
 import { signOut, useSession } from "next-auth/react";
 import { Button, LinkButton } from "@/components/common";
 import { ChevronLeftIcon, ChevronRightIcon, HeartIcon, ShieldIcon } from "@/components/icons";
+import { grantsBackOfficeAccess } from "@/constants/admin";
 
 /**
  * App-style profile sub-screen for the mobile drawer. Slides in from the right
@@ -32,7 +33,8 @@ export function DrawerProfilePanel({ open, onBack, onNavigate }: Props) {
   const { data } = useSession();
   const user = data?.user;
   const initial = (user?.name || user?.email || "?").trim().charAt(0).toUpperCase();
-  const isAdmin = user?.roles?.includes("admin") ?? false;
+  // Both elevated roles reach the back office — an observer sees a reduced nav there.
+  const canOpenBackOffice = grantsBackOfficeAccess(user?.roles);
 
   return (
     <aside
@@ -69,7 +71,7 @@ export function DrawerProfilePanel({ open, onBack, onNavigate }: Props) {
       {/* Profile actions as full-width rows. */}
       <nav aria-label="Профил навигация">
         <ul className="m-0 list-none p-0">
-          {isAdmin ? (
+          {canOpenBackOffice ? (
             <li className="border-b border-white/6">
               <LinkButton
                 href="/admin"

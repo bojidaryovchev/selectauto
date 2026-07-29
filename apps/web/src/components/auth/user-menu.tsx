@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { Button, LinkButton } from "@/components/common";
+import { grantsBackOfficeAccess } from "@/constants/admin";
 
 /**
  * Account dropdown for a signed-in user. Shows the user's initial/avatar; the
@@ -31,7 +32,8 @@ export function UserMenu({ tone = "light" }: { tone?: "light" | "dark" }) {
 
   const user = data?.user;
   const initial = (user?.name || user?.email || "?").trim().charAt(0).toUpperCase();
-  const isAdmin = user?.roles?.includes("admin") ?? false;
+  // Both elevated roles reach the back office — an observer sees a reduced nav there.
+  const canOpenBackOffice = grantsBackOfficeAccess(user?.roles);
 
   const triggerClass =
     tone === "dark"
@@ -60,7 +62,7 @@ export function UserMenu({ tone = "light" }: { tone?: "light" | "dark" }) {
             <p className="truncate text-sm font-bold text-ink">{user?.name || "Профил"}</p>
             {user?.email ? <p className="truncate text-xs text-muted">{user.email}</p> : null}
           </div>
-          {isAdmin ? (
+          {canOpenBackOffice ? (
             <LinkButton
               href="/admin"
               onClick={() => setOpen(false)}
