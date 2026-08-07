@@ -31,8 +31,20 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
      * request DB read in the proxy. On later requests `user` is undefined, so the
      * existing token (with its roles) passes through untouched. The edge config's
      * `jwt` never runs with a `user`, so it never needs the DB.
+     *
+     * Also stamps `provider` — which method just signed the user in — so the
+     * client can mark it as "last used" on /sign-in even though the Google flow
+     * redirects the page away mid-sign-in. See remember-auth-method.tsx.
      */
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
+      // `account` is present ONLY on the initial sign-in, for both flows: the
+      // OAuth branch forwards the provider's account and the credentials branch
+      // synthesizes `{ provider: "credentials", type: "credentials" }` before
+      // invoking this callback (@auth/core lib/actions/callback/index.js). On
+      // later requests it's undefined and the existing claim passes through.
+      if (account?.provider) {
+        token.provider = account.provider;
+      }
       if (user?.id) {
         token.id = user.id;
         const rows = await getDb()

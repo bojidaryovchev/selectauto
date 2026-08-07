@@ -12,6 +12,12 @@ declare module "next-auth" {
       id: string;
       /** Elevated roles (e.g. 'admin') — authorises the /admin back office. */
       roles: string[];
+      /**
+       * Auth.js provider id of the method that signed this session in — "google"
+       * or "credentials". Undefined on sessions issued before the claim existed.
+       * Read by the client to mark the last-used method on /sign-in.
+       */
+      authProvider?: string;
     } & DefaultSession["user"];
   }
 }
@@ -21,5 +27,7 @@ declare module "next-auth/jwt" {
     id?: string;
     /** Elevated roles — minted at sign-in by the jwt callback in auth.ts. */
     roles?: string[];
+    /** Provider id of the sign-in that minted this token (auth.ts jwt callback). */
+    provider?: string;
   }
 }

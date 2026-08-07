@@ -64,6 +64,32 @@ export interface NormalizedLot {
   rawJson: unknown;
 }
 
+/**
+ * Strip the nested `lots[]` array off a car payload before it is stored in
+ * `cars.raw_json`.
+ *
+ * WHY: every lot in that array is ALSO persisted in full in `auction_lots.raw_json`,
+ * keyed by (domain_id, lot_number) — so the embedded copy is pure duplication. It is
+ * not a small one: measured on live data the `lots` key is ~94% of the car payload
+ * (13,595 bytes uncompressed vs 779 without it), which pushed every car row over the
+ * 2 KB TOAST threshold and grew an 11 GB TOAST table. Because an upsert assigns
+ * `raw_json` explicitly, Postgres re-TOASTs it on EVERY sync — deleting and
+ * reinserting every chunk — which accounted for ~50% of all row inserts AND deletes
+ * on the whole database. Without `lots` the car row no longer TOASTs at all.
+ *
+ * Nothing reads the embedded copy: the only consumer of `cars.raw_json` anywhere is
+ * web/lib/car-detail-mapper.ts, which reads the TOP-LEVEL `hp` and `cylinders` keys.
+ * Verified against the full table before the backfill: every embedded lot is
+ * recoverable from `auction_lots`.
+ *
+ * Returns a SHALLOW COPY — it must never mutate `raw`, because upsertCarsAndLots
+ * reads `rawCar.lots` after calling this to build the auction_lots rows.
+ */
+function stripLots(raw: ApiCar): Record<string, unknown> {
+  const { lots: _lots, ...rest } = raw as ApiCar & Record<string, unknown>;
+  return rest;
+}
+
 export function normalizeCar(raw: ApiCar): NormalizedCar {
   return {
     externalCarId: num(raw.id),
@@ -83,7 +109,8 @@ export function normalizeCar(raw: ApiCar): NormalizedCar {
     driveWheel: str(raw.drive_wheel?.name),
     // engine is { id, name }; we keep the human-readable name. engine.id lives in raw_json.
     engine: str(raw.engine?.name),
-    rawJson: raw,
+    // NOT `raw` — the nested lots[] array is stripped; see stripLots() above.
+    rawJson: stripLots(raw),
   };
 }
 

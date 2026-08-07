@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Toaster } from "react-hot-toast";
+import { RememberAuthMethod } from "@/components/auth";
 import { FavoritesProvider } from "@/contexts/favorites-context";
 import { InquiryProvider } from "@/contexts/inquiry-context";
 
@@ -18,6 +19,11 @@ import { InquiryProvider } from "@/contexts/inquiry-context";
  * Seeded once at the root, the homepage carousels, catalog grid, detail page, and
  * /lyubimi all share one synced set.
  *
+ * <RememberAuthMethod> is a render-nothing singleton that records which sign-in
+ * method minted the current session (for the "last used" badge on /sign-in). It
+ * belongs here rather than on the sign-in page because the Google flow redirects
+ * the browser away and lands the user on `redirectTo` — anywhere in the app.
+ *
  * The single app-wide react-hot-toast <Toaster> also lives here (top-right).
  * react-hot-toast renders via effects/state, so it must sit inside this
  * "use client" boundary — not in the server-rendered root layout. Defaults are
@@ -28,6 +34,8 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <FavoritesProvider>
       <InquiryProvider>{children}</InquiryProvider>
+
+      <RememberAuthMethod />
 
       <Toaster
         position="top-right"

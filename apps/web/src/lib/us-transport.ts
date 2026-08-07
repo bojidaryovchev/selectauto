@@ -47,6 +47,32 @@ function key(s: string): string {
   return s.replace(/\s+/g, " ").trim().toLowerCase();
 }
 
+/**
+ * City/state key — drops ALL whitespace, not just runs of it. The workbook's
+ * text extraction injected a space mid-word into ~24 rows ("HILLSBOROU GH",
+ * "CHAMBERSB URG", "ALBUQUERQ UE", "Georgi a"), which silently disabled the
+ * city+state fallback for exactly those yards. Comparing both sides
+ * space-free repairs them, and collapsing "La Porte"/"Laporte"-style spelling
+ * differences is desirable here anyway.
+ */
+function tightKey(s: string): string {
+  return s.replace(/\s+/g, "").toLowerCase();
+}
+
+/**
+ * Normalise a US zip to 5 digits ("18073 2303" → "18073").
+ *
+ * Zips reached the workbook through a NUMERIC column, so 35 rows lost a leading
+ * zero ("08844" → "8844", "01702" → "1702"). Any 4-digit result is therefore a
+ * stripped zip and is padded back — without this, every yard in the 0xxxx belt
+ * (NJ/MA/CT/VT/NH/PR) fails the zip match and falls through to the city test,
+ * which those same rows often fail too.
+ */
+function zip5(s: string): string {
+  const digits = s.replace(/[^0-9]/g, "").slice(0, 5);
+  return digits.length === 4 ? `0${digits}` : digits;
+}
+
 type Indexes = {
   byLocation: Map<string, UsInlandTariff>;
   byZip: Map<string, UsInlandTariff>;
@@ -69,11 +95,14 @@ function indexesFor(data: UsTariffData): Indexes {
     const locK = `${a}|${key(row.location)}`;
     if (!byLocation.has(locK)) byLocation.set(locK, row);
     if (row.zip) {
-      const zipK = `${a}|${key(row.zip)}`;
-      if (!byZip.has(zipK)) byZip.set(zipK, row);
+      const z = zip5(row.zip);
+      if (z.length === 5) {
+        const zipK = `${a}|${z}`;
+        if (!byZip.has(zipK)) byZip.set(zipK, row);
+      }
     }
     if (row.city && row.state) {
-      const csK = `${a}|${key(row.city)}|${key(row.state)}`;
+      const csK = `${a}|${tightKey(row.city)}|${tightKey(row.state)}`;
       if (!byCityState.has(csK)) byCityState.set(csK, row);
     }
   }
@@ -110,11 +139,11 @@ export function resolveUsTransport(
     if (row) matchedBy = "location";
   }
   if (!row && input.zip) {
-    row = idx.byZip.get(`${a}|${key(input.zip)}`);
+    row = idx.byZip.get(`${a}|${zip5(input.zip)}`);
     if (row) matchedBy = "zip";
   }
   if (!row && input.city && input.state) {
-    row = idx.byCityState.get(`${a}|${key(input.city)}|${key(input.state)}`);
+    row = idx.byCityState.get(`${a}|${tightKey(input.city)}|${tightKey(input.state)}`);
     if (row) matchedBy = "cityState";
   }
 
@@ -152,39 +181,34 @@ export function resolveUsTransport(
   };
 }
 
-/** Digits-only first-5 of a zip ("18073 2303" → "18073"). */
-function zip5(s: string): string {
-  return s.replace(/[^0-9]/g, "").slice(0, 5);
-}
-
 /**
  * Find the dataset's location STRING for a car's auction yard — used to preselect
  * the calculator's location dropdown from a lot's raw location. The API's branch
  * names ("pa - philadelphia") don't match the workbook's location strings
- * ("PHILADELPHIA (PA) 18073"), so match by yard ZIP first (digits-only first 5 —
- * lot zips arrive as "18073 2303"), then by yard city+state. ~96% of live US
- * lots resolve (measured 2026-07-22); unmatched → undefined (manual pick).
+ * ("PHILADELPHIA (PA) 18073"), so match by yard ZIP first, then by yard
+ * city+state. Deliberately reuses the same memoised indexes (and therefore the
+ * same normalisation) as {@link resolveUsTransport}, so a preselected location
+ * can never resolve differently than the yard it was matched from. ~98% of live
+ * US lots resolve (measured 2026-07-22); unmatched → undefined, and the caller
+ * must ask the user to pick rather than invent a yard.
  */
 export function findUsLocation(
   seed: { zip?: string; city?: string; state?: string },
   auction: string,
   data: UsTariffData,
 ): string | undefined {
+  const idx = indexesFor(data);
   const a = key(auction);
   if (seed.zip) {
     const z = zip5(seed.zip);
     if (z.length === 5) {
-      for (const row of data.inland) {
-        if (key(row.auction) === a && row.zip && zip5(row.zip) === z) return row.location;
-      }
+      const row = idx.byZip.get(`${a}|${z}`);
+      if (row) return row.location;
     }
   }
   if (seed.city && seed.state) {
-    const c = key(seed.city);
-    const st = key(seed.state);
-    for (const row of data.inland) {
-      if (key(row.auction) === a && key(row.city) === c && key(row.state) === st) return row.location;
-    }
+    const row = idx.byCityState.get(`${a}|${tightKey(seed.city)}|${tightKey(seed.state)}`);
+    if (row) return row.location;
   }
   return undefined;
 }

@@ -43,10 +43,14 @@ export const authConfig = {
       return token;
     },
     /**
-     * Expose the user id and roles on `session.user` so server code (favourites,
-     * the /admin gate) and the client (`useSession`) can read them. `roles` is
-     * minted onto the token by the full config's `jwt` callback (auth.ts, a DB
-     * read at sign-in); a token without it (older session) reads as `[]`.
+     * Expose the user id, roles and sign-in provider on `session.user` so server
+     * code (favourites, the /admin gate) and the client (`useSession`) can read
+     * them. `roles` is minted onto the token by the full config's `jwt` callback
+     * (auth.ts, a DB read at sign-in); a token without it (older session) reads as
+     * `[]`. `authProvider` is the Auth.js provider id of the method that minted
+     * the session ("google" | "credentials"); the client uses it to remember the
+     * last-used sign-in method (components/auth/remember-auth-method.tsx), and it
+     * is `undefined` on sessions issued before that claim existed.
      * The type augmentation lives in `src/types/next-auth.d.ts`.
      */
     session({ session, token }) {
@@ -55,6 +59,7 @@ export const authConfig = {
       }
       if (session.user) {
         session.user.roles = (token.roles as string[]) ?? [];
+        session.user.authProvider = token.provider as string | undefined;
       }
       return session;
     },

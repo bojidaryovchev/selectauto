@@ -55,11 +55,21 @@ export async function createCalculatorOffer(input: unknown): Promise<ActionResul
   }
   const data = parsed.data;
 
-  // Re-resolve US transport server-side (tamper-proof) rather than trusting the
-  // client-sent inland/container. For kr/ca the resolved fields are unused.
+  // Transport is ALWAYS derived server-side; the client-sent inland/container are
+  // dropped unconditionally. Previously this ran only when both `auction` and
+  // `location` were present, so a request that simply omitted `location` slipped
+  // past the check and had its own transport figures used verbatim (a $0 — or an
+  // arbitrarily large — "оферта" on company letterhead). For kr/ca the fields are
+  // unused by the cost model, so they're cleared rather than resolved.
   const rawInputs = data.inputs as ImportCostInputs;
-  let computeInputs: ImportCostInputs = rawInputs;
-  if (rawInputs.market === "us" && rawInputs.auction && rawInputs.location) {
+  let computeInputs: ImportCostInputs = { ...rawInputs, usInlandUsd: undefined, usContainerUsd: undefined };
+
+  if (rawInputs.market === "us") {
+    const transportError =
+      "Не можахме да потвърдим транспортната цена за избраната локация. Моля изберете локация на аукциона и опитайте отново.";
+    if (!rawInputs.auction || !rawInputs.location) {
+      return { success: false, error: transportError };
+    }
     const t = resolveUsTransport(
       {
         auction: rawInputs.auction,
@@ -68,9 +78,18 @@ export async function createCalculatorOffer(input: unknown): Promise<ActionResul
       },
       await getUsTariffs(),
     );
-    computeInputs = t.notFound
-      ? { ...rawInputs, usInlandUsd: 0, usContainerUsd: 0 }
-      : { ...rawInputs, usInlandUsd: t.inland, usContainerUsd: t.container };
+    // Fail closed. Zeroing transport here (the old behaviour) emailed the
+    // customer a breakdown ~$1 700–3 800 short with a 0 $ transport line and
+    // stored that total as the lead — worse than refusing the submission, and
+    // the UI itself refuses to show a total in exactly this case.
+    if (t.notFound) {
+      console.error("[create-calculator-offer] transport unresolved", {
+        auction: rawInputs.auction,
+        location: rawInputs.location,
+      });
+      return { success: false, error: transportError };
+    }
+    computeInputs = { ...computeInputs, usInlandUsd: t.inland, usContainerUsd: t.container };
   }
 
   const breakdown = computeImportBreakdown(computeInputs, await getCalcConfig());

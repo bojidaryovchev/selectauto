@@ -41,9 +41,14 @@ export const handler = async (input: PaginatedSyncState): Promise<SyncPageOutput
   const decision = decideNextStep(page);
 
   // 2. Upsert in the same invocation; the page data never leaves this Lambda.
-  const upsertedThisPage = await log.time("upsert_cars_page", () => upsertCarsAndLots(page.data), {
+  const upsert = await log.time("upsert_cars_page", () => upsertCarsAndLots(page.data), {
     carsIn: page.data.length,
   });
+  // Rows actually written. This is DELIBERATELY lower than the number of records
+  // the API sent: unchanged rows are no longer rewritten (see shared/db.ts), so
+  // `skipped` is the direct measure of how much duplicate write volume the
+  // incremental window carries.
+  const upsertedThisPage = upsert.lotsWritten;
 
   const pagesProcessed = (input.pagesProcessed ?? 0) + 1;
 
@@ -58,6 +63,9 @@ export const handler = async (input: PaginatedSyncState): Promise<SyncPageOutput
   log.info("sync_cars_page_result", {
     itemCount: decision.itemCount,
     upsertedThisPage,
+    carsWritten: upsert.carsWritten,
+    carsSkipped: upsert.carsSkipped,
+    lotsSkipped: upsert.lotsSkipped,
     hasNextPage: decision.hasNextPage,
     nextPage: decision.nextPage,
   });

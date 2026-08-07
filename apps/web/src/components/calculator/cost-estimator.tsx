@@ -237,17 +237,21 @@ export function CostEstimator({
   );
 
   // US auction-location options (auction-specific). Keep the selected location
-  // valid for the chosen auction; fall back to the car's own yard, then the first.
+  // valid for the chosen auction; otherwise fall back to THIS car's own yard.
+  //
+  // Deliberately NO fall back to `locationOptions[0]`: that silently priced every
+  // unmatched yard as the alphabetically-first row — "AB CALGARY" for Copart
+  // (a Canadian yard, Montreal terminal, $3 190 sedan) or "ACE - Carson (CA)"
+  // for IAAI — so a New Jersey car quietly quoted Calgary transport, ~$2 000 too
+  // high, and the wrong figure flowed into the emailed offer too. When the yard
+  // can't be matched we show nothing and ask the user to choose (техн. задание
+  // §10: never invent a total).
   const locationOptions = useMemo(
     () => (market === "us" && tariffs ? usLocationsForAuction(auction, tariffs) : []),
     [market, auction, tariffs],
   );
   const effectiveLocation =
-    market === "us"
-      ? locationOptions.includes(location)
-        ? location
-        : (seededLocation ?? locationOptions[0] ?? "")
-      : "";
+    market === "us" ? (locationOptions.includes(location) ? location : (seededLocation ?? "")) : "";
 
   // Resolve US inland + container transport for the current selection.
   const usTransport = useMemo(
@@ -257,7 +261,10 @@ export function CostEstimator({
         : null,
     [market, auction, effectiveLocation, vehicleType, tariffs],
   );
-  const transportNotFound = market === "us" && !!tariffs && (!usTransport || usTransport.notFound);
+  /** Tariffs are loaded but no yard is chosen yet — a prompt, not an error. */
+  const locationPending = market === "us" && !!tariffs && !effectiveLocation;
+  const transportNotFound =
+    market === "us" && !!tariffs && !locationPending && (!usTransport || usTransport.notFound);
 
   const inputs: ImportCostInputs = useMemo(
     () => ({
@@ -275,10 +282,13 @@ export function CostEstimator({
     [market, vehicleType, price, customsBasePct, technotest, originDeclaration, auction, effectiveLocation, usTransport],
   );
 
-  // Can't compute a US total until the tariffs are loaded and resolve to a route.
+  // Can't compute a US total until the tariffs are loaded, a yard is chosen, and
+  // that yard resolves to a route — otherwise the transport leg would silently
+  // count as 0.
   const b = useMemo(
-    () => (tariffsPending || transportNotFound ? null : computeImportBreakdown(inputs, config)),
-    [inputs, tariffsPending, transportNotFound, config],
+    () =>
+      tariffsPending || locationPending || transportNotFound ? null : computeImportBreakdown(inputs, config),
+    [inputs, tariffsPending, locationPending, transportNotFound, config],
   );
 
   return (
@@ -416,6 +426,12 @@ export function CostEstimator({
         ) : tariffErr ? (
           <div className="rounded-xl bg-[#fdecea] px-4 py-3 text-sm font-semibold text-[#b3261e]">
             Грешка при зареждане на транспортните тарифи. Опреснете страницата или направете запитване.
+          </div>
+        ) : locationPending ? (
+          // No yard chosen yet (or this car's yard isn't in the tariff table).
+          // A prompt, not an error — and never a silently substituted yard.
+          <div className="rounded-xl bg-white px-4 py-3 text-sm font-semibold text-muted">
+            Изберете локация на аукциона, за да изчислим транспорта.
           </div>
         ) : transportNotFound || !b ? (
           <div className="rounded-xl bg-[#fdecea] px-4 py-3 text-sm font-semibold text-[#b3261e]">

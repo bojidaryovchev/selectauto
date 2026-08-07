@@ -157,159 +157,248 @@ export async function fetchCarIdsAfter(afterId: number, limit: number): Promise<
   return res.rows.map((r) => r.id);
 }
 
+/* ===========================================================================
+ * Set-based page upserts
+ *
+ * Two properties every statement below is built around:
+ *
+ * 1. BATCHED, not row-at-a-time. The page is shipped as ONE jsonb parameter and
+ *    expanded server-side with jsonb_array_elements. The previous implementation
+ *    issued one round trip per car AND per lot — ~2000 sequential round trips for
+ *    a 1000-car page, measured at ~12.6s of pure latency per page (98 pages =
+ *    22 min for one hourly run) against a pool capped at 2 connections. Passing
+ *    the page as jsonb (rather than parallel arrays) avoids array-literal
+ *    escaping entirely for values that contain arbitrary JSON.
+ *
+ * 2. NO-OP WRITES ARE SKIPPED. Every DO UPDATE carries a WHERE that fires only
+ *    when something actually differs. This matters far more than it looks:
+ *    assigning `raw_json` explicitly makes Postgres re-TOAST the value even when
+ *    it is byte-identical — deleting and reinserting every chunk — so an
+ *    unchanged row still cost a full heap update + TOAST rewrite + WAL + the
+ *    autovacuum that follows. Measured on live data: of ~1.56M lot writes/day
+ *    only ~442k could correspond to a real upstream change, i.e. >=72% of the
+ *    write volume changed nothing.
+ *
+ *    Comparing `raw_json` is both sufficient and necessary for the derived
+ *    columns: every one of them (including thumbnail_url) is a pure function of
+ *    the raw payload — see normalize.ts. The extra OR-terms cover the two things
+ *    that are NOT derived from raw_json: the local car_id linkage, and the
+ *    archived flag (which archiveLots can set independently).
+ *
+ *    OPERATIONAL CONSEQUENCE: ingestion no longer rewrites unchanged rows, so
+ *    adding or changing a DERIVED column no longer back-fills itself on the next
+ *    sync. Any such change now REQUIRES an explicit backfill (the established
+ *    pattern — see db/backfill-*.mjs and migration 0013).
+ * ======================================================================== */
+
+/** Rows per INSERT statement — keeps one statement's payload modest while still
+ *  collapsing a 1000-car page from ~2000 round trips to ~a dozen. */
+const UPSERT_CHUNK = 250;
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
+/**
+ * `archived` is NOT NULL in the schema, so the INSERT column list must carry a
+ * non-null value and EXCLUDED.archived therefore loses the "absent" signal the
+ * row-at-a-time version got from a raw NULL parameter. We recover it losslessly
+ * from EXCLUDED.raw_json: normalizeLot derives `archived` from exactly this key
+ * (boolean -> value, anything else -> null), so reading it back is equivalent.
+ * `jsonb_typeof(...) = 'boolean'` is NULL-safe — a missing key yields NULL, which
+ * is not TRUE, so it falls through to "keep what we already have".
+ */
+const LOT_ARCHIVED_EXPR = `CASE WHEN jsonb_typeof(EXCLUDED.raw_json->'archived') = 'boolean'
+        THEN (EXCLUDED.raw_json->>'archived')::boolean
+        ELSE auction_lots.archived END`;
+
+/** Rows-written vs rows-skipped accounting for one page. */
+export interface UpsertPageResult {
+  /** auction_lots rows actually inserted or updated. */
+  lotsWritten: number;
+  /** auction_lots rows the API re-sent unchanged → write skipped. */
+  lotsSkipped: number;
+  /** cars rows actually inserted or updated. */
+  carsWritten: number;
+  /** cars rows the API re-sent unchanged → write skipped. */
+  carsSkipped: number;
+}
+
 /**
  * Upsert a single page of AuctionsAPI car records into `cars` + `auction_lots`.
  *
- * For each car:
- *   1. upsert the car row (returns local cars.id)
- *   2. upsert each of its lots, linked to that car
+ *   1. upsert the page's cars   (one statement per UPSERT_CHUNK)
+ *   2. resolve external_car_id -> local cars.id for the whole page (one statement)
+ *   3. upsert the page's lots, linked to those car ids
+ *   4. recompute both projection read models for the cars actually touched
  *
- * Returns the number of lot rows written (the practical "records processed").
- * Idempotent: re-running the same page produces no duplicate rows.
+ * Idempotent: re-running the same page produces no duplicate rows AND, now, no
+ * writes at all.
  */
-export async function upsertCarsAndLots(rawCars: ApiCar[]): Promise<number> {
+export async function upsertCarsAndLots(rawCars: ApiCar[]): Promise<UpsertPageResult> {
   const db = getPool();
   const client = await db.connect();
-  let lotsWritten = 0;
-  // Cars whose lots were (re)written this page → recompute their projection rows
-  // (both the active and archived read models) once at the end (set-based).
+  // Cars whose car row OR any of whose lots were ACTUALLY written this page →
+  // recompute their projection rows (both read models) once at the end.
+  // NOTE: this now includes cars whose own row changed but whose lots did not —
+  // the row-at-a-time version only tracked cars with a written lot, so a car
+  // whose title/model changed (or that had no lots at all) never refreshed its
+  // projection.
   const touchedCarIds = new Set<number>();
 
   try {
+    // ---- 1. cars ----
+    // Conflict target is external_car_id. A car WITHOUT one cannot be deduped
+    // (the unique index treats NULLs as distinct, so inserting would duplicate on
+    // every sync), so it is skipped here exactly as before and its lots still
+    // dedupe on (domain_id, lot_number). Dedupe within the page too: a repeated
+    // external_car_id in one statement would raise "ON CONFLICT DO UPDATE cannot
+    // affect row a second time". Last occurrence wins (freshest).
+    const carsByExternalId = new Map<number, ReturnType<typeof normalizeCar>>();
     for (const rawCar of rawCars) {
       const car = normalizeCar(rawCar);
+      if (car.externalCarId === null || car.externalCarId === undefined) continue;
+      carsByExternalId.set(car.externalCarId, car);
+    }
+    const cars = [...carsByExternalId.values()];
 
-      // ---- upsert car ----
-      // Conflict target is external_car_id. When external_car_id is NULL the
-      // unique index treats rows as distinct, so we still insert a car row and
-      // rely on (domain_id, lot_number) to dedupe the lots. See README fallback.
-      let carId: number | null = null;
-      if (car.externalCarId !== null && car.externalCarId !== undefined) {
-        const carRes = await client.query<{ id: number }>(
-          `INSERT INTO cars
-             (external_car_id, vin, title, year, manufacturer_id, model_id, generation_id,
-              body_type, vehicle_type, color, fuel_type, transmission, drive_wheel, engine, raw_json, updated_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15, now())
-           ON CONFLICT (external_car_id) DO UPDATE SET
-             vin = EXCLUDED.vin,
-             title = EXCLUDED.title,
-             year = EXCLUDED.year,
-             manufacturer_id = EXCLUDED.manufacturer_id,
-             model_id = EXCLUDED.model_id,
-             generation_id = EXCLUDED.generation_id,
-             body_type = EXCLUDED.body_type,
-             vehicle_type = EXCLUDED.vehicle_type,
-             color = EXCLUDED.color,
-             fuel_type = EXCLUDED.fuel_type,
-             transmission = EXCLUDED.transmission,
-             drive_wheel = EXCLUDED.drive_wheel,
-             engine = EXCLUDED.engine,
-             raw_json = EXCLUDED.raw_json,
-             updated_at = now()
-           RETURNING id`,
-          [
-            car.externalCarId,
-            car.vin,
-            car.title,
-            car.year,
-            car.manufacturerId,
-            car.modelId,
-            car.generationId,
-            car.bodyType,
-            car.vehicleType,
-            car.color,
-            car.fuelType,
-            car.transmission,
-            car.driveWheel,
-            car.engine,
-            car.rawJson,
-          ],
-        );
-        carId = carRes.rows[0]?.id ?? null;
-      }
+    let carsWritten = 0;
+    for (const part of chunk(cars, UPSERT_CHUNK)) {
+      const res = await client.query<{ id: number }>(
+        `INSERT INTO cars
+           (external_car_id, vin, title, year, manufacturer_id, model_id, generation_id,
+            body_type, vehicle_type, color, fuel_type, transmission, drive_wheel, engine,
+            raw_json, updated_at)
+         SELECT
+           (e->>'externalCarId')::bigint, e->>'vin', e->>'title', (e->>'year')::int,
+           (e->>'manufacturerId')::bigint, (e->>'modelId')::bigint, (e->>'generationId')::bigint,
+           e->>'bodyType', e->>'vehicleType', e->>'color', e->>'fuelType',
+           e->>'transmission', e->>'driveWheel', e->>'engine',
+           e->'rawJson', now()
+         FROM jsonb_array_elements($1::jsonb) AS e
+         ON CONFLICT (external_car_id) DO UPDATE SET
+           vin = EXCLUDED.vin,
+           title = EXCLUDED.title,
+           year = EXCLUDED.year,
+           manufacturer_id = EXCLUDED.manufacturer_id,
+           model_id = EXCLUDED.model_id,
+           generation_id = EXCLUDED.generation_id,
+           body_type = EXCLUDED.body_type,
+           vehicle_type = EXCLUDED.vehicle_type,
+           color = EXCLUDED.color,
+           fuel_type = EXCLUDED.fuel_type,
+           transmission = EXCLUDED.transmission,
+           drive_wheel = EXCLUDED.drive_wheel,
+           engine = EXCLUDED.engine,
+           raw_json = EXCLUDED.raw_json,
+           updated_at = now()
+         -- Every other column is a pure function of raw_json (normalize.ts), so
+         -- this single comparison is exactly "did anything about this car change".
+         WHERE cars.raw_json IS DISTINCT FROM EXCLUDED.raw_json
+         RETURNING id`,
+        [JSON.stringify(part)],
+      );
+      carsWritten += res.rowCount ?? 0;
+      // RETURNING only yields rows that were actually inserted/updated — precisely
+      // the cars whose projection needs refreshing.
+      for (const r of res.rows) touchedCarIds.add(r.id);
+    }
 
-      // ---- upsert lots ----
-      const lots = rawCar.lots ?? [];
-      for (const rawLot of lots) {
+    // ---- 2. resolve external_car_id -> local cars.id ----
+    // Must be a separate read: with the no-op guard above, an UNCHANGED car
+    // returns NO row, so RETURNING alone can no longer supply the id. Without
+    // this, a brand-new lot on an unchanged car would be inserted with a NULL
+    // car_id and never appear in either projection.
+    const carIdByExternalId = new Map<number, number>();
+    if (cars.length > 0) {
+      const idRes = await client.query<{ id: number; external_car_id: string | number }>(
+        `SELECT id, external_car_id FROM cars WHERE external_car_id = ANY($1::bigint[])`,
+        [cars.map((c) => c.externalCarId)],
+      );
+      for (const r of idRes.rows) carIdByExternalId.set(Number(r.external_car_id), r.id);
+    }
+
+    // ---- 3. lots ----
+    // Same page-level dedupe rationale as cars, on the (domain_id, lot_number) key.
+    const lotsByKey = new Map<string, Record<string, unknown>>();
+    for (const rawCar of rawCars) {
+      const externalCarId = normalizeCar(rawCar).externalCarId;
+      const carId = externalCarId !== null ? (carIdByExternalId.get(externalCarId) ?? null) : null;
+      for (const rawLot of rawCar.lots ?? []) {
         const lot = normalizeLot(rawLot);
         if (lot.lotNumber === null || lot.domainId === null) {
           // Without (domain_id, lot_number) we cannot dedupe safely. Skip but log.
           dbLog.warn("skip_lot_missing_key", { externalLotId: lot.externalLotId });
           continue;
         }
-
-        await client.query(
-          `INSERT INTO auction_lots
-             (external_lot_id, car_id, lot_number, domain_id, domain_name, status, sale_date,
-              odometer_km, bid_price, buy_now_price, final_bid, buy_now, condition, damage_main,
-              seller, location_country, location_state, location_city, image_url,
-              archived, archived_at, raw_json, thumbnail_url, updated_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
-              COALESCE($20, FALSE), $21, $22, $23, now())
-           ON CONFLICT (domain_id, lot_number) DO UPDATE SET
-             external_lot_id = EXCLUDED.external_lot_id,
-             -- Only overwrite car_id when we have a non-null one (don't unlink).
-             car_id = COALESCE(EXCLUDED.car_id, auction_lots.car_id),
-             domain_name = EXCLUDED.domain_name,
-             status = EXCLUDED.status,
-             sale_date = EXCLUDED.sale_date,
-             odometer_km = EXCLUDED.odometer_km,
-             bid_price = EXCLUDED.bid_price,
-             buy_now_price = EXCLUDED.buy_now_price,
-             final_bid = EXCLUDED.final_bid,
-             buy_now = EXCLUDED.buy_now,
-             condition = EXCLUDED.condition,
-             damage_main = EXCLUDED.damage_main,
-             seller = EXCLUDED.seller,
-             location_country = EXCLUDED.location_country,
-             location_state = EXCLUDED.location_state,
-             location_city = EXCLUDED.location_city,
-             image_url = EXCLUDED.image_url,
-             -- Card image comes straight from the source CDN now (no bake) — just
-             -- overwrite with the freshly-recomputed per-source card URL.
-             thumbnail_url = EXCLUDED.thumbnail_url,
-             -- Reflect the API's archived flag. The /cars feed sends archived=false
-             -- for active lots and (via search-* detail) archived=true for a
-             -- concluded lot, so honor whatever the payload reports. When the lot
-             -- arrives without an archived value ($20 IS NULL), keep the existing
-             -- state rather than flipping a previously-archived lot back to active.
-             archived = CASE WHEN $20::boolean IS NULL THEN auction_lots.archived ELSE $20::boolean END,
-             archived_at = COALESCE(EXCLUDED.archived_at, auction_lots.archived_at),
-             raw_json = EXCLUDED.raw_json,
-             updated_at = now()
-           `,
-          [
-            lot.externalLotId,
-            carId,
-            lot.lotNumber,
-            lot.domainId,
-            lot.domainName,
-            lot.status,
-            lot.saleDate,
-            lot.odometerKm,
-            lot.bidPrice,
-            lot.buyNowPrice,
-            lot.finalBid,
-            lot.buyNow,
-            lot.condition,
-            lot.damageMain,
-            lot.seller,
-            lot.locationCountry,
-            lot.locationState,
-            lot.locationCity,
-            lot.imageUrl,
-            lot.archived,
-            lot.archivedAt,
-            lot.rawJson,
-            lot.cardImageUrl,
-          ],
-        );
-        lotsWritten += 1;
-        // This car now has a (re)written lot; mark it for car_listings recompute.
-        if (carId !== null) touchedCarIds.add(carId);
+        lotsByKey.set(`${lot.domainId} ${lot.lotNumber}`, { ...lot, carId });
       }
     }
+    const lots = [...lotsByKey.values()];
 
+    let lotsWritten = 0;
+    for (const part of chunk(lots, UPSERT_CHUNK)) {
+      const res = await client.query<{ car_id: number | null }>(
+        `INSERT INTO auction_lots
+           (external_lot_id, car_id, lot_number, domain_id, domain_name, status, sale_date,
+            odometer_km, bid_price, buy_now_price, final_bid, buy_now, condition, damage_main,
+            seller, location_country, location_state, location_city, image_url,
+            archived, archived_at, raw_json, thumbnail_url, updated_at)
+         SELECT
+           (e->>'externalLotId')::bigint, (e->>'carId')::int, e->>'lotNumber',
+           (e->>'domainId')::int, e->>'domainName', e->>'status', (e->>'saleDate')::timestamptz,
+           (e->>'odometerKm')::bigint, (e->>'bidPrice')::numeric, (e->>'buyNowPrice')::numeric,
+           (e->>'finalBid')::numeric, (e->>'buyNow')::boolean, e->>'condition', e->>'damageMain',
+           e->>'seller', e->>'locationCountry', e->>'locationState', e->>'locationCity',
+           e->>'imageUrl',
+           COALESCE((e->>'archived')::boolean, FALSE), (e->>'archivedAt')::timestamptz,
+           e->'rawJson', e->>'cardImageUrl', now()
+         FROM jsonb_array_elements($1::jsonb) AS e
+         ON CONFLICT (domain_id, lot_number) DO UPDATE SET
+           external_lot_id = EXCLUDED.external_lot_id,
+           -- Only overwrite car_id when we have a non-null one (don't unlink).
+           car_id = COALESCE(EXCLUDED.car_id, auction_lots.car_id),
+           domain_name = EXCLUDED.domain_name,
+           status = EXCLUDED.status,
+           sale_date = EXCLUDED.sale_date,
+           odometer_km = EXCLUDED.odometer_km,
+           bid_price = EXCLUDED.bid_price,
+           buy_now_price = EXCLUDED.buy_now_price,
+           final_bid = EXCLUDED.final_bid,
+           buy_now = EXCLUDED.buy_now,
+           condition = EXCLUDED.condition,
+           damage_main = EXCLUDED.damage_main,
+           seller = EXCLUDED.seller,
+           location_country = EXCLUDED.location_country,
+           location_state = EXCLUDED.location_state,
+           location_city = EXCLUDED.location_city,
+           image_url = EXCLUDED.image_url,
+           -- Card image comes straight from the source CDN now (no bake) — just
+           -- overwrite with the freshly-recomputed per-source card URL.
+           thumbnail_url = EXCLUDED.thumbnail_url,
+           -- Reflect the API's archived flag, keeping the existing state when the
+           -- payload carries no boolean (see LOT_ARCHIVED_EXPR).
+           archived = ${LOT_ARCHIVED_EXPR},
+           archived_at = COALESCE(EXCLUDED.archived_at, auction_lots.archived_at),
+           raw_json = EXCLUDED.raw_json,
+           updated_at = now()
+         -- Fire only on a real change. raw_json covers every column derived from
+         -- the payload; the other two terms cover what is NOT derived from it:
+         -- the local car_id linkage, and an archived flag that archiveLots may
+         -- have flipped independently.
+         WHERE auction_lots.raw_json IS DISTINCT FROM EXCLUDED.raw_json
+            OR auction_lots.car_id IS DISTINCT FROM COALESCE(EXCLUDED.car_id, auction_lots.car_id)
+            OR auction_lots.archived IS DISTINCT FROM (${LOT_ARCHIVED_EXPR})
+         RETURNING car_id`,
+        [JSON.stringify(part)],
+      );
+      lotsWritten += res.rowCount ?? 0;
+      for (const r of res.rows) if (typeof r.car_id === "number") touchedCarIds.add(r.car_id);
+    }
+
+    // ---- 4. projections ----
     // Refresh both read models for every car touched this page. A car (re)seen in
     // /cars is active → it lands in car_listings AND (if it was there) drops out of
     // the archived table (which excludes cars that still have an active lot). The
@@ -318,7 +407,12 @@ export async function upsertCarsAndLots(rawCars: ApiCar[]): Promise<number> {
     await recomputeListings(client, "recompute_car_listings_counted", touchedCarIds);
     await recomputeListings(client, "recompute_archived_car_listings_counted", touchedCarIds);
 
-    return lotsWritten;
+    return {
+      lotsWritten,
+      lotsSkipped: lots.length - lotsWritten,
+      carsWritten,
+      carsSkipped: cars.length - carsWritten,
+    };
   } finally {
     client.release();
   }
@@ -349,25 +443,34 @@ export async function archiveLots(rawLots: ApiArchivedLot[]): Promise<number> {
   const touchedCarIds = new Set<number>();
 
   try {
+    // Page-level dedupe on the conflict key (see upsertCarsAndLots); last wins.
+    const byKey = new Map<string, ReturnType<typeof normalizeArchivedLot>>();
     for (const rawLot of rawLots) {
       const lot = normalizeArchivedLot(rawLot);
       if (lot.lotNumber === null || lot.domainId === null) continue;
+      byKey.set(`${lot.domainId} ${lot.lotNumber}`, lot);
+    }
+    const lots = [...byKey.values()];
 
+    for (const part of chunk(lots, UPSERT_CHUNK)) {
       // The archived-lots payload carries the AuctionsAPI external car id
-      // (lot.externalCarId). Our auction_lots.car_id is a LOCAL FK to cars.id,
-      // so we resolve it via a subquery on cars.external_car_id. If the car
-      // isn't in our DB yet, the subquery yields NULL and COALESCE keeps any
-      // existing link (on conflict) or leaves it NULL (on fresh insert).
+      // (externalCarId). Our auction_lots.car_id is a LOCAL FK to cars.id, so we
+      // resolve it with a LEFT JOIN on cars.external_car_id (unique, so the join
+      // can never fan out). If the car isn't in our DB yet the join yields NULL
+      // and COALESCE keeps any existing link (on conflict) or leaves it NULL.
       const res = await client.query<{ car_id: number | null }>(
         `INSERT INTO auction_lots
            (external_lot_id, car_id, lot_number, domain_id, domain_name, status,
             bid_price, buy_now_price, final_bid, sale_date,
             archived, archived_at, raw_json, updated_at)
-         VALUES (
-            $1,
-            (SELECT id FROM cars WHERE external_car_id = $2),
-            $3,$4,$5,$6,$7,$8,$9,$10,
-            TRUE, COALESCE($11::timestamptz, now()), $12, now())
+         SELECT
+           (e->>'externalLotId')::bigint, c.id, e->>'lotNumber',
+           (e->>'domainId')::int, e->>'domainName', e->>'status',
+           (e->>'bidPrice')::numeric, (e->>'buyNowPrice')::numeric,
+           (e->>'finalBid')::numeric, (e->>'saleDate')::timestamptz,
+           TRUE, COALESCE((e->>'archivedAt')::timestamptz, now()), e->'rawJson', now()
+         FROM jsonb_array_elements($1::jsonb) AS e
+         LEFT JOIN cars c ON c.external_car_id = (e->>'externalCarId')::bigint
          ON CONFLICT (domain_id, lot_number) DO UPDATE SET
            archived = TRUE,
            archived_at = COALESCE(auction_lots.archived_at, EXCLUDED.archived_at, now()),
@@ -379,26 +482,20 @@ export async function archiveLots(rawLots: ApiArchivedLot[]): Promise<number> {
            sale_date = COALESCE(EXCLUDED.sale_date, auction_lots.sale_date),
            raw_json = EXCLUDED.raw_json,
            updated_at = now()
+         -- Fire only on a real change. The status/price columns are all derived
+         -- from raw_json (or COALESCE-preserved), so raw_json covers them; the
+         -- other terms cover the state this statement sets independently of the
+         -- payload: the archived flag, its timestamp, and the car linkage.
+         WHERE auction_lots.archived IS NOT TRUE
+            OR auction_lots.archived_at IS NULL
+            OR auction_lots.raw_json IS DISTINCT FROM EXCLUDED.raw_json
+            OR auction_lots.car_id IS DISTINCT FROM COALESCE(EXCLUDED.car_id, auction_lots.car_id)
          RETURNING car_id`,
-        [
-          lot.externalLotId,
-          lot.externalCarId,
-          lot.lotNumber,
-          lot.domainId,
-          lot.domainName,
-          lot.status,
-          lot.bidPrice,
-          lot.buyNowPrice,
-          lot.finalBid,
-          lot.saleDate,
-          lot.archivedAt,
-          lot.rawJson,
-        ],
+        [JSON.stringify(part)],
       );
-      archived += 1;
+      archived += res.rowCount ?? 0;
       // The archived lot's car (if linked) may need its card promoted or removed.
-      const archivedCarId = res.rows[0]?.car_id;
-      if (typeof archivedCarId === "number") touchedCarIds.add(archivedCarId);
+      for (const r of res.rows) if (typeof r.car_id === "number") touchedCarIds.add(r.car_id);
     }
 
     // Refresh both read models for every car whose lot was archived this page. The
@@ -502,9 +599,13 @@ export async function countManufacturers(): Promise<number> {
  * Upsert a single detailed listing (from search-lot / search-vin). The detail
  * endpoints are assumed to return the same car+lots shape; we reuse the bulk
  * upsert. TODO: confirm detail payload shape vs list payload shape.
+ *
+ * Returns lots actually WRITTEN — 0 now legitimately means "already up to date",
+ * not "nothing happened".
  */
 export async function upsertDetail(rawCar: ApiCar): Promise<number> {
-  return upsertCarsAndLots([rawCar]);
+  const res = await upsertCarsAndLots([rawCar]);
+  return res.lotsWritten;
 }
 
 /* ===========================================================================
