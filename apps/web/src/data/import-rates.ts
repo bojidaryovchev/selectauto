@@ -57,8 +57,14 @@ export type CalcConfig = {
   usAuctionPct: { copart: number; iaai: number };
   /** US/CA fixed fees (USD). */
   usFixedFeesUsd: { title: number; environmental: number; reinvoicing: number; onlineBid: number };
-  /** Canada flat transport to the EU (USD). */
+  /** Canada flat transport to the EU (USD) — eastern/central provinces. */
   caTransportUsd: number;
+  /**
+   * Canada flat transport from BRITISH COLUMBIA (USD) by vehicle type — the west
+   * coast costs materially more than the Montreal-routed rest of Canada.
+   * ("2950 всички от британска колимбия", 07.08.2026.)
+   */
+  caTransportBcUsd: { sedan: number; suv: number };
   /** Customs-agency fee (EUR), all markets. */
   agencyEur: number;
   /** Holland→Bulgaria autovoz (EUR) by vehicle type, all markets. */
@@ -92,6 +98,8 @@ export const DEFAULT_CALC_CONFIG: CalcConfig = {
   usAuctionPct: { copart: 0.075, iaai: 0.085 },
   usFixedFeesUsd: { title: 25, environmental: 95, reinvoicing: 130, onlineBid: 115 },
   caTransportUsd: 1830,
+  // Sedan quoted by the owner; the jeep figure applies his +$235 rule.
+  caTransportBcUsd: { sedan: 2950, suv: 3185 },
   agencyEur: 550,
   bgTransportEur: { sedan: 1250, suv: 1350 },
   technotestEur: 350,
@@ -175,6 +183,8 @@ export type ImportCostInputs = {
   location?: string;
   usInlandUsd?: number;
   usContainerUsd?: number;
+  /** Canada only: the car ships from British Columbia (west coast) — pricier leg. */
+  caFromBc?: boolean;
 };
 
 /**
@@ -282,8 +292,11 @@ export function computeImportBreakdown(
 
   let transportTotal: number;
   if (i.market === "ca") {
-    transportTotal = config.caTransportUsd;
-    lines.push({ label: "Плащане 2 — транспорт до ЕС", amountUsd: transportTotal });
+    transportTotal = i.caFromBc ? config.caTransportBcUsd[i.vehicleType] : config.caTransportUsd;
+    lines.push({
+      label: i.caFromBc ? "Плащане 2 — транспорт до ЕС (Британска Колумбия)" : "Плащане 2 — транспорт до ЕС",
+      amountUsd: transportTotal,
+    });
   } else {
     transportTotal = (i.usInlandUsd ?? 0) + (i.usContainerUsd ?? 0);
     lines.push({ label: "Плащане 2 — транспорт до Холандия", amountUsd: transportTotal });

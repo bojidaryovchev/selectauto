@@ -58,6 +58,7 @@ export const calculatorOfferSchema = z.object({
     location: z.string().optional(), // us — server re-resolves transport from this
     usInlandUsd: usdAmount.optional(),
     usContainerUsd: usdAmount.optional(),
+    caFromBc: z.boolean().optional(), // ca — British Columbia leg (pricier)
   }),
   page_url: z.string().optional(),
 });

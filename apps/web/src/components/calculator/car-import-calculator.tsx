@@ -18,6 +18,7 @@ export function CarImportCalculator({
   defaultVehicleType,
   defaultAuction,
   defaultUsLocation,
+  defaultCaFromBc,
   carLabel,
   lotNumber,
 }: {
@@ -29,6 +30,8 @@ export function CarImportCalculator({
   defaultAuction?: UsAuction;
   /** This lot's yard zip/city/state — preselects the US location dropdown. */
   defaultUsLocation?: { zip?: string; city?: string; state?: string };
+  /** Canada only: the lot is in British Columbia — presets the province control. */
+  defaultCaFromBc?: boolean;
   carLabel?: string;
   lotNumber?: string;
 }) {
@@ -51,6 +54,7 @@ export function CarImportCalculator({
         defaultVehicleType={defaultVehicleType}
         defaultAuction={defaultAuction}
         defaultUsLocation={defaultUsLocation}
+        defaultCaFromBc={defaultCaFromBc}
         carLabel={carLabel}
         lotNumber={lotNumber}
       />

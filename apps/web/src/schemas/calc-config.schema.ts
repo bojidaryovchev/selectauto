@@ -31,6 +31,7 @@ export const calcConfigSchema = z.object({
     onlineBid: money,
   }),
   caTransportUsd: money,
+  caTransportBcUsd: z.object({ sedan: money, suv: money }),
   agencyEur: money,
   bgTransportEur: z.object({ sedan: money, suv: money }),
   technotestEur: money,

@@ -210,6 +210,8 @@ export type CarDetail = {
    * (`findUsLocation`) instead of defaulting to the first location alphabetically.
    */
   calcUsLocation?: { zip?: string; city?: string; state?: string };
+  /** Canada only: the lot sits in British Columbia → the pricier west-coast leg. */
+  calcCaFromBc?: boolean;
 
   // ── Location (for the "Локация" row + JSON-LD availableAtOrFrom) ──
   location?: string;

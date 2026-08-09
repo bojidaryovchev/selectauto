@@ -193,6 +193,7 @@ async function CarDetailBody({ params }: { params: Params }) {
     vehicleType?: VehicleType;
     auction?: UsAuction;
     usLocation?: { zip?: string; city?: string; state?: string };
+    caFromBc?: boolean;
   } | null = (() => {
     if (detail.isPast) return null;
     const priceDigits = detail.prices.find((p) => p.primary)?.value.replace(/[^\d]/g, "");
@@ -211,6 +212,7 @@ async function CarDetailBody({ params }: { params: Params }) {
       vehicleType: detail.calcVehicleType,
       auction: detail.calcAuction,
       usLocation: detail.calcUsLocation,
+      caFromBc: detail.calcCaFromBc,
     };
   })();
 
@@ -378,6 +380,7 @@ async function CarDetailBody({ params }: { params: Params }) {
                     defaultVehicleType={calcSeed.vehicleType}
                     defaultAuction={calcSeed.auction}
                     defaultUsLocation={calcSeed.usLocation}
+                    defaultCaFromBc={calcSeed.caFromBc}
                     carLabel={detail.title}
                     lotNumber={detail.lotNumber}
                   />

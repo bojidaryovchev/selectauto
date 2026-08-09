@@ -328,6 +328,17 @@ export function carDetailFromRows(opts: {
   const usState = s(get(rawLot, "location.state.code"));
   const calcUsLocation = usZip || (usCity && usState) ? { zip: usZip, city: usCity, state: usState } : undefined;
 
+  // Canada only: British Columbia ships from the west coast and costs materially
+  // more than the Montreal-routed rest of Canada, so the calculator prices it
+  // separately. IAAI's BC lots carry a NULL state code (only `state.name`) and a
+  // Canadian postal code — "V" is the province letter for BC — so check both.
+  const stateName = s(get(rawLot, "location.state.name"))?.toLowerCase();
+  const calcCaFromBc =
+    stateName === "british columbia" ||
+    usState?.toLowerCase() === "bc" ||
+    /^v/i.test(usZip ?? "") ||
+    undefined;
+
   // Lot coordinates → map. Present on US Copart/IAAI branches (ENCAR sends null).
   // Validate range and reject a null-island (0,0) so we never map the Atlantic.
   const latRaw = get(rawLot, "location.latitude");
@@ -433,6 +444,7 @@ export function carDetailFromRows(opts: {
     calcVehicleType,
     calcAuction,
     calcUsLocation,
+    calcCaFromBc,
     location,
     geo,
     media,

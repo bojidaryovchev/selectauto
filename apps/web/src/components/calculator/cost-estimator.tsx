@@ -46,6 +46,13 @@ const AUCTIONS: { id: UsAuction; label: string }[] = [
   { id: "iaai", label: "IAAI" },
 ];
 
+/** Canada splits into the pricier west coast (BC) and everything else. */
+type CaProvince = "other" | "bc";
+const CA_PROVINCES: { id: CaProvince; label: string }[] = [
+  { id: "other", label: "Друга провинция" },
+  { id: "bc", label: "Британска Колумбия" },
+];
+
 /** "15 751 $" — space-grouped + $ suffix, matching the site's price style. */
 function usdFmt(n: number): string {
   if (!Number.isFinite(n) || n < 0) return "—";
@@ -159,6 +166,7 @@ export function CostEstimator({
   defaultVehicleType = "sedan",
   defaultAuction,
   defaultUsLocation,
+  defaultCaFromBc,
   bare = false,
 }: {
   defaultMarket?: MarketId;
@@ -168,6 +176,8 @@ export function CostEstimator({
   defaultAuction?: UsAuction;
   /** The seeding car's yard zip/city/state — preselects the US location dropdown. */
   defaultUsLocation?: { zip?: string; city?: string; state?: string };
+  /** The seeding car sits in British Columbia — presets the Canada province control. */
+  defaultCaFromBc?: boolean;
   bare?: boolean;
 } = {}) {
   const [market, setMarket] = useState<MarketId>(defaultMarket);
@@ -175,6 +185,9 @@ export function CostEstimator({
   const [vehicleType, setVehicleType] = useState<VehicleType>(defaultVehicleType);
   const [auction, setAuction] = useState<UsAuction>(defaultAuction ?? "copart");
   const [location, setLocation] = useState<string>("");
+  // Canada: British Columbia ships from the west coast at a materially higher
+  // rate than the Montreal-routed rest of Canada, so it is its own choice.
+  const [caProvince, setCaProvince] = useState<CaProvince>(defaultCaFromBc ? "bc" : "other");
   const [customsBasePct, setCustomsBasePct] = useState<number>(DEFAULT_CUSTOMS_BASE_PCT);
   const [technotest, setTechnotest] = useState(false);
   // Conservative default: without the origin declaration Korea pays the full 10%.
@@ -276,10 +289,22 @@ export function CostEstimator({
       originDeclaration: market === "kr" ? originDeclaration : undefined,
       auction: market === "kr" ? undefined : auction,
       location: market === "us" ? effectiveLocation : undefined,
+      caFromBc: market === "ca" ? caProvince === "bc" : undefined,
       usInlandUsd: usTransport && !usTransport.notFound ? usTransport.inland : undefined,
       usContainerUsd: usTransport && !usTransport.notFound ? usTransport.container : undefined,
     }),
-    [market, vehicleType, price, customsBasePct, technotest, originDeclaration, auction, effectiveLocation, usTransport],
+    [
+      market,
+      vehicleType,
+      price,
+      customsBasePct,
+      technotest,
+      originDeclaration,
+      auction,
+      effectiveLocation,
+      usTransport,
+      caProvince,
+    ],
   );
 
   // Can't compute a US total until the tariffs are loaded, a yard is chosen, and
@@ -331,6 +356,11 @@ export function CostEstimator({
             <div />
           )}
         </div>
+
+        {/* Canada: the BC (west-coast) leg is priced separately from the rest. */}
+        {market === "ca" ? (
+          <SelectField label="Провинция" value={caProvince} onChange={setCaProvince} options={CA_PROVINCES} />
+        ) : null}
 
         {/* US: auction location → terminal/inland/container lookup */}
         {market === "us" ? (

@@ -180,6 +180,20 @@ export function CalcConfigForm({ initial }: { initial: CalcConfig }) {
         <Field label="Автовоз БГ — седан" suffix="€" value={cfg.bgTransportEur.sedan} onChange={(v) => patch({ bgTransportEur: { ...cfg.bgTransportEur, sedan: v } })} step={10} />
         <Field label="Автовоз БГ — джип" suffix="€" value={cfg.bgTransportEur.suv} onChange={(v) => patch({ bgTransportEur: { ...cfg.bgTransportEur, suv: v } })} step={10} />
         <Field label="Канада транспорт" suffix="$" value={cfg.caTransportUsd} onChange={(v) => patch({ caTransportUsd: v })} step={10} />
+        <Field
+          label="Канада (Бр. Колумбия) — седан"
+          suffix="$"
+          value={cfg.caTransportBcUsd.sedan}
+          onChange={(v) => patch({ caTransportBcUsd: { ...cfg.caTransportBcUsd, sedan: v } })}
+          step={10}
+        />
+        <Field
+          label="Канада (Бр. Колумбия) — джип"
+          suffix="$"
+          value={cfg.caTransportBcUsd.suv}
+          onChange={(v) => patch({ caTransportBcUsd: { ...cfg.caTransportBcUsd, suv: v } })}
+          step={10}
+        />
       </Section>
 
       {status.kind === "error" ? (
