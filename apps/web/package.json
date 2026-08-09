@@ -27,7 +27,6 @@
     "@selectauto/db": "workspace:*",
     "@tanstack/react-virtual": "3.14.6",
     "@vercel/analytics": "2.0.1",
-    "@vercel/speed-insights": "2.0.0",
     "bcryptjs": "3.0.3",
     "botid": "^1.5.11",
     "drizzle-orm": "0.45.2",

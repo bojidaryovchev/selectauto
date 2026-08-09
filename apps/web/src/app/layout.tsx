@@ -3,7 +3,6 @@ import { Providers } from "@/components/providers";
 import { SITE_NAME, SITE_URL } from "@/constants";
 import { buildOrganizationJsonLd, buildWebsiteJsonLd } from "@/lib/site-jsonld";
 import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next";
 import { SessionProvider } from "next-auth/react";
 import { Montserrat } from "next/font/google";
@@ -99,12 +98,12 @@ export default function RootLayout({
             singleton, lifted above the mobile bottom nav. */}
         <BackToTop />
 
-        {/* Vercel Speed Insights: tracks Core Web Vitals and performance metrics. */}
-        <SpeedInsights />
-
-        {/* Vercel Web Analytics: tracks page views and web vitals. Enabled via the
-            Vercel dashboard (Analytics section). Automatically collects Core Web
-            Vitals (LCP, FID, CLS) and page navigation events. */}
+        {/* Vercel Web Analytics: page views + custom events, billed at $0.03/1K
+            events. The ONLY Vercel telemetry we keep. Speed Insights was removed
+            (a flat $10/mo per-project base fee on top of per-event charges, for
+            CWV data we already get from Search Console / PageSpeed), and
+            Observability Plus — the biggest line item at ~$0.93/day — is switched
+            off team-side in Billing settings; it has no code surface. */}
         <Analytics />
       </body>
     </html>
