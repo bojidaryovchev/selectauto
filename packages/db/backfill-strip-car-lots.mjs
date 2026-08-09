@@ -84,7 +84,7 @@ const pool = new pg.Pool({
   ssl: { rejectUnauthorized: true },
   max: 1,
   idleTimeoutMillis: 30_000,
-  connectionTimeoutMillis: 15_000,
+  connectionTimeoutMillis: 30_000,
 });
 // Without this listener an idle-connection error is an unhandled 'error' event and
 // still crashes the process, Pool or not.
@@ -150,12 +150,34 @@ SELECT
   (SELECT count(*)  FROM unsafe)   AS unsafe
 `;
 
-async function main() {
-  await client.connect();
-  await client.query("SET statement_timeout = 180000");
+/**
+ * Run one query with backoff. Neon drops/refuses connections transiently (compute
+ * autoscale, PgBouncer recycling, cold start), and that can hit ANY statement —
+ * including the very first one, which is how the first resume attempt died before
+ * doing any work. So every statement in this script goes through here, not just the
+ * batch loop. Safe to retry unconditionally: each statement is its own transaction
+ * and the strip is idempotent (a stripped row no longer matches `raw_json ? 'lots'`).
+ */
+async function q(sql, params, label = "query") {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await client.query(sql, params);
+    } catch (err) {
+      if (attempt >= 6) throw err;
+      const wait = Math.min(30_000, 2000 * 2 ** (attempt - 1));
+      console.warn(`\n  ${label} failed (${err.message}); retry ${attempt}/5 in ${wait}ms…`);
+      await sleep(wait);
+    }
+  }
+}
 
-  const { rows: pre } = await client.query(
+async function main() {
+  // No explicit connect(): the Pool connects lazily per query, so a transient
+  // refusal is just another retryable failure rather than a fatal startup error.
+  const { rows: pre } = await q(
     `SELECT count(*)::int AS total, COALESCE(max(id),0) AS maxid FROM cars`,
+    [],
+    "preamble",
   );
   console.log(
     `${CHECK_ONLY ? "[CHECK ONLY — no writes] " : ""}cars=${pre[0].total} (max id ${pre[0].maxid}), ` +
@@ -178,22 +200,14 @@ async function main() {
     // own transaction, so a retry can never double-apply — already-stripped rows no
     // longer match `raw_json ? 'lots'`.
     let res;
-    for (let attempt = 1; ; attempt++) {
-      try {
-        res = await client.query(BATCH_SQL(!CHECK_ONLY), [cursor, BATCH]);
-        break;
-      } catch (err) {
-        if (attempt >= 6) {
-          console.error(
-            `\n\nBatch at cursor ${cursor} failed ${attempt}x — giving up.\n` +
-              `Resume with:  node --env-file-if-exists=../../.env backfill-strip-car-lots.mjs --start=${cursor}\n`,
-          );
-          throw err;
-        }
-        const wait = Math.min(30_000, 2000 * 2 ** (attempt - 1));
-        console.warn(`\n  batch at cursor ${cursor} failed (${err.message}); retry ${attempt}/5 in ${wait}ms…`);
-        await sleep(wait);
-      }
+    try {
+      res = await q(BATCH_SQL(!CHECK_ONLY), [cursor, BATCH], `batch at cursor ${cursor}`);
+    } catch (err) {
+      console.error(
+        `\n\nBatch at cursor ${cursor} exhausted its retries — giving up.\n` +
+          `Resume with:  node --env-file-if-exists=../../.env backfill-strip-car-lots.mjs --start=${cursor}\n`,
+      );
+      throw err;
     }
 
     const r = res.rows[0];
@@ -206,7 +220,7 @@ async function main() {
     batches += 1;
 
     if (Number(r.unsafe) > 0 && unsafeSamples.length < 20) {
-      const s = await client.query(
+      const s = await q(
         `SELECT b.id FROM cars b WHERE b.id > $1 AND b.id <= $2 AND b.raw_json ? 'lots' LIMIT 20`,
         [cursor, r.cursor],
       );
