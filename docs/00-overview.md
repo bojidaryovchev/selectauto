@@ -143,3 +143,5 @@ See [02-data-model-and-tables.md](02-data-model-and-tables.md).
 10. [10-web-favorites.md](10-web-favorites.md) — the favourites feature
 11. [11-web-seo-and-indexing.md](11-web-seo-and-indexing.md) — SEO & indexing (hubs, sitemaps, 410, GEO)
 12. [12-web-seo-strategy.md](12-web-seo-strategy.md) — SEO strategy: market research, keywords, roadmap
+13. [13-seo-action-plan.md](13-seo-action-plan.md) — the consolidated SEO execution checklist
+14. [14-market-research-2026-08.md](14-market-research-2026-08.md) — **first real-data market snapshot** (absolute BG volumes, real Google.bg SERPs, competitor traffic + backlinks). Supersedes the proxy-based figures in 12 where they conflict — see its §7.

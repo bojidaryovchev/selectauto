@@ -31,6 +31,7 @@ Budget](https://developers.google.com/crawling/docs/crawl-budget).
 |---|---|---|---|
 | Active car detail | `/avtomobil/[id]` | ✅ yes | title/description + `alternates.canonical` + OG; `robots` left default |
 | **Sold** car detail | `/avtomobil/[id]` | ❌ `noindex,follow` → **410** when long-dead | page-level `robots` (§3) + `proxy.ts` 410 (§3) |
+| **Paid de-indexed** car | `/avtomobil/[id]` | ❌ **410 within ~30s** | `cars.deindexed_at` → `proxy.ts` 410 (§3a) |
 | Brand hub | `/avtomobili/marka/{make}` | ✅ (≥3 live listings) | §4 |
 | Model hub | `/avtomobili/marka/{make}/{model}` | ✅ (≥3 live listings) | §4 |
 | Active catalog | `/vsichki-avtomobili` | ✅ (first page SSR) | §5 |
@@ -50,8 +51,17 @@ escalate to HTTP 410 Gone** (the strongest, crawl-budget-cheapest removal signal
 - **Where:** [`proxy.ts`](../apps/web/src/proxy.ts) — a `/avtomobil/{id}` whose lot was
   archived ≥ 90 days ago returns `new NextResponse(null, { status: 410, headers: {
   "x-robots-tag": "noindex" } })`; fresh-sold and active cars fall through. The check
-  ([`lib/sold-lot-gone.ts`](../apps/web/src/lib/sold-lot-gone.ts)) queries
-  `car_listings_archived.archived_at < now() - '90 days'::interval`.
+  is `isCarGone()` in [`lib/sold-lot-gone.ts`](../apps/web/src/lib/sold-lot-gone.ts),
+  which tests `car_listings_archived.archived_at < now() - '90 days'::interval` — and
+  the paid-de-index flag (§3a).
+- **Not a query per request.** This runs on every car-page hit and traffic is ~99%
+  crawlers, so `isCarGone()` answers from a 30s in-memory snapshot (one query per
+  instance per TTL): the tiny set of de-indexed car ids, plus ONE boolean — is any
+  archived row past 90 days yet? While that boolean is false nothing can 410 by this
+  rule, so the per-id lookup is skipped entirely. It re-activates around **2026-09-21**
+  (the oldest `archived_at` is 2026-06-23), after which the per-id fallback runs again
+  for non-de-indexed cars; the durable fix at that point is to materialise the
+  `archived_at + 90 days` 410 date rather than re-derive it per request.
 - **Why proxy, not the page:** `/avtomobil/[id]` is PPR — it streams a static 200
   shell, so `page.tsx` **cannot** emit a 410 status. The proxy runs on Next 16's
   Node.js runtime (edge unsupported), so the DB lookup is safe; it wraps the Auth.js
@@ -60,8 +70,50 @@ escalate to HTTP 410 Gone** (the strongest, crawl-budget-cheapest removal signal
   SET-ONCE on the archived projection, preserved across recomputes (unlike
   `updated_at`) — the true "how long archived" age signal. See [02](02-data-model-and-tables.md) / [05 §6](05-projection-tables-car-listings.md).
 
-> As of writing, **nothing is old enough to 410 yet** (archive timestamps span
-> < 90 days); the mechanism activates as lots age.
+> As of writing, **nothing is old enough to 410 yet** (verified 2026-08-14: 1,054,465
+> archived rows, 0 over 90 days, oldest `archived_at` 2026-06-23); the mechanism
+> activates as lots age.
+
+## 3a. Paid de-index (`cars.deindexed_at`) — added 2026-08-14
+
+Vehicle owners pay to have their listing delisted; an admin flips it from the back
+office. Same 410 machinery as §3, but triggered by an explicit flag instead of a
+timer, so it fires **within ~30s and regardless of archive age or active status**
+(the de-indexed id set rides in the proxy's snapshot — §3 — refreshed every 30s).
+
+- **Where the flag lives:** `cars.deindexed_at` (migration
+  [`0043`](../packages/db/migrations/0043_car_deindex.sql)) — NOT on the projections,
+  whose rows are DELETEd whenever a car stops qualifying for that table (an
+  active→archived→active round trip would destroy a paid flag). Ingestion's upserts
+  name their columns explicitly, so the flag survives every sync.
+- **Keyed on the normalized VIN.** `car_deindex_requests.vin_normalized` =
+  `upper(btrim(vin))`, CHECK-enforced, with a partial unique index allowing one
+  ACTIVE request per VIN plus full revoked history. One vehicle owns SEVERAL
+  `cars.id` rows (relists, Copart→IAAI), each with its own URL, so a car_id-keyed
+  suppression would leave sibling URLs indexed — the exact failure a paying customer
+  finds by googling their own VIN. Migration
+  [`0044`](../packages/db/migrations/0044_cars_vin_normalized_idx.sql) adds the
+  matching functional index (`CONCURRENTLY`, own file — see the note in it).
+- **One round trip:** the check is folded into the §3 statement, not added
+  alongside it. Both sides are PK point lookups (`cars_pkey` + the archived table's
+  `car_id` PK); verified plan is a nested-loop of two index scans.
+- **Second line of defence:** `getCarDetail` returns `null` for a de-indexed car, so
+  even if the proxy is bypassed the route calls `notFound()`, which injects
+  `noindex`. The proxy remains primary because only it can emit a real 410.
+- **Cache:** `getCarDetail` now also carries a per-car tag (`carCacheTag(id)`, see
+  [`lib/cache-tags.ts`](../apps/web/src/lib/cache-tags.ts)) so a single de-index can
+  be expired with `updateTag()` without discarding all ~945k detail entries and the
+  day-long sitemap cache. Note `revalidateTag(tag, "max")` is stale-while-revalidate
+  and would still serve the de-indexed car — use `updateTag`.
+- **Verified 2026-08-14** against a live ACTIVE car: 200 → set flag → **410 +
+  `x-robots-tag: noindex`** → clear flag → 200, with no cache lag (the proxy check is
+  uncached).
+
+> **Not yet done** (see [`admin-mail-and-deindex-plan.md`](admin-mail-and-deindex-plan.md)
+> §3.4–3.5): the admin UI/mutation, excluding de-indexed cars from the catalog /
+> sitemap / hub / favourites read paths, the `recompute_*_counted` call that drops the
+> projection row, and the IndexNow + Bing submissions. Until those land the car still
+> appears in listings and the sitemap — only its own URL is dead.
 
 ## 4. Brand/model hub pages — the durable ranking asset
 

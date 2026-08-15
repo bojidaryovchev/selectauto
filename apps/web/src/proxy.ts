@@ -1,16 +1,19 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import { authConfig } from "@/auth.config";
-import { isLongDeadArchivedLot, parseAvtomobilId } from "@/lib/sold-lot-gone";
+import { isCarGone, parseAvtomobilId } from "@/lib/sold-lot-gone";
 
 /**
  * Proxy (Next 16's renamed `middleware`). Three responsibilities, in order:
  *
- * 1. **410 Gone for long-dead sold lots.** A `/avtomobil/{id}` whose lot was
- *    archived ≥ `SOLD_LOT_410_AFTER` ago returns 410 — the crawl-budget-cheaper
- *    de-index signal the PPR page can't emit itself (a page.tsx streams a 200
- *    shell; see docs/11-web-seo-and-indexing.md §3). Just-sold lots fall through to
- *    the page's own `noindex, follow`.
+ * 1. **410 Gone for cars that should not be reachable.** A `/avtomobil/{id}`
+ *    returns 410 when the lot was archived ≥ `SOLD_LOT_410_AFTER` ago, OR when the
+ *    car carries a PAID de-index (`cars.deindexed_at`, migration 0043) — the
+ *    crawl-budget-cheaper de-index signal the PPR page can't emit itself (a
+ *    page.tsx streams a 200 shell; see docs/11-web-seo-and-indexing.md §3).
+ *    Just-sold lots fall through to the page's own `noindex, follow`. Both
+ *    reasons cost ONE uncached DB round trip, so a paid delisting takes effect on
+ *    the very next request.
  * 2. **Admin gate.** `/admin/**` is the one force-protected area (roles ride on
  *    the Auth.js JWT); signed-out → sign-in, signed-in non-admin → home.
  * 3. **Auth.js session.** Everything else delegates to NextAuth (Google + JWT),
@@ -36,9 +39,9 @@ function gone(): NextResponse {
 }
 
 export const proxy = auth(async (request) => {
-  // 1. Long-dead sold lots → 410.
+  // 1. Long-dead sold lots + paid de-indexed cars → 410.
   const id = parseAvtomobilId(request.nextUrl.pathname);
-  if (id !== null && (await isLongDeadArchivedLot(id))) {
+  if (id !== null && (await isCarGone(id))) {
     return gone();
   }
 

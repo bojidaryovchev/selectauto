@@ -56,6 +56,13 @@ export const cars = pgTable(
     driveWheel: text("drive_wheel"),
     engine: text("engine"),
     rawJson: jsonb("raw_json"),
+    // Set when a PAID de-listing request covers this car's VIN (migration 0043);
+    // NULL is the normal state. Lives here rather than on the projections because
+    // the recompute DELETEs a projection row whenever the car stops qualifying for
+    // that table, which would silently destroy a paid flag — whereas ingestion
+    // never writes this column (the upserts use explicit column lists). Read on
+    // the hot path by the proxy's 410 check (apps/web/src/lib/sold-lot-gone.ts).
+    deindexedAt: timestamp("deindexed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
@@ -64,6 +71,9 @@ export const cars = pgTable(
     // so rows with a NULL external_car_id are allowed (fallback path).
     externalCarIdUx: uniqueIndex("cars_external_car_id_ux").on(t.externalCarId),
     vinIdx: index("cars_vin_idx").on(t.vin),
+    // Partial — only the de-indexed rows (migration 0043). The proxy check is a
+    // PK lookup and doesn't need it; the admin list and the re-apply sweep do.
+    deindexedAtIdx: index("cars_deindexed_at_idx").on(t.deindexedAt),
   }),
 );
 
@@ -1028,6 +1038,47 @@ export const contractEvents = pgTable(
   (t) => [index("contract_events_entity_idx").on(t.entity, t.entityId, t.createdAt)],
 );
 
+/**
+ * car_deindex_requests — one row per PAID de-listing request (migration 0043).
+ *
+ * Keyed on the NORMALIZED VIN (`upper(btrim(vin))`), not on a car id: cars.vin is
+ * a plain non-unique index and ingestion only trims the VIN, so one physical
+ * vehicle owns several `cars` rows (a relist, or the same car at Copart then
+ * IAAI) — each with its own `/avtomobil/{id}` URL. Suppressing by car id would
+ * leave the siblings indexed, which is exactly what a paying customer discovers
+ * by googling their own VIN. Applying a request stamps `cars.deindexed_at` on
+ * EVERY matching row, and must be re-applied to rows ingested later.
+ *
+ * Revocation is SOFT (`revoked_at`) so the record of a paid service survives; a
+ * partial unique index allows at most one ACTIVE request per VIN while still
+ * permitting a later re-request.
+ */
+export const carDeindexRequests = pgTable(
+  "car_deindex_requests",
+  {
+    id: serial("id").primaryKey(),
+    /** upper(btrim(vin)) — CHECK-enforced in the DB so it can never be stored un-normalised. */
+    vinNormalized: text("vin_normalized").notNull(),
+    requesterName: text("requester_name"),
+    requesterContact: text("requester_contact"),
+    /** How ownership was evidenced (талон / договор / ID shown). */
+    proofNote: text("proof_note"),
+    feeAmount: numeric("fee_amount", { precision: 14, scale: 2 }),
+    feeCurrency: text("fee_currency").notNull().default("EUR"),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    notes: text("notes"),
+    createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    revokedBy: text("revoked_by").references(() => users.id, { onDelete: "set null" }),
+  },
+  (t) => ({
+    // Partial UNIQUE (WHERE revoked_at IS NULL) — see migration 0043.
+    activeVinUx: uniqueIndex("car_deindex_requests_active_vin_ux").on(t.vinNormalized),
+    vinIdx: index("car_deindex_requests_vin_idx").on(t.vinNormalized),
+  }),
+);
+
 // Inferred types for use in queries elsewhere in the app.
 export type Car = typeof cars.$inferSelect;
 export type NewCar = typeof cars.$inferInsert;
@@ -1072,3 +1123,5 @@ export type NewGeneratedDocument = typeof generatedDocuments.$inferInsert;
 export type PaymentAttachment = typeof paymentAttachments.$inferSelect;
 export type ContractEvent = typeof contractEvents.$inferSelect;
 export type NewContractEvent = typeof contractEvents.$inferInsert;
+export type CarDeindexRequest = typeof carDeindexRequests.$inferSelect;
+export type NewCarDeindexRequest = typeof carDeindexRequests.$inferInsert;

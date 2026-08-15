@@ -33,7 +33,13 @@ const TO = process.env.CARFAX_NOTIFY_EMAIL || "info@selectauto.bg";
 
 let resendClient: Resend | null = null;
 
-function getResend(): Resend {
+/**
+ * The shared Resend client. Exported because the INBOUND side needs the same
+ * instance: `lib/inbound-mail.ts` calls `emails.receiving.forward()` and the
+ * webhook route calls `webhooks.verify()`. One client keeps the connection and
+ * the (team-wide, 10 req/s) rate-limit budget in one place.
+ */
+export function getResend(): Resend {
   if (resendClient) return resendClient;
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {

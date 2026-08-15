@@ -1,0 +1,29 @@
+-- 0044_cars_vin_normalized_idx.sql
+-- The functional index behind the VIN-keyed de-index (migration 0043):
+--   UPDATE cars SET deindexed_at = now() WHERE upper(btrim(vin)) = $1
+-- and the admin's "show me every URL this VIN owns" lookup.
+--
+-- The existing cars_vin_idx is on the RAW column, so it cannot serve a query
+-- whose predicate is an expression — Postgres needs an index on the same
+-- expression. Hence a second, functional index rather than a wider one.
+--
+-- ── DELIBERATELY ITS OWN FILE, AND DELIBERATELY WITHOUT BEGIN/COMMIT ─────────
+-- `cars` is a ~1M-row table and a plain CREATE INDEX takes a SHARE lock, which
+-- blocks INSERT/UPDATE/DELETE for the whole build — i.e. it would stall the
+-- hourly ingestion mid-run. CONCURRENTLY avoids that, but it CANNOT run inside a
+-- transaction block, and migrate.mjs hands each file to node-postgres as ONE
+-- simple-protocol query — where a MULTI-statement string is wrapped in an
+-- implicit transaction. A single statement is not, so this file must contain
+-- exactly one statement and no explicit transaction control. Do not add a second
+-- statement here; put it in a new migration instead.
+--
+-- ── IF IT FAILS ─────────────────────────────────────────────────────────────
+-- A failed CONCURRENTLY build leaves an INVALID index behind, and because of the
+-- IF NOT EXISTS below a re-run would then skip it and leave it invalid forever.
+-- Check with:
+--   SELECT indexrelid::regclass, indisvalid FROM pg_index
+--   WHERE indexrelid = 'cars_vin_normalized_idx'::regclass;
+-- If indisvalid is false: DROP INDEX CONCURRENTLY cars_vin_normalized_idx; then
+-- delete this file's row from _migrations and re-run the migration.
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS cars_vin_normalized_idx ON cars (upper(btrim(vin))) WHERE vin IS NOT NULL;
