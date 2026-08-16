@@ -1,6 +1,5 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/constants";
-import { getSitemapChunkCursors } from "@/queries/sitemap";
 
 /**
  * robots.txt (generated). Strategy (see docs/12-web-seo-strategy.md §6 — GEO is an
@@ -19,18 +18,36 @@ import { getSitemapChunkCursors } from "@/queries/sitemap";
  *   Disallow would block crawling so Google could never read that meta — the two
  *   mechanisms are mutually defeating (a disallowed-but-linked URL can still be
  *   indexed url-only, and the `follow` equity would be lost).
- * - Point crawlers at the sitemaps: the static-pages `/sitemap.xml`, the make/model
- *   hub sitemap (`/avtomobili/marka/sitemap.xml`), PLUS each listing chunk
- *   (`/avtomobil/sitemap/{id}.xml`). Next 16 does not auto-generate
- *   a `<sitemapindex>` for `generateSitemaps` (verified in
- *   next-metadata-route-loader), so we enumerate the chunk URLs here. The chunk
- *   count comes from the same cached cursor helper the sitemap uses (one source
- *   of truth); if the DB is unavailable we fail closed to just the static
- *   sitemap so robots still emits.
+ * - Point crawlers at the sitemaps: the static-pages `/sitemap.xml` and the
+ *   make/model hub sitemap (`/avtomobili/marka/sitemap.xml`).
  *
- * Async (reads the cached chunk count) but uses no request-time API, so it's
- * still build-emitted. Keep the disallow set in sync with the page-level `robots`
- * directives in the route files.
+ * ── Why the ~945k listing URLs are NOT advertised here (2026-08-16) ──────────
+ * This used to also enumerate 19 chunk sitemaps (`/avtomobil/sitemap/{i}.xml`,
+ * 50k URLs each) covering every active car. Measured against Google, that corpus
+ * earned essentially nothing while consuming essentially all of the crawl:
+ *
+ *   route                                pages    ranking kws   est. visits/mo
+ *   /avtomobili/marka/{make}/{model}     ~1,286        54            24.6
+ *   /vsichki-avtomobili                       1        10             3.8
+ *   /avtomobil/{id}                     945,000         1             0.4
+ *
+ * (Whole domain: 85 ranking keywords, ~74 organic visits/month.) Meanwhile the
+ * site was serving ~700k crawler requests/day — ~99% of all traffic — at ~$330/mo
+ * of Vercel usage, almost entirely that long tail. So we stopped ADVERTISING it:
+ * detail pages remain live, crawlable and indexable through the catalog and hub
+ * links, they are simply no longer pushed into Google's discovery queue. This is
+ * the same crawl-budget/index-bloat doctrine docs/11 §1 already applies to sold
+ * lots, extended to the active tail. The hubs are the durable ranking asset and
+ * keep their sitemap.
+ *
+ * If a curated listing sitemap is ever wanted (a few thousand priced, photographed
+ * cars in the makes that actually rank — NOT all 945k), the keyset chunking query
+ * is still in `queries/sitemap/get-listing-sitemap.query.ts`, and the route that
+ * used it is in git history at `app/avtomobil/sitemap.ts`.
+ *
+ * Sync + DB-free: this reads nothing at all now, so robots.txt can never be
+ * degraded by a database hiccup. Keep the disallow set in sync with the page-level
+ * `robots` directives in the route files.
  */
 
 const AI_CRAWLERS = [
@@ -61,14 +78,12 @@ const DISALLOW = [
   "/nova-parola",
 ];
 
-export default async function robots(): Promise<MetadataRoute.Robots> {
-  const chunkCount = (await getSitemapChunkCursors()).length;
+export default function robots(): MetadataRoute.Robots {
   const sitemaps = [
     `${SITE_URL}/sitemap.xml`,
     // Make/model SEO hubs (`/avtomobili/marka/{make}/{model}`) — one file, only the
     // indexable hubs (see app/avtomobili/marka/sitemap.ts).
     `${SITE_URL}/avtomobili/marka/sitemap.xml`,
-    ...Array.from({ length: chunkCount }, (_, i) => `${SITE_URL}/avtomobil/sitemap/${i}.xml`),
   ];
 
   return {

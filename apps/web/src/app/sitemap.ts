@@ -3,12 +3,11 @@ import { SITE_URL } from "@/constants";
 import { getAllPosts } from "@/lib/blog";
 
 /**
- * Root sitemap (`/sitemap.xml`) — the indexable STATIC pages only. The ~945k car
- * listings are split into 50k-URL chunks served from `app/avtomobil/sitemap.ts`
- * (`/avtomobil/sitemap/{id}.xml`); robots.txt references both this file and those
- * chunks. (Next 16 does NOT auto-emit a `<sitemapindex>` when `generateSitemaps`
- * is used — verified in next-metadata-route-loader — so we enumerate the chunk
- * URLs in robots.ts instead of relying on an auto-generated index.)
+ * Root sitemap (`/sitemap.xml`) — the indexable STATIC pages only. Together with
+ * the make/model hub sitemap (`/avtomobili/marka/sitemap.xml`) this is now the
+ * WHOLE advertised surface: the ~945k per-car listing chunks were retired on
+ * 2026-08-16 because they earned ~0.4 organic visits/month while accounting for
+ * ~99% of the site's traffic and cost. See the rationale block in `robots.ts`.
  *
  * URLs are the canonical SLASHLESS form (the app runs `trailingSlash: false`, so
  * a trailing-slash URL 308-redirects to slashless — the slashless form is what we

@@ -96,6 +96,33 @@ const nextConfig: NextConfig = {
         destination: "/vsichki-avtomobili",
         permanent: false,
       },
+      // ── Legacy WordPress make/model taxonomy → the current hubs ────────────
+      // These are STILL RANKING and were returning 404. Measured 2026-08-15
+      // (DataForSEO, bg market): `/marka/hyundai/` alone is ~32.9 est. visits/mo
+      // on 15,680 search volume — roughly 45% of the entire domain's ~74
+      // visits/mo of organic traffic — plus `/marka/kia/` and `/marka/mazda/`.
+      // The old taxonomy simply moved under `/avtomobili/`, so the path shape is
+      // identical below the prefix and ONE rule covers both tiers:
+      //   /marka/hyundai        → /avtomobili/marka/hyundai        (brand hub)
+      //   /marka/hyundai/tucson → /avtomobili/marka/hyundai/tucson (model hub)
+      // PERMANENT (308), unlike `/car/` above: this is a genuine 1:1 move of a
+      // URL that has real link equity to pass, not a blunt fallback. A make that
+      // no longer resolves lands on the hub route's own `notFound()` (noindex),
+      // which is exactly where it stood before — so no path regresses.
+      {
+        source: "/marka/:path*",
+        destination: "/avtomobili/marka/:path*",
+        permanent: true,
+      },
+      // Legacy WordPress single-lot URLs (`/auction-car/{wp_post_id}/`). The id is
+      // a WordPress post id with no mapping to our `cars.id`, so these CANNOT be
+      // resolved to a specific car — the catalog is the best available landing.
+      // Non-permanent for the same reason as `/car/` above.
+      {
+        source: "/auction-car/:slug*",
+        destination: "/vsichki-avtomobili",
+        permanent: false,
+      },
     ];
   },
   async headers() {

@@ -138,28 +138,39 @@ organic traffic (per `12-web-seo-strategy.md` §4.2/§4.3).
 - **Internal linking:** car-detail breadcrumb → model hub → brand hub, so authority
   flows catalog → brand → model, and from ~945k detail pages up into the hubs. This
   also mitigates that the catalog SSRs only its first page (deep listings are
-  reachable via the per-car sitemap + hub link surfaces, not via crawlable page-2..N
-  catalog URLs).
+  reachable via the hub link surfaces, not via crawlable page-2..N catalog URLs).
+  Since the per-car sitemap was retired (§5) these links are the ONLY discovery path
+  into the detail pages — which is the intended posture, not an oversight.
 
 ## 5. Sitemaps & robots
 
-- **Per-car sitemap** — [`avtomobil/sitemap.ts`](../apps/web/src/app/avtomobil/sitemap.ts):
-  active cars only, split into 50k-URL chunks (`/avtomobil/sitemap/{id}.xml`); sold
-  cars are excluded. *(2026-07-16: the chunk-boundary query was rewritten from one
-  `row_number()` window over all ~945k rows — which repeatedly hit Neon's statement
-  timeout during builds and silently shipped a robots.txt with NO listing sitemaps —
-  to per-chunk keyset probes, each a bounded ≤50k index-only scan. See
-  `queries/sitemap/get-listing-sitemap.query.ts`.)*
+- **Per-car sitemap — RETIRED 2026-08-16.** The 19 × 50k-URL chunks
+  (`/avtomobil/sitemap/{id}.xml`) that advertised all ~945k active cars are gone;
+  the route was deleted so the chunk URLs now 404 and Google retires them.
+  **Why:** measured against Google (DataForSEO, bg market, 2026-08-15) the whole
+  945k-page corpus returned **1 ranking keyword / ~0.4 est. visits per month**,
+  while the ~1,286 model hubs returned **54 keywords / ~24.6 visits** — 64% of
+  everything the domain ranks for (domain total: 85 keywords, ~74 visits/mo). That
+  long tail was drawing ~700k crawler requests/day, ~99% of all site traffic, at
+  ~$330/mo of Vercel usage. Detail pages stay live, crawlable and indexable via the
+  catalog and hub links — they are simply no longer pushed into Google's discovery
+  queue, which is §1's crawl-budget doctrine applied to the ACTIVE tail as well as
+  the sold one. Reviving a *curated* listing sitemap (a few thousand priced,
+  photographed cars in makes that actually rank) is the open follow-up; the keyset
+  chunking query survives at `queries/sitemap/get-listing-sitemap.query.ts` and the
+  deleted route is in git history.
+  *Expect GSC to report the retired sitemaps as unreadable until they are removed
+  from its Sitemaps report — that is the normal retirement path, not a fault.*
 - **Hub sitemap** — [`avtomobili/marka/sitemap.ts`](../apps/web/src/app/avtomobili/marka/sitemap.ts):
   only indexable hubs (same ≥3 threshold), ~96 brand + ~1047 model URLs.
 - **Static sitemap** — `/sitemap.xml` for the fixed pages.
 - **[`robots.ts`](../apps/web/src/app/robots.ts):** explicitly **allows** the major
   AI crawlers (GPTBot, OAI-SearchBot, ChatGPT-User, ClaudeBot, Claude-Web,
   PerplexityBot, Google-Extended, Applebot-Extended, CCBot); **disallows** `/api/`,
-  `/lyubimi` (favourites), the auth pages, and `?status=past`; and enumerates all
-  sitemap URLs (Next 16 doesn't emit a `<sitemapindex>` for `generateSitemaps`, so
-  the chunk URLs are listed explicitly). Keep the disallow set in sync with the
-  page-level `robots` directives.
+  `/lyubimi` (favourites), the auth pages, and `?status=past`; and points at the two
+  remaining sitemaps (static + hubs). Since the listing chunks were retired it reads
+  nothing from the database, so robots.txt can no longer be degraded by a DB hiccup.
+  Keep the disallow set in sync with the page-level `robots` directives.
 
 ## 6. Structured data (JSON-LD)
 
@@ -218,8 +229,17 @@ from raw inputs, never trusted from the client. Car detail pages deep-link in vi
   carry a price *band* in their copy). Still a future feature; the archive data +
   the AuctionsAPI `/statistics` endpoint would support it.
 - **Crawlable catalog page-2..N URLs** — the catalog only SSRs its first page;
-  deep-listing crawl paths come from the hubs + per-car sitemap instead (§4).
+  deep-listing crawl paths come from the hub + detail internal links instead (§4).
 - **Legacy WordPress cutover** — the old WP site was **removed entirely** (decision 2026-07).
   A redirect/410 map for its old URLs was built then **removed 2026-07-18** at the owner's
-  request (old site gone, ~zero equity/backlinks) — old legacy URLs now 404. See
+  request (old site gone, ~zero equity/backlinks). See
   [13-seo-action-plan.md](13-seo-action-plan.md) Phase 0.
+  **⚠️ Partly reversed 2026-08-16 — the "~zero equity" premise was wrong.** Ranked-keyword
+  data (DataForSEO, bg market, 2026-08-15) shows legacy paths still ranking and 404ing,
+  and they are the domain's BIGGEST organic asset: `/marka/hyundai/` at ~32.9 est.
+  visits/mo on 15,680 search volume — about **45% of the domain's entire ~74 visits/mo** —
+  plus `/marka/kia/`, `/marka/mazda/` and `/auction-car/143310/`. The old make/model
+  taxonomy moved verbatim under `/avtomobili/`, so `next.config.ts` now maps
+  `/marka/:path*` → `/avtomobili/marka/:path*` **permanently (308)**, covering both the
+  brand and model tiers with one rule. `/auction-car/:slug*` joins `/car/:slug*` as a
+  non-permanent catalog fallback (its WordPress post ids have no mapping to `cars.id`).
