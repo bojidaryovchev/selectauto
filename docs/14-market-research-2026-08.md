@@ -45,12 +45,13 @@ The gap to the leaders is **~113×** (wincars) to **~199×** (7cars) in organic 
 |---|---:|---|
 | `/avtomobili/marka/*` (brand + model hubs) | **36** | the programmatic layer works — it is 64% of all our rankings |
 | `/vsichki-avtomobili?brand=…&model=…` (faceted) | 7 | indexed despite a correct canonical — see §6.3 |
-| **Dead legacy WordPress URLs (now 404)** | **11** | see §6.2 |
+| Legacy WordPress URLs | **11** | 10 now redirect (commit `161d6a0`); 1 still 404s — see §6.2 |
 | `/avtomobil/{id}` (car detail) | 1 | ~945k indexable detail pages produce one ranking keyword |
 | `/` | 1 | ranks #42 for "selective cars" |
 
 Two facts worth sitting with: the **model hubs are the only thing working**, and **a fifth of
-our remaining Google footprint is pages that return 404**.
+our remaining Google footprint is legacy WordPress URLs** — which now redirect, so that equity
+is at least being forwarded rather than discarded.
 
 ## 3. Real demand — absolute BG volumes (replaces the Trends guesses)
 
@@ -257,25 +258,33 @@ env var. (Alternative: flip Vercel to serve the apex and redirect `www` → apex
 existing default correct.) Note `apps/extension/lib/config.ts:7` already documents `www` as the
 canonical host — the web app is the one that disagrees.
 
-### 6.2 Eleven dead legacy URLs are still ranking
+### 6.2 Legacy URLs still ranking — mostly already fixed, one real gap
 
 Doc 13 Phase 0 removed the legacy redirect map on 2026-07-18 on the premise that the old
-WordPress site had "~zero equity". The ranking data disagrees — these still hold positions and
-now return **404**:
+WordPress site had "~zero equity". Eleven legacy URLs still hold rankings, so that premise was
+wrong — but **commit `161d6a0` (2026-08-16) already restored redirects for ten of them**, off a
+near-identical measurement ("Measured 2026-08-15") taken three days before this research.
+Verified live 2026-08-18 with cache-busting:
 
-| Legacy URL | Ranks for | Volume | Pos | Status now |
+| Legacy pattern | Ranks for | Volume | Pos | Live status |
 |---|---|---:|---:|---|
-| `/marka/hyundai/` | хюндай | **14,800** | 71 | **404** |
-| `/истината-за-колите-от-канада/` | коли от канада | **1,000** | 46 | **404** |
-| `/marka/hyundai/?sale_pg=7064` | хюндай върнати от лизинг | 880 | 50 | **404** |
-| `/marka/kia/` | kia.bg цени | 260 | 70 | **404** |
-| `/auction-car/143310/` | шевролет спарк | 170 | 51 | **404** |
-| `/car/{slug}` × 6 | mercedes c class w205, bmw m8 competition, bmw m5 f10, bmw f80, bmw f30 cars, hyundai santa fe 2024 | 390–720 each | 30–59 | 301 → `/vsichki-avtomobili` |
+| `/marka/{make}` | хюндай / kia.bg цени | 14,800 / 260 | 71 / 70 | **308 → `/avtomobili/marka/{make}`** ✅ |
+| `/car/{slug}` × 6 | mercedes c class w205, bmw m8 competition, bmw m5 f10, bmw f80, bmw f30 cars, hyundai santa fe 2024 | 390–720 ea. | 30–59 | 307 → `/vsichki-avtomobili` ✅ |
+| `/auction-car/{id}` | шевролет спарк | 170 | 51 | 307 → `/vsichki-avtomobili` ✅ |
+| **`/истината-за-колите-от-канада/`** | **коли от канада** | **1,000** | **46** | **404 — the one remaining gap** |
 
-The `/car/*` pattern still redirects (to the bare catalog — a weak target). Everything else
-404s. Positions are poor, so the equity is small — but it is **not zero**, it is free, and
-restoring a handful of targeted 301s (`/marka/{make}/` → `/avtomobili/marka/{make}`, the Canada
-blog post → the Canada hub) costs almost nothing.
+> **Correction.** An earlier pass of this research reported all eleven as 404. That was wrong:
+> the first probe used `curl -L` on the trailing-slash form and read a cached 404 from the hop
+> before the redirect. Re-tested per-URL with cache-busting, only the Cyrillic blog post 404s.
+
+The blog post maps cleanly onto `/vnos-na-koli-ot-kanada` and is now redirected (308) in
+[next.config.ts](../apps/web/next.config.ts).
+
+One judgement call left open: `/auction-car/{id}` and `/car/{slug}` 307 to the **bare catalog**,
+which is soft-404 territory for a dead listing — doc 13's original Phase-0 map specified 410
+there. The code documents the trade deliberately (a redirect keeps the visitor; 410 keeps the
+index clean), so it is a decision to revisit, not a bug.
+
 
 ### 6.3 Faceted catalog URLs are indexed and cannibalising the model hubs
 
@@ -326,7 +335,7 @@ produce 64% of our rankings. Brand hubs themselves link correctly down to model 
 | „the Encar България SERP is junk — a cheap authority asset" | koreaauto.direct holds #1 **and** #6, and it is the only AIO-triggering query tested | **Closed.** Only 170/mo anyway |
 | „vin проверка" is the top demand cluster | коли от америка (3,600) > коли от корея (1,900) > проверка по вин номер (1,600) > vin проверка (1,300) | **Re-ranked** — browse intent is #1 |
 | Country-anchored calculator phrases carry the demand | **no measurable volume** on any variant | **Wrong.** Calculator = conversion only |
-| The legacy WP site had "~zero equity" — redirects removed | 11 legacy URLs still rank, incl. #71 on a 14,800/mo term; all now 404 | **Not zero** |
+| The legacy WP site had "~zero equity" — redirects removed | 11 legacy URLs still rank, incl. #71 on a 14,800/mo term | **Not zero** — mostly re-addressed by commit `161d6a0` |
 | „consider a mobile.bg storefront" (optional, Phase C) | playcars.mobile.bg ranks **#3** for „внос на коли от америка"; cars.bg storefronts also top-10 | **Promote to priority** |
 | 7cars = a YouTube channel to partner with | 7cars.bg is the **largest organic site in the niche** (11,919/mo) and **#1 for „внос на коли от корея"** | **Missing competitor**, and proof the YouTube→brand→search path works |
 | Facebook not treated as a competitor | Facebook is the **#1 domain by visibility** across the head terms | **Missing channel** |
@@ -347,8 +356,9 @@ Ordered by (impact ÷ effort). Owners follow doc 13's convention.
    one-sixth our size. This is the single highest-value non-code task. (§4.3)
 4. `[code]` **Repoint the homepage brand strip** from `/vsichki-avtomobili?brand=NN` to
    `/avtomobili/marka/{make}`. (§6.3)
-5. `[code]` **Restore a handful of legacy 301s** — `/marka/{make}/` → brand hub, the Canada blog
-   post → `/vnos-na-koli-ot-kanada`, `/car/{slug}` → model hub instead of the bare catalog. (§6.2)
+5. `[code]` **Redirect the last 404ing legacy URL** — the Cyrillic Canada blog post →
+   `/vnos-na-koli-ot-kanada`. The `/marka/`, `/car/` and `/auction-car/` patterns were already
+   handled by commit `161d6a0`. (§6.2)
 
 ### Next — weeks
 

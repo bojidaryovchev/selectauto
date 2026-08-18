@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Ripple } from "@/components/common";
 import { ArrowRightIcon } from "@/components/icons";
-import { serializeCarFilters } from "@/lib/car-filters";
+import { brandHubPath } from "@/lib/car-slug";
 import { getCarBrands } from "@/queries/cars";
 import { BRANDS } from "@/data/home";
 
@@ -17,21 +17,35 @@ const CATALOG_PATH = "/vsichki-avtomobili";
  * The flex item widths use the plugin's exact `calc()` formulas, expressed as
  * arbitrary Tailwind values with responsive variants.
  *
- * Each card deep-links into the catalog with that make pre-selected
- * (`?brand=<externalId>`). The catalog filters brands by `manufacturers
- * .external_id`, not by name, so we resolve the id from `getCarBrands()` — a cheap
- * brand-list query (NOT the full `getCarFacets`, which is ~5s and statement-
- * timeout'd the build) — keyed by lowercased name. An unknown brand falls back to
- * the unfiltered catalog.
+ * Each card links to that make's **brand hub** (`/avtomobili/marka/{make}`), NOT
+ * to a `?brand=<externalId>` catalog filter. The hubs are the durable ranking
+ * asset — 36 of the domain's 56 ranking keywords land on `/avtomobili/marka/*`
+ * (2026-08-18 measurement) — whereas the faceted catalog URLs this grid used to
+ * emit were being indexed *despite* their canonical to the bare catalog, showing
+ * a generic „Всички автомобили" title and cannibalising the very hubs they
+ * outrank nothing against. This grid is the homepage's strongest internal-link
+ * source, so it must push equity into the hubs. See
+ * docs/14-market-research-2026-08.md §6.3.
+ *
+ * `getCarBrands()` is still consulted — a cheap brand-list query (NOT the full
+ * `getCarFacets`, which is ~5s and statement-timeout'd the build) — but only to
+ * confirm the make EXISTS upstream and to take its canonical DB `name`. The slug
+ * is then derived by the shared `brandHubPath()` helper, the same one the hub
+ * page's self-canonical and the hub sitemap use, so every producer of a hub URL
+ * agrees. A brand absent from the DB (or one that slugs to "") falls back to the
+ * unfiltered catalog rather than linking at a hub that would `notFound()`.
  */
 export async function BrandsGrid() {
   const brands = await getCarBrands();
-  const brandIdByName = new Map(brands.map((b) => [b.label.toLowerCase(), b.value]));
+  // Key by lowercased name, but keep the DB's own label: the hub resolver slugs
+  // the upstream `manufacturers.name`, so slugging that same string is what
+  // guarantees the link resolves.
+  const dbLabelByName = new Map(brands.map((b) => [b.label.toLowerCase(), b.label]));
 
   const hrefFor = (name: string): string => {
-    const id = brandIdByName.get(name.toLowerCase());
-    if (id === undefined) return CATALOG_PATH;
-    return `${CATALOG_PATH}?${serializeCarFilters({ brand: Number(id) }).toString()}`;
+    const label = dbLabelByName.get(name.toLowerCase());
+    if (label === undefined) return CATALOG_PATH;
+    return brandHubPath(label) ?? CATALOG_PATH;
   };
 
   return (

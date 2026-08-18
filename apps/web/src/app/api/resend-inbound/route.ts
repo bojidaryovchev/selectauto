@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { getResend } from "@/lib/email";
-import { forwardInboundEmail, isForwardingEnabled, shouldForward } from "@/lib/inbound-mail";
+import {
+  forwardInboundEmail,
+  fromWebhookEvent,
+  isForwardingEnabled,
+  isOwnNotification,
+  shouldForward,
+} from "@/lib/inbound-mail";
+import { ingestInboundEmail } from "@/mutations/mail";
 
 /**
  * Resend webhook endpoint — currently handles `email.received` only.
@@ -66,23 +73,52 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, ignored: event.type });
   }
 
-  if (!isForwardingEnabled()) {
-    console.warn("[resend-inbound] MAIL_FORWARD_TO is not set — received mail is not being forwarded");
-    return NextResponse.json({ ok: true, skipped: "forwarding disabled" });
-  }
+  const inbound = fromWebhookEvent(event.data);
 
   // The domain is a catch-all; only the addresses we actually publish are worth
-  // relaying (and paying quota for).
-  if (!shouldForward(event.data)) {
+  // storing or relaying (and paying quota for).
+  if (!shouldForward(inbound)) {
     return NextResponse.json({ ok: true, skipped: "recipient not forwarded" });
   }
 
-  try {
-    const forwardedId = await forwardInboundEmail(event.data);
-    return NextResponse.json({ ok: true, forwarded: forwardedId });
-  } catch (error) {
-    // 500 → Resend retries; the idempotency key stops a double send.
-    console.error("[resend-inbound] forward failed", event.data.email_id, error);
-    return new NextResponse("Forward failed", { status: 500 });
+  // Our own lead notifications (noreply@ → info@) come back through the MX as
+  // "inbound". They are forwarded — a new-lead alert in a human mailbox is
+  // useful — but never filed as a conversation, or the real customer mail would
+  // be buried under them (measured: 60 of the first 78 stored messages).
+  const ownNotification = isOwnNotification(inbound);
+
+  // PERSIST FIRST, and let a failure here 500. The admin inbox is the durable
+  // record — there is no mailbox behind info@ — so losing the row loses the
+  // message, whereas losing the forwarded copy only costs a notification.
+  // `ingestInboundEmail` is idempotent on the Resend email id, so the retry that
+  // a 500 provokes cannot duplicate the message.
+  let ingested = null;
+  if (!ownNotification) {
+    try {
+      ingested = await ingestInboundEmail(inbound);
+    } catch (error) {
+      console.error("[resend-inbound] ingest failed", inbound.emailId, error);
+      return new NextResponse("Ingest failed", { status: 500 });
+    }
   }
+
+  // Belt-and-braces copy to a human mailbox. Best-effort ON PURPOSE, and only on
+  // first ingest: the message is already safely stored, so a forwarding failure
+  // must not provoke a retry that re-forwards, and a redelivered webhook must
+  // not send the copy twice.
+  let forwarded: string | null = null;
+  if (isForwardingEnabled() && (ownNotification || ingested?.status === "inserted")) {
+    try {
+      forwarded = await forwardInboundEmail(inbound.emailId);
+    } catch (error) {
+      console.error("[resend-inbound] forward failed (message is stored)", inbound.emailId, error);
+    }
+  }
+
+  return NextResponse.json({
+    ok: true,
+    status: ownNotification ? "own-notification" : ingested?.status,
+    threadId: ingested?.threadId ?? null,
+    forwarded,
+  });
 }

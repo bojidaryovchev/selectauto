@@ -55,7 +55,7 @@ export const emailTailwindConfig = {
  * first, then the production domain. Trailing slash trimmed.
  */
 export function emailBaseUrl(): string {
-  return (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "https://selectauto.bg").replace(
+  return (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "https://www.selectauto.bg").replace(
     /\/$/,
     "",
   );

@@ -89,6 +89,17 @@ const nextConfig: NextConfig = {
   // Non-permanent (307) on purpose: nothing should be indexed under `/car/`,
   // and if we later resolve these slugs to real listings we don't want the
   // blunt catalog redirect cached in browsers/CDNs.
+  // IndexNow ownership proof. The protocol wants `{key}.txt` at the SITE ROOT:
+  // hosting it deeper and pointing `keyLocation` at it would scope the key to
+  // that subdirectory only, which would not cover `/avtomobil/*`. The key is an
+  // env var (committing it to `public/` would publish it, and a leaked key lets
+  // anyone submit URLs as us), so the root path is rewritten onto a route
+  // handler that reads it. Build-time read — rotating the key needs a redeploy.
+  async rewrites() {
+    const key = process.env.INDEXNOW_KEY?.trim();
+    if (!key || !/^[a-f0-9]{8,128}$/i.test(key)) return [];
+    return [{ source: `/${key}.txt`, destination: "/api/indexnow-key" }];
+  },
   async redirects() {
     return [
       {
@@ -112,6 +123,33 @@ const nextConfig: NextConfig = {
       {
         source: "/marka/:path*",
         destination: "/avtomobili/marka/:path*",
+        permanent: true,
+      },
+      // Legacy WordPress BLOG post that is STILL RANKING and STILL 404s — the one
+      // legacy URL commit 161d6a0's taxonomy rule doesn't cover. Measured
+      // 2026-08-18 (DataForSEO, bg market): `/истината-за-колите-от-канада/` sits
+      // at position 46 for „коли от канада" (1,000 searches/mo, KD 0). It maps
+      // cleanly onto the Canada hub, which is the page that should hold that
+      // query — so PERMANENT (308), like the `/marka/` rule and unlike the blunt
+      // `/car/` fallback. See docs/14-market-research-2026-08.md §6.2.
+      //
+      // Listed TWICE, decoded and percent-encoded. VERIFIED against a production
+      // build (`next start`, 2026-08-18): Next matches `source` against the RAW
+      // request path, so it is the **percent-encoded** entry that actually fires
+      // — the decoded Cyrillic spelling 404s. Since every browser and crawler
+      // percent-encodes non-ASCII path bytes before sending, the encoded rule is
+      // the one that matters in production; the decoded spelling is kept only as
+      // a harmless guard for a client that sends raw UTF-8. Both are inert
+      // literals to path-to-regexp (`%` and Cyrillic carry no special meaning).
+      {
+        source: "/истината-за-колите-от-канада",
+        destination: "/vnos-na-koli-ot-kanada",
+        permanent: true,
+      },
+      {
+        source:
+          "/%D0%B8%D1%81%D1%82%D0%B8%D0%BD%D0%B0%D1%82%D0%B0-%D0%B7%D0%B0-%D0%BA%D0%BE%D0%BB%D0%B8%D1%82%D0%B5-%D0%BE%D1%82-%D0%BA%D0%B0%D0%BD%D0%B0%D0%B4%D0%B0",
+        destination: "/vnos-na-koli-ot-kanada",
         permanent: true,
       },
       // Legacy WordPress single-lot URLs (`/auction-car/{wp_post_id}/`). The id is

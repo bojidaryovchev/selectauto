@@ -98,6 +98,25 @@ export async function GET(request: Request) {
       return NextResponse.json({ ok: true, exists: false });
     }
 
+    // A PAID de-index must hide the car HERE TOO (migration 0043). This route
+    // resolves the car from `auction_lots`/`cars` and builds the page URL BEFORE
+    // it consults the projections, so removing the projection row — which is
+    // what hides the car everywhere else — would not stop this endpoint handing
+    // out `/avtomobil/{id}` as `status: "unlisted"`. And it is a public,
+    // unauthenticated endpoint that the shipped browser extension renders an
+    // "Отвори обявата" link from, so the leak would be very visible.
+    //
+    // Reported as a plain miss: from the caller's side a de-indexed car is
+    // indistinguishable from one we never ingested.
+    const [deindexed] = await db
+      .select({ deindexedAt: schema.cars.deindexedAt })
+      .from(schema.cars)
+      .where(eq(schema.cars.id, carId))
+      .limit(1);
+    if (deindexed?.deindexedAt != null) {
+      return NextResponse.json({ ok: true, exists: false });
+    }
+
     // 2) Status + display fields from the projection the site actually shows.
     const [active] = await db
       .select()

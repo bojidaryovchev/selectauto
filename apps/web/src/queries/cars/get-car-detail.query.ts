@@ -158,9 +158,10 @@ async function getCarDetailCached(carId: number): Promise<CarDetail | null> {
   // Paid de-index (migration 0043): resolve to null so the route calls
   // `notFound()`, which injects `noindex` even though PPR still answers 200.
   // This is the SECOND line of defence — `proxy.ts` already returns a real 410
-  // for the same car, uncached, before this ever runs. It matters anyway because
-  // the proxy fails closed to "not gone" on a DB error, and because every other
-  // caller of getCarDetail gets the same suppression for free.
+  // for the same car before this ever runs. It matters anyway because the proxy
+  // answers from a 30s per-instance snapshot and fails closed to "not gone" on a
+  // DB error, and because every other caller of getCarDetail gets the same
+  // suppression for free.
   if (car.deindexedAt !== null) return null;
 
   // Resolve brand (name + logo) / model / generation display data (not stored on the

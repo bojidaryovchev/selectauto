@@ -33,8 +33,18 @@ export const SOCIALS: LinkItem[] = [
  * previously hardcoded as a local `SITE_URL` const in `avtomobil/[id]/page.tsx`;
  * keep that page in sync (or import this). Overridable per-environment via
  * `NEXT_PUBLIC_SITE_URL` (e.g. a preview deploy) without code changes.
+ *
+ * **The default MUST be the `www` host.** Vercel serves the site on
+ * `www.selectauto.bg` and 308-redirects the apex. When this defaulted to the
+ * apex, every canonical, `og:url`, robots `Host:` and sitemap `<loc>` pointed at
+ * a URL that redirects — an OpenSEO crawl of 120 pages on 2026-08-18 returned
+ * **119 non-indexable 308s**, all of them sitemap-submitted, plus a
+ * `canonicalized-page` flag on the homepage (`www` → canonical apex). Google
+ * resolves it, but at ~945k listing URLs that is pure crawl waste and a sitemap
+ * coverage report full of "Page with redirect". See
+ * docs/14-market-research-2026-08.md §6.1.
  */
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://selectauto.bg").replace(/\/$/, "");
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.selectauto.bg").replace(/\/$/, "");
 
 /** Brand/legal name shown in metadata + Organization schema. */
 export const SITE_NAME = "SelectAuto";

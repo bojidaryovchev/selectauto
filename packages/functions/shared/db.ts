@@ -82,7 +82,6 @@ function stripSslMode(connectionString: string): string {
   }
 }
 
-
 /**
  * Refresh a projection read model for a batch of cars, by calling its recompute
  * SQL function (`recompute_car_listings` for the active catalog, migration 0007;
@@ -179,11 +178,24 @@ export async function fetchCarIdsAfter(afterId: number, limit: number): Promise<
  *    only ~442k could correspond to a real upstream change, i.e. >=72% of the
  *    write volume changed nothing.
  *
- *    Comparing `raw_json` is both sufficient and necessary for the derived
- *    columns: every one of them (including thumbnail_url) is a pure function of
- *    the raw payload — see normalize.ts. The extra OR-terms cover the two things
- *    that are NOT derived from raw_json: the local car_id linkage, and the
- *    archived flag (which archiveLots can set independently).
+ *    Comparing the derived columns' SOURCE is both sufficient and necessary:
+ *    every one of them (including thumbnail_url) is a pure function of the raw
+ *    payload — see normalize.ts. The extra OR-terms cover the two things that are
+ *    NOT derived from it: the local car_id linkage, and the archived flag (which
+ *    archiveLots can set independently).
+ *
+ *    ...BUT COMPARING THE RAW BLOB IS NOT THAT TEST (fixed 2026-08-17). The lot
+ *    payload embeds six of AuctionsAPI's own re-crawl timestamps, which move on
+ *    every upstream crawl regardless of whether any value did, so
+ *    `raw_json IS DISTINCT FROM EXCLUDED.raw_json` was very nearly a constant
+ *    TRUE and the no-op guard above was, for lots, doing almost nothing. Measured
+ *    2026-08-17: 356 128 lot rows rewritten in 24h, only 40 308 (11.3%) with a
+ *    real change — 88.7% of the entire write pipeline, including both projection
+ *    recomputes and their index maintenance, was driven by a moving timestamp.
+ *    The guard now compares `lotFingerprint(...)` (below), which strips those
+ *    stamps in BOTH payload shapes and leaves everything else — so a genuinely
+ *    new field still refreshes raw_json and the backfill property is preserved.
+ *    `cars` is unaffected: its payload carries no such stamp (~0.4% write rate).
  *
  *    OPERATIONAL CONSEQUENCE: ingestion no longer rewrites unchanged rows, so
  *    adding or changing a DERIVED column no longer back-fills itself on the next
@@ -213,6 +225,54 @@ function chunk<T>(items: T[], size: number): T[][] {
 const LOT_ARCHIVED_EXPR = `CASE WHEN jsonb_typeof(EXCLUDED.raw_json->'archived') = 'boolean'
         THEN (EXCLUDED.raw_json->>'archived')::boolean
         ELSE auction_lots.archived END`;
+
+/**
+ * A lot payload with AuctionsAPI's own bookkeeping timestamps removed — the value
+ * the change-detection guard actually compares.
+ *
+ * WHY THIS EXISTS. The guard used to be a plain
+ * `auction_lots.raw_json IS DISTINCT FROM EXCLUDED.raw_json`, which sounds exact
+ * and is in fact almost always TRUE: the lot payload carries SIX re-crawl stamps
+ * (`updated_at`, `created_at`, `bid_updated_at`, `buy_now_updated_at`,
+ * `final_bid_updated_at`, `sale_date_updated_at`), and upstream bumps them every
+ * time it re-crawls the lot whether or not a single value moved. Measured on live
+ * data 2026-08-17: of 356 128 lot rows rewritten in 24h, only 40 308 (11.3%) had
+ * any real bid / buy-now / final-bid / sale-date change. The other 88.7% paid a
+ * full heap update + TOAST rewrite + WAL + both projection recomputes (and up to
+ * 16 index entries each) to store bytes identical to what was already there.
+ *
+ * The `cars` payload has no such stamp, which is why the identical guard on that
+ * table writes only ~0.4% of the ~700k records fetched per day — same feed, same
+ * code path, different volatility. `cars` therefore keeps the plain comparison.
+ *
+ * SHAPE HAZARD (verified against live data, both feeds — do not simplify this):
+ * the two endpoints disagree on price shape (see docs/01 §6b).
+ *   - `/cars` sends `bid`/`buy_now`/`final_bid` as NUMBER or NULL, with the
+ *     timestamps as TOP-LEVEL `*_updated_at` keys.
+ *   - `/archived-lots` sends them as OBJECTS carrying a NESTED `updated_at`.
+ * `jsonb - text` raises "cannot delete from scalar", so the nested strip must be
+ * guarded by `jsonb_typeof(...) = 'object'` or the active feed would crash on
+ * every page. The outer CASE likewise tolerates a NULL / non-object payload.
+ *
+ * Kept as an inlined expression rather than a SQL function ON PURPOSE: migrations
+ * are hand-run and are NOT applied on deploy (see README), so a function would
+ * introduce a deploy-ordering hazard where shipping the Lambda before running the
+ * migration breaks every ingestion page. Inlining makes the change atomic with the
+ * deploy, matching how LOT_ARCHIVED_EXPR above is handled.
+ */
+const lotFingerprint = (col: string): string => `(
+        CASE WHEN ${col} IS NULL OR jsonb_typeof(${col}) <> 'object' THEN ${col} ELSE
+          (${col} - 'updated_at' - 'created_at' - 'bid_updated_at'
+                  - 'buy_now_updated_at' - 'final_bid_updated_at' - 'sale_date_updated_at')
+          || COALESCE((
+               SELECT jsonb_object_agg(k, (${col} -> k) - 'updated_at')
+               FROM unnest(ARRAY['bid','buy_now','final_bid']) AS k
+               WHERE jsonb_typeof(${col} -> k) = 'object'), '{}'::jsonb)
+        END)`;
+
+/** The lot-payload change test: true only when something we'd actually store moved. */
+const LOT_PAYLOAD_CHANGED = `${lotFingerprint("auction_lots.raw_json")}
+          IS DISTINCT FROM ${lotFingerprint("EXCLUDED.raw_json")}`;
 
 /** Rows-written vs rows-skipped accounting for one page. */
 export interface UpsertPageResult {
@@ -384,11 +444,13 @@ export async function upsertCarsAndLots(rawCars: ApiCar[]): Promise<UpsertPageRe
            archived_at = COALESCE(EXCLUDED.archived_at, auction_lots.archived_at),
            raw_json = EXCLUDED.raw_json,
            updated_at = now()
-         -- Fire only on a real change. raw_json covers every column derived from
-         -- the payload; the other two terms cover what is NOT derived from it:
-         -- the local car_id linkage, and an archived flag that archiveLots may
-         -- have flipped independently.
-         WHERE auction_lots.raw_json IS DISTINCT FROM EXCLUDED.raw_json
+         -- Fire only on a real change. The payload fingerprint covers every column
+         -- derived from raw_json while ignoring upstream's re-crawl timestamps
+         -- (see lotFingerprint — comparing the raw blob made this guard fire on
+         -- ~89% of rows that had not actually changed). The other two terms cover
+         -- what is NOT derived from the payload: the local car_id linkage, and an
+         -- archived flag that archiveLots may have flipped independently.
+         WHERE ${LOT_PAYLOAD_CHANGED}
             OR auction_lots.car_id IS DISTINCT FROM COALESCE(EXCLUDED.car_id, auction_lots.car_id)
             OR auction_lots.archived IS DISTINCT FROM (${LOT_ARCHIVED_EXPR})
          RETURNING car_id`,
@@ -483,12 +545,15 @@ export async function archiveLots(rawLots: ApiArchivedLot[]): Promise<number> {
            raw_json = EXCLUDED.raw_json,
            updated_at = now()
          -- Fire only on a real change. The status/price columns are all derived
-         -- from raw_json (or COALESCE-preserved), so raw_json covers them; the
-         -- other terms cover the state this statement sets independently of the
-         -- payload: the archived flag, its timestamp, and the car linkage.
+         -- from raw_json (or COALESCE-preserved), so the payload fingerprint
+         -- covers them while ignoring upstream's re-crawl timestamps (see
+         -- lotFingerprint); the other terms cover the state this statement sets
+         -- independently of the payload: the archived flag, its timestamp, and
+         -- the car linkage. NB: this feed sends prices as OBJECTS with a nested
+         -- updated_at, which is exactly why the fingerprint strips both shapes.
          WHERE auction_lots.archived IS NOT TRUE
             OR auction_lots.archived_at IS NULL
-            OR auction_lots.raw_json IS DISTINCT FROM EXCLUDED.raw_json
+            OR ${LOT_PAYLOAD_CHANGED}
             OR auction_lots.car_id IS DISTINCT FROM COALESCE(EXCLUDED.car_id, auction_lots.car_id)
          RETURNING car_id`,
         [JSON.stringify(part)],

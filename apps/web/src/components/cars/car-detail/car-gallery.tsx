@@ -11,9 +11,16 @@ import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
  * navigation. The image list comes from the lot's raw_json (5-20 photos for almost
  * every car). The active image eager-loads (LCP candidate); the rest lazy-load.
  *
- * Hover-zoom is desktop-only (pointer: fine): a second layer with the same image
- * as a scaled `background-image` fades in while hovering, its `background-position`
- * driven by the cursor. Touch devices just see the crisp base image (no hover).
+ * The magnifier is a second layer with the same image as a scaled
+ * `background-image`, its `background-position` driven by the pointer:
+ *
+ * - **Mouse (pointer: fine)** — it fades in on hover and pans with the cursor.
+ * - **Touch (pointer: coarse)** — a *tap* toggles it on/off and a drag pans it,
+ *   with the finger acting as the lens. Everything runs on pointer events gated
+ *   by `pointerType`, because a tap also makes the browser synthesise
+ *   `mouseenter`/`mousemove`: on mouse-only handlers that turned zoom on, faded
+ *   the base `<img>` out, and left a blank frame (the zoom layer used to be
+ *   desktop-only) — the image "disappeared" on tap.
  *
  * Client component (the page's only interactive part) — it owns the selected-index
  * and zoom state.
@@ -22,12 +29,18 @@ import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 /** How far the hover lens magnifies (2.4× reads as "premium store" without losing context). */
 const ZOOM = 2.4;
 
+/** Finger travel (px) above which a touch counts as a pan, not a tap. */
+const TAP_SLOP = 10;
+
 export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
   const [active, setActive] = useState(0);
   const [zooming, setZooming] = useState(false);
-  // Cursor position as a 0-100% fraction within the frame (drives background-position).
+  // Pointer position as a 0-100% fraction within the frame (drives background-position).
   const [lens, setLens] = useState({ x: 50, y: 50 });
   const frameRef = useRef<HTMLDivElement | null>(null);
+  // Live touch gesture: where it started, whether it has moved past the tap slop,
+  // and whether zoom was already on when it began (so a tap can toggle correctly).
+  const touch = useRef<{ x: number; y: number; moved: boolean; wasZooming: boolean } | null>(null);
 
   const count = images.length;
   const clamp = useCallback((i: number) => (i + count) % count, [count]);
@@ -40,13 +53,74 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
   const prev = useCallback(() => select(clamp(active - 1)), [select, clamp, active]);
   const next = useCallback(() => select(clamp(active + 1)), [select, clamp, active]);
 
-  const onMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+  /** Point the lens at a viewport coordinate, clamped to the frame. */
+  const aim = useCallback((clientX: number, clientY: number) => {
     const el = frameRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    const x = ((clientX - rect.left) / rect.width) * 100;
+    const y = ((clientY - rect.top) / rect.height) * 100;
     setLens({ x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) });
+  }, []);
+
+  const onPointerEnter = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === "mouse") setZooming(true);
+  }, []);
+
+  const onPointerLeave = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === "mouse") setZooming(false);
+  }, []);
+
+  // Touch gestures start here. Zoom is deliberately NOT armed on pointerdown: while
+  // un-zoomed the frame still scrolls the page, and the browser would cancel the
+  // gesture mid-way, leaving the lens stuck on. It's decided on pointerup instead.
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (e.pointerType === "mouse") return;
+      touch.current = { x: e.clientX, y: e.clientY, moved: false, wasZooming: zooming };
+      // Capture so a pan keeps tracking even if the finger strays over the arrows
+      // or off the frame entirely.
+      e.currentTarget.setPointerCapture(e.pointerId);
+    },
+    [zooming],
+  );
+
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (e.pointerType === "mouse") {
+        aim(e.clientX, e.clientY);
+        return;
+      }
+      const t = touch.current;
+      if (!t) return;
+      if (Math.abs(e.clientX - t.x) > TAP_SLOP || Math.abs(e.clientY - t.y) > TAP_SLOP) {
+        t.moved = true;
+      }
+      // Only a zoomed frame pans; otherwise the drag belongs to the page scroll.
+      if (t.wasZooming) aim(e.clientX, e.clientY);
+    },
+    [aim],
+  );
+
+  const onPointerUp = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (e.pointerType === "mouse") return;
+      const t = touch.current;
+      touch.current = null;
+      if (!t || t.moved) return;
+      // A clean tap toggles: zoom in centred on the tap, or back out.
+      if (t.wasZooming) {
+        setZooming(false);
+      } else {
+        aim(e.clientX, e.clientY);
+        setZooming(true);
+      }
+    },
+    [aim],
+  );
+
+  const onPointerCancel = useCallback(() => {
+    touch.current = null;
   }, []);
 
   if (count === 0) {
@@ -61,13 +135,21 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Main image (hover to zoom) */}
+      {/* Main image (hover to zoom on mouse, tap to zoom on touch) */}
       <div
         ref={frameRef}
-        onMouseEnter={() => setZooming(true)}
-        onMouseLeave={() => setZooming(false)}
-        onMouseMove={onMove}
-        className="group relative cursor-zoom-in overflow-hidden rounded-2xl border border-line bg-[#f4f4f4]"
+        onPointerEnter={onPointerEnter}
+        onPointerLeave={onPointerLeave}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
+        // While zoomed, the frame owns touch moves (so a drag pans the lens instead
+        // of scrolling the page); un-zoomed it stays out of the way of page scroll.
+        style={{ touchAction: zooming ? "none" : undefined }}
+        className={`group relative select-none overflow-hidden rounded-2xl border border-line bg-[#f4f4f4] ${
+          zooming ? "cursor-zoom-out" : "cursor-zoom-in"
+        }`}
       >
         {/* Served directly from the source CDN — no Vercel optimizer. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -81,16 +163,19 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
           fetchPriority="high"
           decoding="async"
           referrerPolicy="no-referrer"
+          draggable={false}
           className={`block aspect-4/3 w-full object-cover transition-opacity duration-200 ${
             zooming ? "opacity-0" : "opacity-100"
           }`}
         />
 
         {/* Zoom layer: the same image as a magnified background, panned by the
-            cursor. Hidden on touch (no hover) and faded in only while zooming. */}
+            pointer (cursor on desktop, finger on touch). Faded in only while
+            zooming — it must render on every pointer type, since it's what
+            replaces the base image once that fades out. */}
         <div
           aria-hidden="true"
-          className={`pointer-events-none absolute inset-0 hidden bg-no-repeat transition-opacity duration-200 pointer-fine:block ${
+          className={`pointer-events-none absolute inset-0 bg-no-repeat transition-opacity duration-200 ${
             zooming ? "opacity-100" : "opacity-0"
           }`}
           style={{
@@ -108,18 +193,8 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
             legible and clickable over the magnified photo. */}
         {count > 1 ? (
           <>
-            <GalleryArrow
-              side="left"
-              onClick={prev}
-              onMouseEnter={() => setZooming(false)}
-              onMouseLeave={() => setZooming(true)}
-            />
-            <GalleryArrow
-              side="right"
-              onClick={next}
-              onMouseEnter={() => setZooming(false)}
-              onMouseLeave={() => setZooming(true)}
-            />
+            <GalleryArrow side="left" onClick={prev} onHoverChange={setZooming} />
+            <GalleryArrow side="right" onClick={next} onHoverChange={setZooming} />
           </>
         ) : null}
 
@@ -130,9 +205,20 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
           </span>
         ) : null}
 
-        {/* Hover hint (desktop only, fades out on hover) */}
-        <span className="pointer-events-none absolute bottom-3 left-3 hidden rounded-full bg-black/55 px-3 py-1 text-[11px] font-semibold text-white/90 transition-opacity duration-200 group-hover:opacity-0 pointer-fine:block">
+        {/* Zoom hint — worded per pointer type, and gone once the lens is open. */}
+        <span
+          className={`pointer-events-none absolute bottom-3 left-3 hidden rounded-full bg-black/55 px-3 py-1 text-[11px] font-semibold text-white/90 transition-opacity duration-200 group-hover:opacity-0 pointer-fine:block ${
+            zooming ? "opacity-0" : "opacity-100"
+          }`}
+        >
           Задръж за увеличение
+        </span>
+        <span
+          className={`pointer-events-none absolute bottom-3 left-3 hidden rounded-full bg-black/55 px-3 py-1 text-[11px] font-semibold text-white/90 transition-opacity duration-200 pointer-coarse:block ${
+            zooming ? "opacity-0" : "opacity-100"
+          }`}
+        >
+          Докосни за увеличение
         </span>
       </div>
 
@@ -142,7 +228,7 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
           {images.map((thumb, i) => (
             <Button
               key={thumb}
-              onClick={() => setActive(i)}
+              onClick={() => select(i)}
               aria-label={`Снимка ${i + 1}`}
               aria-current={i === active}
               className={`rounded-lg border-2 transition ${
@@ -175,13 +261,12 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
 function GalleryArrow({
   side,
   onClick,
-  onMouseEnter,
-  onMouseLeave,
+  onHoverChange,
 }: {
   side: "left" | "right";
   onClick: () => void;
-  onMouseEnter?: () => void;
-  onMouseLeave?: () => void;
+  /** Called with `false` when the mouse enters the control, `true` when it leaves. */
+  onHoverChange: (zooming: boolean) => void;
 }) {
   // Positioning lives on a wrapper, NOT on the Button. The shared <Button> hardcodes
   // `relative` (its ripple needs a positioned host); since Tailwind emits `.relative`
@@ -193,11 +278,19 @@ function GalleryArrow({
   // drop the image zoom (like leaving the picture) so the magnified lens isn't panning
   // under the control you're aiming at; moving back onto the image re-arms it. Relies
   // on React firing leave inner→outer / enter outer→inner, so an arrow↔frame crossing
-  // settles on the correct final state.
+  // settles on the correct final state. Gated to `pointerType === "mouse"`: a tap also
+  // synthesises enter/leave, and acting on those would zoom the frame after every
+  // touch on an arrow. `pointerdown` stops here too, so tapping an arrow is never
+  // read as a tap-to-zoom on the frame behind it.
   return (
     <div
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
+      onPointerEnter={(e) => {
+        if (e.pointerType === "mouse") onHoverChange(false);
+      }}
+      onPointerLeave={(e) => {
+        if (e.pointerType === "mouse") onHoverChange(true);
+      }}
+      onPointerDown={(e) => e.stopPropagation()}
       className={`absolute top-1/2 z-2 -translate-y-1/2 ${side === "left" ? "left-3" : "right-3"}`}
     >
       <Button

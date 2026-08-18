@@ -616,10 +616,21 @@ launch. Resolve before selling the feature.
 6. **Feature A scope sanity check.** The „Безплатна консултация" lead type collects
    name + phone and has **no email column at all**; the browser extension ships a
    dedicated Viber module; `BUSINESS` exposes two phone lines. This business may run
-   largely on phone and Viber. The Resend Receiving tab can quantify real inbound
-   volume today — worth checking before committing to inbox + composer + threading +
-   attachments + retention.
-7. **GDPR retention for the mail archive.** The current policy describes *account*
+   largely on phone and Viber. **Now measured (2026-08-17):** ~1 month of retained
+   inbound is 78 messages, of which 60 were the app mailing itself and only ~12
+   were genuine external correspondence (a shipping line, a handful of private
+   senders). So email really is a minority channel — the inbox is built and cheap
+   to keep, but do not invest further here before a unified phone/Viber/email
+   contact log.
+7. **Google Workspace is being billed but cannot receive mail.** The first mail
+   reconcile surfaced two "Payment failure: Google Workspace Business Standard
+   for selectauto.bg" notices, plus other `google.com` / `accounts.google.com`
+   mail. So a Workspace subscription exists for the domain (which also explains
+   the `google-site-verification` TXT record) — but the apex MX points at Resend,
+   so no mail can ever be delivered to a Workspace mailbox. Either the
+   subscription is being paid for nothing, or it lapsed and something still
+   depends on it. Worth resolving before the mail setup is documented as final.
+8. **GDPR retention for the mail archive.** The current policy describes *account*
    data ("докато имате активен профил"). An indefinite archive of arbitrary inbound
    email will contain ЕГН, ID scans, талони and bank details. New processing purpose,
    no stated retention, no deletion job, and erasure requests must now reach the mail
@@ -634,13 +645,13 @@ launch. Resolve before selling the feature.
 | 1 | Confirm Resend dashboard: receiving on, unread backlog | ✅ receiving confirmed ON + catch-all; backlog explicitly out of scope |
 | 2 | Publish `_dmarc` TXT | ⬜ **still open** — verified absent 2026-08-14 |
 | 3 | Phase-0 forward webhook | ✅ done — `api/resend-inbound` + `lib/inbound-mail.ts` |
-| 4 | Migration `00XX_admin_mail` + webhook + lazy body fetch + reconcile cron | ⬜ |
-| 5 | `/admin/poshta` inbox + reply mutation | ⬜ |
+| 4 | Migration `0045_admin_mail` + webhook persistence + lazy body fetch + reconcile cron | ✅ done, verified end-to-end |
+| 5 | `/admin/poshta` inbox + reply mutation | ✅ done |
 | 6 | Migration `0043_car_deindex` + `0044_cars_vin_normalized_idx` (additive) | ✅ applied 2026-08-14, verified |
 | 7 | Proxy 410 + per-car cache tag + `getCarDetail` null | ✅ done, verified live on an active car |
-| 8 | Full read-path exclusion (§3.4) + `_counted` recompute in the mutation | ⬜ — the bulk |
-| 9 | `/admin` deindex UI + IndexNow + Bing API + certificate PDF | ⬜ |
-| 10 | Audit-log viewer (§1.2) | ⬜ |
+| 8 | Full read-path exclusion (§3.4) + `_counted` recompute in the mutation | ✅ done via migration `0046` — verified against live data |
+| 9 | `/admin/skriti-obyavi` deindex UI + IndexNow | ✅ UI + IndexNow done; **Bing API and certificate PDF NOT built** |
+| 10 | Audit-log viewer (§1.2) | ✅ `/admin/dnevnik` |
 
 Steps 6–7 alone already deliver a verifiable "the URL is dead" to a paying customer;
 step 8 is what stops the car appearing anywhere else on the site.
@@ -660,6 +671,48 @@ missing headers → 400, unhandled event type → 200-ignored, non-allowlisted r
 > app as `""`, so a `??` default would have silently relayed the entire catch-all.
 > The code now treats unset **and** empty as the safe default and requires the literal
 > `*` to opt into the catch-all.
+
+### What shipped 2026-08-17
+
+**Feature A, the inbox.** Migration `0045` adds `email_threads` / `email_messages` /
+`email_attachments`. The webhook now PERSISTS first (a failure 500s so Resend
+retries; ingestion is idempotent on the Resend email id) and forwards second,
+best-effort. Threading keys on participant + normalised subject because the
+`email.received` payload is metadata-only and carries no `In-Reply-To`; the
+`message_id` it does carry accumulates into the thread's References chain, so
+outbound replies thread correctly in Gmail/Outlook. Bodies are pulled lazily on
+first open plus an hourly reconcile cron (`/api/cron/mail-reconcile`), never
+inline — Resend's 10 req/s is per TEAM and shared with password-reset sends.
+`/admin/poshta` lists threads and `/admin/poshta/[id]` shows one with a composer
+that sends as `info@selectauto.bg`. Inbound bodies render as PLAIN TEXT only.
+
+Verified end-to-end against production: new message → thread; redelivery →
+deduped; `Re:` subject → same thread; different subject → new thread; attachment
+metadata stored; probe rows cleaned up afterwards.
+
+> **Found by running it:** the first real reconcile pulled 78 messages, of which
+> **60 were the app mailing itself** — `lib/email.ts` sends lead notifications
+> from `noreply@` to `info@`, and the apex MX loops them straight back. Those are
+> now forwarded but never filed as conversations (`MAIL_IGNORE_SENDERS`), since
+> the underlying leads already have their own inboxes. The remaining ~12 were
+> genuine external mail (Hapag-Lloyd shipping correspondence, private senders)
+> **and a Google Workspace payment-failure notice** — see §4.8.
+
+**Feature B, full suppression.** Migration `0046` redefines
+`recompute_car_listings` / `recompute_archived_car_listings` to exclude
+de-indexed cars. That one change covers the catalog, counts, facet dropdowns,
+hubs, both sitemaps, homepage rails, /lyubimi, the digest email, related-cars
+and the VIN search box at once — and because it runs inside the `_counted`
+wrappers, the summary tables get an exact delta instead of drifting.
+`/api/lot-check` needed its own guard (it resolves the URL before consulting the
+projections). `/admin/skriti-obyavi` does search → review → charge → suppress,
+and the confirm dialog states plainly that Google has no removal API.
+
+Verified against live data, inside a rolled-back transaction: de-index removes
+every same-VIN listing, the count and facet summaries move by exactly the right
+amount, and revoke restores them. Also confirmed empirically that VIN keying was
+necessary — some VINs own **8** `cars` rows, and three VINs currently have **two
+live listings each**.
 
 **Feature B, schema + hard signal.** Migrations 0043/0044 applied to production and
 verified: column present, all four indexes VALID (including the `CONCURRENTLY` one,

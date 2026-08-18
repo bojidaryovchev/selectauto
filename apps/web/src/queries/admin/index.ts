@@ -1,3 +1,5 @@
+export { listAuditEvents } from "./list-audit-events.query";
+export type { AuditEventRow } from "./list-audit-events.query";
 export { getAdminOverview } from "./get-admin-overview.query";
 export type { AdminOverview, StatusCounts } from "./get-admin-overview.query";
 export { listCarfaxRequests } from "./list-carfax-requests.query";

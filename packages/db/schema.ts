@@ -1079,6 +1079,112 @@ export const carDeindexRequests = pgTable(
   }),
 );
 
+/**
+ * email_threads / email_messages / email_attachments — the admin mail inbox
+ * (migration 0045).
+ *
+ * `info@selectauto.bg` has NO mailbox: the apex MX points at Resend receiving,
+ * which offers no IMAP/POP. These rows are therefore the only durable record of
+ * the conversation — including of what WE sent, which appears in no Sent folder
+ * anywhere. See docs/admin-mail-and-deindex-plan.md §2.
+ */
+export const emailThreads = pgTable(
+  "email_threads",
+  {
+    id: serial("id").primaryKey(),
+    subject: text("subject"),
+    /** Bare, lower-cased address of the human on the other end. */
+    participantEmail: text("participant_email").notNull(),
+    participantName: text("participant_name"),
+    /** 'new' | 'in_progress' | 'closed' — CHECK-enforced. */
+    status: text("status").notNull().default("new"),
+    assignedTo: text("assigned_to").references(() => users.id, { onDelete: "set null" }),
+    lastMessageAt: timestamp("last_message_at", { withTimezone: true }).defaultNow().notNull(),
+    /** 'inbound' | 'outbound' — CHECK-enforced. */
+    lastDirection: text("last_direction").notNull().default("inbound"),
+    unread: boolean("unread").notNull().default(true),
+    /** Accumulated RFC Message-IDs (oldest first, angle brackets kept). */
+    referencesChain: text("references_chain").array().notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    lastMessageAtIdx: index("email_threads_last_message_at_idx").on(t.lastMessageAt),
+    statusIdx: index("email_threads_status_idx").on(t.status, t.lastMessageAt),
+    participantIdx: index("email_threads_participant_idx").on(t.participantEmail),
+    unreadIdx: index("email_threads_unread_idx").on(t.lastMessageAt),
+  }),
+);
+
+export const emailMessages = pgTable(
+  "email_messages",
+  {
+    id: serial("id").primaryKey(),
+    threadId: integer("thread_id")
+      .notNull()
+      .references(() => emailThreads.id, { onDelete: "cascade" }),
+    /** 'inbound' | 'outbound' — CHECK-enforced. */
+    direction: text("direction").notNull(),
+    /** Resend received-email id. UNIQUE — the at-least-once webhook dedupe key. */
+    resendEmailId: text("resend_email_id"),
+    /** Outbound send id, so a later bounce/complaint webhook can be correlated. */
+    resendSendId: text("resend_send_id"),
+    /** RFC Message-ID, angle brackets retained (used verbatim in In-Reply-To). */
+    messageId: text("message_id"),
+    inReplyTo: text("in_reply_to"),
+    referencesHeader: text("references_header").array().notNull().default([]),
+    fromAddress: text("from_address").notNull(),
+    fromName: text("from_name"),
+    /** The sender's own Reply-To; a reply must prefer this over From. */
+    replyToAddress: text("reply_to_address"),
+    toAddresses: text("to_addresses").array().notNull().default([]),
+    ccAddresses: text("cc_addresses").array().notNull().default([]),
+    /** Which alias Resend accepted delivery FOR (the MX is a catch-all). */
+    receivedFor: text("received_for").array().notNull().default([]),
+    subject: text("subject"),
+    textBody: text("text_body"),
+    htmlBody: text("html_body"),
+    headers: jsonb("headers"),
+    /** NULL = metadata only; the body needs a second Resend API call. */
+    bodyFetchedAt: timestamp("body_fetched_at", { withTimezone: true }),
+    sentByUserId: text("sent_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    deliveryState: text("delivery_state"),
+    deliveryError: text("delivery_error"),
+    hasAttachments: boolean("has_attachments").notNull().default(false),
+    /** The MESSAGE's own time — webhook order is not guaranteed. */
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    resendEmailIdUx: uniqueIndex("email_messages_resend_email_id_key").on(t.resendEmailId),
+    threadIdx: index("email_messages_thread_idx").on(t.threadId, t.createdAt),
+    messageIdIdx: index("email_messages_message_id_idx").on(t.messageId),
+    sendIdIdx: index("email_messages_send_id_idx").on(t.resendSendId),
+    pendingBodyIdx: index("email_messages_pending_body_idx").on(t.createdAt),
+  }),
+);
+
+/** Attachment METADATA only — Resend download URLs expire in 1 hour. */
+export const emailAttachments = pgTable(
+  "email_attachments",
+  {
+    id: serial("id").primaryKey(),
+    messageId: integer("message_id")
+      .notNull()
+      .references(() => emailMessages.id, { onDelete: "cascade" }),
+    resendAttachmentId: text("resend_attachment_id"),
+    filename: text("filename"),
+    contentType: text("content_type"),
+    contentDisposition: text("content_disposition"),
+    contentId: text("content_id"),
+    sizeBytes: bigint("size_bytes", { mode: "number" }),
+    s3Key: text("s3_key"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    messageIdx: index("email_attachments_message_idx").on(t.messageId),
+  }),
+);
+
 // Inferred types for use in queries elsewhere in the app.
 export type Car = typeof cars.$inferSelect;
 export type NewCar = typeof cars.$inferInsert;
@@ -1125,3 +1231,9 @@ export type ContractEvent = typeof contractEvents.$inferSelect;
 export type NewContractEvent = typeof contractEvents.$inferInsert;
 export type CarDeindexRequest = typeof carDeindexRequests.$inferSelect;
 export type NewCarDeindexRequest = typeof carDeindexRequests.$inferInsert;
+export type EmailThread = typeof emailThreads.$inferSelect;
+export type NewEmailThread = typeof emailThreads.$inferInsert;
+export type EmailMessage = typeof emailMessages.$inferSelect;
+export type NewEmailMessage = typeof emailMessages.$inferInsert;
+export type EmailAttachment = typeof emailAttachments.$inferSelect;
+export type NewEmailAttachment = typeof emailAttachments.$inferInsert;

@@ -109,11 +109,31 @@ timer, so it fires **within ~30s and regardless of archive age or active status*
   `x-robots-tag: noindex`** → clear flag → 200, with no cache lag (the proxy check is
   uncached).
 
-> **Not yet done** (see [`admin-mail-and-deindex-plan.md`](admin-mail-and-deindex-plan.md)
-> §3.4–3.5): the admin UI/mutation, excluding de-indexed cars from the catalog /
-> sitemap / hub / favourites read paths, the `recompute_*_counted` call that drops the
-> projection row, and the IndexNow + Bing submissions. Until those land the car still
-> appears in listings and the sitemap — only its own URL is dead.
+- **Full suppression (added 2026-08-17, migration
+  [`0046`](../packages/db/migrations/0046_recompute_excludes_deindexed.sql)):** both
+  recompute functions now exclude de-indexed cars, so the car leaves
+  `car_listings` / `car_listings_archived` entirely. One change covers the catalog
+  feed, the „Намерени: N" count, every filter dropdown, the brand/model hubs, BOTH
+  hub sitemaps, the per-car sitemap chunks, the homepage rails, `/lyubimi`, the
+  daily favourites digest, the related-cars carousel, the three country landing
+  pages, and the catalog SEARCH box (which matches on VIN and bypasses the shared
+  condition builder). Because the recompute runs inside `recompute_*_counted`, the
+  `car_listing_counts` / `car_listing_facets` summaries get an exact delta — a
+  hand-written `DELETE FROM car_listings` would corrupt them permanently.
+- **Admin UI:** `/admin/skriti-obyavi` (search by VIN / lot number / URL → review
+  every affected URL → record requester, proof and fee → suppress). The register
+  doubles as the audit trail, and actions also land in `/admin/dnevnik`.
+- **`/api/lot-check` needed its own guard** — it resolves the car and builds the
+  page URL BEFORE consulting the projections, and is public + consumed by the
+  shipped browser extension, so a projection change alone would not have hidden it.
+- **IndexNow** is pinged on suppression (Bing/Yandex/Naver/Seznam/Yep accept
+  deletion notifications). Google does NOT participate and has no removal API, so
+  the Search Console request stays manual — the confirm dialog says so.
+
+> **Still not done:** the Bing Webmaster `AddBlockedUrl` call, and a customer-facing
+> "delisting certificate" PDF. `/proverka-vin` also still reports that auction
+> records exist for the VIN — that data is upstream (AuctionsAPI) and cannot be
+> suppressed by any change of ours; scope the customer promise accordingly.
 
 ## 4. Brand/model hub pages — the durable ranking asset
 

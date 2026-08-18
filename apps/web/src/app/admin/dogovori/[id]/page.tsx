@@ -10,22 +10,16 @@ import {
   type ContractMarket,
   type ContractStatus,
 } from "@/constants/contracts";
+import { auditActionLabel } from "@/constants/audit";
 import { auth } from "@/auth";
 import { isAdmin } from "@/lib/admin";
 import { dbToCents, formatDbAmount } from "@/lib/money";
 import { getContract } from "@/queries/contracts";
 import { listRecipients } from "@/queries/recipients";
 
-/** BG labels for the audit-trail actions. */
-const EVENT_LABELS: Record<string, string> = {
-  created: "Създаване",
-  updated: "Редакция",
-  status_changed: "Промяна на статус",
-  document_generated: "Генериран документ",
-  marked_paid: "Отбелязано плащане",
-  payment_reverted: "Върнат статус на плащане",
-  attachment_added: "Прикачен документ",
-};
+// Audit-trail labels now live in `constants/audit.ts`, shared with the global
+// log at /admin/dnevnik — two copies would drift the moment a new action is
+// added, and the one on this page would be the copy nobody remembers to update.
 
 /**
  * /admin/dogovori/[id] — the contract detail (spec §4): head data, client, the
@@ -271,7 +265,7 @@ export default async function AdminContractDetailPage({ params }: { params: Prom
                   <span className="whitespace-nowrap font-mono text-xs text-muted">
                     {e.createdAt.toLocaleString("bg-BG")}
                   </span>
-                  <span className="font-semibold text-ink">{EVENT_LABELS[e.action] ?? e.action}</span>
+                  <span className="font-semibold text-ink">{auditActionLabel(e.action)}</span>
                   <span className="text-muted">
                     {e.entity === "payment" ? "(плащане)" : e.entity === "deposit" ? "(депозит)" : e.entity === "client" ? "(клиент)" : ""}
                   </span>

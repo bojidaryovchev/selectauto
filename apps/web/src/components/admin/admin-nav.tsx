@@ -18,12 +18,15 @@ export function AdminNav({ isAdmin = true }: { isAdmin?: boolean }) {
   const links = isAdmin
     ? [
         { href: "/admin", label: "Табло" },
+        { href: "/admin/poshta", label: "Поща" },
         ...LEAD_TYPES.map((t) => ({ href: LEAD_TYPE_META[t].href, label: LEAD_TYPE_META[t].short })),
         { href: "/admin/dogovori", label: "Договори" },
         { href: "/admin/depoziti", label: "Депозити" },
         { href: "/admin/tarifi", label: "Тарифи" },
+        { href: "/admin/skriti-obyavi", label: "Скрити обяви" },
         { href: "/admin/poluchateli", label: "Получатели" },
         { href: "/admin/potrebiteli", label: "Потребители" },
+        { href: "/admin/dnevnik", label: "Дневник" },
       ]
     : [
         { href: "/admin/dogovori", label: "Договори" },

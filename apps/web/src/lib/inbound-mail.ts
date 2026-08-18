@@ -1,4 +1,4 @@
-import type { EmailReceivedEvent } from "resend";
+import type { EmailReceivedEvent, ListReceivingEmail } from "resend";
 import { getResend } from "@/lib/email";
 
 /**
@@ -9,7 +9,80 @@ import { getResend } from "@/lib/email";
 type ReceivedEmailEventData = EmailReceivedEvent["data"];
 
 /**
- * Inbound mail — phase 0: FORWARD ONLY.
+ * One received message, normalised.
+ *
+ * Inbound mail reaches us by TWO routes with different payload shapes — the
+ * `email.received` webhook and `emails.receiving.list()` (the reconcile sweep) —
+ * and both must produce identical rows. Normalising into one type up front means
+ * the compiler checks both adapters, instead of a cast papering over the
+ * differences (an earlier version cast the list shape through `unknown` and
+ * silently discarded attachment metadata, which the list DOES carry).
+ */
+export type InboundEmailInput = {
+  emailId: string;
+  createdAt: string;
+  from: string;
+  to: string[];
+  cc: string[];
+  receivedFor: string[];
+  messageId: string;
+  subject: string | null;
+  attachments: {
+    id: string;
+    filename: string | null;
+    contentType: string | null;
+    contentDisposition: string | null;
+    contentId: string | null;
+    size: number | null;
+  }[];
+};
+
+/** Adapter: the `email.received` webhook payload (metadata only, no sizes). */
+export function fromWebhookEvent(data: ReceivedEmailEventData): InboundEmailInput {
+  return {
+    emailId: data.email_id,
+    createdAt: data.created_at,
+    from: data.from,
+    to: data.to ?? [],
+    cc: data.cc ?? [],
+    receivedFor: data.received_for ?? [],
+    messageId: data.message_id,
+    subject: data.subject ?? null,
+    attachments: (data.attachments ?? []).map((a) => ({
+      id: a.id,
+      filename: a.filename,
+      contentType: a.content_type,
+      contentDisposition: a.content_disposition,
+      contentId: a.content_id,
+      size: null,
+    })),
+  };
+}
+
+/** Adapter: a row from `emails.receiving.list()` (carries attachment sizes). */
+export function fromListRow(row: ListReceivingEmail): InboundEmailInput {
+  return {
+    emailId: row.id,
+    createdAt: row.created_at,
+    from: row.from,
+    to: row.to ?? [],
+    cc: row.cc ?? [],
+    receivedFor: row.received_for ?? [],
+    messageId: row.message_id,
+    subject: row.subject ?? null,
+    attachments: (row.attachments ?? []).map((a) => ({
+      id: a.id,
+      filename: a.filename,
+      contentType: a.content_type,
+      contentDisposition: a.content_disposition,
+      contentId: a.content_id,
+      size: a.size,
+    })),
+  };
+}
+
+/**
+ * Inbound mail — forwarding to a human mailbox.
  *
  * `selectauto.bg`'s apex MX points at Resend's receiving endpoint
  * (`inbound-smtp.eu-west-1.amazonaws.com`), so every message sent to ANY address
@@ -71,9 +144,42 @@ const FORWARD_ADDRESSES = (FORWARD_ADDRESSES_RAW || "info@selectauto.bg")
   .filter(Boolean);
 
 /** `"Име <a@b.bg>"` / `"a@b.bg"` → `"a@b.bg"` (lower-cased). */
-function bareAddress(value: string): string {
+export function bareAddress(value: string): string {
   const angled = value.match(/<([^>]+)>/);
   return (angled ? angled[1] : value).trim().toLowerCase();
+}
+
+/** `"Име <a@b.bg>"` → `"Име"`; a bare address has no display name. */
+export function displayName(value: string): string | null {
+  const m = value.match(/^\s*"?([^"<]*?)"?\s*</);
+  const name = m?.[1]?.trim();
+  return name ? name : null;
+}
+
+/**
+ * Reply/forward prefixes, including the Bulgarian ones a local correspondent's
+ * client will add ("Отг:", "Препр:"), and the numbered `Re[2]:` form.
+ */
+const SUBJECT_PREFIX_RE = /^\s*(?:(?:re|rе|fwd|fw|отг|отговор|препр)\s*(?:\[\d+\])?\s*:\s*)+/i;
+
+/**
+ * Subject reduced to its threading key — prefixes stripped, whitespace collapsed,
+ * lower-cased.
+ *
+ * Why threading keys on the subject at all: Resend's `email.received` webhook
+ * carries METADATA ONLY, so `In-Reply-To` and `References` are simply not
+ * available at ingest time (they arrive later with the body). Grouping by
+ * participant + normalized subject is what an inbox can actually do on the
+ * information it has, and it is what most simple mail UIs do anyway. The
+ * `message_id` that IS in the payload still feeds the thread's References chain,
+ * so OUTBOUND replies thread correctly in Gmail/Outlook regardless.
+ */
+export function subjectKey(subject: string | null | undefined): string {
+  return (subject ?? "")
+    .replace(SUBJECT_PREFIX_RE, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
 }
 
 /** True when forwarding is configured at all (`MAIL_FORWARD_TO` is set). */
@@ -88,10 +194,33 @@ export function isForwardingEnabled(): boolean {
  * the reliable signal; `to`/`cc` are the header values and are checked too so a
  * message that reached us via an alias still matches.
  */
-export function shouldForward(data: ReceivedEmailEventData): boolean {
+export function shouldForward(data: InboundEmailInput): boolean {
   if (FORWARD_ALL) return true;
-  const recipients = [...data.received_for, ...data.to, ...data.cc].map(bareAddress);
+  const recipients = [...data.receivedFor, ...data.to, ...data.cc].map(bareAddress);
   return recipients.some((recipient) => FORWARD_ADDRESSES.includes(recipient));
+}
+
+/**
+ * Senders whose mail is forwarded but NOT filed as a conversation.
+ *
+ * `lib/email.ts` sends every lead notification FROM `noreply@selectauto.bg` TO
+ * `info@selectauto.bg` — and since the apex MX is Resend receiving, each one
+ * comes straight back to us as "inbound". Measured on the first real reconcile:
+ * 60 of 78 stored messages were our own robots talking to themselves.
+ *
+ * Those are not conversations. The underlying leads already have dedicated
+ * inboxes (/admin/carfax, /admin/zapitvaniya, /admin/oferti), so filing them
+ * here would bury real customer mail under duplicate rows. They are still
+ * FORWARDED, because as a "new lead" alert in a human mailbox they are useful.
+ */
+const NON_CONVERSATION_SENDERS = (process.env.MAIL_IGNORE_SENDERS ?? "noreply@selectauto.bg")
+  .split(",")
+  .map((entry) => entry.trim().toLowerCase())
+  .filter(Boolean);
+
+/** True when this message is our own automated mail rather than a correspondent. */
+export function isOwnNotification(data: InboundEmailInput): boolean {
+  return NON_CONVERSATION_SENDERS.includes(bareAddress(data.from));
 }
 
 /**
@@ -106,19 +235,19 @@ export function shouldForward(data: ReceivedEmailEventData): boolean {
  *
  * Throws on failure so the route can answer 5xx and let Resend retry.
  */
-export async function forwardInboundEmail(data: ReceivedEmailEventData): Promise<string> {
+export async function forwardInboundEmail(emailId: string): Promise<string> {
   if (!FORWARD_TO) {
     throw new Error("MAIL_FORWARD_TO is not set");
   }
 
   const response = await getResend().emails.receiving.forward(
     {
-      emailId: data.email_id,
+      emailId,
       to: FORWARD_TO,
       from: FORWARD_FROM,
       passthrough: true,
     },
-    { idempotencyKey: `inbound-forward-${data.email_id}` },
+    { idempotencyKey: `inbound-forward-${emailId}` },
   );
 
   if (response.error) {
