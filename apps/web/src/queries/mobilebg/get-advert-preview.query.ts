@@ -4,36 +4,35 @@ import { type Catfield, getCatfields, validateListValues } from "@/lib/mobilebg/
 import {
   type MappedAdvert,
   type MobilebgCarSource,
-  type MobilebgMapping,
   type MobilebgOverrides,
   buildAdvertParams,
   hashParams,
 } from "@/lib/mobilebg/map-car";
+import type { ResolvedMapping } from "@/lib/mobilebg/resolve";
 import { getCalcConfig } from "@/queries/tariffs";
 import { getMobilebgCarSource } from "./get-advert-source.query";
 
 /**
  * The full, sendable advert for one car — computed but NOT sent.
  *
- * This is the screen an admin signs off before any money is spent, so it has to
- * show the truth about the payload rather than a summary of it: every parameter
- * exactly as it would go over the wire, every field mobile.bg knows about that
- * we could not fill, every blocking reason, and the price with its derivation.
+ * This is the screen an admin signs off before any money is spent, so it shows
+ * the truth about the payload rather than a summary of it: every parameter as it
+ * would go over the wire, how the brand and model were resolved (and from what
+ * evidence), every field we could not fill, every blocking reason, and the price
+ * with its derivation.
  *
- * It also runs `validateListValues`, which is the one check that cannot be done
- * offline: mobile.bg's `list` fields are a closed vocabulary that their API does
- * NOT reliably reject, so a wrong value produces a paid-for advert filed where
- * nobody will find it. Catching that here — against their live dictionary — is
- * the difference between a visible error and an invisible loss.
+ * It also runs `validateListValues` against mobile.bg's LIVE dictionary — the one
+ * check that cannot be done offline. Their `list` fields are a closed vocabulary
+ * their API does NOT reliably reject, so a wrong value produces a paid-for advert
+ * filed where nobody will find it.
  *
- * Works with no credentials at all: `/catfields` and `/dictionary` are public, so
- * the whole preview is exercisable before the import account is authorised.
- * `canSend` reports whether the send button should do anything.
+ * Works with no credentials at all: `/catfields` and `/dictionary` are public.
+ * `credentialsConfigured` reports whether the send button can do anything.
  */
 
 export type MobilebgPreview = {
   source: MobilebgCarSource;
-  mapping: MobilebgMapping;
+  mapping: ResolvedMapping;
   mapped: MappedAdvert;
   /** mobile.bg's own field descriptions, for rendering the payload table. */
   catfields: Record<string, Catfield>;
@@ -64,7 +63,7 @@ export async function getMobilebgPreview(
 ): Promise<MobilebgPreview | null> {
   if (!(await getAdminSession())) throw new Error("FORBIDDEN");
 
-  const found = await getMobilebgCarSource(carId);
+  const found = await getMobilebgCarSource(carId, overrides?.model);
   if (!found) return null;
 
   const config = await getCalcConfig();

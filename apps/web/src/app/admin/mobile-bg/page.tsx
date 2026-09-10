@@ -5,7 +5,7 @@ import {
 } from "@/components/admin/mobilebg";
 import { requireAdminPage } from "@/lib/admin";
 import { isConfigured } from "@/lib/mobilebg/client";
-import { getMobilebgBrandOptions, listMobilebgAdverts, listMobilebgMappings } from "@/queries/mobilebg";
+import { listMobilebgAdverts, listMobilebgMappings } from "@/queries/mobilebg";
 
 /**
  * /admin/mobile-bg — публикуване на автомобили в mobile.bg.
@@ -13,11 +13,6 @@ import { getMobilebgBrandOptions, listMobilebgAdverts, listMobilebgMappings } fr
  * Admin-only, explicitly: the /admin layout gates only to back-office level, and
  * every action here spends money on an external platform and puts our name on a
  * public advert. An „Наблюдаващ" must not reach it.
- *
- * The brand-list fetch hits mobile.bg's PUBLIC dictionary, so the mapping desk
- * works before the import account is authorised — which is the state we are in
- * until they enable it. It fails soft: an empty option list degrades the picker,
- * it does not break the page.
  */
 export default async function AdminMobilebgPage({
   searchParams,
@@ -27,13 +22,9 @@ export default async function AdminMobilebgPage({
   await requireAdminPage();
   const sp = await searchParams;
 
-  const [{ rows, total }, mappings, brandOptions] = await Promise.all([
+  const [{ rows, total }, mappings] = await Promise.all([
     listMobilebgAdverts(Number(sp.page) || 1),
     listMobilebgMappings(),
-    getMobilebgBrandOptions().catch((error) => {
-      console.error("[mobilebg] brand options failed", error);
-      return [];
-    }),
   ]);
 
   return (
@@ -65,17 +56,14 @@ export default async function AdminMobilebgPage({
       </div>
 
       <div>
-        <h2 className="mb-1 text-lg font-black tracking-tight text-ink">Съответствия марки и модели</h2>
+        <h2 className="mb-1 text-lg font-black tracking-tight text-ink">Запомнени съответствия</h2>
         <p className="mb-3 text-sm text-muted">
-          mobile.bg приема само свои имена на марки и модели („VW“, а не Volkswagen; „KGM“, а не
-          SsangYong). Грешен модел не дава грешка — обявата просто попада там, където никой не я
-          търси, затова връзката се потвърждава веднъж и се пази.
+          Марките и моделите се разпознават автоматично по речника на mobile.bg — по същото име,
+          известен синоним или обозначението в заглавието („330I“ → „330“). Тук са само ръчно
+          потвърдените изключения, зададени от прегледа на обявата. Премахването връща модела към
+          автоматичното разпознаване.
         </p>
-        <MobilebgMappingDesk
-          brandOptions={brandOptions}
-          brands={mappings.brands}
-          models={mappings.models}
-        />
+        <MobilebgMappingDesk brands={mappings.brands} models={mappings.models} />
       </div>
     </div>
   );

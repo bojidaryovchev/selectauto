@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { ConfirmDialog } from "@/components/common";
 import { deleteMobilebgAdvert } from "@/mutations/mobilebg";
 import type { MobilebgAdvertRow } from "@/queries/mobilebg";
+import { carTitle } from "@/lib/mobilebg/car-title";
 
 /**
  * The register of everything we have sent to mobile.bg.
@@ -76,8 +77,7 @@ export function MobilebgAdvertList({ rows }: { rows: MobilebgAdvertRow[] }) {
               <tr key={r.carId} className="border-b border-line/60 last:border-0 align-top">
                 <td className="px-3 py-2">
                   <Link href={`/avtomobil/${r.carId}`} className="font-semibold text-ink hover:text-brand">
-                    {r.year ? `${r.year} ` : ""}
-                    {r.title ?? `Кола ${r.carId}`}
+                    {carTitle(r.year, r.title, r.carId)}
                   </Link>
                   <div className="text-xs text-muted">
                     #{r.carId}

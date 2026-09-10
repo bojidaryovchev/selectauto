@@ -4,9 +4,7 @@ export { getMobilebgPreview, type MobilebgPreview } from "./get-advert-preview.q
 export { listMobilebgAdverts, type MobilebgAdvertRow } from "./list-adverts.query";
 export { lookupCarForMobilebg, type CarLookupHit } from "./lookup-car.query";
 export {
-  getMobilebgBrandOptions,
-  getMobilebgModelOptions,
   listMobilebgMappings,
   type MobilebgBrandMapRow,
   type MobilebgModelMapRow,
-} from "./get-mapping-options.query";
+} from "./list-mappings.query";

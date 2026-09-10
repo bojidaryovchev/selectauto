@@ -18,8 +18,8 @@ import { damageLabel, titleDocLabel } from "@/lib/car-labels";
  * and files the advert where no buyer will look, after we have been charged. So
  * an unmappable value becomes a WARNING (field omitted) or a BLOCKER (publish
  * refused), never a plausible-looking guess. Brand and model in particular are
- * resolved only from admin-confirmed rows in `mobilebg_brand_map` /
- * `mobilebg_model_map`; there is deliberately no fuzzy fallback.
+ * resolved by lib/mobilebg/resolve.ts — admin overrides first, then only exact
+ * evidence against mobile.bg's live lists; there is deliberately no fuzzy match.
  *
  * **2. Never advertise the auction price.** `car_listings.effective_price` is the
  * US/KR auction bid or buy-now in USD — roughly half what the car costs a
@@ -198,6 +198,9 @@ export type MobilebgOverrides = {
   extri?: string[];
   /** Replace the generated description. */
   extinfo?: string;
+  /** mobile.bg model picked for THIS advert only (not remembered). Consumed by
+   *  lib/mobilebg/resolve.ts before the mapper runs. */
+  model?: string;
 };
 
 export type MapWarning = { field: string; message: string };
@@ -343,12 +346,11 @@ export function buildAdvertParams(args: {
   }
   if (!mapping.marka) {
     blockers.push(
-      `Марката „${source.brandName ?? "—"}“ няма съответствие в mobile.bg. Задайте го от таблицата с марки.`,
+      `Марката „${source.brandName ?? "—"}“ не е разпозната в mobile.bg — изберете я по-горе, в „Марка и модел в mobile.bg“.`,
     );
-  }
-  if (!mapping.model) {
+  } else if (!mapping.model) {
     blockers.push(
-      `Моделът „${source.modelName ?? "—"}“ няма съответствие в mobile.bg. Задайте го от таблицата с модели.`,
+      `Моделът „${source.modelName ?? "—"}“ не е разпознат в mobile.bg — изберете го по-горе, в „Марка и модел в mobile.bg“.`,
     );
   }
   if (!source.year) blockers.push("Липсва година на производство.");

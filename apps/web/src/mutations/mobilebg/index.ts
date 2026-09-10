@@ -12,4 +12,4 @@ export {
   type SaveBrandMappingInput,
   type SaveModelMappingInput,
 } from "./save-mapping.mutation";
-export { lookupCarAction, modelOptionsAction, previewAdvertAction } from "./preview.action";
+export { lookupCarAction, previewAdvertAction } from "./preview.action";

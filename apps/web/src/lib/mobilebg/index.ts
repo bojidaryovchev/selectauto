@@ -1,9 +1,4 @@
-export {
-  MAX_PICTURES,
-  MobilebgError,
-  isConfigured,
-  type VipTopAction,
-} from "./client";
+export { MAX_PICTURES, MobilebgError, isConfigured, type VipTopAction } from "./client";
 export {
   RUB_MAIN,
   TOPMENU_CARS,
@@ -23,3 +18,11 @@ export {
   type MobilebgOverrides,
 } from "./map-car";
 export { PICTURE_ROUTE_PREFIX, picturePath, preparePictures } from "./pictures";
+export {
+  resolveMobilebgMapping,
+  type MarkaSource,
+  type ResolvedMapping,
+  type ResolvedModelSource,
+} from "./resolve";
+export { matchBrand, matchModel, vocabKey, type ModelMatch, type ModelSource } from "./vocab-match";
+export { carTitle } from "./car-title";

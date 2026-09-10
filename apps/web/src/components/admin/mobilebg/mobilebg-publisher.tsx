@@ -3,8 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Combobox, ConfirmDialog } from "@/components/common";
+import { carTitle } from "@/lib/mobilebg/car-title";
 import type { MobilebgOverrides } from "@/lib/mobilebg/map-car";
-import { lookupCarAction, previewAdvertAction, publishCarToMobilebg } from "@/mutations/mobilebg";
+import {
+  lookupCarAction,
+  previewAdvertAction,
+  publishCarToMobilebg,
+  saveMobilebgBrandMapping,
+  saveMobilebgModelMapping,
+} from "@/mutations/mobilebg";
 import type { CarLookupHit, MobilebgPreview } from "@/queries/mobilebg";
 
 /**
@@ -13,19 +20,59 @@ import type { CarLookupHit, MobilebgPreview } from "@/queries/mobilebg";
  * The PREVIEW step is the point of this screen. mobile.bg bills per advert and
  * accepts a wrong `list` value without complaining — it just files the advert
  * where nobody looks. So nothing is sent until an admin has seen the exact
- * payload, the price with its derivation, and every field we could not fill.
+ * payload, how the brand and model were resolved, the price with its derivation,
+ * and every field we could not fill.
  *
- * The overrides below are the fields our data genuinely cannot supply: the
- * production month (we store only the year), the city (mobile.bg's dependent
- * `locatc` list is empty without an authorised account) and the equipment list
- * (we hold almost none of their 96 features for a salvage lot). They are inputs,
- * not defaults — the mapper never invents them.
+ * Brand/model resolve automatically against mobile.bg's live vocabulary; when
+ * they cannot, the pickers here are where the admin chooses — once for the model
+ * everywhere („запомни“), or just for this advert when the right answer depends
+ * on the car's version (BMW „3er“ is „320“ or „330“ depending on the engine).
+ *
+ * The other overrides are fields our data genuinely cannot supply: production
+ * month (we store only the year), city (mobile.bg's dependent `locatc` list is
+ * empty without an authorised account) and equipment (we hold almost none of
+ * their 96 features for a salvage lot). Inputs, not defaults — never invented.
  */
 
 const MONTHS = [
   "януари", "февруари", "март", "април", "май", "юни",
   "юли", "август", "септември", "октомври", "ноември", "декември",
 ];
+
+function markaProvenance(p: MobilebgPreview): string {
+  switch (p.mapping.markaSource) {
+    case "manual":
+      return "ръчно съответствие";
+    case "exact":
+      return "същото име";
+    case "alias":
+      return `известен синоним на „${p.source.brandName ?? "—"}“`;
+    default:
+      return "";
+  }
+}
+
+function modelProvenance(p: MobilebgPreview): string {
+  const evidence = p.mapping.modelEvidence ?? "";
+  switch (p.mapping.modelSource) {
+    case "override":
+      return "избран за тази обява";
+    case "manual":
+      return "ръчно съответствие";
+    case "exact":
+      return "същото име";
+    case "brand-prefixed":
+      return `под марката на mobile.bg („${evidence}“)`;
+    case "variant":
+      return `от името „${p.source.modelName ?? "—"}“, потвърдено от заглавието`;
+    case "title":
+      return `от заглавието („${evidence}“)`;
+    case "family":
+      return `семейство („${evidence}“)`;
+    default:
+      return "";
+  }
+}
 
 export function MobilebgPublisher() {
   const router = useRouter();
@@ -46,6 +93,13 @@ export function MobilebgPublisher() {
   const [extraExtri, setExtraExtri] = useState("");
   const [extinfo, setExtinfo] = useState("");
 
+  // Brand/model pickers.
+  const [modelOverride, setModelOverride] = useState("");
+  const [pickedMarka, setPickedMarka] = useState("");
+  const [pickedModel, setPickedModel] = useState("");
+  const [rememberModel, setRememberModel] = useState(true);
+  const [changingModel, setChangingModel] = useState(false);
+
   function overrides(): MobilebgOverrides {
     const parsedPrice = Number(priceOverride.replace(",", "."));
     return {
@@ -59,7 +113,31 @@ export function MobilebgPublisher() {
         .map((s) => s.trim())
         .filter(Boolean),
       extinfo: extinfo.trim() || undefined,
+      model: modelOverride || undefined,
     };
+  }
+
+  /** `over` is explicit because state set just before a load has not applied yet. */
+  function load(carId: number, over: MobilebgOverrides = overrides()) {
+    setError(null);
+    startTransition(async () => {
+      const res = await previewAdvertAction(carId, over);
+      if (!res.success) {
+        setError(res.error);
+        setPreview(null);
+        return;
+      }
+      setPreview(res.data);
+      setPickedMarka("");
+      setPickedModel(res.data.mapping.model ?? "");
+      setChangingModel(false);
+    });
+  }
+
+  /** A different car: a model picked for the previous advert must not carry over. */
+  function openCar(carId: number) {
+    setModelOverride("");
+    load(carId, { ...overrides(), model: undefined });
   }
 
   function search() {
@@ -77,26 +155,59 @@ export function MobilebgPublisher() {
       }
       setHits(res.data);
       if (res.data.length === 0) setError("Няма намерен автомобил по този ID / VIN / номер на лот / линк.");
-      else if (res.data.length === 1) load(res.data[0].carId);
-    });
-  }
-
-  function load(carId: number) {
-    setError(null);
-    startTransition(async () => {
-      const res = await previewAdvertAction(carId, overrides());
-      if (!res.success) {
-        setError(res.error);
-        setPreview(null);
-        return;
-      }
-      setPreview(res.data);
+      else if (res.data.length === 1) openCar(res.data[0].carId);
     });
   }
 
   /** Recompute against the current overrides — the preview must stay truthful. */
   function refresh() {
     if (preview) load(preview.source.carId);
+  }
+
+  function saveBrand() {
+    if (!preview || !pickedMarka) return;
+    const { carId, manufacturerExternalId } = preview.source;
+    if (manufacturerExternalId === null) {
+      setError("Автомобилът няма марка в нашия справочник — съответствие не може да се запомни.");
+      return;
+    }
+    setError(null);
+    startTransition(async () => {
+      const res = await saveMobilebgBrandMapping({ manufacturerExternalId, marka: pickedMarka });
+      if (!res.success) {
+        setError(res.error);
+        return;
+      }
+      load(carId);
+    });
+  }
+
+  function applyModel() {
+    if (!preview || !pickedModel || !preview.mapping.marka) return;
+    const { carId, modelExternalId, manufacturerExternalId } = preview.source;
+    const marka = preview.mapping.marka;
+    setError(null);
+
+    if (rememberModel && modelExternalId !== null && manufacturerExternalId !== null) {
+      startTransition(async () => {
+        const res = await saveMobilebgModelMapping({
+          modelExternalId,
+          manufacturerExternalId,
+          marka,
+          model: pickedModel,
+        });
+        if (!res.success) {
+          setError(res.error);
+          return;
+        }
+        setModelOverride("");
+        load(carId, { ...overrides(), model: undefined });
+      });
+      return;
+    }
+
+    setModelOverride(pickedModel);
+    load(carId, { ...overrides(), model: pickedModel });
   }
 
   function confirmPublish() {
@@ -126,6 +237,7 @@ export function MobilebgPublisher() {
   }
 
   const mapped = preview?.mapped;
+  const mapping = preview?.mapping;
   const blockers = mapped?.blockers ?? [];
   const invalid = preview?.invalidValues ?? [];
   const canPublish =
@@ -133,6 +245,8 @@ export function MobilebgPublisher() {
     blockers.length === 0 &&
     invalid.length === 0 &&
     Boolean(preview?.credentialsConfigured);
+  const showModelPicker =
+    Boolean(mapping?.marka) && (!mapping?.model || changingModel) && (mapping?.modelOptions.length ?? 0) > 0;
 
   return (
     <div className="space-y-4">
@@ -173,13 +287,10 @@ export function MobilebgPublisher() {
               <li key={h.carId}>
                 <button
                   type="button"
-                  onClick={() => load(h.carId)}
+                  onClick={() => openCar(h.carId)}
                   className="w-full rounded-lg px-3 py-2 text-left text-sm text-ink hover:bg-neutral-100"
                 >
-                  <span className="font-semibold">
-                    {h.year ? `${h.year} ` : ""}
-                    {h.title ?? `Кола ${h.carId}`}
-                  </span>
+                  <span className="font-semibold">{carTitle(h.year, h.title, h.carId)}</span>
                   <span className="text-muted">
                     {" "}
                     · #{h.carId}
@@ -193,12 +304,11 @@ export function MobilebgPublisher() {
         </div>
       )}
 
-      {preview && (
+      {preview && mapping && (
         <div className="space-y-4 rounded-2xl border border-line bg-white p-4">
           <div>
             <h2 className="font-bold text-ink">
-              {preview.source.year ? `${preview.source.year} ` : ""}
-              {preview.source.title ?? `Кола ${preview.source.carId}`}
+              {carTitle(preview.source.year, preview.source.title, preview.source.carId)}
             </h2>
             <p className="text-sm text-muted">
               #{preview.source.carId}
@@ -215,6 +325,106 @@ export function MobilebgPublisher() {
               не може да бъде изпратена.
             </p>
           )}
+
+          {/* Brand / model — resolved automatically, with the evidence shown. */}
+          <div className="rounded-xl border border-line p-3">
+            <p className="text-sm font-bold text-ink">Марка и модел в mobile.bg</p>
+            {mapping.unavailable ? (
+              <p className="mt-1 text-sm text-[#b3261e]">
+                Речникът на mobile.bg не отговаря — съответствието не може да бъде проверено.
+                Опитайте „Преизчисли“ след малко.
+              </p>
+            ) : (
+              <ul className="mt-1 space-y-0.5 text-sm text-ink">
+                <li>
+                  Марка: <strong>{mapping.marka ?? "—"}</strong>
+                  {mapping.marka && <span className="text-muted"> — {markaProvenance(preview)}</span>}
+                </li>
+                <li>
+                  Модел: <strong>{mapping.model ?? "—"}</strong>
+                  {mapping.model && <span className="text-muted"> — {modelProvenance(preview)}</span>}
+                  {mapping.model && !changingModel && (
+                    <button
+                      type="button"
+                      onClick={() => setChangingModel(true)}
+                      className="ml-2 text-xs font-bold text-brand"
+                    >
+                      промени
+                    </button>
+                  )}
+                </li>
+              </ul>
+            )}
+
+            {!mapping.marka && mapping.markaOptions.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-end gap-2">
+                <div className="min-w-56 flex-1">
+                  <label className="mb-1 block text-xs font-semibold text-muted">
+                    Марката „{preview.source.brandName ?? "—"}“ в mobile.bg е:
+                  </label>
+                  <Combobox
+                    options={[
+                      { value: "", label: "— изберете —" },
+                      ...mapping.markaOptions.map((m) => ({ value: m, label: m })),
+                    ]}
+                    value={pickedMarka}
+                    onValueChange={setPickedMarka}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={saveBrand}
+                  disabled={pending || !pickedMarka}
+                  className="h-11 rounded-full bg-brand px-5 text-sm font-bold text-white disabled:opacity-40"
+                >
+                  Запомни марката
+                </button>
+              </div>
+            )}
+
+            {showModelPicker && (
+              <div className="mt-3 space-y-2">
+                <div className="flex flex-wrap items-end gap-2">
+                  <div className="min-w-56 flex-1">
+                    <label className="mb-1 block text-xs font-semibold text-muted">
+                      Моделът „{preview.source.modelName ?? "—"}“ в mobile.bg е:
+                    </label>
+                    <Combobox
+                      options={[
+                        { value: "", label: "— изберете —" },
+                        ...mapping.modelOptions.map((m) => ({ value: m, label: m })),
+                      ]}
+                      value={pickedModel}
+                      onValueChange={setPickedModel}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={applyModel}
+                    disabled={pending || !pickedModel}
+                    className="h-11 rounded-full bg-brand px-5 text-sm font-bold text-white disabled:opacity-40"
+                  >
+                    Използвай
+                  </button>
+                </div>
+                {preview.source.modelExternalId !== null && (
+                  <label className="flex items-start gap-2 text-xs text-ink">
+                    <input
+                      type="checkbox"
+                      checked={rememberModel}
+                      onChange={(e) => setRememberModel(e.target.checked)}
+                      className="mt-0.5"
+                    />
+                    <span>
+                      Запомни за всички коли с модел „{preview.source.modelName ?? "—"}“. Махнете
+                      отметката, ако зависи от версията — напр. BMW „3er“ е „320“ или „330“ според
+                      двигателя.
+                    </span>
+                  </label>
+                )}
+              </div>
+            )}
+          </div>
 
           {blockers.length > 0 && (
             <div className="rounded-lg bg-[#fdecea] px-3 py-2 text-sm text-[#b3261e]">
@@ -255,9 +465,10 @@ export function MobilebgPublisher() {
               </strong>
             </p>
             <p className="mt-1 text-xs text-muted">
-              Аукционната цена на лота е {preview.source.priceUsd
+              Аукционната цена на лота е{" "}
+              {preview.source.priceUsd
                 ? `${Math.round(preview.source.priceUsd).toLocaleString("bg-BG")} $`
-                : "—"}{" "}
+                : "— (лотът още няма наддаване или „Купи сега“)"}{" "}
               и НЕ се публикува — тя не включва транспорт, мито, ДДС и такси.
             </p>
           </div>

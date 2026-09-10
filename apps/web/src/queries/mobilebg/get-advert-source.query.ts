@@ -1,7 +1,8 @@
 import { eq } from "drizzle-orm";
 import { getAdminSession } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
-import type { MobilebgCarSource, MobilebgMapping } from "@/lib/mobilebg/map-car";
+import type { MobilebgCarSource } from "@/lib/mobilebg/map-car";
+import { type ResolvedMapping, resolveMobilebgMapping } from "@/lib/mobilebg/resolve";
 import { getCarGallery } from "./get-car-gallery.query";
 
 /**
@@ -21,7 +22,7 @@ import { getCarGallery } from "./get-car-gallery.query";
 
 export type MobilebgSourceResult = {
   source: MobilebgCarSource;
-  mapping: MobilebgMapping;
+  mapping: ResolvedMapping;
   /** Present when this car has been submitted to mobile.bg before. */
   advert: {
     ida: string | null;
@@ -56,7 +57,10 @@ function numOrNull(value: string | number | null): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-export async function getMobilebgCarSource(carId: number): Promise<MobilebgSourceResult | null> {
+export async function getMobilebgCarSource(
+  carId: number,
+  overrideModel?: string,
+): Promise<MobilebgSourceResult | null> {
   if (!(await getAdminSession())) throw new Error("FORBIDDEN");
   if (!Number.isInteger(carId) || carId <= 0) return null;
 
@@ -216,16 +220,18 @@ export async function getMobilebgCarSource(carId: number): Promise<MobilebgSourc
     isArchived: gallery.archived,
   };
 
-  // The model map carries its own `marka` because mobile.bg's model vocabulary
-  // is brand-scoped. When both maps exist they must agree — a mismatch means one
-  // was confirmed against a different brand, so the model is dropped rather than
-  // sent against the wrong marka.
-  const brandMarka = brandMapRows[0]?.marka ?? null;
+  // Remembered rows are OVERRIDES, not a prerequisite: resolution tries them
+  // first, then matches against mobile.bg's live vocabulary (lib/mobilebg/resolve.ts).
   const modelRow = modelMapRows[0] ?? null;
-  const mapping: MobilebgMapping = {
-    marka: brandMarka,
-    model: modelRow && brandMarka && modelRow.marka === brandMarka ? modelRow.model : null,
-  };
+  const mapping = await resolveMobilebgMapping({
+    brandName: source.brandName,
+    modelName: source.modelName,
+    title: source.title,
+    year: source.year,
+    manualMarka: brandMapRows[0]?.marka ?? null,
+    manualModel: modelRow ? { marka: modelRow.marka, model: modelRow.model } : null,
+    overrideModel,
+  });
 
   return { source, mapping, advert: advertRows[0] ?? null };
 }
