@@ -35,6 +35,7 @@ export const calcConfigSchema = z.object({
   agencyEur: money,
   bgTransportEur: z.object({ sedan: money, suv: money }),
   technotestEur: money,
+  mobilebgMarkupPct: pct,
 });
 
 export type CalcConfigValues = z.infer<typeof calcConfigSchema>;

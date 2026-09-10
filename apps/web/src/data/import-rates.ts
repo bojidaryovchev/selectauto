@@ -71,6 +71,16 @@ export type CalcConfig = {
   bgTransportEur: { sedan: number; suv: number };
   /** Optional технотест (EUR). */
   technotestEur: number;
+  /**
+   * Retail markup % applied ON TOP of the landed import total when a car is
+   * published to mobile.bg (migration 0047). A mobile.bg advert is a RETAIL
+   * sale, not a mediation service — the calculator's total is our cost to put
+   * the car on the ground in Bulgaria, so advertising it unmarked would sell at
+   * cost. Lives here rather than in its own settings row so it rides the same
+   * admin-editable `calculator_settings` JSONB the rest of the money already
+   * uses. Only `lib/mobilebg/map-car.ts` reads it; the public calculator does not.
+   */
+  mobilebgMarkupPct: number;
 };
 
 /** The owner's dictated defaults — fallback + the form's starting values. */
@@ -103,6 +113,10 @@ export const DEFAULT_CALC_CONFIG: CalcConfig = {
   agencyEur: 550,
   bgTransportEur: { sedan: 1250, suv: 1350 },
   technotestEur: 350,
+  // Starts at 0 deliberately: a markup is a pricing decision the owner makes in
+  // /admin/тарифи, not a number this file should invent. At 0 the advert price
+  // equals the landed total, which is the honest floor.
+  mobilebgMarkupPct: 0,
 };
 
 export const MARKETS: { id: MarketId; label: string; transit: string; originToggle: boolean }[] = [

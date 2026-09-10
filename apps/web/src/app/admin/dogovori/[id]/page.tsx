@@ -69,12 +69,11 @@ export default async function AdminContractDetailPage({ params }: { params: Prom
           <Link href="/admin/dogovori" className="text-sm font-semibold text-muted hover:text-ink">
             ← Всички договори
           </Link>
-          {canManage ? (
-            <ContractDocumentButton
-              contractId={contract.id}
-              documents={documents.filter((d) => d.kind === "contract")}
-            />
-          ) : null}
+          {/* Printing is open to „Наблюдаващ" too — it never edits the contract. */}
+          <ContractDocumentButton
+            contractId={contract.id}
+            documents={documents.filter((d) => d.kind === "contract")}
+          />
         </div>
       </div>
 

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/common";
+import { INQUIRY_LOGO } from "@/constants";
 import { CheckIcon, ChevronLeftIcon, CloseIcon } from "@/components/icons";
 import {
   INQUIRY_BRANDS,
@@ -35,8 +36,6 @@ import { QuizStep } from "./quiz-step";
  * `@/lib/phone`.
  */
 
-// Local asset served from public/.
-const LOGO = "/images/inquiry-hero.jpg";
 
 type Screen = "start" | "quiz";
 type QuizData = {
@@ -321,12 +320,22 @@ export function InquiryModal({
         {/* Start screen */}
         {screen === "start" && (
           <div>
+            {/* Dimensions come from INQUIRY_LOGO so they track the file's real 758×497
+                ratio — see the constant for why a wrong ratio resizes this box on load.
+                The element only exists once the modal opens, so it is fetched eagerly at
+                high priority rather than lazily; InquiryProvider has usually already
+                warmed it during idle, making this a cache hit. Next 16's `preload` prop
+                is deliberately NOT used: it inserts a <head> link, useless for an element
+                that does not exist until open, and the docs say not to pair it with
+                `fetchPriority`. */}
             <Image
-              src={LOGO}
+              src={INQUIRY_LOGO.src}
               alt="SelectAuto"
-              width={150}
-              height={62}
+              width={INQUIRY_LOGO.width}
+              height={INQUIRY_LOGO.height}
               unoptimized
+              loading="eager"
+              fetchPriority="high"
               className="mx-auto mb-3.5 block max-w-37.5 rounded-[10px] max-[640px]:max-w-32.5"
             />
             <h2

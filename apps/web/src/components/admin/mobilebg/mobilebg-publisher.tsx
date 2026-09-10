@@ -1,0 +1,448 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import { Combobox, ConfirmDialog } from "@/components/common";
+import type { MobilebgOverrides } from "@/lib/mobilebg/map-car";
+import { lookupCarAction, previewAdvertAction, publishCarToMobilebg } from "@/mutations/mobilebg";
+import type { CarLookupHit, MobilebgPreview } from "@/queries/mobilebg";
+
+/**
+ * Търси → преглед → публикувай.
+ *
+ * The PREVIEW step is the point of this screen. mobile.bg bills per advert and
+ * accepts a wrong `list` value without complaining — it just files the advert
+ * where nobody looks. So nothing is sent until an admin has seen the exact
+ * payload, the price with its derivation, and every field we could not fill.
+ *
+ * The overrides below are the fields our data genuinely cannot supply: the
+ * production month (we store only the year), the city (mobile.bg's dependent
+ * `locatc` list is empty without an authorised account) and the equipment list
+ * (we hold almost none of their 96 features for a salvage lot). They are inputs,
+ * not defaults — the mapper never invents them.
+ */
+
+const MONTHS = [
+  "януари", "февруари", "март", "април", "май", "юни",
+  "юли", "август", "септември", "октомври", "ноември", "декември",
+];
+
+export function MobilebgPublisher() {
+  const router = useRouter();
+  const [query, setQuery] = useState("");
+  const [hits, setHits] = useState<CarLookupHit[]>([]);
+  const [preview, setPreview] = useState<MobilebgPreview | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  // Admin-supplied fields — see the note above on why each one exists.
+  const [month, setMonth] = useState("");
+  const [locatc, setLocatc] = useState("");
+  const [term, setTerm] = useState("35");
+  const [priceOverride, setPriceOverride] = useState("");
+  const [priceOnRequest, setPriceOnRequest] = useState(false);
+  const [extraExtri, setExtraExtri] = useState("");
+  const [extinfo, setExtinfo] = useState("");
+
+  function overrides(): MobilebgOverrides {
+    const parsedPrice = Number(priceOverride.replace(",", "."));
+    return {
+      month: month || undefined,
+      locatc: locatc.trim() || undefined,
+      term,
+      priceEur: priceOverride.trim() && Number.isFinite(parsedPrice) ? parsedPrice : undefined,
+      priceOnRequest: priceOnRequest || undefined,
+      extri: extraExtri
+        .split("~")
+        .map((s) => s.trim())
+        .filter(Boolean),
+      extinfo: extinfo.trim() || undefined,
+    };
+  }
+
+  function search() {
+    const q = query.trim();
+    if (!q) return;
+    setError(null);
+    setNotice(null);
+    setPreview(null);
+    startTransition(async () => {
+      const res = await lookupCarAction(q);
+      if (!res.success) {
+        setError(res.error);
+        setHits([]);
+        return;
+      }
+      setHits(res.data);
+      if (res.data.length === 0) setError("Няма намерен автомобил по този ID / VIN / номер на лот / линк.");
+      else if (res.data.length === 1) load(res.data[0].carId);
+    });
+  }
+
+  function load(carId: number) {
+    setError(null);
+    startTransition(async () => {
+      const res = await previewAdvertAction(carId, overrides());
+      if (!res.success) {
+        setError(res.error);
+        setPreview(null);
+        return;
+      }
+      setPreview(res.data);
+    });
+  }
+
+  /** Recompute against the current overrides — the preview must stay truthful. */
+  function refresh() {
+    if (preview) load(preview.source.carId);
+  }
+
+  function confirmPublish() {
+    setConfirming(false);
+    if (!preview) return;
+    setError(null);
+    startTransition(async () => {
+      const res = await publishCarToMobilebg({
+        carId: preview.source.carId,
+        overrides: overrides(),
+      });
+      if (!res.success) {
+        setError(res.error);
+        return;
+      }
+      const skipped =
+        res.data.skippedPictures.length > 0
+          ? ` Пропуснати снимки: ${res.data.skippedPictures.length}.`
+          : "";
+      setNotice(
+        `${res.data.edited ? "Обявата е коригирана" : "Обявата е публикувана"} — ID ${res.data.ida}, ` +
+          `${res.data.pictureCount} снимки.${skipped}`,
+      );
+      load(preview.source.carId);
+      router.refresh();
+    });
+  }
+
+  const mapped = preview?.mapped;
+  const blockers = mapped?.blockers ?? [];
+  const invalid = preview?.invalidValues ?? [];
+  const canPublish =
+    Boolean(preview) &&
+    blockers.length === 0 &&
+    invalid.length === 0 &&
+    Boolean(preview?.credentialsConfigured);
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-line bg-white p-4">
+        <label htmlFor="mobilebg-q" className="mb-1 block text-sm font-semibold text-ink">
+          ID на автомобил, VIN, номер на лот или линк към обявата
+        </label>
+        <div className="flex flex-wrap gap-2">
+          <input
+            id="mobilebg-q"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") search();
+            }}
+            placeholder="напр. 50290 или https://www.selectauto.bg/avtomobil/50290"
+            className="h-10 min-w-64 flex-1 rounded-full border border-line bg-white px-4 text-sm text-ink outline-none focus:border-brand"
+          />
+          <button
+            type="button"
+            onClick={search}
+            disabled={pending || !query.trim()}
+            className="h-10 rounded-full bg-brand px-5 text-sm font-bold text-white disabled:opacity-40"
+          >
+            {pending ? "Търси…" : "Търси"}
+          </button>
+        </div>
+      </div>
+
+      {error && <p className="rounded-lg bg-[#fdecea] px-3 py-2 text-sm text-[#b3261e]">{error}</p>}
+      {notice && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{notice}</p>}
+
+      {hits.length > 1 && !preview && (
+        <div className="rounded-2xl border border-line bg-white p-4">
+          <h2 className="mb-2 font-bold text-ink">Изберете автомобил</h2>
+          <ul className="space-y-1">
+            {hits.map((h) => (
+              <li key={h.carId}>
+                <button
+                  type="button"
+                  onClick={() => load(h.carId)}
+                  className="w-full rounded-lg px-3 py-2 text-left text-sm text-ink hover:bg-neutral-100"
+                >
+                  <span className="font-semibold">
+                    {h.year ? `${h.year} ` : ""}
+                    {h.title ?? `Кола ${h.carId}`}
+                  </span>
+                  <span className="text-muted">
+                    {" "}
+                    · #{h.carId}
+                    {h.lotNumber ? ` · лот ${h.lotNumber}` : ""}
+                    {h.domainName ? ` · ${h.domainName}` : ""}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {preview && (
+        <div className="space-y-4 rounded-2xl border border-line bg-white p-4">
+          <div>
+            <h2 className="font-bold text-ink">
+              {preview.source.year ? `${preview.source.year} ` : ""}
+              {preview.source.title ?? `Кола ${preview.source.carId}`}
+            </h2>
+            <p className="text-sm text-muted">
+              #{preview.source.carId}
+              {preview.source.vin ? ` · VIN ${preview.source.vin}` : ""}
+              {preview.source.lotNumber ? ` · лот ${preview.source.lotNumber}` : ""}
+              {" · "}
+              {preview.source.images.length} снимки
+            </p>
+          </div>
+
+          {!preview.credentialsConfigured && (
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              Акаунтът за импорт в mobile.bg още не е конфигуриран. Обявата се изчислява напълно, но
+              не може да бъде изпратена.
+            </p>
+          )}
+
+          {blockers.length > 0 && (
+            <div className="rounded-lg bg-[#fdecea] px-3 py-2 text-sm text-[#b3261e]">
+              <p className="mb-1 font-bold">Публикуването е спряно:</p>
+              <ul className="list-disc space-y-1 pl-5">
+                {blockers.map((b) => (
+                  <li key={b}>{b}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {invalid.length > 0 && (
+            <div className="rounded-lg bg-[#fdecea] px-3 py-2 text-sm text-[#b3261e]">
+              <p className="mb-1 font-bold">Стойности, които mobile.bg не разпознава:</p>
+              <ul className="list-disc space-y-1 pl-5">
+                {invalid.map((v) => (
+                  <li key={`${v.field}:${v.value}`}>
+                    <code>{v.field}</code> = „{v.value}“
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Price — always shown with its derivation, never as a bare number. */}
+          <div className="rounded-xl border border-line p-3">
+            <p className="text-sm font-bold text-ink">Цена в обявата</p>
+            <p className="text-sm text-muted">
+              Себестойност до България:{" "}
+              {mapped?.landedEur ? `${mapped.landedEur.toLocaleString("bg-BG")} €` : "—"}
+              {" · надценка "}
+              {preview.markupPct}%{" → "}
+              <strong className="text-ink">
+                {mapped?.computedPriceEur
+                  ? `${mapped.computedPriceEur.toLocaleString("bg-BG")} €`
+                  : "цена при запитване"}
+              </strong>
+            </p>
+            <p className="mt-1 text-xs text-muted">
+              Аукционната цена на лота е {preview.source.priceUsd
+                ? `${Math.round(preview.source.priceUsd).toLocaleString("bg-BG")} $`
+                : "—"}{" "}
+              и НЕ се публикува — тя не включва транспорт, мито, ДДС и такси.
+            </p>
+          </div>
+
+          {mapped && mapped.warnings.length > 0 && (
+            <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <p className="mb-1 font-bold">За проверка:</p>
+              <ul className="list-disc space-y-1 pl-5">
+                {mapped.warnings.map((w) => (
+                  <li key={`${w.field}:${w.message}`}>
+                    <code>{w.field}</code> — {w.message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Fields our data cannot supply. */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm font-semibold text-ink">Месец на производство</label>
+              <Combobox
+                options={[
+                  { value: "", label: "— не е зададен —" },
+                  ...MONTHS.map((m) => ({ value: m, label: m })),
+                ]}
+                value={month}
+                onValueChange={setMonth}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-semibold text-ink">Валидност (дни)</label>
+              <Combobox
+                options={[
+                  { value: "35", label: "35 дни" },
+                  { value: "49", label: "49 дни" },
+                ]}
+                value={term}
+                onValueChange={setTerm}
+              />
+            </div>
+            <TextField label="Град (locatc)" value={locatc} onChange={setLocatc} placeholder="напр. гр. Пловдив" />
+            <TextField
+              label="Цена (EUR) — ръчно"
+              value={priceOverride}
+              onChange={setPriceOverride}
+              placeholder="празно = изчислената"
+            />
+            <TextField
+              label="Допълнителни екстри (разделени с ~)"
+              value={extraExtri}
+              onChange={setExtraExtri}
+              placeholder="Кожен салон~Парктроник~7 места"
+            />
+            <div className="flex items-end">
+              <label className="flex items-center gap-2 text-sm font-semibold text-ink">
+                <input
+                  type="checkbox"
+                  checked={priceOnRequest}
+                  onChange={(e) => setPriceOnRequest(e.target.checked)}
+                />
+                Цена при запитване
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-ink">Описание (extinfo)</label>
+            <textarea
+              value={extinfo}
+              onChange={(e) => setExtinfo(e.target.value)}
+              rows={4}
+              placeholder={mapped?.params.extinfo ?? ""}
+              className="w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-brand"
+            />
+            <p className="mt-1 text-xs text-muted">
+              Празно = генерираното описание (показано като плейсхолдър).
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={refresh}
+              disabled={pending}
+              className="h-10 rounded-full border border-line bg-white px-5 text-sm font-bold text-ink disabled:opacity-40"
+            >
+              Преизчисли
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirming(true)}
+              disabled={pending || !canPublish}
+              className="h-10 rounded-full bg-brand px-5 text-sm font-bold text-white disabled:opacity-40"
+            >
+              {preview.advert?.ida ? "Коригирай обявата" : "Публикувай в mobile.bg"}
+            </button>
+            {preview.unchanged && (
+              <span className="self-center text-sm text-muted">Няма промени спрямо публикуваното.</span>
+            )}
+          </div>
+
+          {/* The exact wire format — the whole point of a preview. */}
+          {mapped && Object.keys(mapped.params).length > 0 && (
+            <details className="rounded-xl border border-line p-3">
+              <summary className="cursor-pointer text-sm font-bold text-ink">
+                Параметри към advertpub ({Object.keys(mapped.params).length})
+              </summary>
+              <div className="mt-2 overflow-x-auto">
+                <table className="w-full min-w-120 text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-line text-xs uppercase tracking-wide text-muted">
+                      <th className="px-2 py-1 font-bold">Поле</th>
+                      <th className="px-2 py-1 font-bold">Описание</th>
+                      <th className="px-2 py-1 font-bold">Стойност</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(mapped.params).map(([k, v]) => (
+                      <tr key={k} className="border-b border-line/60 last:border-0">
+                        <td className="px-2 py-1 font-mono text-xs text-ink">{k}</td>
+                        <td className="px-2 py-1 text-muted">{preview.catfields[k]?.ftext ?? "—"}</td>
+                        <td className="px-2 py-1 whitespace-pre-wrap text-ink">{v || "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          )}
+        </div>
+      )}
+
+      <ConfirmDialog
+        isOpen={confirming}
+        tone="danger"
+        title={preview?.advert?.ida ? "Корекция на обява" : "Публикуване на обява"}
+        confirmLabel={preview?.advert?.ida ? "Коригирай" : "Публикувай"}
+        isPending={pending}
+        onConfirm={confirmPublish}
+        onCancel={() => setConfirming(false)}
+        message={
+          preview?.advert?.ida ? (
+            <>
+              Обявата ще бъде презаписана в mobile.bg (ID {preview.advert.ida}). Корекцията на
+              съществуваща обява не се таксува като нова.
+            </>
+          ) : (
+            <>
+              Ще бъде създадена НОВА обява в mobile.bg, която се таксува по тарифата на
+              платформата. Цената в обявата ще бъде{" "}
+              <strong>
+                {mapped?.computedPriceEur
+                  ? `${mapped.computedPriceEur.toLocaleString("bg-BG")} €`
+                  : "„при запитване“"}
+              </strong>
+              .
+            </>
+          )
+        }
+      />
+    </div>
+  );
+}
+
+function TextField({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <label className="mb-1 block text-sm font-semibold text-ink">{label}</label>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="h-11 w-full rounded-[10px] border border-line bg-white px-3.5 text-sm text-ink outline-none focus:border-brand"
+      />
+    </div>
+  );
+}

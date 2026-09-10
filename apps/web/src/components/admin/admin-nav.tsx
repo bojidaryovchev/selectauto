@@ -24,6 +24,7 @@ export function AdminNav({ isAdmin = true }: { isAdmin?: boolean }) {
         { href: "/admin/depoziti", label: "Депозити" },
         { href: "/admin/tarifi", label: "Тарифи" },
         { href: "/admin/skriti-obyavi", label: "Скрити обяви" },
+        { href: "/admin/mobile-bg", label: "mobile.bg" },
         { href: "/admin/poluchateli", label: "Получатели" },
         { href: "/admin/potrebiteli", label: "Потребители" },
         { href: "/admin/dnevnik", label: "Дневник" },

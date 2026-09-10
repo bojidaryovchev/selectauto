@@ -5,9 +5,10 @@
  *
  *  admin    — full access to the back office.
  *  observer — „Наблюдаващ" (e.g. accountants; owner spec 07.2026): may CREATE
- *             and prepare contracts/deposits and follow contracts + payment
- *             notices, but may not edit anything afterwards. Editing, issuing
- *             notices, and marking payments paid/unpaid stay with admins.
+ *             and prepare contracts/deposits, PRINT (generate) their contract
+ *             and deposit documents, and follow contracts + payment notices,
+ *             but may not edit anything afterwards. Editing, issuing notices,
+ *             and marking payments paid/unpaid stay with admins.
  *             Any number of observer accounts can exist.
  */
 export const APP_ROLES = ["admin", "observer"] as const;

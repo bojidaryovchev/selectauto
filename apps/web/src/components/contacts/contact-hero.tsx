@@ -12,6 +12,13 @@ export function ContactHero() {
         backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.58) 60%, rgba(0,0,0,0.82) 100%), radial-gradient(circle at 20% 16%, rgba(216,111,22,0.20), transparent 24%), radial-gradient(circle at 78% 78%, rgba(216,111,22,0.15), transparent 28%), url('${HERO_BG}')`,
       }}
     >
+      {/* The hero art is a CSS background on a third-party origin, so the browser
+          can't discover it until the style is parsed — too late for an image that
+          is almost certainly this page's LCP element. Preload it at high priority
+          instead; React hoists this <link> into <head> from wherever it renders.
+          The href must match the CSS url() byte-for-byte or the preload is wasted. */}
+      <link rel="preload" as="image" href={HERO_BG} fetchPriority="high" />
+
       {/* On mobile the fixed header is hidden (--header-h collapses to 0); match
           the home hero's top breathing room so the title never jams the top on
           smaller phones where the content grows past the hero's min-height. */}

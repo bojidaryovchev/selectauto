@@ -80,9 +80,9 @@ export async function requireBackOfficePage(): Promise<Session> {
 }
 
 /**
- * For QUERIES/ACTIONS an observer may also perform (reads, and creating a
- * contract/deposit): the session, or `null` when the caller holds neither
- * elevated role. Anything that EDITS existing data must keep using
+ * For QUERIES/ACTIONS an observer may also perform (reads, creating a
+ * contract/deposit, printing its document): the session, or `null` when the
+ * caller holds neither elevated role. Anything that EDITS existing data must keep using
  * `getAdminSession` instead — that split is the whole point of the role.
  */
 export async function getBackOfficeSession(): Promise<Session | null> {

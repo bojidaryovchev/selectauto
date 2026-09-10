@@ -38,13 +38,22 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     return new Response("Not found", { status: 404 });
   }
 
-  // A „Наблюдаващ" may download notices only for contracts they created.
-  if (!isAdmin(session) && doc.contractId) {
-    const [contract] = await db
-      .select({ createdBy: schema.contracts.createdBy })
-      .from(schema.contracts)
-      .where(eq(schema.contracts.id, doc.contractId));
-    if (contract?.createdBy !== session.user?.id) {
+  // A „Наблюдаващ" may download only documents of the contracts/deposits they
+  // created — notices and contract documents hang off `contractId`, deposit
+  // contracts off `depositContractId`. Same 404 as a missing id.
+  if (!isAdmin(session)) {
+    const [owner] = doc.contractId
+      ? await db
+          .select({ createdBy: schema.contracts.createdBy })
+          .from(schema.contracts)
+          .where(eq(schema.contracts.id, doc.contractId))
+      : doc.depositContractId
+        ? await db
+            .select({ createdBy: schema.depositContracts.createdBy })
+            .from(schema.depositContracts)
+            .where(eq(schema.depositContracts.id, doc.depositContractId))
+        : [];
+    if (!owner?.createdBy || owner.createdBy !== session.user?.id) {
       return new Response("Not found", { status: 404 });
     }
   }

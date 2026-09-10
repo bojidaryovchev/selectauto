@@ -18,8 +18,8 @@ import { listDeposits } from "@/queries/deposits";
  */
 export default async function AdminDepositsPage() {
   const [deposits, clients, session] = await Promise.all([listDeposits(), listClients(), auth()]);
-  // „Наблюдаващ" may create deposits but not move them through the lifecycle,
-  // and never sees the numbering setting.
+  // „Наблюдаващ" may create and print deposits but not move them through the
+  // lifecycle, and never sees the numbering setting.
   const canManage = isAdmin(session);
   const numbering = canManage ? await getNumbering("deposit") : null;
 
@@ -87,11 +87,7 @@ export default async function AdminDepositsPage() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    {canManage ? (
-                      <DepositDocumentButton depositId={deposit.id} documents={documents} />
-                    ) : (
-                      <span className="text-xs text-muted">—</span>
-                    )}
+                    <DepositDocumentButton depositId={deposit.id} documents={documents} />
                   </td>
                   <td className="px-4 py-3">
                     {canManage ? (

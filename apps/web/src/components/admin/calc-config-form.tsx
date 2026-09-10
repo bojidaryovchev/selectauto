@@ -196,6 +196,21 @@ export function CalcConfigForm({ initial }: { initial: CalcConfig }) {
         />
       </Section>
 
+      <Section title="mobile.bg — надценка при публикуване">
+        <Field
+          label="Надценка върху крайната цена"
+          suffix="%"
+          value={cfg.mobilebgMarkupPct}
+          onChange={(v) => patch({ mobilebgMarkupPct: v })}
+          step={0.5}
+        />
+      </Section>
+      <p className="-mt-2 text-xs text-muted">
+        Обявата в mobile.bg е продажба на дребно, а калкулаторът дава себестойността „до
+        България“. Надценката се прилага върху крайната сума и определя цената в обявата.
+        При 0% обявяваме на себестойност.
+      </p>
+
       {status.kind === "error" ? (
         <p className="rounded-lg bg-[#fdecea] px-3 py-2 text-sm font-semibold text-[#b3261e]">{status.message}</p>
       ) : null}

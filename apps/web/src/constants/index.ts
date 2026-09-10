@@ -144,3 +144,20 @@ export const SOLD_LOT_410_AFTER = "90 days";
  * server-static with no extra request). Refresh occasionally as the rate drifts.
  */
 export const KRW_PER_USD = 1380;
+
+/**
+ * The "Безплатна консултация" modal's logo, served from public/. Shared so the
+ * provider can warm it with the exact same URL the modal renders — a preload only
+ * counts as a hit when the two match byte-for-byte.
+ *
+ * The file's true intrinsic size is 758×497 (1.525:1). That ratio MUST be what
+ * <Image> declares: Tailwind's preflight sets `img { height: auto }`, so the
+ * height attribute is only used to reserve space BEFORE the file arrives — once it
+ * loads, the real ratio takes over. Declaring a different one makes the box resize
+ * on load and shove the dialog's heading and button down.
+ */
+export const INQUIRY_LOGO = {
+  src: "/images/inquiry-hero.jpg",
+  width: 758,
+  height: 497,
+} as const;

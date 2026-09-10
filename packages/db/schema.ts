@@ -1185,6 +1185,85 @@ export const emailAttachments = pgTable(
   }),
 );
 
+/**
+ * mobile.bg advert publishing (migration 0047, keep in sync).
+ *
+ * `mobilebg_brand_map` / `mobilebg_model_map` translate our AuctionsAPI
+ * reference ids into mobile.bg's CLOSED publishing vocabulary — their `marka`
+ * must be one of 208 exact strings and `model` one of that brand's own list.
+ * The names do not match ours (`VW` not Volkswagen, `KGM` not SsangYong), and a
+ * wrong `model` is accepted silently by their API, burying a paid advert in a
+ * filter bucket nobody browses. So the mapping is admin-confirmed data, and the
+ * publish path refuses to build a payload without it.
+ *
+ * Keyed on the EXTERNAL ids (never our serial PKs, never the names) — the daily
+ * reference sync can rename a manufacturer without touching a lot, so a
+ * name-keyed map would silently detach. No FK for the same reason: the sync
+ * rebuilds those rows.
+ */
+export const mobilebgBrandMap = pgTable("mobilebg_brand_map", {
+  manufacturerExternalId: bigint("manufacturer_external_id", { mode: "number" }).primaryKey(),
+  /** The exact mobile.bg `marka` string, picked from their live dictionary. */
+  marka: text("marka").notNull(),
+  verifiedBy: text("verified_by").references(() => users.id, { onDelete: "set null" }),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const mobilebgModelMap = pgTable(
+  "mobilebg_model_map",
+  {
+    modelExternalId: bigint("model_external_id", { mode: "number" }).primaryKey(),
+    manufacturerExternalId: bigint("manufacturer_external_id", { mode: "number" }).notNull(),
+    /** Denormalised: mobile.bg's model list is brand-SCOPED, so a model string
+     *  is ambiguous without the `marka` it was chosen under. */
+    marka: text("marka").notNull(),
+    model: text("model").notNull(),
+    verifiedBy: text("verified_by").references(() => users.id, { onDelete: "set null" }),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    manufacturerIdx: index("mobilebg_model_map_manufacturer_idx").on(t.manufacturerExternalId),
+  }),
+);
+
+/**
+ * One row per car ever SUBMITTED to mobile.bg — written before the API call and
+ * updated with the outcome, so a failure stays diagnosable instead of vanishing.
+ *
+ * `car_id` is the primary key because mobile.bg bills per advert: a duplicate
+ * advert for the same car is a real cost, so the DB refuses one structurally
+ * rather than trusting the UI not to double-submit. Once `ida` is set, the next
+ * publish passes it to `advertpub` and becomes an EDIT (free) rather than a new
+ * advert (billable).
+ */
+export const mobilebgAdverts = pgTable(
+  "mobilebg_adverts",
+  {
+    carId: integer("car_id")
+      .primaryKey()
+      .references(() => cars.id, { onDelete: "cascade" }),
+    /** mobile.bg's advert id; NULL until the first successful publish. */
+    ida: text("ida"),
+    /** 'pending' | 'published' | 'failed' | 'deleted' (CHECK-enforced). */
+    status: text("status").notNull().default("pending"),
+    /** What we actually advertised — frozen, since the calc config moves on. */
+    priceEur: numeric("price_eur", { precision: 14, scale: 2 }),
+    markupPct: numeric("markup_pct", { precision: 6, scale: 3 }),
+    /** Hash of the last sent param set → skip re-publishing an unchanged car. */
+    payloadHash: text("payload_hash"),
+    pictureCount: integer("picture_count").notNull().default(0),
+    lastError: text("last_error"),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
+  },
+  (t) => ({
+    // Partial UNIQUE (WHERE ida IS NOT NULL) — see migration 0047.
+    idaUx: uniqueIndex("mobilebg_adverts_ida_ux").on(t.ida),
+    statusUpdatedIdx: index("mobilebg_adverts_status_updated_idx").on(t.status, t.updatedAt),
+  }),
+);
+
 // Inferred types for use in queries elsewhere in the app.
 export type Car = typeof cars.$inferSelect;
 export type NewCar = typeof cars.$inferInsert;
@@ -1237,3 +1316,7 @@ export type EmailMessage = typeof emailMessages.$inferSelect;
 export type NewEmailMessage = typeof emailMessages.$inferInsert;
 export type EmailAttachment = typeof emailAttachments.$inferSelect;
 export type NewEmailAttachment = typeof emailAttachments.$inferInsert;
+export type MobilebgBrandMap = typeof mobilebgBrandMap.$inferSelect;
+export type MobilebgModelMap = typeof mobilebgModelMap.$inferSelect;
+export type MobilebgAdvert = typeof mobilebgAdverts.$inferSelect;
+export type NewMobilebgAdvert = typeof mobilebgAdverts.$inferInsert;

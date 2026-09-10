@@ -2,7 +2,7 @@
 
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { getAdminSession } from "@/lib/admin";
+import { getBackOfficeSession, isAdmin } from "@/lib/admin";
 import { buildContractDocSnapshot } from "@/lib/contract-doc";
 import { getDb, schema } from "@/lib/db";
 import { isDocumentStorageConfigured, putDocument } from "@/lib/s3";
@@ -10,8 +10,10 @@ import { renderContractPdf } from "@/pdf/render";
 import type { ActionResult } from "@/types/action-result.type";
 
 /**
- * Admin-only: generate the CONTRACT document itself — договор за посредничество
+ * Generate the CONTRACT document itself — договор за посредничество
  * (САЩ/Канада/Корея) or договор за доставка (Европа), chosen by the market.
+ * Open to admins and to a „Наблюдаващ" for the contracts they created: printing
+ * renders the stored data as-is and only appends a version, so it isn't editing.
  *
  * Same guarantees as the payment notices (§2/§9): the snapshot is frozen at
  * generation, regeneration appends a new version and never overwrites, and the
@@ -22,7 +24,7 @@ import type { ActionResult } from "@/types/action-result.type";
 export async function generateContractDocument(
   contractId: number,
 ): Promise<ActionResult<{ documentId: number; version: number }>> {
-  const session = await getAdminSession();
+  const session = await getBackOfficeSession();
   if (!session) return { success: false, error: "Нямате достъп до тази операция." };
   if (!Number.isInteger(contractId) || contractId <= 0) {
     return { success: false, error: "Невалиден идентификатор." };
@@ -33,7 +35,11 @@ export async function generateContractDocument(
 
   try {
     const [contract] = await db.select().from(schema.contracts).where(eq(schema.contracts.id, contractId));
-    if (!contract) return { success: false, error: "Договорът не е намерен." };
+    // A „Наблюдаващ" may only print their OWN contracts — same answer as a
+    // missing id (mirrors getContract).
+    if (!contract || (!isAdmin(session) && contract.createdBy !== session.user?.id)) {
+      return { success: false, error: "Договорът не е намерен." };
+    }
 
     const snapshot = buildContractDocSnapshot(contract);
     if (!snapshot.client.name) {
