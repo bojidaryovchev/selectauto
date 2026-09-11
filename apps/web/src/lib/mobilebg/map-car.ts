@@ -166,6 +166,12 @@ export type MobilebgCarSource = {
   lotNumber: string | null;
   domainName: string | null;
   locationCountry: string | null;
+  /** US transport to Holland for this lot's yard (inland + container, USD) —
+   *  the same tariff lookup the site's calculator uses. NULL when the yard is
+   *  not in the tariff table, or the lot is not a Copart/IAAI US lot. */
+  usTransport: { inland: number; container: number } | null;
+  /** Canada only: the lot sits in British Columbia (pricier west-coast leg). */
+  caFromBc: boolean;
   /** Gallery URLs from the lot, already ordered and de-duplicated. */
   images: string[];
 
@@ -255,10 +261,23 @@ function auctionOf(domainName: string | null): UsAuction {
   return lower(domainName) === "iaai_com" ? "iaai" : "copart";
 }
 
-/** Which market's cost model applies, from the lot's source + country. */
+/**
+ * Which market's cost model applies. The accepted country spellings mirror
+ * `deriveSourceCountry` in lib/car-detail-mapper.ts ("canada" / "can" / "ca"),
+ * which is what the car page's calculator keys on — so an advert prices a
+ * Canadian lot exactly as the car page does.
+ */
+export function mobilebgMarket(
+  domainName: string | null,
+  locationCountry: string | null,
+): "us" | "ca" | "kr" {
+  if (lower(domainName) === "encar_com") return "kr";
+  const country = lower(locationCountry);
+  return country === "canada" || country === "can" || country === "ca" ? "ca" : "us";
+}
+
 function marketOf(source: MobilebgCarSource): "us" | "ca" | "kr" {
-  if (lower(source.domainName) === "encar_com") return "kr";
-  return lower(source.locationCountry) === "canada" ? "ca" : "us";
+  return mobilebgMarket(source.domainName, source.locationCountry);
 }
 
 /** True when the lot carries real damage (not just wear) or does not run. */
@@ -274,13 +293,17 @@ function isDamaged(source: MobilebgCarSource): boolean {
  * honest: it is an imported car and the figure already contains duty, VAT and
  * transport to Bulgaria.
  */
-function buildExtinfo(source: MobilebgCarSource, damaged: boolean): string {
+function buildExtinfo(source: MobilebgCarSource, damaged: boolean, priceIsLanded: boolean): string {
   const lines: string[] = [];
 
+  const market = marketOf(source);
+  const country = market === "kr" ? "Корея" : market === "ca" ? "Канада" : "САЩ";
+  // "Everything included" is a factual claim, so it is made only when the
+  // published figure really IS the computed landed total — never for a
+  // hand-typed price or „Цена при запитване“ (Общи условия I.12).
   lines.push(
-    "Автомобилът се внася по поръчка от " +
-      (marketOf(source) === "kr" ? "Корея" : marketOf(source) === "ca" ? "Канада" : "САЩ") +
-      ". Цената е крайна за България и включва транспорт, мито, ДДС и всички такси.",
+    `Автомобилът се внася по поръчка от ${country}.` +
+      (priceIsLanded ? " Цената е крайна за България и включва транспорт, мито, ДДС и всички такси." : ""),
   );
 
   if (damaged) {
@@ -293,10 +316,11 @@ function buildExtinfo(source: MobilebgCarSource, damaged: boolean): string {
   if (source.vin) lines.push(`VIN: ${source.vin}`);
   if (source.lotNumber) lines.push(`Лот №: ${source.lotNumber}`);
 
-  lines.push(
-    `Пълна информация, галерия и история: ${SITE_URL}/avtomobil/${source.carId}`,
-    "Съдействие с оглед, застраховка, регистрация и лизинг.",
-  );
+  // Nothing about US here — no link to our site, no service pitch. mobile.bg's
+  // terms (II.7) forbid dealers putting anything not about the car itself into
+  // the description; self-promotion belongs in „Представяне на дилъра“, and an
+  // advert breaking the terms is deleted without compensation (I.10). The car's
+  // page already goes in the dedicated `http` field, which exists for that.
 
   return lines.join("\n");
 }
@@ -364,29 +388,33 @@ export function buildAdvertParams(args: {
   let landedEur: number | null = null;
   let computedPriceEur: number | null = null;
 
-  if (source.priceUsd && source.priceUsd > 0) {
+  const market = marketOf(source);
+  if (source.priceUsd && source.priceUsd > 0 && market === "us" && !source.usTransport) {
+    // Fail closed, exactly like the site's own calculator offer: a US total
+    // without the yard's inland + container leg is ~$1,700-3,800 short (see
+    // create-calculator-offer.mutation.ts), and the description would then
+    // promise a price that "includes transport".
+    warnings.push({
+      field: "price",
+      message:
+        "Складът на лота не е в транспортната тарифа, затова транспортът до Холандия не може да се изчисли. Въведете цената ръчно или публикувайте „при запитване“.",
+    });
+  } else if (source.priceUsd && source.priceUsd > 0) {
     const breakdown = computeImportBreakdown(
       {
-        market: marketOf(source),
+        market,
         vehicleType: calcVehicleTypeFromBody(source.bodyType, source.vehicleType),
         priceUsd: source.priceUsd,
         auction: auctionOf(source.domainName),
+        usInlandUsd: source.usTransport?.inland,
+        usContainerUsd: source.usTransport?.container,
+        caFromBc: source.caFromBc,
       },
       config,
     );
     landedEur = Math.round(breakdown.totalUsd / config.eurUsd);
     computedPriceEur = Math.round(landedEur * (1 + config.mobilebgMarkupPct / 100));
 
-    // US transport is a per-yard tariff the calculator normally looks up from
-    // the lot's location; without it, Плащане 2 is understated. Say so rather
-    // than let the number look more precise than it is.
-    if (marketOf(source) === "us") {
-      warnings.push({
-        field: "price",
-        message:
-          "Цената не включва вътрешен транспорт в САЩ и контейнер по тарифа за конкретния склад — реалната себестойност е по-висока.",
-      });
-    }
     if (!source.hasBuyNow) {
       warnings.push({
         field: "price",
@@ -411,6 +439,8 @@ export function buildAdvertParams(args: {
   /* ── The payload ─────────────────────────────────────────────────────────── */
 
   const damaged = isDamaged(source);
+  const priceIsLanded =
+    !priceOnRequest && overrides.priceEur === undefined && computedPriceEur !== null;
   const params: Record<string, string> = {
     topmenu: "1",
     rub: "1",
@@ -423,7 +453,7 @@ export function buildAdvertParams(args: {
     phone: nationalPhone(CONTACT.phone),
     email: CONTACT.email,
     http: `${SITE_URL}/avtomobil/${source.carId}`,
-    extinfo: overrides.extinfo ?? buildExtinfo(source, damaged),
+    extinfo: overrides.extinfo ?? buildExtinfo(source, damaged, priceIsLanded),
   };
 
   // „Цена при запитване" is their documented `price=&priceneg=1` pair — the

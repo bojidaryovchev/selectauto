@@ -1230,11 +1230,11 @@ export const mobilebgModelMap = pgTable(
  * One row per car ever SUBMITTED to mobile.bg — written before the API call and
  * updated with the outcome, so a failure stays diagnosable instead of vanishing.
  *
- * `car_id` is the primary key because mobile.bg bills per advert: a duplicate
- * advert for the same car is a real cost, so the DB refuses one structurally
- * rather than trusting the UI not to double-submit. Once `ida` is set, the next
- * publish passes it to `advertpub` and becomes an EDIT (free) rather than a new
- * advert (billable).
+ * `car_id` is the primary key because mobile.bg charges a dealer for every week
+ * each advert stays active (Общи условия I.16): a duplicate advert for the same
+ * car doubles that cost, so the DB refuses one structurally rather than trusting
+ * the UI not to double-submit. Once `ida` is set, the next publish passes it to
+ * `advertpub` and becomes an EDIT (free, I.15) rather than a second advert.
  */
 export const mobilebgAdverts = pgTable(
   "mobilebg_adverts",

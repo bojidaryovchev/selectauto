@@ -1,8 +1,11 @@
 import { eq } from "drizzle-orm";
 import { getAdminSession } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
-import type { MobilebgCarSource } from "@/lib/mobilebg/map-car";
+import { calcVehicleTypeFromBody } from "@/data/import-rates";
+import { type MobilebgCarSource, mobilebgMarket } from "@/lib/mobilebg/map-car";
 import { type ResolvedMapping, resolveMobilebgMapping } from "@/lib/mobilebg/resolve";
+import { findUsLocation, resolveUsTransport } from "@/lib/us-transport";
+import { getUsTariffs } from "@/queries/tariffs";
 import { getCarGallery } from "./get-car-gallery.query";
 
 /**
@@ -49,6 +52,18 @@ function titleDocFrom(rawLot: unknown): string | null {
   if (!title || typeof title !== "object") return null;
   const name = (title as Record<string, unknown>).name;
   return typeof name === "string" && name.trim() ? name.trim() : null;
+}
+
+/** A trimmed string at a dotted path of an untyped raw_json, else undefined. */
+function rawStr(raw: unknown, path: string): string | undefined {
+  let node: unknown = raw;
+  for (const key of path.split(".")) {
+    if (!node || typeof node !== "object") return undefined;
+    node = (node as Record<string, unknown>)[key];
+  }
+  if (node === null || node === undefined) return undefined;
+  const text = String(node).trim();
+  return text ? text : undefined;
 }
 
 function numOrNull(value: string | number | null): number | null {
@@ -190,6 +205,42 @@ export async function getMobilebgCarSource(
   const buyNowPrice = numOrNull(lot.buyNowPrice);
   const priceUsd = numOrNull(effectivePrice) ?? buyNowPrice ?? numOrNull(lot.bidPrice);
 
+  // Transport to Holland for a US lot, resolved exactly the way the car page's
+  // calculator does it (car-detail-mapper.ts -> cost-estimator.tsx): the yard's
+  // raw zip / city / state -> the tariff table's location string -> inland +
+  // container. An unmatched yard stays NULL and the mapper refuses to price it.
+  const yard = {
+    zip: rawStr(lot.rawJson, "location.postal_code"),
+    city: rawStr(lot.rawJson, "location.city.name"),
+    state: rawStr(lot.rawJson, "location.state.code"),
+  };
+  const domain = lot.domainName?.toLowerCase();
+  const auction = domain === "copart_com" ? "copart" : domain === "iaai_com" ? "iaai" : null;
+  let usTransport: { inland: number; container: number } | null = null;
+  if (
+    auction &&
+    mobilebgMarket(lot.domainName, lot.locationCountry) === "us" &&
+    (yard.zip || (yard.city && yard.state))
+  ) {
+    const tariffs = await getUsTariffs();
+    const location = findUsLocation(yard, auction, tariffs);
+    if (location) {
+      const t = resolveUsTransport(
+        { auction, location, vehicleType: calcVehicleTypeFromBody(car.bodyType, car.vehicleType) },
+        tariffs,
+      );
+      if (!t.notFound) usTransport = { inland: t.inland, container: t.container };
+    }
+  }
+
+  // Canada only: British Columbia ships from the west coast. Same test as the
+  // car page — IAAI's BC lots carry no state code, only a "V..." postal code.
+  const stateName = rawStr(lot.rawJson, "location.state.name")?.toLowerCase();
+  const caFromBc =
+    stateName === "british columbia" ||
+    yard.state?.toLowerCase() === "bc" ||
+    /^v/i.test(yard.zip ?? "");
+
   const source: MobilebgCarSource = {
     carId,
     vin: car.vin,
@@ -214,6 +265,8 @@ export async function getMobilebgCarSource(
     lotNumber: lot.lotNumber,
     domainName: lot.domainName,
     locationCountry: lot.locationCountry,
+    usTransport,
+    caFromBc,
     images: gallery.images,
     priceUsd,
     hasBuyNow: lot.buyNow === true && buyNowPrice !== null,

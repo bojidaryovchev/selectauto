@@ -10,14 +10,14 @@ import type { ActionResult } from "@/types/action-result.type";
 /**
  * Remove one advert from mobile.bg.
  *
- * The local row is kept and marked `deleted` rather than dropped: it is the
- * record that we once paid for this advert, and it preserves the `ida` so a
- * later re-publish can be recognised as a NEW (billable) advert rather than
- * mistaken for an edit of a listing that no longer exists.
+ * Deleting is free and immediate, and it is what STOPS the charge: dealer
+ * adverts never expire on their own and accrue a weekly fee for as long as they
+ * are active (Общи условия I.14–I.16). Paid VIP/TOP time is not refunded (II.8).
  *
- * The `ida` itself is cleared, though — mobile.bg has released it, and leaving
- * it in place would make the next publish send a stale id to `advertpub`, which
- * either fails or, worse, edits something else.
+ * The local row is kept and marked `deleted` rather than dropped, as the record
+ * that this car was advertised. Its `ida` is cleared — mobile.bg has released
+ * it, and leaving it in place would make the next publish send a stale id to
+ * `advertpub`, which either fails or, worse, edits something else.
  */
 export async function deleteMobilebgAdvert(carId: number): Promise<ActionResult<{ carId: number }>> {
   const session = await getAdminSession();

@@ -17,9 +17,10 @@ import type { CarLookupHit, MobilebgPreview } from "@/queries/mobilebg";
 /**
  * Търси → преглед → публикувай.
  *
- * The PREVIEW step is the point of this screen. mobile.bg bills per advert and
- * accepts a wrong `list` value without complaining — it just files the advert
- * where nobody looks. So nothing is sent until an admin has seen the exact
+ * The PREVIEW step is the point of this screen. mobile.bg charges a dealer for
+ * every week an advert stays active (Общи условия I.16) and accepts a wrong
+ * `list` value without complaining — it just files the advert where nobody
+ * looks. So nothing is sent until an admin has seen the exact
  * payload, how the brand and model were resolved, the price with its derivation,
  * and every field we could not fill.
  *
@@ -500,7 +501,9 @@ export function MobilebgPublisher() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-semibold text-ink">Валидност (дни)</label>
+              <label className="mb-1 block text-sm font-semibold text-ink">
+                Валидност (дни) — за дилъри е само статистика
+              </label>
               <Combobox
                 options={[
                   { value: "35", label: "35 дни" },
@@ -613,13 +616,14 @@ export function MobilebgPublisher() {
         message={
           preview?.advert?.ida ? (
             <>
-              Обявата ще бъде презаписана в mobile.bg (ID {preview.advert.ida}). Корекцията на
-              съществуваща обява не се таксува като нова.
+              Обявата ще бъде обновена в mobile.bg (ID {preview.advert.ida}). Корекциите са
+              безплатни (Общи условия, т. I.15).
             </>
           ) : (
             <>
-              Ще бъде създадена НОВА обява в mobile.bg, която се таксува по тарифата на
-              платформата. Цената в обявата ще бъде{" "}
+              Ще бъде създадена НОВА обява в mobile.bg. Докато е активна, mobile.bg начислява
+              седмична такса по дилърската тарифа (т. I.16) — обявата не изтича сама, а стои до
+              изтриване. Цената в обявата ще бъде{" "}
               <strong>
                 {mapped?.computedPriceEur
                   ? `${mapped.computedPriceEur.toLocaleString("bg-BG")} €`

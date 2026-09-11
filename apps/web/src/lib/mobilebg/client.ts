@@ -160,9 +160,10 @@ export async function logout(): Promise<void> {
 /**
  * Publish a new advert, or EDIT an existing one when `ida` is present.
  *
- * That distinction IS the billing model: `advertpub` without `ida` creates a new
- * (charged) advert, with `ida` it corrects the existing one. Callers must pass
- * the stored `mobilebg_adverts.ida` whenever they have one.
+ * Without `ida` it creates a NEW advert — for a car already listed, a second live
+ * advert that mobile.bg bills for every week it stays active (Общи условия
+ * I.16). With `ida` it corrects the existing one, which is free (I.15). Callers
+ * must pass the stored `mobilebg_adverts.ida` whenever they have one.
  */
 export async function publishAdvert(
   params: Record<string, string>,
