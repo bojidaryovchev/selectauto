@@ -47,12 +47,15 @@ export function isConfigured(): boolean {
 export class MobilebgError extends Error {
   readonly status: string;
   readonly endpoint: string;
+  /** The field names mobile.bg rejected, when it says which (see `call`). */
+  readonly fields: string[];
 
-  constructor(endpoint: string, status: string, msg: string) {
+  constructor(endpoint: string, status: string, msg: string, fields: string[] = []) {
     super(msg || status || "mobile.bg отговори с грешка.");
     this.name = "MobilebgError";
     this.status = status;
     this.endpoint = endpoint;
+    this.fields = fields;
   }
 }
 
@@ -97,7 +100,14 @@ async function call(path: string, body?: URLSearchParams): Promise<ApiResponse> 
   const msg = typeof json.msg === "string" ? json.msg : "";
 
   if (!res.ok || !status.startsWith("success")) {
-    throw new MobilebgError(path, status || String(res.status), msg);
+    // A validation failure NAMES the offending fields:
+    //   {"status":"error","msg":"Wrong fields","fields":["month","locatc",…]}
+    // Dropping them leaves an admin looking at a bare "Wrong fields" with no
+    // way to act on it — which is exactly how the first real failure looked.
+    const fields = Array.isArray(json.fields)
+      ? json.fields.filter((f): f is string => typeof f === "string")
+      : [];
+    throw new MobilebgError(path, status || String(res.status), msg, fields);
   }
   return json;
 }

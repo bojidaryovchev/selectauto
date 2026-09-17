@@ -24,9 +24,9 @@ import type { ActionResult } from "@/types/action-result.type";
  *     tariff edit, a mapping fix, the lot archiving) must not be what we publish.
  *
  *  2. **Refuse on blockers or invalid list values.** `validateListValues` checks
- *     the payload against mobile.bg's LIVE vocabulary. This is the one failure
- *     their API will not report: a bad `list` value is accepted and the advert is
- *     filed where no buyer looks — after we have been charged.
+ *     the payload against mobile.bg's LIVE vocabulary, and the mapper blocks on
+ *     every field the API requires, so a payload mobile.bg would bounce is
+ *     caught in the preview instead of as a failed call.
  *
  *  3. **Verify the photos BEFORE creating the advert.** mobile.bg downloads them
  *     from us; an advert whose photos fail is already billable and needs a second
@@ -133,8 +133,16 @@ export async function publishCarToMobilebg(
     }
     await addPictures(ida, picts);
   } catch (error) {
-    const message =
+    let message =
       error instanceof MobilebgError ? `${error.status}: ${error.message}` : String(error);
+    // Name the rejected fields, with mobile.bg's own label where it has one.
+    if (error instanceof MobilebgError && error.fields.length > 0) {
+      const named = error.fields.map((f) => {
+        const label = preview.catfields[f]?.ftext;
+        return label ? `${f} („${label}“)` : f;
+      });
+      message += `. Грешни полета: ${named.join(", ")}`;
+    }
     console.error("[mobilebg] publish failed", carId, message);
 
     // Keep any id we DID get: the advert may exist and be billable, and the next
@@ -145,7 +153,7 @@ export async function publishCarToMobilebg(
       .where(eq(schema.mobilebgAdverts.carId, carId));
 
     await logout();
-    return { success: false, error: `Публикуването се провали — ${message}` };
+    return { success: false, error: `Публикуването се провали: ${message}` };
   }
 
   await db

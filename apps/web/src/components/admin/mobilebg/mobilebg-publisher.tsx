@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Combobox, ConfirmDialog } from "@/components/common";
 import { carTitle } from "@/lib/mobilebg/car-title";
+import { PRICE_DDS_OPTIONS } from "@/lib/mobilebg/price-dds";
 import type { MobilebgOverrides } from "@/lib/mobilebg/map-car";
 import {
   lookupCarAction,
@@ -18,21 +19,22 @@ import type { CarLookupHit, MobilebgPreview } from "@/queries/mobilebg";
  * Търси → преглед → публикувай.
  *
  * The PREVIEW step is the point of this screen. mobile.bg charges a dealer for
- * every week an advert stays active (Общи условия I.16) and accepts a wrong
- * `list` value without complaining — it just files the advert where nobody
- * looks. So nothing is sent until an admin has seen the exact
- * payload, how the brand and model were resolved, the price with its derivation,
- * and every field we could not fill.
+ * every week an advert stays active (Общи условия I.16), and a wrong-but-valid
+ * value (the wrong model) is accepted and files the advert where nobody looks.
+ * So nothing is sent until an admin has seen the exact payload, how the brand
+ * and model were resolved, the price with its derivation, and every field we
+ * could not fill.
  *
  * Brand/model resolve automatically against mobile.bg's live vocabulary; when
  * they cannot, the pickers here are where the admin chooses — once for the model
  * everywhere („запомни“), or just for this advert when the right answer depends
  * on the car's version (BMW „3er“ is „320“ or „330“ depending on the engine).
  *
- * The other overrides are fields our data genuinely cannot supply: production
- * month (we store only the year), city (mobile.bg's dependent `locatc` list is
- * empty without an authorised account) and equipment (we hold almost none of
- * their 96 features for a salvage lot). Inputs, not defaults — never invented.
+ * The other overrides are fields our data genuinely cannot supply, three of them
+ * REQUIRED by mobile.bg: production month (we store only the year), the VAT
+ * status of the price (a public tax statement, so never defaulted) and the city
+ * (defaulted to the showroom's, pickable from mobile.bg's live list). Changing
+ * any of them recomputes the preview at once, so the blocker it resolves clears.
  */
 
 const MONTHS = [
@@ -93,6 +95,7 @@ export function MobilebgPublisher() {
   const [priceOnRequest, setPriceOnRequest] = useState(false);
   const [extraExtri, setExtraExtri] = useState("");
   const [extinfo, setExtinfo] = useState("");
+  const [priceDds, setPriceDds] = useState("");
 
   // Brand/model pickers.
   const [modelOverride, setModelOverride] = useState("");
@@ -110,11 +113,12 @@ export function MobilebgPublisher() {
       priceEur: priceOverride.trim() && Number.isFinite(parsedPrice) ? parsedPrice : undefined,
       priceOnRequest: priceOnRequest || undefined,
       extri: extraExtri
-        .split("~")
+        .split(/[~/]/)
         .map((s) => s.trim())
         .filter(Boolean),
       extinfo: extinfo.trim() || undefined,
       model: modelOverride || undefined,
+      priceDds: priceDds || undefined,
     };
   }
 
@@ -163,6 +167,11 @@ export function MobilebgPublisher() {
   /** Recompute against the current overrides — the preview must stay truthful. */
   function refresh() {
     if (preview) load(preview.source.carId);
+  }
+
+  /** Apply one override and recompute at once, so a blocker it resolves clears. */
+  function reloadWith(patch: Partial<MobilebgOverrides>) {
+    if (preview) load(preview.source.carId, { ...overrides(), ...patch });
   }
 
   function saveBrand() {
@@ -248,6 +257,11 @@ export function MobilebgPublisher() {
     Boolean(preview?.credentialsConfigured);
   const showModelPicker =
     Boolean(mapping?.marka) && (!mapping?.model || changingModel) && (mapping?.modelOptions.length ?? 0) > 0;
+  // The city the advert will carry: the admin's pick, else the mapper's default.
+  const effectiveCity = locatc || mapped?.params.locatc || "";
+  const cityChoices = (
+    preview?.cityOptions.length ? preview.cityOptions : effectiveCity ? [effectiveCity] : []
+  ).map((c) => ({ value: c, label: c }));
 
   return (
     <div className="space-y-4">
@@ -493,11 +507,14 @@ export function MobilebgPublisher() {
               <label className="mb-1 block text-sm font-semibold text-ink">Месец на производство</label>
               <Combobox
                 options={[
-                  { value: "", label: "— не е зададен —" },
+                  { value: "", label: "Изберете" },
                   ...MONTHS.map((m) => ({ value: m, label: m })),
                 ]}
                 value={month}
-                onValueChange={setMonth}
+                onValueChange={(v) => {
+                  setMonth(v);
+                  reloadWith({ month: v || undefined });
+                }}
               />
             </div>
             <div>
@@ -513,7 +530,31 @@ export function MobilebgPublisher() {
                 onValueChange={setTerm}
               />
             </div>
-            <TextField label="Град (locatc)" value={locatc} onChange={setLocatc} placeholder="напр. гр. Пловдив" />
+            <div>
+              <label className="mb-1 block text-sm font-semibold text-ink">Град</label>
+              <Combobox
+                options={cityChoices}
+                value={effectiveCity}
+                onValueChange={(v) => {
+                  setLocatc(v);
+                  reloadWith({ locatc: v || undefined });
+                }}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-semibold text-ink">ДДС статус на цената</label>
+              <Combobox
+                options={[
+                  { value: "", label: "Изберете" },
+                  ...PRICE_DDS_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
+                ]}
+                value={priceDds}
+                onValueChange={(v) => {
+                  setPriceDds(v);
+                  reloadWith({ priceDds: v || undefined });
+                }}
+              />
+            </div>
             <TextField
               label="Цена (EUR) — ръчно"
               value={priceOverride}
@@ -521,10 +562,10 @@ export function MobilebgPublisher() {
               placeholder="празно = изчислената"
             />
             <TextField
-              label="Допълнителни екстри (разделени с ~)"
+              label="Допълнителни екстри (разделени с /)"
               value={extraExtri}
               onChange={setExtraExtri}
-              placeholder="Кожен салон~Парктроник~7 места"
+              placeholder="Кожен салон/Парктроник/7 места"
             />
             <div className="flex items-end">
               <label className="flex items-center gap-2 text-sm font-semibold text-ink">

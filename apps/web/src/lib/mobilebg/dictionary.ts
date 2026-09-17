@@ -13,7 +13,8 @@ import { CACHE_TAGS } from "@/lib/cache-tags";
  *     import account is authorised — which is exactly the situation we are in.
  *
  *  2. **It is the only authority on what may be sent.** A `list` field rejects
- *     (or worse, silently mis-files) anything outside its list, and the values
+ *     anything outside its list (the value comes back named in the error's
+ *     `fields`, verified 2026-09-17), and the values
  *     ARE the Bulgarian display strings — `marka=VW`, `color=Сребърен`. The
  *     published example in their docs is already stale on one of them: it shows
  *     `currency=лв.`, while the live dictionary offers only `EUR` and `USD`.
@@ -124,13 +125,14 @@ export async function getModelOptions(marka: string): Promise<DictOption[]> {
 }
 
 /**
- * The city list for one region (`locat` → `locatc`).
+ * The city list for one region (`locat` → `locatc`) — e.g. 212 entries for
+ * Пловдив, starting with „гр. Пловдив“ (2026-09-17). Public, no token needed.
  *
- * ⚠️ Verified to return an EMPTY array unauthenticated, for every region tried
- * (София, Пловдив, Извън страната). Whether that is an auth gate or a quirk of
- * the public endpoint cannot be determined without import credentials, so the
- * mapper treats `locatc` as optional and the preview flags it. Re-check this the
- * moment the account is authorised.
+ * An earlier probe reported this list EMPTY and blamed authorisation. That was
+ * wrong: the probe ran through Windows `curl`, which mis-encoded the Cyrillic
+ * query. UTF-8 percent-encoding (below) is what the API expects — a
+ * windows-1251 query returns an empty list, and a windows-1251 publish body is
+ * rejected field by field.
  */
 export async function getCityOptions(locat: string): Promise<DictOption[]> {
   "use cache";
@@ -148,9 +150,8 @@ export async function getCityOptions(locat: string): Promise<DictOption[]> {
  * Check every `list` param against the live vocabulary, returning the names of
  * any that would be rejected or silently mis-filed.
  *
- * This is the last gate before a BILLABLE call: mobile.bg does not reliably
- * error on a bad list value, so catching it here is the difference between a
- * visible failure and an advert nobody can find.
+ * mobile.bg rejects a bad list value too, but only once the publish call is
+ * made. Catching it here turns that into a visible preview error instead.
  */
 export async function validateListValues(
   params: Record<string, string>,
@@ -162,15 +163,15 @@ export async function validateListValues(
     if (!value) continue;
     if (fields[field]?.ftype !== "list") continue;
 
-    // `model` and `locatc` are dependent lists (empty in the flat dictionary),
-    // and `extri` is a `~`-separated multi-value — both handled below.
+    // `model` and `locatc` are dependent lists (empty in the flat dictionary) and
+    // are checked below; `extri` is a `/`-separated multi-value.
     if (field === "model" || field === "locatc") continue;
 
     const allowed = dict[field];
     if (!allowed || allowed.length === 0) continue;
     const allowedSet = new Set(allowed.map((o) => o.optval));
 
-    const values = field === "extri" ? value.split("~") : [value];
+    const values = field === "extri" ? value.split("/") : [value];
     for (const v of values) {
       if (v && !allowedSet.has(v)) bad.push({ field, value: v });
     }
@@ -181,6 +182,14 @@ export async function validateListValues(
     const models = await getModelOptions(params.marka);
     if (models.length > 0 && !models.some((o) => o.optval === params.model)) {
       bad.push({ field: "model", value: params.model });
+    }
+  }
+
+  // `locatc` depends on the region.
+  if (params.locatc && params.locat) {
+    const cities = await getCityOptions(params.locat);
+    if (cities.length > 0 && !cities.some((o) => o.optval === params.locatc)) {
+      bad.push({ field: "locatc", value: params.locatc });
     }
   }
 

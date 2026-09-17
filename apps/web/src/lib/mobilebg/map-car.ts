@@ -14,8 +14,8 @@ import { damageLabel, titleDocLabel } from "@/lib/car-labels";
  * ── The two rules this file exists to enforce ───────────────────────────────
  *
  * **1. Never invent a value.** Every `list` field of mobile.bg's form is a closed
- * vocabulary, and their API does not reliably reject a wrong one — it accepts it
- * and files the advert where no buyer will look, after we have been charged. So
+ * vocabulary. Their API rejects a value outside it, but happily accepts a VALID
+ * wrong one (the wrong model) and files the advert where no buyer will look. So
  * an unmappable value becomes a WARNING (field omitted) or a BLOCKER (publish
  * refused), never a plausible-looking guess. Brand and model in particular are
  * resolved by lib/mobilebg/resolve.ts — admin overrides first, then only exact
@@ -207,12 +207,17 @@ export type MobilebgOverrides = {
   /** mobile.bg model picked for THIS advert only (not remembered). Consumed by
    *  lib/mobilebg/resolve.ts before the mapper runs. */
   model?: string;
+  /** `price_dds` — the VAT status of the price ("1" | "2" | "3", see
+   *  lib/mobilebg/price-dds.ts). Required by mobile.bg, never defaulted. */
+  priceDds?: string;
 };
 
 export type MapWarning = { field: string; message: string };
 
 export type MappedAdvert = {
-  /** The exact `advertpub` body. Empty when `blockers` is non-empty. */
+  /** The exact `advertpub` body. Empty only when a STRUCTURAL blocker (wrong
+   *  category, unresolved brand/model, …) stopped it being built; a missing
+   *  required field still returns what was built, so the preview can show it. */
   params: Record<string, string>;
   /** Reasons this car must not be published at all. */
   blockers: string[];
@@ -346,6 +351,41 @@ function buildExtri(source: MobilebgCarSource, damaged: boolean): string[] {
 /* ------------------------------------------------------------------------- */
 
 /**
+ * Every field `advertpub` REQUIRES for „Автомобили и Джипове“. Their docs do
+ * not say; the API does: a publish sent with no fields (2026-09-17) answered
+ * `{"status":"error","msg":"Wrong fields","fields":[…]}` listing exactly these.
+ * One missing field fails the whole call, so each is a preview blocker.
+ */
+export const REQUIRED_FIELDS = [
+  "marka", "model", "year", "month", "category", "engine_type", "transmission", "km",
+  "price", "currency", "price_dds", "nup", "term", "locat", "locatc", "phone",
+] as const;
+
+/** What the preview says when a required field is missing. */
+function requiredFieldMessage(field: string, source: MobilebgCarSource): string {
+  switch (field) {
+    case "month":
+      return "Изберете месец на производство. mobile.bg го изисква, а ние пазим само годината.";
+    case "price_dds":
+      return "Изберете ДДС статус на цената. mobile.bg го изисква.";
+    case "locatc":
+      return "Изберете град. mobile.bg го изисква.";
+    case "engine_type":
+      return `Типът гориво „${source.fuelType ?? "неизвестен"}“ няма съответствие в mobile.bg, а полето е задължително.`;
+    case "transmission":
+      return "Липсва скоростна кутия, а mobile.bg я изисква.";
+    case "km":
+      return "Липсва пробег, а mobile.bg го изисква.";
+    case "category":
+      return "Липсва тип купе (категория), а mobile.bg го изисква.";
+    case "price":
+      return "Липсва цена. Въведете я ръчно или изберете „Цена при запитване“.";
+    default:
+      return `Липсва задължителното поле „${field}“.`;
+  }
+}
+
+/**
  * Build the advert. Pure — no I/O, no DB, no clock — so the admin preview and
  * the publish action produce byte-identical params from the same inputs, which
  * is what makes `payload_hash` a meaningful change check.
@@ -452,7 +492,13 @@ export function buildAdvertParams(args: {
     locat: BUSINESS.city,
     phone: nationalPhone(CONTACT.phone),
     email: CONTACT.email,
-    http: `${SITE_URL}/avtomobil/${source.carId}`,
+    // City: the showroom's, the same place `locat` names. validateListValues
+    // checks it against mobile.bg's live city list for that region.
+    locatc: overrides.locatc ?? `гр. ${BUSINESS.city}`,
+    currency: "EUR",
+    // No scheme: the form labels this field „http://“ and the API rejects any
+    // value starting with http:// or https:// (probed 2026-09-17).
+    http: `${new URL(SITE_URL).host}/avtomobil/${source.carId}`,
     extinfo: overrides.extinfo ?? buildExtinfo(source, damaged, priceIsLanded),
   };
 
@@ -463,7 +509,6 @@ export function buildAdvertParams(args: {
     params.priceneg = "1";
   } else {
     params.price = String(Math.round(finalPriceEur));
-    params.currency = "EUR";
   }
 
   const category = BODY_TO_CATEGORY[lower(source.bodyType)];
@@ -478,16 +523,10 @@ export function buildAdvertParams(args: {
         message: "Flex-fuel няма отделна стойност в mobile.bg — обявено е като „Бензинов“.",
       });
     }
-  } else {
-    warnings.push({
-      field: "engine_type",
-      message: `Типът гориво „${source.fuelType ?? "—"}“ няма съответствие — полето е пропуснато.`,
-    });
   }
 
   const transmission = TRANSMISSION_TO_MOBILEBG[lower(source.transmission)];
   if (transmission) params.transmission = transmission;
-  else warnings.push({ field: "transmission", message: "Липсва скоростна кутия — полето е пропуснато." });
 
   const color = COLOR_TO_MOBILEBG[lower(source.color)];
   if (color) params.color = color;
@@ -500,8 +539,6 @@ export function buildAdvertParams(args: {
 
   if (source.odometerKm !== null && source.odometerKm > 0) {
     params.km = String(Math.round(source.odometerKm));
-  } else {
-    warnings.push({ field: "km", message: "Липсва пробег." });
   }
 
   if (source.vin) params.vin = source.vin;
@@ -520,28 +557,28 @@ export function buildAdvertParams(args: {
 
   if (source.engine) params.modification = source.engine;
 
-  // Production month: we store only the year. Their `month` + `year` form one
-  // date control, so leaving it out may be rejected — the admin fills it in.
+  // Production month (we store only the year) and the VAT status of the price
+  // are REQUIRED and cannot be derived, so they come from the admin or block.
   if (overrides.month) params.month = overrides.month;
-  else warnings.push({ field: "month", message: "Не съхраняваме месец на производство — изберете го ръчно." });
-
-  // Their dependent city list came back empty on every unauthenticated probe.
-  if (overrides.locatc) params.locatc = overrides.locatc;
-  else {
-    warnings.push({
-      field: "locatc",
-      message: "Списъкът с градове (locatc) е празен без оторизация — изберете града ръчно след активиране на акаунта.",
-    });
-  }
+  if (overrides.priceDds) params.price_dds = overrides.priceDds;
 
   const extri = [...buildExtri(source, damaged), ...(overrides.extri ?? [])];
-  if (extri.length > 0) params.extri = [...new Set(extri)].join("~");
+  // SLASH-separated. Their docs show both `/` and `~`; the API rejects `~` and
+  // splits on `/`, checking every part (probed 2026-09-17). No dictionary value
+  // contains a `/` (theirs use `\` inside a value), so the split is safe.
+  if (extri.length > 0) params.extri = [...new Set(extri)].join("/");
 
   warnings.push({
     field: "extri",
     message:
       "Екстрите се извеждат само от данните, които пазим (задвижване, гориво, състояние). Добавете останалите ръчно.",
   });
+
+  // A payload mobile.bg would bounce is stopped here, in the preview, instead.
+  for (const field of REQUIRED_FIELDS) {
+    const present = field === "price" ? params.priceneg === "1" || Boolean(params.price) : Boolean(params[field]);
+    if (!present) blockers.push(requiredFieldMessage(field, source));
+  }
 
   return { params, blockers, warnings, computedPriceEur, landedEur };
 }

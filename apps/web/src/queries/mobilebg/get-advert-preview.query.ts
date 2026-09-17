@@ -1,6 +1,7 @@
+import { BUSINESS } from "@/constants";
 import { getAdminSession } from "@/lib/admin";
 import { isConfigured } from "@/lib/mobilebg/client";
-import { type Catfield, getCatfields, validateListValues } from "@/lib/mobilebg/dictionary";
+import { type Catfield, getCatfields, getCityOptions, validateListValues } from "@/lib/mobilebg/dictionary";
 import {
   type MappedAdvert,
   type MobilebgCarSource,
@@ -55,6 +56,8 @@ export type MobilebgPreview = {
   credentialsConfigured: boolean;
   /** The markup % that produced the price, echoed for the UI. */
   markupPct: number;
+  /** mobile.bg's cities for the advert's region (the city picker). */
+  cityOptions: string[];
 };
 
 export async function getMobilebgPreview(
@@ -77,8 +80,11 @@ export async function getMobilebgPreview(
   // Only worth asking mobile.bg about a payload that exists.
   let catfields: Record<string, Catfield> = {};
   let invalidValues: { field: string; value: string }[] = [];
+  let cityOptions: string[] = [];
   try {
-    catfields = await getCatfields();
+    const [fields, cities] = await Promise.all([getCatfields(), getCityOptions(BUSINESS.city)]);
+    catfields = fields;
+    cityOptions = cities.map((o) => o.optval);
     if (Object.keys(mapped.params).length > 0) {
       invalidValues = await validateListValues(mapped.params);
     }
@@ -104,5 +110,6 @@ export async function getMobilebgPreview(
     advert: found.advert,
     credentialsConfigured: isConfigured(),
     markupPct: config.mobilebgMarkupPct,
+    cityOptions,
   };
 }
