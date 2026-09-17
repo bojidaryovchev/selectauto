@@ -1,12 +1,12 @@
 import "server-only";
-import { BUSINESS, CONTACT, SITE_URL } from "@/constants";
+import { CONTACT, SITE_URL } from "@/constants";
 import {
   type CalcConfig,
   type UsAuction,
   calcVehicleTypeFromBody,
   computeImportBreakdown,
 } from "@/data/import-rates";
-import { damageLabel, titleDocLabel } from "@/lib/car-labels";
+import { damageLabel, titleDocLabel, vehicleTypeLabel } from "@/lib/car-labels";
 
 /**
  * Turn one catalog car into the exact POST body `advertpub` expects.
@@ -71,7 +71,9 @@ const COLOR_TO_MOBILEBG: Record<string, string> = {
  * appear. `furgon`, `truck`, `bus`, `trailer` and every moto/industrial body are
  * absent ON PURPOSE — those are separate top categories at mobile.bg (Бусове=3,
  * Камиони=4, Мотоциклети=5 …), so publishing one here would put it in the wrong
- * marketplace section entirely. `isPublishableBody` turns that into a blocker.
+ * marketplace section entirely. An unmapped body is NOT a blocker, though: the
+ * admin picks the category explicitly, and the preview says so when our data
+ * calls the vehicle something other than a car.
  */
 const BODY_TO_CATEGORY: Record<string, string> = {
   sedan: "Седан",
@@ -192,8 +194,12 @@ export type MobilebgMapping = {
 export type MobilebgOverrides = {
   /** Production month („януари"…„декември") — we only store the year. */
   month?: string;
-  /** City within `locat`; their dependent list is empty unauthenticated. */
+  /** The country under „Извън страната“ (mobile.bg's `locatc`), when the lot's
+   *  data does not state it or the admin corrects it. */
   locatc?: string;
+  /** mobile.bg category (Седан, Джип, …), when the body type does not give one
+   *  or the admin corrects it. */
+  category?: string;
   /** Advert validity in days: 35 or 49. */
   term?: string;
   /** Replace the computed price (EUR) entirely. */
@@ -221,6 +227,9 @@ export type MappedAdvert = {
   params: Record<string, string>;
   /** Reasons this car must not be published at all. */
   blockers: string[];
+  /** Required fields the admin still has to fill in (month, VAT status, …).
+   *  Not a fault with the car: publishing waits until this is empty. */
+  missing: MapWarning[];
   /** Fields omitted or inferred — shown in the preview, never fatal. */
   warnings: MapWarning[];
   /** The computed advert price in EUR, before any override. */
@@ -235,11 +244,22 @@ export type MappedAdvert = {
 
 const lower = (v: string | null | undefined) => (v ?? "").toLowerCase().trim();
 
-/** True when this body shape belongs under mobile.bg's topmenu=1 at all. */
-export function isPublishableBody(bodyType: string | null, vehicleType: string | null): boolean {
-  const vt = lower(vehicleType);
-  if (vt && vt !== "automobile") return false;
-  return Boolean(BODY_TO_CATEGORY[lower(bodyType)]);
+/**
+ * Where every advert is placed. Imported cars are listed ABROAD, with the country
+ * as the city: the dealer reports mobile.bg does not allow them to be placed in
+ * Bulgaria, and mobile.bg's own location list has „Извън страната“ with 55
+ * countries (САЩ / Канада / Южна Корея accepted by the API, probed 2026-09-17).
+ */
+export const LOCAT_ABROAD = "Извън страната";
+
+/**
+ * The category our data supports on its own: a mapped body type on something
+ * our data calls a car. Anything else is left to the admin's explicit pick.
+ */
+function derivedCategory(source: MobilebgCarSource): string | undefined {
+  const vt = lower(source.vehicleType);
+  if (vt && vt !== "automobile") return undefined;
+  return BODY_TO_CATEGORY[lower(source.bodyType)];
 }
 
 /** „+359 898 980 011" → „0898980011" — the national form their form expects. */
@@ -285,6 +305,21 @@ function marketOf(source: MobilebgCarSource): "us" | "ca" | "kr" {
   return mobilebgMarket(source.domainName, source.locationCountry);
 }
 
+/**
+ * The advert's country, as mobile.bg spells it under „Извън страната“. Mirrors
+ * `deriveSourceCountry` in lib/car-detail-mapper.ts: Korea for ENCAR lots,
+ * otherwise the lot's own `location_country` (Copart/IAAI run branches in the
+ * USA AND Canada). NULL when the data does not state it — never guessed; the
+ * admin picks instead.
+ */
+function countryOf(source: MobilebgCarSource): string | null {
+  if (lower(source.domainName) === "encar_com") return "Южна Корея";
+  const country = lower(source.locationCountry);
+  if (country === "usa" || country === "us" || country === "united states") return "САЩ";
+  if (country === "canada" || country === "can" || country === "ca") return "Канада";
+  return null;
+}
+
 /** True when the lot carries real damage (not just wear) or does not run. */
 function isDamaged(source: MobilebgCarSource): boolean {
   if (NON_RUNNING_CONDITIONS.has(lower(source.condition))) return true;
@@ -301,25 +336,27 @@ function isDamaged(source: MobilebgCarSource): boolean {
 function buildExtinfo(source: MobilebgCarSource, damaged: boolean, priceIsLanded: boolean): string {
   const lines: string[] = [];
 
-  const market = marketOf(source);
-  const country = market === "kr" ? "Корея" : market === "ca" ? "Канада" : "САЩ";
+  const country = countryOf(source);
   // "Everything included" is a factual claim, so it is made only when the
   // published figure really IS the computed landed total — never for a
   // hand-typed price or „Цена при запитване“ (Общи условия I.12).
   lines.push(
-    `Автомобилът се внася по поръчка от ${country}.` +
+    (country ? `Автомобилът се внася по поръчка от ${country}.` : "Автомобилът се внася по поръчка.") +
       (priceIsLanded ? " Цената е крайна за България и включва транспорт, мито, ДДС и всички такси." : ""),
   );
 
   if (damaged) {
     const dmg = damageLabel(source.damageMain);
-    lines.push(dmg ? `Състояние: увреден автомобил — ${dmg.toLowerCase()}.` : "Състояние: увреден автомобил.");
+    lines.push(dmg ? `Състояние: увреден автомобил, ${dmg.toLowerCase()}.` : "Състояние: увреден автомобил.");
   }
 
+  // Plain punctuation only in the lines below: mobile.bg strips „—“ and „№“
+  // from descriptions (our first advert came back via advertload as
+  // „увреден автомобил   предна част“ and „Лот  : 65966236“).
   const doc = titleDocLabel(source.titleDoc);
   if (doc) lines.push(`Документ: ${doc}.`);
   if (source.vin) lines.push(`VIN: ${source.vin}`);
-  if (source.lotNumber) lines.push(`Лот №: ${source.lotNumber}`);
+  if (source.lotNumber) lines.push(`Лот номер: ${source.lotNumber}`);
 
   // Nothing about US here — no link to our site, no service pitch. mobile.bg's
   // terms (II.7) forbid dealers putting anything not about the car itself into
@@ -365,19 +402,23 @@ export const REQUIRED_FIELDS = [
 function requiredFieldMessage(field: string, source: MobilebgCarSource): string {
   switch (field) {
     case "month":
-      return "Изберете месец на производство. mobile.bg го изисква, а ние пазим само годината.";
+      return "Изберете месец на производство по-долу. mobile.bg го изисква, а ние пазим само годината.";
     case "price_dds":
-      return "Изберете ДДС статус на цената. mobile.bg го изисква.";
+      return "Изберете ДДС статус на цената по-долу. mobile.bg го изисква.";
     case "locatc":
-      return "Изберете град. mobile.bg го изисква.";
+      return "Изберете по-долу държавата, в която е автомобилът. mobile.bg я изисква.";
     case "engine_type":
       return `Типът гориво „${source.fuelType ?? "неизвестен"}“ няма съответствие в mobile.bg, а полето е задължително.`;
     case "transmission":
       return "Липсва скоростна кутия, а mobile.bg я изисква.";
     case "km":
       return "Липсва пробег, а mobile.bg го изисква.";
-    case "category":
-      return "Липсва тип купе (категория), а mobile.bg го изисква.";
+    case "category": {
+      const vt = lower(source.vehicleType);
+      return vt && vt !== "automobile"
+        ? `По нашите данни това е „${vehicleTypeLabel(source.vehicleType)}“, а не лека кола. Изберете категория по-долу само ако сте сигурни, че е кола или джип.`
+        : "Не можем да определим типа купе. Изберете категория по-долу (например Седан или Джип).";
+    }
     case "price":
       return "Липсва цена. Въведете я ръчно или изберете „Цена при запитване“.";
     default:
@@ -400,14 +441,10 @@ export function buildAdvertParams(args: {
   const overrides = args.overrides ?? {};
   const blockers: string[] = [];
   const warnings: MapWarning[] = [];
+  const missing: MapWarning[] = [];
 
   /* ── Blockers: reasons this car must never reach mobile.bg ───────────────── */
 
-  if (!isPublishableBody(source.bodyType, source.vehicleType)) {
-    blockers.push(
-      "Автомобилът не е лек автомобил или джип — mobile.bg го класифицира в друга основна категория (Бусове, Камиони, Мотоциклети).",
-    );
-  }
   if (!mapping.marka) {
     blockers.push(
       `Марката „${source.brandName ?? "—"}“ не е разпозната в mobile.bg — изберете я по-горе, в „Марка и модел в mobile.bg“.`,
@@ -473,7 +510,7 @@ export function buildAdvertParams(args: {
   const priceOnRequest = overrides.priceOnRequest === true || finalPriceEur === null;
 
   if (blockers.length > 0) {
-    return { params: {}, blockers, warnings, computedPriceEur, landedEur };
+    return { params: {}, blockers, warnings, missing, computedPriceEur, landedEur };
   }
 
   /* ── The payload ─────────────────────────────────────────────────────────── */
@@ -489,18 +526,20 @@ export function buildAdvertParams(args: {
     year: String(source.year),
     nup: damaged ? "3" : "0",
     term: overrides.term ?? "35",
-    locat: BUSINESS.city,
+    locat: LOCAT_ABROAD,
     phone: nationalPhone(CONTACT.phone),
     email: CONTACT.email,
-    // City: the showroom's, the same place `locat` names. validateListValues
-    // checks it against mobile.bg's live city list for that region.
-    locatc: overrides.locatc ?? `гр. ${BUSINESS.city}`,
     currency: "EUR",
     // No scheme: the form labels this field „http://“ and the API rejects any
     // value starting with http:// or https:// (probed 2026-09-17).
     http: `${new URL(SITE_URL).host}/avtomobil/${source.carId}`,
     extinfo: overrides.extinfo ?? buildExtinfo(source, damaged, priceIsLanded),
   };
+
+  // The country goes in `locatc`; validateListValues checks it against
+  // mobile.bg's live list for „Извън страната“.
+  const country = overrides.locatc ?? countryOf(source);
+  if (country) params.locatc = country;
 
   // „Цена при запитване" is their documented `price=&priceneg=1` pair — the
   // empty price is required, not an omission.
@@ -511,7 +550,10 @@ export function buildAdvertParams(args: {
     params.price = String(Math.round(finalPriceEur));
   }
 
-  const category = BODY_TO_CATEGORY[lower(source.bodyType)];
+  // The admin's pick wins; otherwise the body type decides. About 70k active
+  // cars have no mappable body type (none at all, "truck", "other"). They are
+  // no longer blocked outright: the REQUIRED check below asks for a category.
+  const category = overrides.category ?? derivedCategory(source);
   if (category) params.category = category;
 
   const engineType = FUEL_TO_ENGINE_TYPE[lower(source.fuelType)];
@@ -577,10 +619,10 @@ export function buildAdvertParams(args: {
   // A payload mobile.bg would bounce is stopped here, in the preview, instead.
   for (const field of REQUIRED_FIELDS) {
     const present = field === "price" ? params.priceneg === "1" || Boolean(params.price) : Boolean(params[field]);
-    if (!present) blockers.push(requiredFieldMessage(field, source));
+    if (!present) missing.push({ field, message: requiredFieldMessage(field, source) });
   }
 
-  return { params, blockers, warnings, computedPriceEur, landedEur };
+  return { params, blockers, warnings, missing, computedPriceEur, landedEur };
 }
 
 /**

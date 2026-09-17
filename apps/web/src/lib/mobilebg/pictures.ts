@@ -34,6 +34,14 @@ import { MAX_PICTURES } from "./client";
 /** URL prefix of the proxy route. Registered domain + this = what they fetch. */
 export const PICTURE_ROUTE_PREFIX = "mobilebg-img";
 
+/**
+ * How far into a gallery we look for JPEGs. Galleries lead with the
+ * i.auctionsapi.com copies, which are WebP (`.webp`, `image/webp`), and
+ * mobile.bg accepts only JPEG, so the real JPEGs (e.g. Copart's `_hrs.jpg`) can
+ * sit past position 17. The filename index is therefore allowed up to this.
+ */
+export const MAX_GALLERY_SCAN = 60;
+
 /** JPEG SOI + marker. mobile.bg accepts only .jpg/.jpeg, so this is enforced. */
 function isJpeg(bytes: Uint8Array): boolean {
   return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
@@ -56,7 +64,7 @@ export function indexFromFilename(filename: string): number | null {
   const m = filename.match(/^(\d{1,2})\.jpe?g$/i);
   if (!m) return null;
   const n = Number(m[1]);
-  if (!Number.isInteger(n) || n < 1 || n > MAX_PICTURES) return null;
+  if (!Number.isInteger(n) || n < 1 || n > MAX_GALLERY_SCAN) return null;
   return n - 1;
 }
 
@@ -68,7 +76,8 @@ export type PreparedPictures = {
 };
 
 /**
- * Verify the first `MAX_PICTURES` gallery images and build the `picts` list.
+ * Check up to `MAX_GALLERY_SCAN` gallery images and keep the first
+ * `MAX_PICTURES` genuine JPEGs, in gallery order, as the `picts` list.
  *
  * Runs BEFORE the advert is created, deliberately: an advert published with
  * photos mobile.bg then fails to download is already billable, and fixing it
@@ -80,7 +89,7 @@ export async function preparePictures(
   carId: number,
   images: string[],
 ): Promise<PreparedPictures> {
-  const candidates = images.slice(0, MAX_PICTURES);
+  const candidates = images.slice(0, MAX_GALLERY_SCAN);
   const picts: string[] = [];
   const skipped: { index: number; reason: string }[] = [];
 
@@ -90,7 +99,10 @@ export async function preparePictures(
         const res = await fetch(url, { headers: { range: "bytes=0-2" }, cache: "no-store" });
         if (!res.ok && res.status !== 206) return { index, ok: false, reason: `HTTP ${res.status}` };
         const head = new Uint8Array((await res.arrayBuffer()).slice(0, 3));
-        if (!isJpeg(head)) return { index, ok: false, reason: "не е JPEG" };
+        if (!isJpeg(head)) {
+          const webp = head[0] === 0x52 && head[1] === 0x49 && head[2] === 0x46;
+          return { index, ok: false, reason: webp ? "WebP, а mobile.bg приема само JPEG" : "не е JPEG" };
+        }
         return { index, ok: true, reason: "" };
       } catch (error) {
         return { index, ok: false, reason: `недостъпна (${String(error)})` };
@@ -98,9 +110,10 @@ export async function preparePictures(
     }),
   );
 
+  // Keep gallery order, and stop at mobile.bg's per-advert ceiling.
   for (const c of checks) {
-    if (c.ok) picts.push(picturePath(carId, c.index));
-    else skipped.push({ index: c.index, reason: c.reason });
+    if (c.ok && picts.length < MAX_PICTURES) picts.push(picturePath(carId, c.index));
+    else if (!c.ok) skipped.push({ index: c.index, reason: c.reason });
   }
 
   return { picts, skipped };

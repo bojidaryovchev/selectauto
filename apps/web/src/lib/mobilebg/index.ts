@@ -10,7 +10,7 @@ export {
 export {
   buildAdvertParams,
   hashParams,
-  isPublishableBody,
+  LOCAT_ABROAD,
   type MappedAdvert,
   type MapWarning,
   type MobilebgCarSource,

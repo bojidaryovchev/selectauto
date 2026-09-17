@@ -84,6 +84,9 @@ export async function publishCarToMobilebg(
   if (preview.mapped.blockers.length > 0) {
     return { success: false, error: preview.mapped.blockers.join(" ") };
   }
+  if (preview.mapped.missing.length > 0) {
+    return { success: false, error: preview.mapped.missing.map((m) => m.message).join(" ") };
+  }
   if (preview.invalidValues.length > 0) {
     const list = preview.invalidValues.map((v) => `${v.field}="${v.value}"`).join(", ");
     return {

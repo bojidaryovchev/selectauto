@@ -1,11 +1,17 @@
-import { BUSINESS } from "@/constants";
 import { getAdminSession } from "@/lib/admin";
 import { isConfigured } from "@/lib/mobilebg/client";
-import { type Catfield, getCatfields, getCityOptions, validateListValues } from "@/lib/mobilebg/dictionary";
+import {
+  type Catfield,
+  getCatfields,
+  getCityOptions,
+  getDictionary,
+  validateListValues,
+} from "@/lib/mobilebg/dictionary";
 import {
   type MappedAdvert,
   type MobilebgCarSource,
   type MobilebgOverrides,
+  LOCAT_ABROAD,
   buildAdvertParams,
   hashParams,
 } from "@/lib/mobilebg/map-car";
@@ -23,9 +29,8 @@ import { getMobilebgCarSource } from "./get-advert-source.query";
  * with its derivation.
  *
  * It also runs `validateListValues` against mobile.bg's LIVE dictionary — the one
- * check that cannot be done offline. Their `list` fields are a closed vocabulary
- * their API does NOT reliably reject, so a wrong value produces a paid-for advert
- * filed where nobody will find it.
+ * check that cannot be done offline. mobile.bg rejects a value outside its lists
+ * only once the publish call is made; checking here surfaces it in the preview.
  *
  * Works with no credentials at all: `/catfields` and `/dictionary` are public.
  * `credentialsConfigured` reports whether the send button can do anything.
@@ -56,8 +61,10 @@ export type MobilebgPreview = {
   credentialsConfigured: boolean;
   /** The markup % that produced the price, echoed for the UI. */
   markupPct: number;
-  /** mobile.bg's cities for the advert's region (the city picker). */
-  cityOptions: string[];
+  /** mobile.bg's countries under „Извън страната“ (the country picker). */
+  countryOptions: string[];
+  /** mobile.bg's car categories (the category picker). */
+  categoryOptions: string[];
 };
 
 export async function getMobilebgPreview(
@@ -80,11 +87,17 @@ export async function getMobilebgPreview(
   // Only worth asking mobile.bg about a payload that exists.
   let catfields: Record<string, Catfield> = {};
   let invalidValues: { field: string; value: string }[] = [];
-  let cityOptions: string[] = [];
+  let countryOptions: string[] = [];
+  let categoryOptions: string[] = [];
   try {
-    const [fields, cities] = await Promise.all([getCatfields(), getCityOptions(BUSINESS.city)]);
+    const [fields, countries, dict] = await Promise.all([
+      getCatfields(),
+      getCityOptions(LOCAT_ABROAD),
+      getDictionary(),
+    ]);
     catfields = fields;
-    cityOptions = cities.map((o) => o.optval);
+    countryOptions = countries.map((o) => o.optval);
+    categoryOptions = (dict.category ?? []).map((o) => o.optval);
     if (Object.keys(mapped.params).length > 0) {
       invalidValues = await validateListValues(mapped.params);
     }
@@ -110,6 +123,7 @@ export async function getMobilebgPreview(
     advert: found.advert,
     credentialsConfigured: isConfigured(),
     markupPct: config.mobilebgMarkupPct,
-    cityOptions,
+    countryOptions,
+    categoryOptions,
   };
 }

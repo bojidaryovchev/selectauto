@@ -27,10 +27,21 @@ import { getCarGallery } from "@/queries/mobilebg/get-car-gallery.query";
 const UPSTREAM_TIMEOUT_MS = 10_000;
 
 export async function GET(
-  _request: Request,
+  request: Request,
   ctx: { params: Promise<{ carId: string; name: string }> },
 ) {
   const { carId: rawCarId, name } = await ctx.params;
+
+  // Logged on purpose: the first real publish failed with "No picts data" while
+  // none of its photo URLs showed any request (all edge-cache MISS minutes
+  // later). This line is how we see whether, and as what, mobile.bg reaches us.
+  // Cached hits never invoke the function, so it costs one line per new photo.
+  console.log("[mobilebg-img] request", {
+    carId: rawCarId,
+    name,
+    ua: request.headers.get("user-agent"),
+    ip: request.headers.get("x-forwarded-for"),
+  });
 
   const carId = Number(rawCarId);
   const index = indexFromFilename(name);

@@ -32,9 +32,11 @@ import type { CarLookupHit, MobilebgPreview } from "@/queries/mobilebg";
  *
  * The other overrides are fields our data genuinely cannot supply, three of them
  * REQUIRED by mobile.bg: production month (we store only the year), the VAT
- * status of the price (a public tax statement, so never defaulted) and the city
- * (defaulted to the showroom's, pickable from mobile.bg's live list). Changing
- * any of them recomputes the preview at once, so the blocker it resolves clears.
+ * status of the price (a public tax statement, so never defaulted), the country
+ * (every advert is „Извън страната“; the country comes from the lot and can be
+ * changed) and the category (from the body type, picked by hand when our data
+ * has none). Changing any of them recomputes the preview at once, so the
+ * blocker it resolves clears. Opening another car clears the per-car choices.
  */
 
 const MONTHS = [
@@ -96,6 +98,7 @@ export function MobilebgPublisher() {
   const [extraExtri, setExtraExtri] = useState("");
   const [extinfo, setExtinfo] = useState("");
   const [priceDds, setPriceDds] = useState("");
+  const [category, setCategory] = useState("");
 
   // Brand/model pickers.
   const [modelOverride, setModelOverride] = useState("");
@@ -119,6 +122,7 @@ export function MobilebgPublisher() {
       extinfo: extinfo.trim() || undefined,
       model: modelOverride || undefined,
       priceDds: priceDds || undefined,
+      category: category || undefined,
     };
   }
 
@@ -139,10 +143,21 @@ export function MobilebgPublisher() {
     });
   }
 
-  /** A different car: a model picked for the previous advert must not carry over. */
+  /**
+   * A different car: nothing chosen for the previous car may carry over (its
+   * month, category, country, price or description would silently land on this
+   * one). Only the advert-policy fields stay: VAT status and validity.
+   */
   function openCar(carId: number) {
     setModelOverride("");
-    load(carId, { ...overrides(), model: undefined });
+    setMonth("");
+    setLocatc("");
+    setCategory("");
+    setPriceOverride("");
+    setPriceOnRequest(false);
+    setExtraExtri("");
+    setExtinfo("");
+    load(carId, { term, priceDds: priceDds || undefined });
   }
 
   function search() {
@@ -249,19 +264,32 @@ export function MobilebgPublisher() {
   const mapped = preview?.mapped;
   const mapping = preview?.mapping;
   const blockers = mapped?.blockers ?? [];
+  const missing = mapped?.missing ?? [];
+  const missingFields = new Set(missing.map((m) => m.field));
   const invalid = preview?.invalidValues ?? [];
   const canPublish =
     Boolean(preview) &&
     blockers.length === 0 &&
+    missing.length === 0 &&
     invalid.length === 0 &&
     Boolean(preview?.credentialsConfigured);
   const showModelPicker =
     Boolean(mapping?.marka) && (!mapping?.model || changingModel) && (mapping?.modelOptions.length ?? 0) > 0;
-  // The city the advert will carry: the admin's pick, else the mapper's default.
-  const effectiveCity = locatc || mapped?.params.locatc || "";
-  const cityChoices = (
-    preview?.cityOptions.length ? preview.cityOptions : effectiveCity ? [effectiveCity] : []
-  ).map((c) => ({ value: c, label: c }));
+  // What the advert will carry: the admin's pick, else what the mapper derived.
+  const effectiveCountry = locatc || mapped?.params.locatc || "";
+  const countryChoices = [
+    { value: "", label: "Изберете" },
+    ...(preview?.countryOptions.length ? preview.countryOptions : effectiveCountry ? [effectiveCountry] : []).map(
+      (c) => ({ value: c, label: c }),
+    ),
+  ];
+  const effectiveCategory = category || mapped?.params.category || "";
+  const categoryChoices = [
+    { value: "", label: "Изберете" },
+    ...(preview?.categoryOptions.length ? preview.categoryOptions : effectiveCategory ? [effectiveCategory] : []).map(
+      (c) => ({ value: c, label: c }),
+    ),
+  ];
 
   return (
     <div className="space-y-4">
@@ -452,6 +480,18 @@ export function MobilebgPublisher() {
             </div>
           )}
 
+          {/* Not a fault with the car: required choices the admin still has to make. */}
+          {missing.length > 0 && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <p className="mb-1 font-bold">Попълнете, за да публикувате:</p>
+              <ul className="list-disc space-y-1 pl-5">
+                {missing.map((m) => (
+                  <li key={m.field}>{m.message}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {invalid.length > 0 && (
             <div className="rounded-lg bg-[#fdecea] px-3 py-2 text-sm text-[#b3261e]">
               <p className="mb-1 font-bold">Стойности, които mobile.bg не разпознава:</p>
@@ -516,6 +556,7 @@ export function MobilebgPublisher() {
                   reloadWith({ month: v || undefined });
                 }}
               />
+              {missingFields.has("month") && <p className="mt-1 text-xs font-semibold text-[#b3261e]">Задължително</p>}
             </div>
             <div>
               <label className="mb-1 block text-sm font-semibold text-ink">
@@ -531,15 +572,28 @@ export function MobilebgPublisher() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-semibold text-ink">Град</label>
+              <label className="mb-1 block text-sm font-semibold text-ink">Категория</label>
               <Combobox
-                options={cityChoices}
-                value={effectiveCity}
+                options={categoryChoices}
+                value={effectiveCategory}
+                onValueChange={(v) => {
+                  setCategory(v);
+                  reloadWith({ category: v || undefined });
+                }}
+              />
+              {missingFields.has("category") && <p className="mt-1 text-xs font-semibold text-[#b3261e]">Задължително</p>}
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-semibold text-ink">Държава (извън страната)</label>
+              <Combobox
+                options={countryChoices}
+                value={effectiveCountry}
                 onValueChange={(v) => {
                   setLocatc(v);
                   reloadWith({ locatc: v || undefined });
                 }}
               />
+              {missingFields.has("locatc") && <p className="mt-1 text-xs font-semibold text-[#b3261e]">Задължително</p>}
             </div>
             <div>
               <label className="mb-1 block text-sm font-semibold text-ink">ДДС статус на цената</label>
@@ -554,6 +608,7 @@ export function MobilebgPublisher() {
                   reloadWith({ priceDds: v || undefined });
                 }}
               />
+              {missingFields.has("price_dds") && <p className="mt-1 text-xs font-semibold text-[#b3261e]">Задължително</p>}
             </div>
             <TextField
               label="Цена (EUR) — ръчно"
