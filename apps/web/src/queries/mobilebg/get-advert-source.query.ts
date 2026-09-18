@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { getAdminSession } from "@/lib/admin";
+import { getBackOfficeSession } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import { calcVehicleTypeFromBody } from "@/data/import-rates";
 import { type MobilebgCarSource, mobilebgMarket } from "@/lib/mobilebg/map-car";
@@ -19,8 +19,8 @@ import { getCarGallery } from "./get-car-gallery.query";
  * because the landed total is computed from it. Round-tripping through display
  * strings would be both lossy and fragile.
  *
- * Admin-gated: this exposes the whole raw record, and everything downstream of
- * it spends money.
+ * Back-office gated (admin or „Наблюдаващ“): this exposes the whole raw record,
+ * and everything downstream of it spends money.
  */
 
 export type MobilebgSourceResult = {
@@ -76,7 +76,7 @@ export async function getMobilebgCarSource(
   carId: number,
   overrideModel?: string,
 ): Promise<MobilebgSourceResult | null> {
-  if (!(await getAdminSession())) throw new Error("FORBIDDEN");
+  if (!(await getBackOfficeSession())) throw new Error("FORBIDDEN");
   if (!Number.isInteger(carId) || carId <= 0) return null;
 
   const db = getDb();

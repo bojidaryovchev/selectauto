@@ -1,5 +1,5 @@
 import { desc, eq } from "drizzle-orm";
-import { getAdminSession } from "@/lib/admin";
+import { getBackOfficeSession } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 
 /**
@@ -32,7 +32,7 @@ export async function listMobilebgMappings(): Promise<{
   brands: MobilebgBrandMapRow[];
   models: MobilebgModelMapRow[];
 }> {
-  if (!(await getAdminSession())) throw new Error("FORBIDDEN");
+  if (!(await getBackOfficeSession())) throw new Error("FORBIDDEN");
 
   const db = getDb();
   const [brands, models] = await Promise.all([

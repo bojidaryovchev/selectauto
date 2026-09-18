@@ -1,4 +1,4 @@
-import { getAdminSession } from "@/lib/admin";
+import { getBackOfficeSession } from "@/lib/admin";
 import { isConfigured } from "@/lib/mobilebg/client";
 import {
   type Catfield,
@@ -71,7 +71,7 @@ export async function getMobilebgPreview(
   carId: number,
   overrides?: MobilebgOverrides,
 ): Promise<MobilebgPreview | null> {
-  if (!(await getAdminSession())) throw new Error("FORBIDDEN");
+  if (!(await getBackOfficeSession())) throw new Error("FORBIDDEN");
 
   const found = await getMobilebgCarSource(carId, overrides?.model);
   if (!found) return null;

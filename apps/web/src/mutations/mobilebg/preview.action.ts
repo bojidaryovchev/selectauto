@@ -1,6 +1,6 @@
 "use server";
 
-import { getAdminSession } from "@/lib/admin";
+import { getBackOfficeSession } from "@/lib/admin";
 import type { MobilebgOverrides } from "@/lib/mobilebg/map-car";
 import {
   type CarLookupHit,
@@ -16,12 +16,12 @@ import type { ActionResult } from "@/types/action-result.type";
  * picks a brand/model.
  *
  * `.action.ts`, not `.mutation.ts`: the repo reserves that suffix for writes and
- * neither of these writes. Still admin-gated — a server action is a public POST
- * endpoint no matter which page renders the form.
+ * neither of these writes. Still gated to the back office: a server action is a
+ * public POST endpoint no matter which page renders the form.
  */
 
 export async function lookupCarAction(query: string): Promise<ActionResult<CarLookupHit[]>> {
-  if (!(await getAdminSession())) return { success: false, error: "Нямате достъп до тази операция." };
+  if (!(await getBackOfficeSession())) return { success: false, error: "Нямате достъп до тази операция." };
   try {
     return { success: true, data: await lookupCarForMobilebg(query) };
   } catch (error) {
@@ -34,7 +34,7 @@ export async function previewAdvertAction(
   carId: number,
   overrides?: MobilebgOverrides,
 ): Promise<ActionResult<MobilebgPreview>> {
-  if (!(await getAdminSession())) return { success: false, error: "Нямате достъп до тази операция." };
+  if (!(await getBackOfficeSession())) return { success: false, error: "Нямате достъп до тази операция." };
   try {
     const preview = await getMobilebgPreview(carId, overrides);
     if (!preview) return { success: false, error: "Автомобилът не е намерен или е скрит." };

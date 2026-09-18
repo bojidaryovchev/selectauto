@@ -13,8 +13,8 @@ import { LEAD_TYPE_META, LEAD_TYPES } from "@/constants/admin";
 export function AdminNav({ isAdmin = true }: { isAdmin?: boolean }) {
   const pathname = usePathname();
 
-  // „Наблюдаващ" only works with contracts and deposits; leads, tariffs and the
-  // recipient settings are admin-only (the pages re-check server-side).
+  // „Наблюдаващ" works with contracts, deposits and the mobile.bg desk; leads,
+  // tariffs and the recipient settings stay admin-only (pages re-check server-side).
   const links = isAdmin
     ? [
         { href: "/admin", label: "Табло" },
@@ -32,6 +32,7 @@ export function AdminNav({ isAdmin = true }: { isAdmin?: boolean }) {
     : [
         { href: "/admin/dogovori", label: "Договори" },
         { href: "/admin/depoziti", label: "Депозити" },
+        { href: "/admin/mobile-bg", label: "mobile.bg" },
       ];
 
   const renderLinks = () =>

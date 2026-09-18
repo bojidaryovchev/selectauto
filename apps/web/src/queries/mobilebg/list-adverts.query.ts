@@ -1,5 +1,5 @@
 import { count, desc, eq } from "drizzle-orm";
-import { getAdminSession } from "@/lib/admin";
+import { getBackOfficeSession } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import { ADMIN_PAGE_SIZE } from "@/constants/admin";
 
@@ -29,7 +29,7 @@ export type MobilebgAdvertRow = {
 export async function listMobilebgAdverts(
   page = 1,
 ): Promise<{ rows: MobilebgAdvertRow[]; total: number }> {
-  if (!(await getAdminSession())) throw new Error("FORBIDDEN");
+  if (!(await getBackOfficeSession())) throw new Error("FORBIDDEN");
 
   const db = getDb();
   const safePage = Number.isInteger(page) && page > 0 ? page : 1;

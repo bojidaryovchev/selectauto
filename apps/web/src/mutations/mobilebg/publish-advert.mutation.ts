@@ -2,7 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { getAdminSession } from "@/lib/admin";
+import { getBackOfficeSession } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import { MobilebgError, addPictures, isConfigured, logout, publishAdvert } from "@/lib/mobilebg/client";
 import type { MobilebgOverrides } from "@/lib/mobilebg/map-car";
@@ -13,9 +13,13 @@ import type { ActionResult } from "@/types/action-result.type";
 /**
  * Publish one car to mobile.bg — or correct the advert we already have there.
  *
- * Admin-only, never observer: this spends money on an external platform and
- * puts our name on a public advert. The guard is the first statement because a
- * server action is a POST anyone who can forge the request may call.
+ * Open to the whole back office, „Наблюдаващ“ included (the owner asked for it,
+ * 18.09.2026) — a deliberate exception to the rule in lib/admin.ts that an
+ * observer never edits. The guard is still the first statement, because a server
+ * action is a POST anyone who can forge the request may call, and this one spends
+ * money on an external platform and puts our name on a public advert. What stands
+ * between a mistake and a paid advert is the preview, the blockers and the confirm
+ * dialog — not the role.
  *
  * ── The order of operations is the whole design ─────────────────────────────
  *
@@ -61,7 +65,7 @@ export type PublishAdvertResult = {
 export async function publishCarToMobilebg(
   input: PublishAdvertInput,
 ): Promise<ActionResult<PublishAdvertResult>> {
-  const session = await getAdminSession();
+  const session = await getBackOfficeSession();
   if (!session) return { success: false, error: "Нямате достъп до тази операция." };
 
   const carId = Number(input?.carId);

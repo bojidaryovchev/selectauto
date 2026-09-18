@@ -2,7 +2,7 @@
 
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { getAdminSession } from "@/lib/admin";
+import { getBackOfficeSession } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import { type DictOption, getDictionary, getModelOptions } from "@/lib/mobilebg/dictionary";
 import { vocabKey } from "@/lib/mobilebg/vocab-match";
@@ -38,7 +38,7 @@ export type SaveBrandMappingInput = {
 export async function saveMobilebgBrandMapping(
   input: SaveBrandMappingInput,
 ): Promise<ActionResult<{ marka: string }>> {
-  const session = await getAdminSession();
+  const session = await getBackOfficeSession();
   if (!session) return { success: false, error: "Нямате достъп до тази операция." };
 
   const id = Number(input?.manufacturerExternalId);
@@ -80,7 +80,7 @@ export type SaveModelMappingInput = {
 export async function saveMobilebgModelMapping(
   input: SaveModelMappingInput,
 ): Promise<ActionResult<{ marka: string; model: string }>> {
-  const session = await getAdminSession();
+  const session = await getBackOfficeSession();
   if (!session) return { success: false, error: "Нямате достъп до тази операция." };
 
   const modelId = Number(input?.modelExternalId);
@@ -133,7 +133,7 @@ export async function saveMobilebgModelMapping(
 export async function deleteMobilebgBrandMapping(
   manufacturerExternalId: number,
 ): Promise<ActionResult<{ ok: true }>> {
-  if (!(await getAdminSession())) return { success: false, error: "Нямате достъп до тази операция." };
+  if (!(await getBackOfficeSession())) return { success: false, error: "Нямате достъп до тази операция." };
   const id = Number(manufacturerExternalId);
   if (!Number.isInteger(id)) return { success: false, error: "Невалидна марка." };
 
@@ -153,7 +153,7 @@ export async function deleteMobilebgModelMapping(
   modelExternalId: number,
   manufacturerExternalId: number,
 ): Promise<ActionResult<{ ok: true }>> {
-  if (!(await getAdminSession())) return { success: false, error: "Нямате достъп до тази операция." };
+  if (!(await getBackOfficeSession())) return { success: false, error: "Нямате достъп до тази операция." };
   const modelId = Number(modelExternalId);
   const brandId = Number(manufacturerExternalId);
   if (!Number.isInteger(modelId) || !Number.isInteger(brandId)) {

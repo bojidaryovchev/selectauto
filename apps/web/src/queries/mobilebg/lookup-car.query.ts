@@ -1,5 +1,5 @@
 import { desc, eq, sql } from "drizzle-orm";
-import { getAdminSession } from "@/lib/admin";
+import { getBackOfficeSession } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import { normalizeVin } from "@/lib/vin";
 
@@ -31,7 +31,7 @@ function carIdFromInput(raw: string): number | null {
 }
 
 export async function lookupCarForMobilebg(rawQuery: string): Promise<CarLookupHit[]> {
-  if (!(await getAdminSession())) throw new Error("FORBIDDEN");
+  if (!(await getBackOfficeSession())) throw new Error("FORBIDDEN");
 
   const query = (rawQuery ?? "").trim();
   if (!query) return [];

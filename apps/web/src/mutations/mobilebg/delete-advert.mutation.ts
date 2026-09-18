@@ -2,7 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { getAdminSession } from "@/lib/admin";
+import { getBackOfficeSession } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import { MobilebgError, deleteAdvert, isConfigured, logout } from "@/lib/mobilebg/client";
 import type { ActionResult } from "@/types/action-result.type";
@@ -20,7 +20,7 @@ import type { ActionResult } from "@/types/action-result.type";
  * `advertpub`, which either fails or, worse, edits something else.
  */
 export async function deleteMobilebgAdvert(carId: number): Promise<ActionResult<{ carId: number }>> {
-  const session = await getAdminSession();
+  const session = await getBackOfficeSession();
   if (!session) return { success: false, error: "Нямате достъп до тази операция." };
 
   if (!Number.isInteger(carId) || carId <= 0) {
