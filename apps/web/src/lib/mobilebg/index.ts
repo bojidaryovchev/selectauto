@@ -1,7 +1,6 @@
 export {
   MAX_PICTURES,
   MobilebgError,
-  dealerStorefrontUrl,
   isConfigured,
   type VipTopAction,
 } from "./client";

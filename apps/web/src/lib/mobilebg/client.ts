@@ -38,16 +38,6 @@ export const MAX_PICTURES = 17;
 const username = process.env.MOBILEBG_USERNAME;
 const password = process.env.MOBILEBG_PASSWORD;
 
-/**
- * The dealer's own storefront, which mobile.bg gives every dealer for free on a
- * subdomain of their username (Общи условия II.5.1) — e.g. `selectauto-bg` →
- * https://selectauto-bg.mobile.bg/ (live, checked 2026-09-18). NULL when the
- * account is not configured.
- */
-export function dealerStorefrontUrl(): string | null {
-  return username ? `https://${username}.mobile.bg/` : null;
-}
-
 /** True when import credentials are present, i.e. calls can be attempted. */
 export function isConfigured(): boolean {
   return Boolean(username && password);

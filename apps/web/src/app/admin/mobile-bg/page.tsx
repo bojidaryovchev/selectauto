@@ -4,7 +4,7 @@ import {
   MobilebgPublisher,
 } from "@/components/admin/mobilebg";
 import { requireAdminPage } from "@/lib/admin";
-import { dealerStorefrontUrl, isConfigured } from "@/lib/mobilebg/client";
+import { isConfigured } from "@/lib/mobilebg/client";
 import { listMobilebgAdverts, listMobilebgMappings } from "@/queries/mobilebg";
 
 /**
@@ -22,7 +22,6 @@ export default async function AdminMobilebgPage({
   await requireAdminPage();
   const sp = await searchParams;
 
-  const storefront = dealerStorefrontUrl();
   const [{ rows, total }, mappings] = await Promise.all([
     listMobilebgAdverts(Number(sp.page) || 1),
     listMobilebgMappings(),
@@ -37,18 +36,6 @@ export default async function AdminMobilebgPage({
           цена за България (себестойност от калкулатора + надценката от „Тарифи“), а не аукционната
           цена на лота.
         </p>
-        {storefront && (
-          <p className="mt-1 text-sm">
-            <a
-              href={storefront}
-              target="_blank"
-              rel="noreferrer"
-              className="font-bold text-brand hover:underline"
-            >
-              Витрината ни в mobile.bg
-            </a>
-          </p>
-        )}
       </div>
 
       {!isConfigured() && (
