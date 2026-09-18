@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Combobox, ConfirmDialog } from "@/components/common";
+import { advertUrl } from "@/lib/mobilebg/advert-url";
 import { carTitle } from "@/lib/mobilebg/car-title";
 import { PRICE_DDS_OPTIONS } from "@/lib/mobilebg/price-dds";
 import type { MobilebgOverrides } from "@/lib/mobilebg/map-car";
@@ -85,7 +86,7 @@ export function MobilebgPublisher() {
   const [hits, setHits] = useState<CarLookupHit[]>([]);
   const [preview, setPreview] = useState<MobilebgPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ text: string; url?: string } | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -252,10 +253,10 @@ export function MobilebgPublisher() {
         res.data.skippedPictures.length > 0
           ? ` Пропуснати снимки: ${res.data.skippedPictures.length}.`
           : "";
-      setNotice(
-        `${res.data.edited ? "Обявата е коригирана" : "Обявата е публикувана"} — ID ${res.data.ida}, ` +
-          `${res.data.pictureCount} снимки.${skipped}`,
-      );
+      setNotice({
+        text: `${res.data.edited ? "Обявата е коригирана" : "Обявата е публикувана"}: ID ${res.data.ida}, ${res.data.pictureCount} снимки.${skipped}`,
+        url: advertUrl(res.data.ida),
+      });
       load(preview.source.carId);
       router.refresh();
     });
@@ -320,7 +321,21 @@ export function MobilebgPublisher() {
       </div>
 
       {error && <p className="rounded-lg bg-[#fdecea] px-3 py-2 text-sm text-[#b3261e]">{error}</p>}
-      {notice && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{notice}</p>}
+      {notice && (
+        <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          {notice.text}{" "}
+          {notice.url && (
+            <a
+              href={notice.url}
+              target="_blank"
+              rel="noreferrer"
+              className="font-bold underline"
+            >
+              Виж обявата в mobile.bg
+            </a>
+          )}
+        </p>
+      )}
 
       {hits.length > 1 && !preview && (
         <div className="rounded-2xl border border-line bg-white p-4">
@@ -360,6 +375,18 @@ export function MobilebgPublisher() {
               {" · "}
               {preview.source.images.length} снимки
             </p>
+            {preview.advert?.ida && (
+              <p className="mt-1 text-sm">
+                <a
+                  href={advertUrl(preview.advert.ida)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-bold text-brand hover:underline"
+                >
+                  Обявата в mobile.bg (ID {preview.advert.ida})
+                </a>
+              </p>
+            )}
           </div>
 
           {!preview.credentialsConfigured && (

@@ -1,4 +1,11 @@
-export { MAX_PICTURES, MobilebgError, isConfigured, type VipTopAction } from "./client";
+export {
+  MAX_PICTURES,
+  MobilebgError,
+  dealerStorefrontUrl,
+  isConfigured,
+  type VipTopAction,
+} from "./client";
+export { advertUrl } from "./advert-url";
 export {
   RUB_MAIN,
   TOPMENU_CARS,

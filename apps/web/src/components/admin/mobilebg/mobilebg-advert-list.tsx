@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { ConfirmDialog } from "@/components/common";
 import { deleteMobilebgAdvert } from "@/mutations/mobilebg";
 import type { MobilebgAdvertRow } from "@/queries/mobilebg";
+import { advertUrl } from "@/lib/mobilebg/advert-url";
 import { carTitle } from "@/lib/mobilebg/car-title";
 
 /**
@@ -85,7 +86,20 @@ export function MobilebgAdvertList({ rows }: { rows: MobilebgAdvertRow[] }) {
                   </div>
                   {r.lastError && <div className="mt-1 text-xs text-rose-700">{r.lastError}</div>}
                 </td>
-                <td className="px-3 py-2 font-mono text-xs text-muted">{r.ida ?? "—"}</td>
+                <td className="px-3 py-2 font-mono text-xs">
+                  {r.ida ? (
+                    <a
+                      href={advertUrl(r.ida)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-brand hover:underline"
+                    >
+                      {r.ida}
+                    </a>
+                  ) : (
+                    <span className="text-muted">няма</span>
+                  )}
+                </td>
                 <td className={`px-3 py-2 ${STATUS_CLASS[r.status] ?? "text-muted"}`}>
                   {STATUS_LABEL[r.status] ?? r.status}
                 </td>
