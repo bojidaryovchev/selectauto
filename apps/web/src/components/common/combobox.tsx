@@ -87,6 +87,16 @@ export function Combobox({
         if (next) onValueChange(next.value);
       }}
       isItemEqualToValue={(a, b) => a?.value === b?.value}
+      itemToStringLabel={(item) => item?.label ?? ""}
+      // Without a search box there is NO query to filter by, yet Base UI fills its
+      // internal input with the selected item's label when one is picked
+      // (`fillInputOnItemPress`, which applies only while the input is not inside
+      // the popup). Reopening then filtered the list against that label and hid
+      // every other option until the empty row was chosen again. `null` turns
+      // filtering off, which is what a plain dropdown wants. The searchable variant
+      // keeps the default filter and is unaffected: its input sits INSIDE the popup,
+      // so Base UI leaves it empty and the full list shows until the user types.
+      filter={searchable ? undefined : null}
       disabled={disabled}
       name={name}
       autoHighlight
