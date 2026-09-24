@@ -7,6 +7,7 @@ import { advertUrl } from "@/lib/mobilebg/advert-url";
 import { carTitle } from "@/lib/mobilebg/car-title";
 import { PRICE_DDS_OPTIONS } from "@/lib/mobilebg/price-dds";
 import type { MobilebgOverrides } from "@/lib/mobilebg/map-car";
+import { parseManualPrice } from "@/lib/mobilebg/parse-price";
 import {
   lookupCarAction,
   previewAdvertAction,
@@ -108,13 +109,16 @@ export function MobilebgPublisher() {
   const [rememberModel, setRememberModel] = useState(true);
   const [changingModel, setChangingModel] = useState(false);
 
+  // „28 500" and „28.500" are how people here type prices; an unreadable value
+  // blocks publishing instead of silently falling back to the calculated price.
+  const manualPrice = parseManualPrice(priceOverride);
+
   function overrides(): MobilebgOverrides {
-    const parsedPrice = Number(priceOverride.replace(",", "."));
     return {
       month: month || undefined,
       locatc: locatc.trim() || undefined,
       term,
-      priceEur: priceOverride.trim() && Number.isFinite(parsedPrice) ? parsedPrice : undefined,
+      priceEur: manualPrice.kind === "ok" ? manualPrice.eur : undefined,
       priceOnRequest: priceOnRequest || undefined,
       extri: extraExtri
         .split(/[~/]/)
@@ -183,6 +187,39 @@ export function MobilebgPublisher() {
   /** Recompute against the current overrides — the preview must stay truthful. */
   function refresh() {
     if (preview) load(preview.source.carId);
+  }
+
+  /**
+   * Recompute with everything as typed, THEN ask for confirmation. The dialog
+   * states the price from this fresh preview, so it is the exact `price` that will
+   * be sent, never an older calculation.
+   */
+  function openConfirm() {
+    if (!preview || manualPrice.kind === "invalid") return;
+    const carId = preview.source.carId;
+    setError(null);
+    startTransition(async () => {
+      const res = await previewAdvertAction(carId, overrides());
+      if (!res.success) {
+        setError(res.error);
+        return;
+      }
+      setPreview(res.data);
+      const p = res.data;
+      if (p.unchanged) {
+        setError("Няма промени спрямо публикуваното.");
+        return;
+      }
+      if (
+        p.mapped.blockers.length > 0 ||
+        p.mapped.missing.length > 0 ||
+        p.invalidValues.length > 0 ||
+        !p.credentialsConfigured
+      ) {
+        return;
+      }
+      setConfirming(true);
+    });
   }
 
   /** Apply one override and recompute at once, so a blocker it resolves clears. */
@@ -270,6 +307,7 @@ export function MobilebgPublisher() {
   const invalid = preview?.invalidValues ?? [];
   const canPublish =
     Boolean(preview) &&
+    manualPrice.kind !== "invalid" &&
     blockers.length === 0 &&
     missing.length === 0 &&
     invalid.length === 0 &&
@@ -540,11 +578,20 @@ export function MobilebgPublisher() {
               {mapped?.landedEur ? `${mapped.landedEur.toLocaleString("bg-BG")} €` : "—"}
               {" · надценка "}
               {preview.markupPct}%{" → "}
-              <strong className="text-ink">
-                {mapped?.computedPriceEur
-                  ? `${mapped.computedPriceEur.toLocaleString("bg-BG")} €`
+              {mapped?.computedPriceEur ? `${mapped.computedPriceEur.toLocaleString("bg-BG")} €` : "—"}
+            </p>
+            <p className="mt-1 text-sm text-ink">
+              В обявата:{" "}
+              <strong>
+                {mapped?.sentPriceEur != null
+                  ? `${mapped.sentPriceEur.toLocaleString("bg-BG")} €`
                   : "цена при запитване"}
               </strong>
+              {mapped?.sentPriceEur != null &&
+                mapped.computedPriceEur != null &&
+                mapped.sentPriceEur !== mapped.computedPriceEur && (
+                  <span className="text-muted"> (ръчна цена вместо изчислената)</span>
+                )}
             </p>
             <p className="mt-1 text-xs text-muted">
               Аукционната цена на лота е{" "}
@@ -637,12 +684,25 @@ export function MobilebgPublisher() {
               />
               {missingFields.has("price_dds") && <p className="mt-1 text-xs font-semibold text-[#b3261e]">Задължително</p>}
             </div>
-            <TextField
-              label="Цена (EUR) — ръчно"
-              value={priceOverride}
-              onChange={setPriceOverride}
-              placeholder="празно = изчислената"
-            />
+            <div>
+              <TextField
+                label="Цена (EUR) — ръчно"
+                value={priceOverride}
+                onChange={setPriceOverride}
+                onCommit={() => {
+                  if (manualPrice.kind !== "invalid") reloadWith({});
+                }}
+                placeholder="празно = изчислената"
+              />
+              {manualPrice.kind === "invalid" && (
+                <p className="mt-1 text-xs font-semibold text-[#b3261e]">{manualPrice.message}</p>
+              )}
+              {manualPrice.kind === "ok" && (
+                <p className="mt-1 text-xs text-muted">
+                  Ще се публикува като {manualPrice.eur.toLocaleString("bg-BG")} €.
+                </p>
+              )}
+            </div>
             <TextField
               label="Допълнителни екстри (разделени с /)"
               value={extraExtri}
@@ -654,7 +714,10 @@ export function MobilebgPublisher() {
                 <input
                   type="checkbox"
                   checked={priceOnRequest}
-                  onChange={(e) => setPriceOnRequest(e.target.checked)}
+                  onChange={(e) => {
+                    setPriceOnRequest(e.target.checked);
+                    reloadWith({ priceOnRequest: e.target.checked || undefined });
+                  }}
                 />
                 Цена при запитване
               </label>
@@ -686,7 +749,7 @@ export function MobilebgPublisher() {
             </button>
             <button
               type="button"
-              onClick={() => setConfirming(true)}
+              onClick={openConfirm}
               disabled={pending || !canPublish}
               className="h-10 rounded-full bg-brand px-5 text-sm font-bold text-white disabled:opacity-40"
             >
@@ -737,24 +800,27 @@ export function MobilebgPublisher() {
         onConfirm={confirmPublish}
         onCancel={() => setConfirming(false)}
         message={
-          preview?.advert?.ida ? (
-            <>
-              Обявата ще бъде обновена в mobile.bg (ID {preview.advert.ida}). Корекциите са
-              безплатни (Общи условия, т. I.15).
-            </>
-          ) : (
-            <>
-              Ще бъде създадена НОВА обява в mobile.bg. Докато е активна, mobile.bg начислява
-              седмична такса по дилърската тарифа (т. I.16) — обявата не изтича сама, а стои до
-              изтриване. Цената в обявата ще бъде{" "}
-              <strong>
-                {mapped?.computedPriceEur
-                  ? `${mapped.computedPriceEur.toLocaleString("bg-BG")} €`
-                  : "„при запитване“"}
-              </strong>
-              .
-            </>
-          )
+          <>
+            {preview?.advert?.ida ? (
+              <>
+                Обявата ще бъде обновена в mobile.bg (ID {preview.advert.ida}). Корекциите са
+                безплатни (Общи условия, т. I.15).
+              </>
+            ) : (
+              <>
+                Ще бъде създадена НОВА обява в mobile.bg. Докато е активна, mobile.bg начислява
+                седмична такса по дилърската тарифа (т. I.16) — обявата не изтича сама, а стои до
+                изтриване.
+              </>
+            )}{" "}
+            Цената в обявата ще бъде{" "}
+            <strong>
+              {mapped?.sentPriceEur != null
+                ? `${mapped.sentPriceEur.toLocaleString("bg-BG")} €`
+                : "„при запитване“"}
+            </strong>
+            .
+          </>
         }
       />
     </div>
@@ -765,11 +831,14 @@ function TextField({
   label,
   value,
   onChange,
+  onCommit,
   placeholder,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
+  /** Leaving the field or pressing Enter: the moment to recompute. */
+  onCommit?: () => void;
   placeholder?: string;
 }) {
   return (
@@ -778,6 +847,10 @@ function TextField({
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={onCommit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") onCommit?.();
+        }}
         placeholder={placeholder}
         className="h-11 w-full rounded-[10px] border border-line bg-white px-3.5 text-sm text-ink outline-none focus:border-brand"
       />

@@ -45,7 +45,7 @@ export async function deleteMobilebgAdvert(carId: number): Promise<ActionResult<
   } catch (error) {
     const message =
       error instanceof MobilebgError ? `${error.status}: ${error.message}` : String(error);
-    console.error("[mobilebg] delete failed", carId, ida, message);
+    console.error("[mobilebg] delete failed", { carId, ida, user: session.user?.email ?? null, message });
     await db
       .update(schema.mobilebgAdverts)
       .set({ lastError: message, updatedAt: new Date() })
@@ -66,6 +66,8 @@ export async function deleteMobilebgAdvert(carId: number): Promise<ActionResult<
     actorId: session.user?.id ?? null,
     data: { ida },
   });
+
+  console.log("[mobilebg] advert deleted", { carId, ida, user: session.user?.email ?? null });
 
   await logout();
   revalidatePath("/admin/mobile-bg");

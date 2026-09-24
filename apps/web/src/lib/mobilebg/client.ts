@@ -232,6 +232,17 @@ export async function loadAdvert(ida: string): Promise<ApiResponse> {
   return call(`/advertload/${token}/?ida=${encodeURIComponent(ida)}&pretty=1`);
 }
 
+/**
+ * How many photos the advert holds at mobile.bg right now. `advertload` returns
+ * them as an array of their own CDN URLs under `advert.picts`, and leaves the
+ * key out entirely when there are none (checked 2026-09-24).
+ */
+export async function countAdvertPictures(ida: string): Promise<number> {
+  const res = await loadAdvert(ida);
+  const advert = (res.advert ?? {}) as Record<string, unknown>;
+  return Array.isArray(advert.picts) ? advert.picts.length : 0;
+}
+
 /** Every advert id on the account, with its publish time. */
 export async function listRemoteAdverts(): Promise<ApiResponse> {
   const token = await getToken();

@@ -7,6 +7,7 @@ import {
   computeImportBreakdown,
 } from "@/data/import-rates";
 import { damageLabel, titleDocLabel, vehicleTypeLabel } from "@/lib/car-labels";
+import { MIN_MANUAL_PRICE_EUR } from "./parse-price";
 
 /**
  * Turn one catalog car into the exact POST body `advertpub` expects.
@@ -234,6 +235,10 @@ export type MappedAdvert = {
   warnings: MapWarning[];
   /** The computed advert price in EUR, before any override. */
   computedPriceEur: number | null;
+  /** The price that actually goes out (`params.price`): the manual one when
+   *  given, else the computed one. NULL for „Цена при запитване“. This, never
+   *  `computedPriceEur`, is what the confirm dialog, the DB and the audit show. */
+  sentPriceEur: number | null;
   /** The landed cost in EUR the price was derived from (markup excluded). */
   landedEur: number | null;
 };
@@ -506,11 +511,23 @@ export function buildAdvertParams(args: {
   // exact case an admin overrides (an auction with no buy-now, or a figure they
   // negotiated). Only an explicit tick, or having no number from either source,
   // falls back to „Цена при запитване".
+  //
+  // Checked again here, not only in the browser: a server action takes whatever
+  // is POSTed, and a slip such as 28.5 for „28.500" once went live as 29 €.
+  if (
+    overrides.priceEur !== undefined &&
+    !(Number.isFinite(overrides.priceEur) && overrides.priceEur >= MIN_MANUAL_PRICE_EUR)
+  ) {
+    blockers.push(
+      `Ръчната цена ${overrides.priceEur} € е невалидна (под ${MIN_MANUAL_PRICE_EUR} €). Поправете я в полето „Цена (EUR) — ръчно“.`,
+    );
+  }
   const finalPriceEur = overrides.priceEur ?? computedPriceEur;
   const priceOnRequest = overrides.priceOnRequest === true || finalPriceEur === null;
+  const sentPriceEur = priceOnRequest || finalPriceEur === null ? null : Math.round(finalPriceEur);
 
   if (blockers.length > 0) {
-    return { params: {}, blockers, warnings, missing, computedPriceEur, landedEur };
+    return { params: {}, blockers, warnings, missing, computedPriceEur, sentPriceEur, landedEur };
   }
 
   /* ── The payload ─────────────────────────────────────────────────────────── */
@@ -543,11 +560,11 @@ export function buildAdvertParams(args: {
 
   // „Цена при запитване" is their documented `price=&priceneg=1` pair — the
   // empty price is required, not an omission.
-  if (priceOnRequest || finalPriceEur === null) {
+  if (sentPriceEur === null) {
     params.price = "";
     params.priceneg = "1";
   } else {
-    params.price = String(Math.round(finalPriceEur));
+    params.price = String(sentPriceEur);
   }
 
   // The admin's pick wins; otherwise the body type decides. About 70k active
@@ -622,7 +639,7 @@ export function buildAdvertParams(args: {
     if (!present) missing.push({ field, message: requiredFieldMessage(field, source) });
   }
 
-  return { params, blockers, warnings, missing, computedPriceEur, landedEur };
+  return { params, blockers, warnings, missing, computedPriceEur, sentPriceEur, landedEur };
 }
 
 /**

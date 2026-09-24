@@ -4,7 +4,14 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getBackOfficeSession } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
-import { MobilebgError, addPictures, isConfigured, logout, publishAdvert } from "@/lib/mobilebg/client";
+import {
+  MobilebgError,
+  addPictures,
+  countAdvertPictures,
+  isConfigured,
+  logout,
+  publishAdvert,
+} from "@/lib/mobilebg/client";
 import type { MobilebgOverrides } from "@/lib/mobilebg/map-car";
 import { preparePictures } from "@/lib/mobilebg/pictures";
 import { getMobilebgPreview } from "@/queries/mobilebg/get-advert-preview.query";
@@ -45,6 +52,17 @@ import type { ActionResult } from "@/types/action-result.type";
  *  5. **Pass the stored `ida` when we have one.** With it, `advertpub` is an edit;
  *     without it, a new — billable — advert. Losing that id means paying twice
  *     for the same car, which is why it is stored under a PK on `car_id`.
+ *
+ *  6. **Record what went live the moment it does.** Once `advertpub` succeeds the
+ *     new price is public, whatever happens to the photos afterwards, so the
+ *     sent price and payload hash are stored right then. They used to be stored
+ *     only after the photos, and the stored price was the CALCULATED one even
+ *     when an admin typed another, so the record could disagree with the advert.
+ *
+ *  7. **An edit leaves existing photos alone.** `advertpicts action=add` APPENDS,
+ *     and an advert already holding 17 answers „No picts data", so re-adding them
+ *     on every correction failed each one after its price had gone live (seen
+ *     24.09.2026). Photos are added only when the advert has none.
  */
 
 export type PublishAdvertInput = {
@@ -120,7 +138,7 @@ export async function publishCarToMobilebg(
     .values({
       carId,
       status: "pending",
-      priceEur: preview.mapped.computedPriceEur?.toString() ?? null,
+      priceEur: preview.mapped.sentPriceEur?.toString() ?? null,
       markupPct: preview.markupPct.toString(),
       createdBy: session.user?.id ?? null,
       updatedAt: new Date(),
@@ -130,15 +148,42 @@ export async function publishCarToMobilebg(
       set: { status: "pending", lastError: null, updatedAt: new Date() },
     });
 
+  const sentPriceEur = preview.mapped.sentPriceEur;
+  const logFields = {
+    carId,
+    user: session.user?.email ?? null,
+    priceEur: sentPriceEur,
+    computedPriceEur: preview.mapped.computedPriceEur,
+    manualPrice: input.overrides?.priceEur !== undefined,
+    payloadHash: preview.payloadHash,
+  };
+
   // 5. Publish, then attach the photos to the advert it returned.
   let ida: string | null = null;
+  let pictureCount = picts.length;
   try {
     const published = await publishAdvert(preview.mapped.params, existingIda);
     ida = published.ida;
     if (!ida) {
       throw new MobilebgError("/advertpub", "no_ida", "mobile.bg не върна ID на обявата.");
     }
-    await addPictures(ida, picts);
+
+    // 6. Live now: record exactly what was sent before anything else can fail.
+    await db
+      .update(schema.mobilebgAdverts)
+      .set({
+        ida,
+        payloadHash: preview.payloadHash,
+        priceEur: sentPriceEur?.toString() ?? null,
+        markupPct: preview.markupPct.toString(),
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.mobilebgAdverts.carId, carId));
+
+    // 7. An edited advert keeps its photos; only an advert with none gets them.
+    const existingPictures = existingIda ? await countAdvertPictures(ida) : 0;
+    if (existingPictures > 0) pictureCount = existingPictures;
+    else await addPictures(ida, picts);
   } catch (error) {
     let message =
       error instanceof MobilebgError ? `${error.status}: ${error.message}` : String(error);
@@ -150,7 +195,7 @@ export async function publishCarToMobilebg(
       });
       message += `. Грешни полета: ${named.join(", ")}`;
     }
-    console.error("[mobilebg] publish failed", carId, message);
+    console.error("[mobilebg] publish failed", { ...logFields, ida: ida ?? existingIda, message });
 
     // Keep any id we DID get: the advert may exist and be billable, and the next
     // attempt must edit it rather than create a second one.
@@ -160,7 +205,12 @@ export async function publishCarToMobilebg(
       .where(eq(schema.mobilebgAdverts.carId, carId));
 
     await logout();
-    return { success: false, error: `Публикуването се провали: ${message}` };
+    // Past `advertpub` the advert IS live with the new values; say so rather
+    // than leave the admin believing nothing changed.
+    const live = ida
+      ? ` Обявата вече е обновена в mobile.bg с цена ${sentPriceEur !== null ? `${sentPriceEur.toLocaleString("bg-BG")} €` : "„при запитване“"}, но снимките не бяха добавени.`
+      : "";
+    return { success: false, error: `Публикуването се провали: ${message}.${live}` };
   }
 
   await db
@@ -169,9 +219,9 @@ export async function publishCarToMobilebg(
       ida,
       status: "published",
       payloadHash: preview.payloadHash,
-      priceEur: preview.mapped.computedPriceEur?.toString() ?? null,
+      priceEur: sentPriceEur?.toString() ?? null,
       markupPct: preview.markupPct.toString(),
-      pictureCount: picts.length,
+      pictureCount,
       lastError: null,
       publishedAt: new Date(),
       updatedAt: new Date(),
@@ -186,11 +236,19 @@ export async function publishCarToMobilebg(
     actorId: session.user?.id ?? null,
     data: {
       ida,
-      priceEur: preview.mapped.computedPriceEur,
+      priceEur: sentPriceEur,
+      computedPriceEur: preview.mapped.computedPriceEur,
+      manualPrice: logFields.manualPrice,
       markupPct: preview.markupPct,
-      pictures: picts.length,
+      pictures: pictureCount,
       skipped: skipped.length,
+      payloadHash: preview.payloadHash,
     },
+  });
+  console.log(existingIda ? "[mobilebg] advert updated" : "[mobilebg] advert published", {
+    ...logFields,
+    ida,
+    pictures: pictureCount,
   });
 
   await logout();
@@ -200,9 +258,9 @@ export async function publishCarToMobilebg(
     success: true,
     data: {
       ida,
-      pictureCount: picts.length,
-      skippedPictures: skipped,
-      priceEur: preview.mapped.computedPriceEur,
+      pictureCount,
+      skippedPictures: existingIda ? [] : skipped,
+      priceEur: sentPriceEur,
       edited: Boolean(existingIda),
     },
   };
