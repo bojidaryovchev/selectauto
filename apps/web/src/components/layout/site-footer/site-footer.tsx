@@ -29,10 +29,12 @@ export function SiteFooter() {
           {/* Brand */}
           <div>
             <Link href="/" className="inline-flex">
+              {/* The rendered box at the file's real ratio (h-18 = 72px → 119px
+                  wide) — see the header logo for why `width` must not overstate it. */}
               <Image
                 src="/logo.png"
                 alt="SelectAuto"
-                width={170}
+                width={119}
                 height={72}
                 className="h-18 w-auto object-contain"
               />

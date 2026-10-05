@@ -189,12 +189,21 @@ export function SiteHeader() {
                 center its content so the logo sits in the middle of the bar.
                 Desktop keeps the natural inline (left) placement. */}
             <Link href="/" className="inline-flex items-center max-lg:w-full max-lg:justify-center">
+              {/* width/height are the RENDERED box at the file's real 2560×1555
+                  ratio (h-15.5 = 62px → 102px wide). They must be: next/image picks
+                  its srcset from `width`, and the old 150 made every 2x screen pull
+                  the 640px variant (~48KB) for a 102px slot — while the wrong ratio
+                  reserved a 150px box that snapped to 102px once the file loaded.
+                  No `preload`/`priority`: the whole header is `max-lg:hidden`, and a
+                  preload is fetched regardless of `display: none`, so phones paid
+                  for a logo they never show. Left lazy, the browser skips it when
+                  hidden; `fetchPriority` keeps it first in line on desktop. */}
               <Image
                 src="/logo.png"
                 alt="SelectAuto"
-                width={150}
+                width={102}
                 height={62}
-                priority
+                fetchPriority="high"
                 className="h-15.5 w-auto object-contain max-lg:h-12.5"
               />
             </Link>
