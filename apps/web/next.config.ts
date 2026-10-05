@@ -49,6 +49,16 @@ const nextConfig: NextConfig = {
   turbopack: {
     resolveAlias: { three: "three/src/Three.js" },
   },
+  // Metadata (title, description, canonical, robots, Open Graph) in the <head>
+  // for every request. By default Next STREAMS `generateMetadata` output into
+  // the <body> for anything but its list of HTML-only bots, so the car pages,
+  // the catalog and the brand/model hubs sent their canonical, robots and
+  // description in the body — to browsers, Googlebot, AI crawlers and link
+  // previewers alike, and they stay there after hydration. Google accepts
+  // rel="canonical" only in the <head>; Lighthouse fails the description (SEO
+  // 92). Blocking metadata costs those pages ~35-45ms to first byte, and the
+  // full HTML arrives no later (measured on production with a bot user agent).
+  htmlLimitedBots: /.*/,
   // The payment-notice PDF templates (src/pdf) register their Cyrillic TTFs by
   // filesystem path at runtime — nothing imports the .ttf files, so output
   // tracing would drop them from the serverless bundle. Include them for the
