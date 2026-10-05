@@ -133,6 +133,10 @@ export function ViberGroupPopup() {
       // lets clicks pass through the empty gutters.
       className="pointer-events-none fixed inset-x-0 top-4 z-10060 flex justify-center px-3 max-md:top-3"
       aria-hidden={!visible}
+      // `aria-hidden` hides it from assistive tech but leaves the link and the
+      // close button in the tab order — keyboard focus could land on a control
+      // nobody can see. `inert` takes the whole subtree out while it is hidden.
+      inert={!visible}
     >
       <div
         // Slide DOWN from above + fade in on reveal; slide back up + fade out (and
