@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { motion, useReducedMotion } from "motion/react";
 import { useSession } from "next-auth/react";
 import { Button, LinkButton } from "@/components/common";
 import { UserMenu } from "@/components/auth";
@@ -40,8 +39,6 @@ export function SiteHeader() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
   const headerRef = useRef<HTMLElement | null>(null);
-  // Honor prefers-reduced-motion for the drawer sub-menu height animation.
-  const reduce = useReducedMotion();
 
   // Current path (trailing-slash normalised to match the NAV hrefs) so the
   // drawer can highlight the active entry, mirroring the bottom nav.
@@ -324,28 +321,28 @@ export function SiteHeader() {
                       className="flex min-h-14 w-full items-center justify-between gap-3 px-4.5 text-[15px] font-bold text-[#f2f3f5]"
                     >
                       {item.label}
-                      <motion.span
+                      <span
                         aria-hidden
-                        animate={{ rotate: openSub === item.label ? 180 : 0 }}
-                        transition={reduce ? { duration: 0 } : { duration: 0.3, ease: "easeInOut" }}
-                        className="shrink-0 text-white/70"
+                        className={`shrink-0 text-white/70 transition-transform duration-300 ease-in-out motion-reduce:transition-none ${
+                          openSub === item.label ? "rotate-180" : ""
+                        }`}
                       >
                         <ChevronDownIcon className="size-4" />
-                      </motion.span>
+                      </span>
                     </Button>
                     {/* Sub-menu animates height 0 ↔ auto (matching ExpandableSection)
                         instead of snapping; children stay mounted so the links are in
-                        the DOM even while collapsed. */}
-                    <motion.div
-                      initial={false}
-                      animate={{
-                        height: openSub === item.label ? "auto" : 0,
-                        opacity: openSub === item.label ? 1 : 0,
-                      }}
-                      transition={reduce ? { duration: 0 } : { duration: 0.32, ease: [0.32, 0.72, 0, 1] }}
-                      style={{ overflow: "hidden" }}
+                        the DOM even while collapsed. Plain CSS: a grid row going
+                        0fr ↔ 1fr is the "height: auto" a transition can reach. (This
+                        was the Motion library — ~120KB of script, ~35KB compressed,
+                        on every page, for this.)
+                        `motion-reduce` makes it instant under prefers-reduced-motion. */}
+                    <div
+                      className={`grid transition-[grid-template-rows,opacity] duration-320 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none ${
+                        openSub === item.label ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                      }`}
                     >
-                      <ul className="m-0 list-none bg-white/2 p-0">
+                      <ul className="m-0 min-h-0 list-none overflow-hidden bg-white/2 p-0">
                         {item.children.map((sub) => {
                           const active = isActivePath(sub.href);
                           return (
@@ -365,7 +362,7 @@ export function SiteHeader() {
                           );
                         })}
                       </ul>
-                    </motion.div>
+                    </div>
                   </li>
                 ) : (
                   (() => {
