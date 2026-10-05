@@ -42,16 +42,19 @@ function InfoCell({ label, value, accent }: { label: string; value?: string; acc
  *
  * `priority` is set on the first above-the-fold row so its photos eager-load
  * (the page's LCP candidate); all other cards lazy-load by default as they
- * virtualize into view.
+ * virtualize into view. `deferImage` holds the photo back altogether (see
+ * CarCardImage's `deferred`).
  */
 
 function AuctionCardImpl({
   car,
   priority = false,
+  deferImage = false,
   confirmRemove = false,
 }: {
   car: CarView;
   priority?: boolean;
+  deferImage?: boolean;
   // Gate un-favouriting behind a confirmation dialog (set on /lyubimi, where a
   // heart tap removes the card from the saved list).
   confirmRemove?: boolean;
@@ -74,6 +77,7 @@ function AuctionCardImpl({
               fallback={car.imageFallback}
               alt={car.title}
               priority={priority}
+              deferred={deferImage}
             />
           ) : (
             <div className="flex aspect-40/26 w-full items-center justify-center bg-linear-to-br from-[#2a2d33] to-[#15171b] text-xs font-semibold uppercase tracking-wider text-white/35">
@@ -221,8 +225,9 @@ function AuctionCardImpl({
  * Memoized so the virtualized grid — which re-renders on every scroll frame as the
  * visible row window shifts — does not reconcile each card's heavy subtree (image,
  * live countdown, favourite button) unless its `car`/`priority` props actually
- * change. Card `car` objects keep a stable identity across renders (the `cars`
- * array is only spread on append/prepend; the objects themselves are reused), so
- * the default shallow prop compare is correct and effective.
+ * change (`deferImage` flips once, in the carousels). Card `car` objects keep a
+ * stable identity across renders (the `cars` array is only spread on
+ * append/prepend; the objects themselves are reused), so the default shallow
+ * prop compare is correct and effective.
  */
 export const AuctionCard = memo(AuctionCardImpl);

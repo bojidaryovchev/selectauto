@@ -10,6 +10,7 @@ import { UserMenu } from "@/components/auth";
 import { ChevronDownIcon, ChevronRightIcon, CloseIcon } from "@/components/icons";
 import { NAV } from "@/data/navigation";
 import { useInquiry } from "@/contexts/inquiry-context";
+import { useHasPainted } from "@/lib/after-first-paint";
 import { MobileBottomNav } from "./mobile-bottom-nav";
 import { DrawerProfilePanel } from "./drawer-profile-panel";
 
@@ -39,6 +40,9 @@ export function SiteHeader() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
   const headerRef = useRef<HTMLElement | null>(null);
+  // No route prefetch from the plain <Link>s below until the page has painted —
+  // see useHasPainted (the LinkButtons do the same internally).
+  const painted = useHasPainted();
 
   // Current path (trailing-slash normalised to match the NAV hrefs) so the
   // drawer can highlight the active entry, mirroring the bottom nav.
@@ -185,7 +189,11 @@ export function SiteHeader() {
                 logo is the only child of this row — stretch it full-width and
                 center its content so the logo sits in the middle of the bar.
                 Desktop keeps the natural inline (left) placement. */}
-            <Link href="/" className="inline-flex items-center max-lg:w-full max-lg:justify-center">
+            <Link
+              href="/"
+              prefetch={painted ? undefined : false}
+              className="inline-flex items-center max-lg:w-full max-lg:justify-center"
+            >
               {/* width/height are the RENDERED box at the file's real 2560×1555
                   ratio (h-15.5 = 62px → 102px wide). They must be: next/image picks
                   its srcset from `width`, and the old 150 made every 2x screen pull
@@ -212,6 +220,7 @@ export function SiteHeader() {
                   <li key={item.label} className="group relative">
                     <Link
                       href={item.href}
+                      prefetch={painted ? undefined : false}
                       className="relative inline-flex min-h-11 items-center text-base font-bold text-white after:absolute after:bottom-1.25 after:left-0 after:h-0.5 after:w-0 after:rounded-full after:bg-[#fff2d9] after:transition-[width] after:duration-200 group-hover:after:w-full"
                     >
                       {item.label}

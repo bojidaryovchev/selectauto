@@ -9,6 +9,7 @@ import "swiper/css/free-mode";
 import { AuctionCard } from "@/components/cars/all-cars/auction-card";
 import { CarouselNav } from "@/components/common";
 import { useMounted } from "@/hooks/use-mounted";
+import { useHasPainted } from "@/lib/after-first-paint";
 import type { CarView } from "@/types/car.type";
 
 /**
@@ -117,6 +118,15 @@ export function CarCardsCarousel({
   const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inViewRef = useRef(false);
   const mounted = useMounted();
+  // The card photos get their `src` only once the page has painted. Both
+  // carousels sit below the fold, but `loading="lazy"` still fetches a photo
+  // within the browser's distance threshold of the viewport — up to ~3000px
+  // when it cannot tell the connection speed, as on PageSpeed's test machines —
+  // and decides that at the first layout, just BEFORE the first paint. In a
+  // PageSpeed mobile run six photos (~600KB) were requested inside the window
+  // it charges to the first paint and LCP. Lazy-loading still applies after
+  // the gate, and after a client-side navigation the gate is already open.
+  const showImages = useHasPainted();
 
   const modules = [...(mounted ? [Autoplay] : []), ...(freeMode ? [FreeMode] : [])];
 
@@ -211,7 +221,7 @@ export function CarCardsCarousel({
       >
         {cars.map((car, i) => (
           <SwiperSlide key={car.id ?? car.href + i}>
-            <AuctionCard car={car} />
+            <AuctionCard car={car} deferImage={!showImages} />
           </SwiperSlide>
         ))}
       </Swiper>

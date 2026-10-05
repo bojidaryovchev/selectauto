@@ -22,17 +22,23 @@ import { useCallback, useState } from "react";
  *
  * `priority` marks the above-the-fold LCP candidates: they eager-load at high
  * fetch priority; everything else lazy-loads as it virtualizes into view.
+ *
+ * `deferred` holds the photo back entirely — an empty box of the same size, still
+ * named by `alt` for the card link around it — until the caller clears it. See
+ * CarCardsCarousel for why lazy-loading alone is not enough there.
  */
 export function CarCardImage({
   src,
   fallback,
   alt,
   priority = false,
+  deferred = false,
 }: {
   src: string;
   fallback?: string | null;
   alt: string;
   priority?: boolean;
+  deferred?: boolean;
 }) {
   const hasFallback = !!fallback && fallback !== src;
   const [failed, setFailed] = useState(false);
@@ -56,6 +62,8 @@ export function CarCardImage({
     },
     [hasFallback],
   );
+
+  if (deferred) return <span role="img" aria-label={alt} className="block aspect-40/26 w-full" />;
 
   return (
     // eslint-disable-next-line @next/next/no-img-element

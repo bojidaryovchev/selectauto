@@ -2,6 +2,7 @@
 
 import Link, { type LinkProps } from "next/link";
 import React from "react";
+import { useHasPainted } from "@/lib/after-first-paint";
 import { Ripple } from "./ripple";
 
 type AnchorProps = Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, keyof LinkProps | "href">;
@@ -25,10 +26,13 @@ interface Props extends LinkProps, AnchorProps {
  * button-styled links here sit on dark/brand surfaces; override per call site.
  */
 const LinkButton = React.forwardRef<HTMLAnchorElement, Props>(
-  ({ className = "", rippleTheme = "light", children, ...props }, ref) => {
+  ({ className = "", rippleTheme = "light", children, prefetch, ...props }, ref) => {
+    // No route prefetch until the page has painted — see useHasPainted.
+    const painted = useHasPainted();
     return (
       <Link
         ref={ref}
+        prefetch={painted ? prefetch : false}
         className={`relative cursor-pointer overflow-hidden ${className}`}
         {...props}
       >

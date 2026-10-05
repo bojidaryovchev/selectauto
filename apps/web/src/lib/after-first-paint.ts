@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from "react";
+
 /**
  * Runs `callback` once the page's first contentful paint is on screen and the main
  * thread is next idle. Returns a cancel function.
@@ -49,4 +51,42 @@ export function afterFirstPaint(callback: () => void): () => void {
     window.clearTimeout(timeoutId);
     if (typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(idleId);
   };
+}
+
+let painted = false;
+let watching = false;
+const paintListeners = new Set<() => void>();
+
+function subscribeToPaint(onPaint: () => void): () => void {
+  paintListeners.add(onPaint);
+  if (!watching) {
+    watching = true;
+    afterFirstPaint(() => {
+      painted = true;
+      for (const listener of paintListeners) listener();
+    });
+  }
+  return () => {
+    paintListeners.delete(onPaint);
+  };
+}
+
+/**
+ * `false` until `afterFirstPaint` fires for the page the visit started on, then
+ * `true` for the rest of the visit — so after a client-side navigation it is
+ * `true` straight away. `false` on the server.
+ *
+ * The site header and LinkButton (so also the bottom nav, built from them) use
+ * it to hold route prefetching until the page has painted. Next prefetches
+ * every link in view as soon as the browser first reports it visible — at the
+ * first frame — and each prefetch pulls the linked route's payload plus the
+ * code behind it (the form pages alone bring zod and react-hook-form).
+ * PageSpeed's mobile runs often report that first paint ~2.4s in, and count
+ * every request started before it against the paint and LCP: ~200KB of
+ * prefetch traffic did. Measured in a local reproduction, holding prefetches
+ * (and the carousel photos) until after the paint took LCP from 5.0-6.0s to
+ * 3.7-3.8s. Navigation still prefetches, a moment later.
+ */
+export function useHasPainted(): boolean {
+  return useSyncExternalStore(subscribeToPaint, () => painted, () => false);
 }
