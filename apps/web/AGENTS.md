@@ -40,6 +40,18 @@ dedicated `src/` folders (modeled on the `ecommerce-store` repo):
   state — no Zustand), `lib/` (`db`, `email`, `phone`, `cache-tags`,
   `car-mapper`), `constants/`, `data/` (static content + `FALLBACK_*` listings).
 
+Barrels and the client bundle: `package.json` declares
+`"sideEffects": ["**/*.css"]` — every module here may be dropped when none of its
+exports are used. That is what lets the bundler prune a barrel down to the one
+export an importer asked for; without it, importing `{ Button }` from
+`@/components/common` shipped that whole folder to the browser, and
+`@/mutations/favorites` shipped the Postgres driver. Two consequences:
+never import one of our own modules purely for its side effect
+(`import "./setup"`) — it will be removed, so list the file under `sideEffects` if
+that is ever needed; and `lib/db.ts` / `lib/email.ts` start with
+`import "server-only"`, so a Client Component that reaches them fails the build
+instead of leaking server code.
+
 Cache invalidation: when listings change, call
 `revalidateTag(CACHE_TAGS.buyNowCars | auctionCars, "max")` (the single-arg form
 is deprecated). DB schema/types come from `@selectauto/db/schema`; the
