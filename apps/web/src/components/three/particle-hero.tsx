@@ -6,26 +6,7 @@ import { HERO_MODELS } from "@/data/home";
 import { useInquiry } from "@/contexts/inquiry-context";
 import { afterFirstPaint } from "@/lib/after-first-paint";
 import { loadHeroPoints, type HeroTier } from "@/lib/baked-hero";
-
-/**
- * Names of the CPU rasterisers a browser falls back to when it has no usable GPU
- * (headless servers, VMs, remote desktops, blocklisted drivers): Chrome's
- * SwiftShader, Mesa's llvmpipe/softpipe, Windows' "Microsoft Basic Render Driver",
- * Apple's "Software Renderer".
- */
-const SOFTWARE_RENDERER = /swiftshader|llvmpipe|softpipe|software|basic render/i;
-
-function isSoftwareRenderer(gl: WebGLRenderingContext | WebGL2RenderingContext): boolean {
-  // Chrome and Safari mask RENDERER ("WebKit WebGL") and reveal the real name only
-  // through the extension; Firefox reports it on RENDERER and warns if the
-  // extension is touched — so the extension is the fallback, not the first stop.
-  let name = String(gl.getParameter(gl.RENDERER));
-  if (/webkit webgl/i.test(name)) {
-    const info = gl.getExtension("WEBGL_debug_renderer_info");
-    if (info) name = String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL));
-  }
-  return SOFTWARE_RENDERER.test(name);
-}
+import { isSoftwareRenderer } from "@/lib/webgl";
 
 /**
  * 3D particle hero — a Three.js scene where each GLB car model is sampled into a

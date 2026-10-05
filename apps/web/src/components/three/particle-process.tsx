@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { LinkButton } from "@/components/common";
 import { loadBakedGeometry } from "@/lib/baked-edges";
+import { isSoftwareRenderer } from "@/lib/webgl";
 // Type-only import: erased at build time, so `three` never enters the server
 // bundle, while THREE.* type annotations below still resolve.
 import type * as THREE from "three";
@@ -190,6 +191,18 @@ export function ParticleProcess() {
       });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2));
 
+      // Without a GPU every frame of this scene is rasterised on the CPU, in
+      // main-thread time: measured, the page sat at ~13fps with the main thread
+      // 100% busy while nothing was moving. So there a frame is drawn only when
+      // scrolling has actually changed it (see animate()) — the scroll-driven
+      // story still plays, the idle sway and shimmer do not.
+      const drawOnDemand = isSoftwareRenderer(renderer.getContext());
+      // Set by anything OTHER than scrolling that changes what a frame shows.
+      let needsDraw = true;
+      let lastDrawnT = -1;
+      // False once the section has scrolled out of view entirely.
+      let onScreen = true;
+
       // Car/scatter starts at world origin (centred in the level camera view) on
       // both layouts; updateCarGroup() drives Y per-frame (mobile lifts it as it
       // forms). Camera looks straight ahead (CAR_LOOK_X = 0).
@@ -295,6 +308,8 @@ export function ParticleProcess() {
         sizeAttenuation: true,
       });
       const particles = new THREE.Points(particleGeometry, particleMaterial);
+      // Not drawn until it has an opacity to show — see updateParticles().
+      particles.visible = false;
       carGroup.add(particles);
 
       // ---- outline (edge-biased) particles --------------------------------
@@ -345,6 +360,7 @@ export function ParticleProcess() {
         sizeAttenuation: true,
       });
       const outlineParticles = new THREE.Points(outlineGeometry, outlineMaterial);
+      outlineParticles.visible = false;
       carGroup.add(outlineParticles);
 
       // ---- intro text → particle dissolve (2D canvas) ----------------------
@@ -364,6 +380,12 @@ export function ParticleProcess() {
         wobble: number;
       }[] = [];
       let introDpr = 1;
+      // Dissolve progress the intro canvas was last painted at (-1 = repaint).
+      let introDrawnAt = -1;
+      // When the dissolve last reached 1 (see updateIntroParticles).
+      let introDoneAt = 0;
+      // The intro overlay's opacity transition (duration-300) plus a margin.
+      const INTRO_FADE_MS = 400;
 
       function buildIntroTextParticles() {
         if (!introCanvas || !introCtx) return;
@@ -418,6 +440,8 @@ export function ParticleProcess() {
         // coarser and the glyphs read as a loose, washed-out dot matrix.
         const gap = isMobile ? 4 : 5;
         introParticles = [];
+        introDrawnAt = -1;
+        needsDraw = true;
         for (let y = 0; y < h; y += gap) {
           for (let x = 0; x < w; x += gap) {
             const index = (y * w + x) * 4;
@@ -460,6 +484,19 @@ export function ParticleProcess() {
         const end = 0.16;
         let p = Math.max(0, Math.min(1, (t - start) / (end - start)));
         p = p * (2 - p);
+
+        // At rest the canvas already shows what a repaint would draw, and a
+        // repaint is thousands of fillRects — every frame, at the top of the page
+        // where every visit starts. Fully formed (0), every particle sits still
+        // on its glyph pixel. Fully dissolved (1), a few late particles are still
+        // faintly visible and wobbling, so painting continues until the overlay
+        // has faded out (setIntroHidden below), and only then stops.
+        if (p === 0 && introDrawnAt === 0) return;
+        if (p === 1) {
+          if (introDrawnAt !== 1) introDoneAt = performance.now();
+          else if (performance.now() - introDoneAt > INTRO_FADE_MS) return;
+        }
+        introDrawnAt = p;
 
         introCtx.clearRect(0, 0, introCanvas.width, introCanvas.height);
         const now = performance.now() * 0.002;
@@ -528,6 +565,7 @@ export function ParticleProcess() {
           }
 
           modelLoaded = true;
+          needsDraw = true;
         })
         .catch((error) => {
           console.error("PARTICLE BAKE LOAD ERROR:", error);
@@ -537,7 +575,7 @@ export function ParticleProcess() {
       function computeProgress() {
         const rect = root!.getBoundingClientRect();
         const totalSticky = rect.height - window.innerHeight;
-        if (totalSticky <= 0) return { formation: 0, dispersion: 0, reveal: 0 };
+        if (totalSticky <= 0) return { t: 0, formation: 0, dispersion: 0, reveal: 0 };
         const t = Math.max(0, Math.min(1, -rect.top / totalSticky));
         const introEnd = 0.18;
         const formationEnd = 0.62;
@@ -548,14 +586,35 @@ export function ParticleProcess() {
         // ramping in as it dissolves so they don't sit as a dense scatter cloud
         // behind the intro at the top of the section. Mirrors the stage reveal.
         const reveal = Math.max(0, Math.min(1, (t - 0.09) / (0.18 - 0.09)));
-        return { formation, dispersion, reveal };
+        return { t, formation, dispersion, reveal };
       }
+
+      /**
+       * Below this a point cloud contributes nothing to any pixel (additive
+       * blending sums overlapping sprites, so "nothing" has to be far below 1/255
+       * per sprite). Such a cloud is hidden and its per-particle update skipped —
+       * at the top of the page that is all 50,000 particles, recomputed and
+       * re-uploaded every frame while invisible.
+       */
+      const INVISIBLE = 1e-5;
 
       function updateParticles() {
         if (!modelLoaded) return;
         const now = performance.now();
         const fP = displayFormation;
         const dP = displayDispersion;
+
+        const baseOpacity = isMobile ? 0.55 : 1.0;
+        const fadeStart = 0.55;
+        let formationOpacity = baseOpacity;
+        if (fP >= fadeStart) {
+          const fadeT = Math.min(1, (fP - fadeStart) / (1 - fadeStart));
+          formationOpacity = isMobile ? baseOpacity - fadeT * 0.4 : baseOpacity - fadeT * 0.85;
+        }
+        particleMaterial.opacity = Math.max(0, formationOpacity * (1 - Math.pow(dP, 1.4)) * displayReveal);
+        particles.visible = particleMaterial.opacity > INVISIBLE;
+        if (!particles.visible) return;
+
         const fT = ease(fP);
         const dT = dP * (2 - dP);
         const dispersing = dP > 0.001;
@@ -606,21 +665,20 @@ export function ParticleProcess() {
 
         const baseSize = isMobile ? 0.018 : 0.021;
         particleMaterial.size = baseSize * (1 - dP * 0.45) - fP * 0.002;
-
-        const baseOpacity = isMobile ? 0.55 : 1.0;
-        const fadeStart = 0.55;
-        let formationOpacity = baseOpacity;
-        if (fP >= fadeStart) {
-          const fadeT = Math.min(1, (fP - fadeStart) / (1 - fadeStart));
-          formationOpacity = isMobile ? baseOpacity - fadeT * 0.4 : baseOpacity - fadeT * 0.85;
-        }
-        particleMaterial.opacity = Math.max(0, formationOpacity * (1 - Math.pow(dP, 1.4)) * displayReveal);
       }
 
       function updateOutlineParticles() {
         if (!modelLoaded) return;
         const fP = displayFormation;
         const dP = displayDispersion;
+
+        const formationOpacity = isMobile
+          ? Math.min(0.5, 0.18 + fP * 0.55)
+          : Math.min(1.0, 0.4 + fP * 1.4);
+        outlineMaterial.opacity = Math.max(0, formationOpacity * (1 - Math.pow(dP, 1.3)) * displayReveal);
+        outlineParticles.visible = outlineMaterial.opacity > INVISIBLE;
+        if (!outlineParticles.visible) return;
+
         const fT = ease(fP);
         const dT = dP * (2 - dP);
         const dispersing = dP > 0.001;
@@ -665,11 +723,6 @@ export function ParticleProcess() {
 
         outlineGeometry.attributes.position.needsUpdate = true;
 
-        const formationOpacity = isMobile
-          ? Math.min(0.5, 0.18 + fP * 0.55)
-          : Math.min(1.0, 0.4 + fP * 1.4);
-        outlineMaterial.opacity = Math.max(0, formationOpacity * (1 - Math.pow(dP, 1.3)) * displayReveal);
-
         const baseOutlineSize = isMobile ? 0.022 : 0.024;
         outlineMaterial.size = baseOutlineSize * (1 - dP * 0.4) - fP * 0.001;
 
@@ -692,6 +745,7 @@ export function ParticleProcess() {
         edgeLines.forEach((line) => {
           const material = line.material as THREE.LineBasicMaterial;
           material.opacity = lineOpacity * (isMobile ? 0.28 : 1.2);
+          line.visible = material.opacity > INVISIBLE;
           if (isMobile) {
             material.color.setRGB(1.0, 0.46, 0.16);
           } else if (fP > 0.9) {
@@ -754,9 +808,24 @@ export function ParticleProcess() {
         setHintOpacity(1 - Math.max(0, Math.min(1, t / 0.04)));
       }
 
+      // The eased values chase their scroll targets forever in theory; this close
+      // counts as arrived.
+      const SETTLED = 0.0005;
+
       function animate() {
         rafId = requestAnimationFrame(animate);
+        if (!onScreen) return;
+
         const phases = computeProgress();
+        if (drawOnDemand) {
+          const easing =
+            Math.abs(phases.formation - displayFormation) > SETTLED ||
+            Math.abs(phases.dispersion - displayDispersion) > SETTLED ||
+            Math.abs(phases.reveal - displayReveal) > SETTLED;
+          if (!easing && !needsDraw && phases.t === lastDrawnT) return;
+          needsDraw = false;
+          lastDrawnT = phases.t;
+        }
         const k = isMobile ? 0.28 : 0.22;
         displayFormation += (phases.formation - displayFormation) * k;
         displayDispersion += (phases.dispersion - displayDispersion) * k;
@@ -780,6 +849,8 @@ export function ParticleProcess() {
         camera.aspect = width / height;
         camera.updateProjectionMatrix();
         renderer.setSize(width, height);
+        // Resizing clears the canvas.
+        needsDraw = true;
 
         if (introCanvas) {
           const dpr = Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2);
@@ -804,7 +875,16 @@ export function ParticleProcess() {
       const onResize = () => resize();
       window.addEventListener("resize", onResize, { passive: true });
 
+      // Past the section (the written steps and the footer below it) the pinned
+      // canvas is off screen, but the loop kept simulating and drawing all of it.
+      const observer = new IntersectionObserver((entries) => {
+        onScreen = entries[0]?.isIntersecting ?? true;
+        if (onScreen) needsDraw = true;
+      });
+      observer.observe(root);
+
       cleanupListeners = () => {
+        observer.disconnect();
         window.removeEventListener("resize", onResize);
         renderer.dispose();
         particleGeometry.dispose();
