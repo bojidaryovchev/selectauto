@@ -115,6 +115,7 @@ export function CarCardsCarousel({
 }: Props) {
   const [swiper, setSwiper] = useState<SwiperClass | null>(null);
   const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inViewRef = useRef(false);
   const mounted = useMounted();
 
   const modules = [...(mounted ? [Autoplay] : []), ...(freeMode ? [FreeMode] : [])];
@@ -126,6 +127,32 @@ export function CarCardsCarousel({
     return () => {
       if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
     };
+  }, [swiper]);
+
+  // Autoplay only while the carousel is on screen. Left alone, Swiper's Autoplay
+  // runs a requestAnimationFrame loop for as long as it is "running" (it reports
+  // the time left every frame) and slides the whole track every
+  // AUTOPLAY_DELAY_MS whether or not anyone can see it — it pauses itself only
+  // when the TAB is hidden. Both homepage carousels sit below the fold, so every
+  // visit paid for two per-frame loops and a transition a second that nobody saw.
+  useEffect(() => {
+    // `swiper.autoplay` exists only once the Autoplay module is registered (the
+    // client remount — see the mount note above).
+    if (!swiper?.autoplay) return;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      inViewRef.current = entry.isIntersecting;
+      if (swiper.destroyed) return;
+      if (!entry.isIntersecting) {
+        swiper.autoplay.stop();
+      } else if (!swiper.autoplay.running && !resumeTimerRef.current) {
+        // Not while an arrow click is holding autoplay off — handleNav's timer
+        // restarts it then.
+        swiper.autoplay.start();
+      }
+    });
+    observer.observe(swiper.el);
+    return () => observer.disconnect();
   }, [swiper]);
 
   // Arrow click: step one slide, then hold autoplay off for a beat (see
@@ -143,7 +170,10 @@ export function CarCardsCarousel({
     swiper.autoplay.stop();
     if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
     resumeTimerRef.current = setTimeout(() => {
-      if (!swiper.destroyed) swiper.autoplay?.start();
+      resumeTimerRef.current = null;
+      // Scrolled away in the meantime → stay stopped; coming back into view
+      // restarts it (see the visibility effect above).
+      if (!swiper.destroyed && inViewRef.current) swiper.autoplay?.start();
     }, AUTOPLAY_RESUME_DELAY_MS);
   };
 
