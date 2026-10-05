@@ -220,9 +220,10 @@ async function HubBody({ params }: { params: Params }) {
             {label} внос от аукцион
           </h1>
           <p className="mb-2 max-w-2xl text-sm text-muted">{intro}</p>
-          <p className="mb-6 text-sm text-muted">
+          {/* The h2 the car cards' h3 titles sit under (as on the catalog). */}
+          <h2 className="mb-6 text-sm text-muted">
             Намерени автомобили: <strong className="text-ink">{count.toLocaleString("bg-BG")}</strong>
-          </p>
+          </h2>
 
           {count === 0 ? (
             <div className="rounded-2xl border border-line bg-white px-6 py-10 text-center">
