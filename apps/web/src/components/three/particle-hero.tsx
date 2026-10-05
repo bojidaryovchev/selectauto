@@ -4,7 +4,28 @@ import { useEffect, useRef, useState } from "react";
 import { Button, LinkButton } from "@/components/common";
 import { HERO_MODELS } from "@/data/home";
 import { useInquiry } from "@/contexts/inquiry-context";
+import { afterFirstPaint } from "@/lib/after-first-paint";
 import { loadHeroPoints, type HeroTier } from "@/lib/baked-hero";
+
+/**
+ * Names of the CPU rasterisers a browser falls back to when it has no usable GPU
+ * (headless servers, VMs, remote desktops, blocklisted drivers): Chrome's
+ * SwiftShader, Mesa's llvmpipe/softpipe, Windows' "Microsoft Basic Render Driver",
+ * Apple's "Software Renderer".
+ */
+const SOFTWARE_RENDERER = /swiftshader|llvmpipe|softpipe|software|basic render/i;
+
+function isSoftwareRenderer(gl: WebGLRenderingContext | WebGL2RenderingContext): boolean {
+  // Chrome and Safari mask RENDERER ("WebKit WebGL") and reveal the real name only
+  // through the extension; Firefox reports it on RENDERER and warns if the
+  // extension is touched — so the extension is the fallback, not the first stop.
+  let name = String(gl.getParameter(gl.RENDERER));
+  if (/webkit webgl/i.test(name)) {
+    const info = gl.getExtension("WEBGL_debug_renderer_info");
+    if (info) name = String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL));
+  }
+  return SOFTWARE_RENDERER.test(name);
+}
 
 /**
  * 3D particle hero — a Three.js scene where each GLB car model is sampled into a
@@ -31,7 +52,10 @@ export function ParticleHero() {
     let rafId = 0;
     let cleanupListeners = () => {};
 
-    (async () => {
+    // The scene is decoration — the hero's copy, the page's LCP element, is already
+    // in the server HTML — so three (~190KB) and the WebGL context wait for that
+    // copy to paint rather than starting straight from this effect.
+    const cancelStart = afterFirstPaint(async () => {
       const THREE = await import("three");
       const { OrbitControls } = await import(
         "three/examples/jsm/controls/OrbitControls.js"
@@ -68,6 +92,15 @@ export function ParticleHero() {
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
       renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
       renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+      // When true the hero shows ONE rendered frame of the first model instead of
+      // running the loop. Without a GPU every frame of this scene (thousands of
+      // blended sprites over a full-viewport canvas) is rasterised on the CPU and
+      // takes longer than a frame: measured on such a machine it was one 50-150ms
+      // main-thread task per frame, back to back, for as long as the page was open
+      // — the page never became responsive. Set up front for a known software
+      // renderer, and later by the watchdog in animate() for anything else too slow.
+      let still = isSoftwareRenderer(renderer.getContext());
 
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(
@@ -232,9 +265,64 @@ export function ParticleHero() {
       const timer = new THREE.Timer();
       timer.connect(document);
 
+      /** Draws the current model once, at rest — the `still` hero. */
+      function renderStill() {
+        // Nothing redraws after this except a resize, so neither a drag nor the
+        // auto-rotation may move the camera in between.
+        controls.enabled = false;
+        controls.autoRotate = false;
+        positions.set(models[currentIndex]);
+        particleGeometry.attributes.position.needsUpdate = true;
+        particleMaterial.size = BASE_SIZE;
+        controls.update();
+        renderer.render(scene, camera);
+      }
+
+      // Frame-rate watchdog, judged once. The first WARMUP_MS of animation are
+      // skipped (shader compilation and the first buffer uploads always hitch);
+      // frames are then judged until JUDGE_MS more have passed AND at least
+      // MIN_JUDGED_FRAMES have run — the frame floor keeps one long stall from
+      // deciding it alone, the time floor keeps a fast device from deciding it on a
+      // handful of frames. If most of the judged frames arrived more than
+      // SLOW_FRAME_MS apart, the device is spending a long task on every frame: it
+      // cannot hold the animation without freezing input, so settle on the still.
+      const SLOW_FRAME_MS = 50;
+      const WARMUP_MS = 1000;
+      const JUDGE_MS = 2000;
+      const MIN_JUDGED_FRAMES = 10;
+      let watching = true;
+      let lastFrameAt = 0;
+      let animatedMs = 0;
+      let judgedFrames = 0;
+      let slowFrames = 0;
+
       function animate(timestamp?: number) {
         rafId = requestAnimationFrame(animate);
-        if (!isVisible || !models.length) return;
+        if (!isVisible || !models.length) {
+          // Scrolled away: the next frame's gap is a pause, not a slow frame.
+          lastFrameAt = 0;
+          return;
+        }
+
+        if (watching && timestamp !== undefined) {
+          const gap = lastFrameAt ? timestamp - lastFrameAt : 0;
+          lastFrameAt = timestamp;
+          animatedMs += gap;
+          if (animatedMs > WARMUP_MS) {
+            judgedFrames += 1;
+            if (gap > SLOW_FRAME_MS) slowFrames += 1;
+            if (animatedMs > WARMUP_MS + JUDGE_MS && judgedFrames >= MIN_JUDGED_FRAMES) {
+              watching = false;
+              if (slowFrames > judgedFrames / 2) {
+                still = true;
+                cancelAnimationFrame(rafId);
+                renderStill();
+                showModelInfo(currentIndex);
+                return;
+              }
+            }
+          }
+        }
 
         timer.update(timestamp);
         const dt = Math.min(timer.getDelta(), 0.05);
@@ -309,6 +397,11 @@ export function ParticleHero() {
           fromPositions.set(models[0]);
           particleGeometry.attributes.position.needsUpdate = true;
           showModelInfo(0);
+          if (still) {
+            // No loop and no morph, so the other two models are never needed.
+            renderStill();
+            return;
+          }
           animate();
           try {
             const [m1, m2] = await Promise.all([
@@ -344,11 +437,16 @@ export function ParticleHero() {
         // Timer.connect() already zeroes the delta while hidden and resets on
         // becoming visible; this handler only needs to toggle our render gate.
         isVisible = !document.hidden;
+        // No frames run while the tab is hidden, so the gap across it is a pause
+        // too — keep it out of the watchdog's count.
+        lastFrameAt = 0;
       };
       const onResize = () => {
         renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
         renderer.setSize(canvas!.clientWidth, canvas!.clientHeight, false);
         applyResponsiveCamera();
+        // Resizing clears the canvas; with no loop running, nothing would redraw it.
+        if (still && models.length) renderStill();
       };
       document.addEventListener("visibilitychange", onVisibility);
       window.addEventListener("resize", onResize);
@@ -366,10 +464,11 @@ export function ParticleHero() {
       };
 
       init();
-    })();
+    });
 
     return () => {
       disposed = true;
+      cancelStart();
       cancelAnimationFrame(rafId);
       cleanupListeners();
     };
