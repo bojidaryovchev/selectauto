@@ -21,8 +21,8 @@ export function AboutProcess() {
 
         <ol className="grid grid-cols-5 gap-4 max-[1100px]:grid-cols-1">
           {PROCESS_STEPS.map((step, i) => (
-            <Reveal key={step.num} delay={0.06 * i}>
-              <li className="flex h-full flex-col rounded-3xl border border-line bg-[#fafafa] p-6 transition-transform duration-300 hover:-translate-y-1.5 max-[1100px]:flex-row max-[1100px]:items-start max-[1100px]:gap-5">
+            <Reveal as="li" key={step.num} delay={0.06 * i}>
+              <div className="flex h-full flex-col rounded-3xl border border-line bg-[#fafafa] p-6 transition-transform duration-300 hover:-translate-y-1.5 max-[1100px]:flex-row max-[1100px]:items-start max-[1100px]:gap-5">
                 <span className="mb-4 inline-flex size-11 items-center justify-center rounded-2xl bg-brand/12 text-lg font-black tabular-nums text-brand-dark max-[1100px]:mb-0 max-[1100px]:shrink-0">
                   {step.num}
                 </span>
@@ -34,7 +34,7 @@ export function AboutProcess() {
                     {step.desc}
                   </p>
                 </div>
-              </li>
+              </div>
             </Reveal>
           ))}
         </ol>

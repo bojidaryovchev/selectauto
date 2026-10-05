@@ -141,13 +141,16 @@ export default async function AllCarsPage({ searchParams }: { searchParams: Prom
             <FilterNavProvider>
               <CarFilterBar facets={facets} current={filters} />
 
+              {/* The results line is the h2 the car cards' h3 titles sit under
+                  (the outline would otherwise jump from the h1 to h3). Base styles
+                  make headings inherit size and weight, so it looks the same. */}
               {isSearch ? (
-                <p className="mb-4 mt-6 text-sm text-muted">Резултати от търсенето</p>
+                <h2 className="mb-4 mt-6 text-sm text-muted">Резултати от търсенето</h2>
               ) : (
-                <p className="mb-4 mt-6 text-sm text-muted">
+                <h2 className="mb-4 mt-6 text-sm text-muted">
                   {isPast ? "Намерени резултати: " : "Намерени автомобили: "}
                   <strong className="text-ink">{count.count.toLocaleString("bg-BG").replace(/ /g, " ")}</strong>
-                </p>
+                </h2>
               )}
 
               <Suspense fallback={<CarGridSkeleton count={12} />}>

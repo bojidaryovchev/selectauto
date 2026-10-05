@@ -54,9 +54,9 @@ export function AboutHero() {
           {/* Glass card */}
           <Reveal delay={0.16}>
             <div className="rounded-[30px] border border-white/12 bg-[rgba(17,18,22,0.44)] p-7 text-white shadow-[0_20px_60px_rgba(0,0,0,0.25)] backdrop-blur-md max-md:p-6">
-              <h3 className="mb-3.5 text-[26px] font-black leading-[1.08]">
+              <h2 className="mb-3.5 text-[26px] font-black leading-[1.08]">
                 Какво получаваш с нас
-              </h3>
+              </h2>
               <p className="mb-4.5 text-base leading-[1.8] text-white/84">
                 Не просто достъп до автомобили, а експертна преценка, прозрачност
                 и пълен контрол на всяка стъпка.

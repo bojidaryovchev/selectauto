@@ -145,6 +145,7 @@ function SelectField<T extends string>({
     <div className="flex flex-col gap-1">
       <span className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</span>
       <Combobox
+        aria-label={label}
         options={options.map((o) => ({ value: o.id, label: o.label }))}
         value={value}
         onValueChange={(v) => onChange(v as T)}
@@ -367,6 +368,7 @@ export function CostEstimator({
           <div className="flex flex-col gap-1">
             <span className="text-xs font-semibold uppercase tracking-wide text-muted">Локация на аукциона</span>
             <Combobox
+              aria-label="Локация на аукциона"
               options={locationOptions.map((loc) => ({ value: loc, label: loc }))}
               value={effectiveLocation}
               onValueChange={setLocation}

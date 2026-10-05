@@ -201,6 +201,7 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
         <div>
           <label className={labelCls}>Марка</label>
           <Combobox
+            aria-label="Марка"
             options={[{ value: "", label: "Всички марки" }, ...facets.brands.map((b) => ({ value: b.value, label: b.label }))]}
             value={draft.brand != null ? String(draft.brand) : ""}
             onValueChange={(v) => setInstant("brand", v ? Number(v) : undefined)}
@@ -210,6 +211,7 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
         <div>
           <label className={labelCls}>Модел</label>
           <Combobox
+            aria-label="Модел"
             options={[
               { value: "", label: draft.brand === undefined ? "Първо избери марка" : "Всички модели" },
               ...models.map((m) => ({ value: m.value, label: m.label })),
@@ -223,6 +225,7 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
         <div>
           <label className={labelCls}>Тип</label>
           <Combobox
+            aria-label="Тип"
             // Zero in the current (filtered) subset → disable so the user can't pick a
             // dead-end combo; never disable the active selection itself.
             options={[
@@ -355,6 +358,7 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
         <div>
           <label className={labelCls}>Гориво</label>
           <Combobox
+            aria-label="Гориво"
             // Zero in the current (filtered) subset → disable; never the active one.
             options={[
               { value: "", label: "Всички" },
@@ -372,6 +376,7 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
         <div>
           <label className={labelCls}>Задвижване</label>
           <Combobox
+            aria-label="Задвижване"
             options={[{ value: "", label: "Всички" }, ...facets.drives.map((d) => ({ value: d.value, label: d.label }))]}
             value={draft.drive ?? ""}
             onValueChange={(v) => setInstant("drive", v || undefined)}
@@ -380,6 +385,7 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
         <div>
           <label className={labelCls}>Състояние</label>
           <Combobox
+            aria-label="Състояние"
             // Zero in the current (filtered) subset → disable; never the active one.
             options={[
               { value: "", label: "Всички състояния" },
@@ -397,6 +403,7 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
         <div>
           <label className={labelCls}>Цвят</label>
           <Combobox
+            aria-label="Цвят"
             options={[{ value: "", label: "Всички цветове" }, ...facets.colors.map((c) => ({ value: c.value, label: c.label }))]}
             value={draft.color ?? ""}
             onValueChange={(v) => setInstant("color", v || undefined)}

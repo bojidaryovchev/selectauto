@@ -41,6 +41,13 @@ interface ComboboxProps {
   /** Form field name for the internal hidden input (optional). */
   name?: string;
   id?: string;
+  /**
+   * The field's name for assistive tech — pass the visible label's text. The
+   * trigger is a `role="combobox"` button, and a combobox does not take its name
+   * from its content: that content is the current VALUE ("Всички марки"), so
+   * without this a screen reader announces an unnamed control.
+   */
+  "aria-label"?: string;
   /** Extra classes merged onto the trigger button (project convention: string append, caller wins). */
   className?: string;
 }
@@ -72,6 +79,7 @@ export function Combobox({
   searchThreshold = 8,
   name,
   id,
+  "aria-label": ariaLabel,
   className = "",
 }: ComboboxProps) {
   const selected = options.find((o) => o.value === value) ?? null;
@@ -101,7 +109,7 @@ export function Combobox({
       name={name}
       autoHighlight
     >
-      <BaseCombobox.Trigger id={id} className={`${triggerCls} ${className}`}>
+      <BaseCombobox.Trigger id={id} aria-label={ariaLabel} className={`${triggerCls} ${className}`}>
         <span className="min-w-0 flex-1 truncate data-placeholder:text-[#999]">
           <BaseCombobox.Value placeholder={placeholder} />
         </span>
