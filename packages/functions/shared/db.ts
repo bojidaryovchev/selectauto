@@ -213,18 +213,36 @@ function chunk<T>(items: T[], size: number): T[][] {
   return out;
 }
 
-/**
- * `archived` is NOT NULL in the schema, so the INSERT column list must carry a
- * non-null value and EXCLUDED.archived therefore loses the "absent" signal the
- * row-at-a-time version got from a raw NULL parameter. We recover it losslessly
- * from EXCLUDED.raw_json: normalizeLot derives `archived` from exactly this key
- * (boolean -> value, anything else -> null), so reading it back is equivalent.
- * `jsonb_typeof(...) = 'boolean'` is NULL-safe — a missing key yields NULL, which
- * is not TRUE, so it falls through to "keep what we already have".
+/*
+ * THE `archived` FLAG ON THE ACTIVE PATH (upsertCarsAndLots).
+ *
+ * A lot that arrives in a car's `lots[]` is ACTIVE unless its own payload says
+ * `archived: true`. That is AuctionsAPI's documented contract, not an inference
+ * (auctionsapi.com/docs/ai-prompt §4, §5, §14): "lots[] in /cars contains only
+ * active lots of that vehicle", and `archived` / `archived_at` are "present ONLY
+ * when the lot is archived" — the search-* detail endpoints, which also return
+ * archived lots, carry `archived: true` on exactly those. normalizeLot keeps the
+ * boolean when there is one (else null) and the INSERT coalesces null to FALSE, so
+ * EXCLUDED.archived already IS that rule. Verified live 2026-10-05: none of the
+ * 1,139 lots on a 1,000-car /cars page carried the key; /search-lot returned
+ * `archived: true` for two lots archived that hour, and /cars?vin= for the
+ * IAAI one's VIN returned no car at all.
+ *
+ * WHY IT MATTERS. A lot that does not sell RUNS AGAIN as the same lot — same lot
+ * number, same lot id, a new sale_date and a new prices[] row — and upstream serves
+ * it from /cars again. Until 2026-10 this upsert kept the stored flag whenever the
+ * payload carried no boolean, so every re-run lot stayed archived=true for good: it
+ * failed car_listings (archived=false) and, with an open status, failed
+ * car_listings_archived too (sold/not_sold/failed only), and the car vanished from
+ * the site while the hourly sync kept rewriting it. Measured 2026-10-05: 98,308
+ * cars hidden that way, and 540 of the 1,139 lots on one live /cars page.
+ *
+ * `archived_at` follows the flag (set only while archived, as upstream does it), so
+ * a lot that is archived AGAIN later gets that run's timestamp from archiveLots
+ * instead of inheriting its first archive time — car_listings_archived.archived_at
+ * drives the 90-day 410 rule (web/lib/sold-lot-gone.ts), and an inherited stamp
+ * would 410 a car that was on sale last week.
  */
-const LOT_ARCHIVED_EXPR = `CASE WHEN jsonb_typeof(EXCLUDED.raw_json->'archived') = 'boolean'
-        THEN (EXCLUDED.raw_json->>'archived')::boolean
-        ELSE auction_lots.archived END`;
 
 /**
  * A lot payload with AuctionsAPI's own bookkeeping timestamps removed — the value
@@ -258,7 +276,7 @@ const LOT_ARCHIVED_EXPR = `CASE WHEN jsonb_typeof(EXCLUDED.raw_json->'archived')
  * are hand-run and are NOT applied on deploy (see README), so a function would
  * introduce a deploy-ordering hazard where shipping the Lambda before running the
  * migration breaks every ingestion page. Inlining makes the change atomic with the
- * deploy, matching how LOT_ARCHIVED_EXPR above is handled.
+ * deploy.
  */
 const lotFingerprint = (col: string): string => `(
         CASE WHEN ${col} IS NULL OR jsonb_typeof(${col}) <> 'object' THEN ${col} ELSE
@@ -438,10 +456,13 @@ export async function upsertCarsAndLots(rawCars: ApiCar[]): Promise<UpsertPageRe
            -- Card image comes straight from the source CDN now (no bake) — just
            -- overwrite with the freshly-recomputed per-source card URL.
            thumbnail_url = EXCLUDED.thumbnail_url,
-           -- Reflect the API's archived flag, keeping the existing state when the
-           -- payload carries no boolean (see LOT_ARCHIVED_EXPR).
-           archived = ${LOT_ARCHIVED_EXPR},
-           archived_at = COALESCE(EXCLUDED.archived_at, auction_lots.archived_at),
+           -- Active unless the payload says archived:true. This is what brings a
+           -- re-run lot back out of the archive (see "THE archived FLAG ON THE
+           -- ACTIVE PATH" above); archived_at is cleared along with the flag.
+           archived = EXCLUDED.archived,
+           archived_at = CASE WHEN EXCLUDED.archived
+                              THEN COALESCE(EXCLUDED.archived_at, auction_lots.archived_at)
+                              ELSE NULL END,
            raw_json = EXCLUDED.raw_json,
            updated_at = now()
          -- Fire only on a real change. The payload fingerprint covers every column
@@ -452,7 +473,7 @@ export async function upsertCarsAndLots(rawCars: ApiCar[]): Promise<UpsertPageRe
          -- archived flag that archiveLots may have flipped independently.
          WHERE ${LOT_PAYLOAD_CHANGED}
             OR auction_lots.car_id IS DISTINCT FROM COALESCE(EXCLUDED.car_id, auction_lots.car_id)
-            OR auction_lots.archived IS DISTINCT FROM (${LOT_ARCHIVED_EXPR})
+            OR auction_lots.archived IS DISTINCT FROM EXCLUDED.archived
          RETURNING car_id`,
         [JSON.stringify(part)],
       );

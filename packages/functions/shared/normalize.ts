@@ -54,11 +54,12 @@ export interface NormalizedLot {
   // (no baking, no Vercel optimizer). See cardImageUrl() for the per-source logic.
   // Stored in auction_lots.thumbnail_url; the catalog card renders it in a plain <img>.
   cardImageUrl: string | null;
-  // The lot's archived state, carried by the API on every lot object (both
-  // /api/cars and the search-* detail endpoints — e.g. a directly looked-up lot
-  // can be `archived: true, status: "sold"`). Persist it so the active upsert
-  // never silently resurrects an archived lot (the car_listings read model
-  // filters on archived=false). null when the field is absent.
+  // The lot's archived state. Upstream sends `archived` (and `archived_at`) ONLY
+  // on an archived lot — e.g. a search-* lookup of a concluded lot returns
+  // `archived: true, status: "sold"` — and /api/cars carries only active lots, so
+  // the key is absent there. null when absent; the upsert stores that as FALSE,
+  // which is what brings a re-run lot back out of the archive (see db.ts, "THE
+  // archived FLAG ON THE ACTIVE PATH").
   archived: boolean | null;
   archivedAt: string | null; // ISO string or null
   rawJson: unknown;

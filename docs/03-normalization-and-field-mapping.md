@@ -92,23 +92,36 @@ Note the asymmetry: for `manufacturer`/`model`/`generation` we keep the **id**
 | `archived_at` | `raw.archived_at` | `str` |
 | `raw_json` | `raw` | — |
 
-### The `archived` handling (why it's nullable here)
+### The `archived` handling
 `archived` is coerced **only when the payload actually carries a boolean**,
-otherwise `null`. This is deliberate: the live `/cars` feed sends `archived:
-null` for active lots (historically documented as `false`; confirmed `null`
-against the live API 2026-06 — in both cases *not* `true`), but the **detail
-endpoints** can return `archived: true, status: "sold"` for a directly looked-up
-concluded lot. The upsert then does:
+otherwise `null` — and on the active path `null` means **active**. Upstream sends
+`archived` / `archived_at` **only on an archived lot** (the detail endpoints return
+`archived: true, status: "sold"` for a looked-up concluded lot), and `/cars` carries
+**only active lots**, so its lots have no such key at all (vendor contract, verified
+live 2026-10-05 — see [01 §6a](01-auctionsapi-consumption.md#6-payload-shapes)). The
+INSERT already coalesces `null` to `FALSE`, so the upsert simply does:
 
 ```sql
-archived = CASE WHEN $20::boolean IS NULL
-                THEN auction_lots.archived          -- absent → keep existing state
-                ELSE $20::boolean END               -- present → honor the API
+archived    = EXCLUDED.archived,                    -- payload's boolean, else FALSE
+archived_at = CASE WHEN EXCLUDED.archived
+                   THEN COALESCE(EXCLUDED.archived_at, auction_lots.archived_at)
+                   ELSE NULL END                    -- cleared with the flag
 ```
 
-So a missing `archived` never flips a previously-archived lot back to active, and
-a detail refresh that reports `archived:true` is respected. This is what makes the
-`car_listings.archived = false` filter trustworthy (no resurrection guessing).
+…plus `OR auction_lots.archived IS DISTINCT FROM EXCLUDED.archived` in the no-op
+guard, so an otherwise-unchanged payload still un-archives the lot.
+
+**Why it must work this way.** A lot that does not sell **runs again as the same
+lot** — same `(domain_id, lot_number)`, same lot id, a new `sale_date` and a new
+`prices[]` row — and upstream serves it from `/cars` again. Until 2026-10 the upsert
+*kept the stored flag* whenever the payload had no boolean, so a re-run lot stayed
+`archived = true` forever: it failed `car_listings` (`archived = false`) and, with
+an open status, `car_listings_archived` too (concluded statuses only), so the car
+disappeared from the site while the hourly sync kept rewriting it (98,308 cars on
+2026-10-05). Clearing `archived_at` matters as well: `archiveLots` keeps an existing
+`archived_at`, so without the clear a re-run that is archived again would inherit
+its *first* archive time, and `car_listings_archived.archived_at` drives the 90-day
+410 rule.
 
 ---
 

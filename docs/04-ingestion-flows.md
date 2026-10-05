@@ -74,8 +74,10 @@ same state machine shape; only `mode` + `minutes` differ.
 - For each of its lots with a valid `(domain_id, lot_number)`: upsert
   `auction_lots` `ON CONFLICT (domain_id, lot_number) DO UPDATE`.
   - `car_id = COALESCE(EXCLUDED.car_id, auction_lots.car_id)` — never unlinks.
-  - `archived` honors the payload but keeps existing state when absent (see
-    [03](03-normalization-and-field-mapping.md#the-archived-handling-why-its-nullable-here)).
+  - `archived` = the payload's boolean, else **`false`**: `/cars` carries only
+    active lots and upstream sends `archived` only on archived ones, so this is
+    what moves a re-run lot back out of the archive; `archived_at` is cleared with
+    it (see [03](03-normalization-and-field-mapping.md#the-archived-handling)).
 - Collect every touched `car_id`, then call **once** (set-based) at end:
   `recompute_car_listings_counted(ids[])` **and**
   `recompute_archived_car_listings_counted(ids[])` — the `_counted` wrappers, which
@@ -199,8 +201,9 @@ Message body (`RefreshListingInput`): `{ "lot": "45289258", "domain": "iaai_com"
 "pricesHistory": true }` **or** `{ "vin": "WBA3B5G55FNS17722", "pricesHistory":
 true }`. `refreshOneListing` calls `searchLot`/`searchVin`, unwraps `{ data: <car>
 }`, and reuses `upsertDetail` → `upsertCarsAndLots` (so the recompute hook fires
-here too). Detail responses can carry `archived:true` lots — handled by the
-nullable-archived upsert logic.
+here too). Detail responses can carry `archived:true` lots (`/search-vin` returns
+archived lots too); the upsert keeps exactly those archived and treats a lot without
+the key as active — see [03](03-normalization-and-field-mapping.md#the-archived-handling).
 
 > **Status:** the infra side is **ready** — the queue is created and its URL/ARN
 > are exported by Pulumi (`detailRefreshQueueUrl`). The **app-side enqueue is not

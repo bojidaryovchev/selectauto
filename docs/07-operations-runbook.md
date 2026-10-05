@@ -193,6 +193,24 @@ The catalog resolves the card image as `thumbnailUrl ?? imageUrl`, so a lot miss
 `thumbnail_url` still renders (it just falls back to `image_url` until the backfill
 fills it).
 
+### 5.3 Un-archiving re-run lots (one-time, 2026-10)
+
+Before the 2026-10 fix, a lot that ran again after being archived stayed
+`archived = true` even though `/cars` kept delivering it, so its car was in neither
+projection (see [03](03-normalization-and-field-mapping.md#the-archived-handling)).
+The fixed upsert heals such a lot only when `/cars` next delivers it, which needs an
+upstream change to that lot. To heal the backlog at once, **deploy the fix first**,
+then run [`repair-rerun-lots.mjs`](../packages/db/repair-rerun-lots.mjs). It
+un-archives every archived lot whose stored payload came from `/cars` (not from the
+archive feed), clears `archived_at`, and recomputes both projections + summaries for
+those cars in the same transaction:
+
+```powershell
+# from packages/db/
+node --env-file-if-exists=../../.env repair-rerun-lots.mjs --dry-run   # count only, read-only
+node --env-file-if-exists=../../.env repair-rerun-lots.mjs             # repair (resumable: --start=<lot id>)
+```
+
 ---
 
 ## 6. Resume a failed run
@@ -246,6 +264,7 @@ is order-independent, so an overlapping resume produces no duplicates.
 | `canceling statement due to statement timeout` during a type change | full-table rewrite exceeds Neon's default timeout | 0003 sets `statement_timeout 0` for that txn. Use it / the direct connection. |
 | node-postgres `SECURITY WARNING ... sslmode` | redundant `sslmode` in the URL | `db.ts`/`migrate.mjs` strip `sslmode` and configure TLS via the `ssl` object. Harmless. |
 | Reference catalog half-synced | legacy single-Lambda timed out / skip gate returned early | Run the `reference-sync` state machine (or legacy with `{force:true}`). |
+| A car is live at the auction (and in `/search-lot`) but on neither the active nor the past page | its lot is `archived = true` although `/cars` delivers it — a re-run lot stuck by the pre-2026-10 upsert (or the fixed functions aren't deployed) | Deploy the fix, then run `repair-rerun-lots.mjs` (§5.3). |
 | `car_listings` stale / a sold car still shows active | recompute hooks not deployed, or a swallowed best-effort recompute | `pulumi up` to deploy hooks. For a one-off fix, start the `drift-sweep` machine (§4) or re-run `backfill-car-listings.mjs` (both fns); the weekly `drift-sweep` schedule mops this up automatically. |
 | "Намерени: N" header or a filter-dropdown count looks wrong | a summary counter drifted (race / swallowed apply / a recompute-fn change without reseed) | `reseed-summaries.mjs --check` to confirm, then `reseed-summaries.mjs` (§5.1). The drift sweep alone will **not** fix an already-drifted summary. |
 | A newly-listed car is missing from the "Тип"/"Гориво" filter | a recompute fn stopped populating `vehicle_type`/`body_type`/`fuel_type` (see `0022` regression) | Confirm the live fn body (`\df+ recompute_car_listings`), ship a fixed `CREATE OR REPLACE`, then repair via §5.1. |
