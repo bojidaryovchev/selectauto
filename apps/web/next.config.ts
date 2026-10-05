@@ -36,6 +36,19 @@ const nextConfig: NextConfig = {
   //     not added (catalog perf was solved at the DB layer). See cache-tags.ts and
   //     node_modules/next/dist/docs (use-cache, use-cache-remote, cacheHandlers).
   cacheComponents: true,
+  // Resolve `three` from its per-file source instead of its published build. The
+  // build is two pre-bundled files (three.core.js + three.module.js), and a
+  // bundler cannot prune INSIDE a pre-bundled file — so importing anything from
+  // three shipped all ~750KB of it for a scene that uses 18 classes. From source
+  // every class is its own module, and the bundler keeps only what
+  // `src/lib/three.ts` names plus what those import: ~510KB (measured on the
+  // build output; ~154KB → ~104KB brotli). `src/Three.js` is
+  // the exact entry the published build is generated from, and three exports
+  // `./src/*` for this. The alias also covers three's own add-ons (OrbitControls
+  // imports "three"), which is what keeps the page on ONE copy of the library.
+  turbopack: {
+    resolveAlias: { three: "three/src/Three.js" },
+  },
   // The payment-notice PDF templates (src/pdf) register their Cyrillic TTFs by
   // filesystem path at runtime — nothing imports the .ttf files, so output
   // tracing would drop them from the serverless bundle. Include them for the

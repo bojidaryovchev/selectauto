@@ -129,7 +129,7 @@ export function ParticleProcess() {
       // runtime — those cost ~2.5s of main-thread work). See
       // scripts/bake-particle-edges.mjs.
       const bakedPromise = loadBakedGeometry(MODEL_URL, isMobile);
-      const THREE = await import("three");
+      const THREE = await import("@/lib/three");
       if (disposed) return;
 
       // `isMobile` here is the component-scope state (matches the CSS

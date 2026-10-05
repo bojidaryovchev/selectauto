@@ -56,7 +56,7 @@ export function ParticleHero() {
     // in the server HTML — so three (~190KB) and the WebGL context wait for that
     // copy to paint rather than starting straight from this effect.
     const cancelStart = afterFirstPaint(async () => {
-      const THREE = await import("three");
+      const THREE = await import("@/lib/three");
       const { OrbitControls } = await import(
         "three/examples/jsm/controls/OrbitControls.js"
       );
