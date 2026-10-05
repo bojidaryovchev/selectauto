@@ -1,5 +1,5 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
-import { getBackOfficeSession, isAdmin } from "@/lib/admin";
+import { getBackOfficeSession } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 
 export type AvailableDepositRow = {
@@ -20,8 +20,7 @@ export type AvailableDepositRow = {
  * defensively.
  */
 export async function listAvailableDeposits(): Promise<AvailableDepositRow[]> {
-  const session = await getBackOfficeSession();
-  if (!session) throw new Error("FORBIDDEN");
+  if (!(await getBackOfficeSession())) throw new Error("FORBIDDEN");
 
   const d = schema.depositContracts;
   const c = schema.contracts;
@@ -36,14 +35,10 @@ export async function listAvailableDeposits(): Promise<AvailableDepositRow[]> {
     })
     .from(d)
     .leftJoin(c, eq(c.depositContractId, d.id))
-    .where(
-      and(
-        eq(d.status, "paid"),
-        isNull(c.id),
-        // Scoped like the deposit list: an observer can only apply a deposit
-        // they created themselves.
-        isAdmin(session) ? undefined : eq(d.createdBy, session.user?.id ?? ""),
-      ),
-    )
+    // NOT scoped to the creator, unlike the deposit list: a deposit belongs to
+    // the client, so a „Наблюдаващ" preparing that client's contract must be
+    // able to deduct it even when an admin took the deposit. The applied deposit
+    // is frozen at creation, so a missed deduction can't be added afterwards.
+    .where(and(eq(d.status, "paid"), isNull(c.id)))
     .orderBy(desc(d.depositDate));
 }
