@@ -29,7 +29,9 @@ export function CarHistoryTimeline({ history }: { history: CarHistoryEntry[] }) 
               <span className="mt-0.5 block text-sm font-bold text-ink">{entry.title}</span>
             ) : null}
             {entry.flag ? (
-              <span className="mt-1.5 inline-flex items-center rounded-full bg-[#fbebe3] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#b4531f]">
+              // #a24b1c on the peach is ~5.1:1; the earlier #b4531f was 4.31:1,
+              // under the 4.5:1 that 11px text needs.
+              <span className="mt-1.5 inline-flex items-center rounded-full bg-[#fbebe3] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#a24b1c]">
                 {entry.flag}
               </span>
             ) : null}

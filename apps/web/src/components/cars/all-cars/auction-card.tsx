@@ -23,7 +23,9 @@ function InfoCell({ label, value, accent }: { label: string; value?: string; acc
       <span className="truncate text-[11px] font-semibold uppercase tracking-wide text-muted">{label}</span>
       <span
         title={shown}
-        className={`truncate text-sm font-semibold ${accent && value ? "text-brand" : "text-ink"}`}
+        // brand-dark, not brand: at this size the lighter orange is 3.38:1 on
+        // white, under the 4.5:1 that small text needs (brand-dark is 4.92:1).
+        className={`truncate text-sm font-semibold ${accent && value ? "text-brand-dark" : "text-ink"}`}
       >
         {shown}
       </span>

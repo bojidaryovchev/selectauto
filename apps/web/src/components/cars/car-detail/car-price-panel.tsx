@@ -45,7 +45,7 @@ export function CarPricePanel({
       {liveBid ? (
         <div className={`flex items-baseline justify-between gap-4 ${primary ? "border-t border-line pt-3" : ""} pb-1`}>
           <span className="text-[13px] font-semibold uppercase tracking-wide text-muted">
-            Текуща оферта{updated ? <span className="ml-1 normal-case font-normal text-muted/80">· {updated}</span> : null}
+            Текуща оферта{updated ? <span className="ml-1 normal-case font-normal text-muted">· {updated}</span> : null}
           </span>
           <span className="text-lg font-black text-ink">{liveBid.value}</span>
         </div>
@@ -70,7 +70,9 @@ export function CarPricePanel({
             </span>
             <span className="text-sm font-black text-ink">{marketAvg.value}</span>
           </div>
-          <span className="text-[11px] text-muted/80">
+          {/* Full `text-muted`: faded to /80 this note was 3.56:1, under the 4.5:1
+              small text needs. */}
+          <span className="text-[11px] text-muted">
             за модела/годината · {marketAvg.count.toLocaleString("bg-BG")} продажби от архива
           </span>
         </div>
