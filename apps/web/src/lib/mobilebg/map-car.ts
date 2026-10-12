@@ -7,6 +7,7 @@ import {
   computeImportBreakdown,
 } from "@/data/import-rates";
 import { damageLabel, titleDocLabel, vehicleTypeLabel } from "@/lib/car-labels";
+import { BATTERY_ENGINE_TYPES, formatBatteryKwh, isValidBatteryKm, isValidBatteryKwh } from "./battery";
 import { MIN_MANUAL_PRICE_EUR } from "./parse-price";
 
 /**
@@ -217,6 +218,11 @@ export type MobilebgOverrides = {
   /** `price_dds` — the VAT status of the price ("1" | "2" | "3", see
    *  lib/mobilebg/price-dds.ts). Required by mobile.bg, never defaulted. */
   priceDds?: string;
+  /** `battery_km` — WLTP range on one charge, whole km. Required by mobile.bg for
+   *  electric cars and plug-in hybrids; we hold no such data (lib/mobilebg/battery.ts). */
+  batteryKm?: number;
+  /** `battery_kwh` — battery capacity in kWh, up to 2 decimals. Same rule. */
+  batteryKwh?: number;
 };
 
 export type MapWarning = { field: string; message: string };
@@ -397,6 +403,9 @@ function buildExtri(source: MobilebgCarSource, damaged: boolean): string[] {
  * not say; the API does: a publish sent with no fields (2026-09-17) answered
  * `{"status":"error","msg":"Wrong fields","fields":[…]}` listing exactly these.
  * One missing field fails the whole call, so each is a preview blocker.
+ *
+ * That empty publish does NOT reveal the conditional ones: an electric car or a
+ * plug-in hybrid also needs `battery_km` and `battery_kwh` (lib/mobilebg/battery.ts).
  */
 export const REQUIRED_FIELDS = [
   "marka", "model", "year", "month", "category", "engine_type", "transmission", "km",
@@ -426,6 +435,10 @@ function requiredFieldMessage(field: string, source: MobilebgCarSource): string 
     }
     case "price":
       return "Липсва цена. Въведете я ръчно или изберете „Цена при запитване“.";
+    case "battery_km":
+      return "Въведете по-долу пробега с едно зареждане (WLTP) в км. mobile.bg го изисква за електрически автомобили и plug-in хибриди, а в нашите данни го няма.";
+    case "battery_kwh":
+      return "Въведете по-долу капацитета на батерията в kWh. mobile.bg го изисква за електрически автомобили и plug-in хибриди, а в нашите данни го няма.";
     default:
       return `Липсва задължителното поле „${field}“.`;
   }
@@ -621,6 +634,20 @@ export function buildAdvertParams(args: {
   if (overrides.month) params.month = overrides.month;
   if (overrides.priceDds) params.price_dds = overrides.priceDds;
 
+  // Electric cars and plug-in hybrids must state range and capacity, which our
+  // data never holds (lib/mobilebg/battery.ts). Sent only for those engine types,
+  // so no other advert's payload changes. A value outside what the API accepts
+  // is left out and reported as missing below, never sent to be bounced.
+  const needsBattery = engineType !== undefined && BATTERY_ENGINE_TYPES.has(engineType);
+  if (needsBattery) {
+    if (overrides.batteryKm !== undefined && isValidBatteryKm(overrides.batteryKm)) {
+      params.battery_km = String(overrides.batteryKm);
+    }
+    if (overrides.batteryKwh !== undefined && isValidBatteryKwh(overrides.batteryKwh)) {
+      params.battery_kwh = formatBatteryKwh(overrides.batteryKwh);
+    }
+  }
+
   const extri = [...buildExtri(source, damaged), ...(overrides.extri ?? [])];
   // SLASH-separated. Their docs show both `/` and `~`; the API rejects `~` and
   // splits on `/`, checking every part (probed 2026-09-17). No dictionary value
@@ -637,6 +664,11 @@ export function buildAdvertParams(args: {
   for (const field of REQUIRED_FIELDS) {
     const present = field === "price" ? params.priceneg === "1" || Boolean(params.price) : Boolean(params[field]);
     if (!present) missing.push({ field, message: requiredFieldMessage(field, source) });
+  }
+  if (needsBattery) {
+    for (const field of ["battery_km", "battery_kwh"] as const) {
+      if (!params[field]) missing.push({ field, message: requiredFieldMessage(field, source) });
+    }
   }
 
   return { params, blockers, warnings, missing, computedPriceEur, sentPriceEur, landedEur };

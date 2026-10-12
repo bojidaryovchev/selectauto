@@ -7,6 +7,7 @@ import { advertUrl } from "@/lib/mobilebg/advert-url";
 import { carTitle } from "@/lib/mobilebg/car-title";
 import { PRICE_DDS_OPTIONS } from "@/lib/mobilebg/price-dds";
 import type { MobilebgOverrides } from "@/lib/mobilebg/map-car";
+import { BATTERY_ENGINE_TYPES, parseBatteryKm, parseBatteryKwh } from "@/lib/mobilebg/battery";
 import { parseManualPrice } from "@/lib/mobilebg/parse-price";
 import {
   lookupCarAction,
@@ -37,8 +38,10 @@ import type { CarLookupHit, MobilebgPreview } from "@/queries/mobilebg";
  * status of the price (a public tax statement, so never defaulted), the country
  * (every advert is „Извън страната“; the country comes from the lot and can be
  * changed) and the category (from the body type, picked by hand when our data
- * has none). Changing any of them recomputes the preview at once, so the
- * blocker it resolves clears. Opening another car clears the per-car choices.
+ * has none). Electric cars and plug-in hybrids add two more: the WLTP range and
+ * the battery capacity (lib/mobilebg/battery.ts). Changing any of them
+ * recomputes the preview at once, so the blocker it resolves clears. Opening
+ * another car clears the per-car choices.
  */
 
 const MONTHS = [
@@ -101,6 +104,9 @@ export function MobilebgPublisher() {
   const [extinfo, setExtinfo] = useState("");
   const [priceDds, setPriceDds] = useState("");
   const [category, setCategory] = useState("");
+  // Electric cars and plug-in hybrids only: mobile.bg requires both, our data has neither.
+  const [batteryKm, setBatteryKm] = useState("");
+  const [batteryKwh, setBatteryKwh] = useState("");
 
   // Brand/model pickers.
   const [modelOverride, setModelOverride] = useState("");
@@ -112,6 +118,11 @@ export function MobilebgPublisher() {
   // „28 500" and „28.500" are how people here type prices; an unreadable value
   // blocks publishing instead of silently falling back to the calculated price.
   const manualPrice = parseManualPrice(priceOverride);
+  const batteryKmInput = parseBatteryKm(batteryKm);
+  const batteryKwhInput = parseBatteryKwh(batteryKwh);
+  // A typed value that cannot be read must stop publishing, never be dropped.
+  const hasInvalidInput =
+    manualPrice.kind === "invalid" || batteryKmInput.kind === "invalid" || batteryKwhInput.kind === "invalid";
 
   function overrides(): MobilebgOverrides {
     return {
@@ -128,6 +139,8 @@ export function MobilebgPublisher() {
       model: modelOverride || undefined,
       priceDds: priceDds || undefined,
       category: category || undefined,
+      batteryKm: batteryKmInput.kind === "ok" ? batteryKmInput.value : undefined,
+      batteryKwh: batteryKwhInput.kind === "ok" ? batteryKwhInput.value : undefined,
     };
   }
 
@@ -150,8 +163,8 @@ export function MobilebgPublisher() {
 
   /**
    * A different car: nothing chosen for the previous car may carry over (its
-   * month, category, country, price or description would silently land on this
-   * one). Only the advert-policy fields stay: VAT status and validity.
+   * month, category, country, price, battery or description would silently land
+   * on this one). Only the advert-policy fields stay: VAT status and validity.
    */
   function openCar(carId: number) {
     setModelOverride("");
@@ -162,6 +175,8 @@ export function MobilebgPublisher() {
     setPriceOnRequest(false);
     setExtraExtri("");
     setExtinfo("");
+    setBatteryKm("");
+    setBatteryKwh("");
     load(carId, { term, priceDds: priceDds || undefined });
   }
 
@@ -195,7 +210,7 @@ export function MobilebgPublisher() {
    * be sent, never an older calculation.
    */
   function openConfirm() {
-    if (!preview || manualPrice.kind === "invalid") return;
+    if (!preview || hasInvalidInput) return;
     const carId = preview.source.carId;
     setError(null);
     startTransition(async () => {
@@ -305,9 +320,11 @@ export function MobilebgPublisher() {
   const missing = mapped?.missing ?? [];
   const missingFields = new Set(missing.map((m) => m.field));
   const invalid = preview?.invalidValues ?? [];
+  // mobile.bg rejects an electric car or plug-in hybrid without range and capacity.
+  const needsBattery = BATTERY_ENGINE_TYPES.has(mapped?.params.engine_type ?? "");
   const canPublish =
     Boolean(preview) &&
-    manualPrice.kind !== "invalid" &&
+    !hasInvalidInput &&
     blockers.length === 0 &&
     missing.length === 0 &&
     invalid.length === 0 &&
@@ -684,6 +701,46 @@ export function MobilebgPublisher() {
               />
               {missingFields.has("price_dds") && <p className="mt-1 text-xs font-semibold text-[#b3261e]">Задължително</p>}
             </div>
+            {needsBattery && (
+              <>
+                <div>
+                  <TextField
+                    label="Пробег с едно зареждане (WLTP), км"
+                    value={batteryKm}
+                    onChange={setBatteryKm}
+                    onCommit={() => {
+                      if (batteryKmInput.kind !== "invalid") reloadWith({});
+                    }}
+                    placeholder="напр. 533"
+                  />
+                  {batteryKmInput.kind === "invalid" ? (
+                    <p className="mt-1 text-xs font-semibold text-[#b3261e]">{batteryKmInput.message}</p>
+                  ) : (
+                    missingFields.has("battery_km") && (
+                      <p className="mt-1 text-xs font-semibold text-[#b3261e]">Задължително за тази кола</p>
+                    )
+                  )}
+                </div>
+                <div>
+                  <TextField
+                    label="Капацитет на батерията, kWh"
+                    value={batteryKwh}
+                    onChange={setBatteryKwh}
+                    onCommit={() => {
+                      if (batteryKwhInput.kind !== "invalid") reloadWith({});
+                    }}
+                    placeholder="напр. 75 или 75,5"
+                  />
+                  {batteryKwhInput.kind === "invalid" ? (
+                    <p className="mt-1 text-xs font-semibold text-[#b3261e]">{batteryKwhInput.message}</p>
+                  ) : (
+                    missingFields.has("battery_kwh") && (
+                      <p className="mt-1 text-xs font-semibold text-[#b3261e]">Задължително за тази кола</p>
+                    )
+                  )}
+                </div>
+              </>
+            )}
             <div>
               <TextField
                 label="Цена (EUR) — ръчно"
