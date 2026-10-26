@@ -1,6 +1,6 @@
 "use server";
 
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getAdminSession } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
@@ -75,7 +75,10 @@ export async function sendReply(input: SendReplyInput): Promise<ActionResult> {
   }
 
   // Reply to the sender's own Reply-To when they set one — mailing lists and
-  // ticketing systems depend on it. Falls back to the thread participant.
+  // ticketing systems depend on it. Falls back to the thread participant. The
+  // last INBOUND message: after a first reply the newest row is our own, which
+  // has neither a Message-ID nor a Reply-To, so a second reply lost both its
+  // threading and the sender's Reply-To.
   const lastInbound = await db
     .select({
       messageId: schema.emailMessages.messageId,
@@ -83,7 +86,7 @@ export async function sendReply(input: SendReplyInput): Promise<ActionResult> {
       fromAddress: schema.emailMessages.fromAddress,
     })
     .from(schema.emailMessages)
-    .where(eq(schema.emailMessages.threadId, thread.id))
+    .where(and(eq(schema.emailMessages.threadId, thread.id), eq(schema.emailMessages.direction, "inbound")))
     .orderBy(desc(schema.emailMessages.createdAt))
     .limit(1);
 
