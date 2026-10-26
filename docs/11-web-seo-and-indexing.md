@@ -106,8 +106,9 @@ timer, so it fires **within ~30s and regardless of archive age or active status*
   day-long sitemap cache. Note `revalidateTag(tag, "max")` is stale-while-revalidate
   and would still serve the de-indexed car — use `updateTag`.
 - **Verified 2026-08-14** against a live ACTIVE car: 200 → set flag → **410 +
-  `x-robots-tag: noindex`** → clear flag → 200, with no cache lag (the proxy check is
-  uncached).
+  `x-robots-tag: noindex`** → clear flag → 200, with no cache lag (the proxy check was
+  uncached then; it now reads a 30-second snapshot of de-indexed ids first, so a
+  de-index shows within 30 s at worst — see `lib/sold-lot-gone.ts`).
 
 - **Full suppression (added 2026-08-17, migration
   [`0046`](../packages/db/migrations/0046_recompute_excludes_deindexed.sql)):** both

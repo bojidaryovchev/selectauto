@@ -39,7 +39,9 @@ relationships, and population model**.
 ## Table catalog
 
 Row counts are approximate (Postgres `reltuples`, except the two projections which
-were measured 2026-07-11). 18 tables in four functional groups + operational + auth.
+were measured 2026-07-11). The 18 tables up to migration 0026 first; the 22 added
+since (0027–0048) are in the second table — their columns are documented in
+[`schema.ts`](../packages/db/schema.ts) and the migration headers.
 
 | Table | ~Rows | Group | Populated by | Primary key |
 |---|---:|---|---|---|
@@ -53,14 +55,35 @@ were measured 2026-07-11). 18 tables in four functional groups + operational + a
 | `car_listing_counts` | 28 | Summary | `apply_listing_count_delta` (snapshot-diff) | `(table_kind,dim,val)` |
 | `car_listing_facets` | 3 925 | Summary | `apply_listing_facet_delta` (snapshot-diff) | `(table_kind,dim,val,val2)` |
 | `sync_runs` | ~890 | Operational | `createSyncRun` / `updateSyncRun` | `id` |
-| `_migrations` | ~25 | Operational | `migrate.mjs` | `filename` |
-| `carfax_requests` | low | Website lead | carfax route mutation (write-only) | `id` |
-| `inquiries` | low | Website lead | `createInquiry` action (write-only) | `id` |
+| `_migrations` | ~48 | Operational | `migrate.mjs` | `filename` |
+| `carfax_requests` | low | Website lead | carfax route mutation; worked in /admin/carfax | `id` |
+| `inquiries` | low | Website lead | `createInquiry` action; worked in /admin/zapitvaniya | `id` |
 | `users` | low | Auth | Auth.js adapter + credentials sign-up | `id` |
 | `accounts` | low | Auth | Auth.js adapter (Google OAuth link) | `(provider,provider_account_id)` |
 | `verification_tokens` | low | Auth | email-verification flow | `(identifier,token)` |
 | `password_reset_tokens` | low | Auth | forgot-password flow | `token` |
 | `favorites` | low | User data | favourite toggle mutation | `(user_id,car_id)` |
+
+Added since 0026:
+
+| Table | Since | Group | Populated by | Primary key |
+|---|---|---|---|---|
+| `calculator_offers` | 0028 | Website lead | `createCalculatorOffer` (/api/calculator-offer); worked in /admin/oferti | `id` |
+| `vin_report_checks` | 0032 | Cache | the VIN-report lookups (read-through) | `vin` |
+| `tariff_uploads` · `us_inland_tariffs` · `us_container_prices` | 0033 | Calculator | the /admin/tarifi paste; one version active | `id` each |
+| `calculator_settings` | 0034 | Calculator | the /admin/tarifi settings; the newest row is active | `id` |
+| `clients` | 0038 | Contracts | the contract and deposit forms | `id` |
+| `payment_recipients` | 0038 | Contracts | seeded (0038–0040) + /admin/poluchateli | `id` |
+| `contract_counters` | 0038 | Contracts | number minting (atomic upsert-increment) | `(series,year)` |
+| `deposit_contracts` | 0038 | Contracts | /admin/depoziti | `id` |
+| `contracts` · `contract_payments` | 0038 | Contracts | /admin/dogovori (create, edit, mark paid) | `id` each |
+| `generated_documents` | 0038 | Contracts | contract, deposit and notice PDFs, versioned | `id` |
+| `payment_attachments` | 0038 | Contracts | proofs of payment on a stage | `id` |
+| `contract_events` | 0038 | Audit | every back-office mutation; read at /admin/dnevnik | `id` |
+| `car_deindex_requests` | 0043 | De-index | /admin/skriti-obyavi; the deindex-sweep cron extends a request to new rows | `id` |
+| `email_threads` · `email_messages` · `email_attachments` | 0045 | Mail | the Resend webhook + the mail-reconcile cron; replies from /admin/poshta | `id` each |
+| `mobilebg_brand_map` · `mobilebg_model_map` | 0047 | mobile.bg | brand/model matches confirmed in the publisher | `manufacturer_external_id` / `model_external_id` |
+| `mobilebg_adverts` | 0047 | mobile.bg | publish / correct / delete at /admin/mobile-bg | `car_id` |
 
 ---
 
@@ -413,7 +436,9 @@ order). Migrations are append-only + hand-run; they are **not** applied on deplo
 # G. Website-lead tables (not ingestion)
 
 Written by the **website backend**, low-volume, **no** `raw_json`/upsert keys
-(every submission is a row), write-only (no in-app reader).
+(every submission is a row). Since 0029 each also carries `status`, `admin_notes`
+and `updated_at`, and is worked in its admin inbox (/admin/carfax,
+/admin/zapitvaniya, /admin/oferti — `calculator_offers`, 0028, is the third).
 
 ## `carfax_requests` — Carfax check form (`/carfax`)
 Ported from WordPress `wp_sa_carfax_requests`. `id`, `full_name*`, `phone*`,
@@ -455,7 +480,10 @@ The application-layer flows (sign-in/up, verification, reset, sessions) are in
 - **`users`** — `id TEXT PK` (adapter-generated uuid), `name`, `email* `, `email_verified`,
   `image`, `password_hash` (our addition — bcrypt for Credentials; NULL for
   OAuth-only users), `created_at`. **`users_email_ux` UNIQUE on `lower(email)`**
-  (one email = one user, case-insensitive).
+  (one email = one user, case-insensitive). Later: `favorite_auction_alerts` /
+  `favorite_auction_alert_sent_on` (0027, the daily digest opt-in) and `roles
+  TEXT[]` (0029 `role`, generalised by 0031) — the elevated roles (admin, observer,
+  supervisor) that open /admin; a plain visitor has an empty array.
 - **`accounts`** — OAuth provider links (Google). PK `(provider, provider_account_id)`,
   `user_id` FK → users (CASCADE), plus the adapter's snake_case token columns
   (`refresh_token`/`access_token`/`expires_at`/`token_type`/`scope`/`id_token`/`session_state`).
@@ -550,6 +578,28 @@ safe. **Append-only and hand-run** (`pnpm migrate`) — not applied on deploy.
 | `0024_column_docs_and_checks.sql` | `COMMENT ON COLUMN` for the cryptic/EAV/external-id columns + CHECK constraints on `car_listing_counts`/`car_listing_facets` (`dim`,`table_kind`) and `sync_runs.flow_type`. |
 | `0025_rename_inquiries_columns.sql` | Renames `inquiries` `budget`→`budget_range`, `time`→`purchase_timeframe`, `finance`→`financing_option` (+ comments); ships with the schema.ts/mutation edits. |
 | `0026_serialize_summary_maintenance.sql` | Wraps both `recompute_*_counted` wrappers in a transaction-scoped `pg_advisory_xact_lock` so concurrent summary maintenance (a bulk backfill/sweep overlapping live ingestion) can't race the snapshot-diff → summaries are correct **by construction**, no periodic reseed. |
+| `0027_favorite_auction_alerts.sql` | `users.favorite_auction_alerts` + `favorite_auction_alert_sent_on` — the opt-in for the daily „любими автомобили с търг днес" digest cron. |
+| `0028_calculator_offers.sql` | `calculator_offers` — leads from the /kalkulator gated-offer flow (the breakdown emailed to the visitor). |
+| `0029_admin_and_lead_lifecycle.sql` | `users.role` (the /admin gate) + `status` / `admin_notes` / `updated_at` on the three lead tables. |
+| `0030_google_email_verified.sql` | Backfills `users.email_verified` for Google-OAuth users (Auth.js creates them unverified). |
+| `0031_user_roles_array.sql` | `users.role` → `users.roles TEXT[]`, so an account can hold several elevated roles. |
+| `0032_vin_report_checks.sql` | `vin_report_checks` — read-through cache of the free AuctionsAPI record-availability lookup (/proverka-vin). |
+| `0033_transport_tariffs.sql` | US/Canada transport tariffs (`tariff_uploads`, `us_inland_tariffs`, `us_container_prices`), versioned and uploadable at /admin/tarifi. |
+| `0034_calculator_settings.sql` | `calculator_settings` — the admin-editable calculator config, one JSON row per save. |
+| `0035_thumbnail_url.sql` | `thumbnail_url` on `auction_lots` and both projections (+ `thumbnail_source_url`) — baked card thumbnails, so the grid bypasses Vercel Image Optimization. |
+| `0036_weak_filter_indexes.sql` | `(dimension, sort_id DESC)` indexes on both projections for the weak-filter live-COUNT fallback of `getCarsCount`. |
+| `0037_projection_autovacuum.sql` | Aggressive per-table autovacuum for the two projections. |
+| `0038_contracts_payments.sql` | The contracts & payments module: `clients`, `contracts`, `contract_payments`, `payment_recipients`, `contract_counters`, `deposit_contracts`, `generated_documents`, `payment_attachments`, `contract_events`. |
+| `0039_contracts_seed_numbering_partners.sql` | Go-live data: numbering continues the paper series, partner recipients seeded; `payment_recipients.routing_code`. |
+| `0040_partner_bank_details.sql` | Bank details for the two remaining international partners, which activates them. |
+| `0041_contract_markets.sql` | Four contract markets (САЩ, Канада, Корея, Европа) instead of two. |
+| `0042_ingestion_write_amplification.sql` | Storage/vacuum settings that cut the hourly ingestion's write amplification (settings only). |
+| `0043_car_deindex.sql` | Paid de-index: `cars.deindexed_at` + `car_deindex_requests`, keyed on the normalized VIN. |
+| `0044_cars_vin_normalized_idx.sql` | `cars_vin_normalized_idx` on `upper(btrim(vin))` (built CONCURRENTLY) — the VIN-keyed de-index and lookups. |
+| `0045_admin_mail.sql` | The admin mail inbox: `email_threads`, `email_messages`, `email_attachments`. |
+| `0046_recompute_excludes_deindexed.sql` | Both recompute functions exclude de-indexed cars, so a de-index removes the car from the whole site. |
+| `0047_mobilebg_publishing.sql` | mobile.bg publishing: `mobilebg_adverts`, `mobilebg_brand_map`, `mobilebg_model_map`. |
+| `0048_notice_sent_to_client.sql` | `generated_documents.client_sent_at` / `client_sent_by` — a payment notice marked as sent to the client („За изпращане към клиента"). |
 
 > Operational procedures (backfill, reseed, drift sweep, resume) →
 > [07-operations-runbook.md](07-operations-runbook.md).
