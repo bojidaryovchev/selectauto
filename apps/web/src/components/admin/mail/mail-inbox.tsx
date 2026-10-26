@@ -1,10 +1,20 @@
 "use client";
 
+import { ADMIN_INPUT, AdminButton, AdminEmptyState, AdminPagination } from "@/components/admin/ui";
+import { MAIL_THREAD_STATUSES, MAIL_THREAD_STATUS_META } from "@/constants/mail";
+import { formatSofiaDateTime } from "@/lib/sofia-time";
+import type { MailThreadRow } from "@/queries/mail";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 import { MailStatusBadge } from "./mail-status-badge";
-import { MAIL_THREAD_STATUSES, MAIL_THREAD_STATUS_META } from "@/constants/mail";
-import type { MailThreadRow } from "@/queries/mail";
+
+/** A filter chip: 40 px tall, filled when active. */
+function chipClass(active: boolean): string {
+  return `inline-flex min-h-10 shrink-0 items-center rounded-full px-4 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+    active ? "bg-brand text-white" : "border border-line bg-white text-ink hover:bg-neutral-50"
+  }`;
+}
 
 /**
  * The mail inbox list: a filter row, then one line per thread. Unlike the lead
@@ -27,44 +37,58 @@ export function MailInbox({
 
   const status = params.get("status") ?? "";
   const unreadOnly = params.get("unread") === "1";
-  const q = params.get("q") ?? "";
+  const [q, setQ] = useState(params.get("q") ?? "");
 
-  function setParam(key: string, value: string | null) {
+  function hrefWith(changes: Record<string, string | null>, keepPage = false): string {
     const sp = new URLSearchParams(params.toString());
-    if (value === null || value === "") sp.delete(key);
-    else sp.set(key, value);
-    sp.delete("page");
+    for (const [key, value] of Object.entries(changes)) {
+      if (value === null || value === "") sp.delete(key);
+      else sp.set(key, value);
+    }
+    if (!keepPage) sp.delete("page");
     const qs = sp.toString();
-    router.push(qs ? `/admin/poshta?${qs}` : "/admin/poshta");
+    return qs ? `/admin/poshta?${qs}` : "/admin/poshta";
   }
 
-  function goToPage(next: number) {
-    const sp = new URLSearchParams(params.toString());
-    if (next <= 1) sp.delete("page");
-    else sp.set("page", String(next));
-    const qs = sp.toString();
-    router.push(qs ? `/admin/poshta?${qs}` : "/admin/poshta");
+  function setParam(key: string, value: string | null) {
+    router.push(hrefWith({ [key]: value }));
   }
 
   return (
-    <div>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+    <div className="flex flex-col gap-4">
+      <form
+        role="search"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setParam("q", q.trim() || null);
+        }}
+        className="flex flex-col gap-2 sm:flex-row"
+      >
+        <label htmlFor="mail-q" className="sr-only">
+          Търсене
+        </label>
         <input
+          id="mail-q"
           type="search"
-          defaultValue={q}
+          enterKeyHint="search"
+          autoCapitalize="off"
+          autoCorrect="off"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
           placeholder="Търсене по имейл, име или тема…"
-          onKeyDown={(e) => {
-            if (e.key === "Enter") setParam("q", (e.target as HTMLInputElement).value.trim() || null);
-          }}
-          className="h-9 min-w-56 flex-1 rounded-full border border-line bg-white px-4 text-sm text-ink outline-none focus:border-brand"
+          className={`${ADMIN_INPUT} sm:max-w-md`}
         />
+        <AdminButton type="submit" variant="primary" className="shrink-0">
+          Търси
+        </AdminButton>
+      </form>
 
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Филтър по статус">
         <button
           type="button"
+          aria-pressed={status === ""}
           onClick={() => setParam("status", null)}
-          className={`h-9 shrink-0 rounded-full px-3 text-sm font-semibold transition-colors ${
-            status === "" ? "bg-brand text-white" : "border border-line bg-white text-ink"
-          }`}
+          className={chipClass(status === "")}
         >
           Всички
         </button>
@@ -72,46 +96,39 @@ export function MailInbox({
           <button
             key={s}
             type="button"
+            aria-pressed={status === s}
             onClick={() => setParam("status", s)}
-            className={`h-9 shrink-0 rounded-full px-3 text-sm font-semibold transition-colors ${
-              status === s ? "bg-brand text-white" : "border border-line bg-white text-ink"
-            }`}
+            className={chipClass(status === s)}
           >
             {MAIL_THREAD_STATUS_META[s].label}
           </button>
         ))}
-
         <button
           type="button"
+          aria-pressed={unreadOnly}
           onClick={() => setParam("unread", unreadOnly ? null : "1")}
-          className={`h-9 shrink-0 rounded-full px-3 text-sm font-semibold transition-colors ${
-            unreadOnly ? "bg-brand text-white" : "border border-line bg-white text-ink"
-          }`}
+          className={chipClass(unreadOnly)}
         >
           Само непрочетени
         </button>
       </div>
 
-      <p className="mb-2 text-sm text-muted">
+      <p className="text-sm text-muted">
         Намерени: <span className="font-bold text-ink">{total}</span>
       </p>
 
       {threads.length === 0 ? (
-        <div className="rounded-2xl border border-line bg-white px-6 py-16 text-center text-muted">
-          Няма съобщения за този филтър.
-        </div>
+        <AdminEmptyState title="Няма съобщения за този филтър." />
       ) : (
-        <ul className="overflow-hidden rounded-2xl border border-line bg-white">
+        <ul className="m-0 list-none overflow-hidden rounded-xl border border-line bg-white p-0">
           {threads.map((t) => (
             <li key={t.id} className="border-b border-line/60 last:border-0">
               <Link
                 href={`/admin/poshta/${t.id}`}
-                className="flex flex-col gap-1 px-4 py-3 transition-colors hover:bg-[#fafafa]"
+                className="flex flex-col gap-1 px-4 py-3 transition-colors hover:bg-[#fafafa] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <span
-                    className={`truncate ${t.unread ? "font-black text-ink" : "font-semibold text-ink"}`}
-                  >
+                  <span className={`min-w-0 truncate ${t.unread ? "font-black text-ink" : "font-semibold text-ink"}`}>
                     {t.participantName || t.participantEmail}
                   </span>
                   <span className="flex shrink-0 items-center gap-2">
@@ -123,16 +140,14 @@ export function MailInbox({
                 </div>
 
                 <span className={`truncate text-sm ${t.unread ? "text-ink" : "text-muted"}`}>
-                  {t.lastDirection === "outbound" && (
-                    <span className="text-muted">Вие: </span>
-                  )}
+                  {t.lastDirection === "outbound" && <span className="text-muted">Вие: </span>}
                   {t.subject || "(без тема)"}
                 </span>
 
                 <span className="flex flex-wrap items-center gap-x-3 text-xs text-muted">
-                  <span>{t.participantEmail}</span>
+                  <span className="break-all">{t.participantEmail}</span>
                   <span>{t.messageCount} съобщения</span>
-                  <span>{new Date(t.lastMessageAt).toLocaleString("bg-BG")}</span>
+                  <span>{formatSofiaDateTime(t.lastMessageAt)}</span>
                 </span>
               </Link>
             </li>
@@ -140,29 +155,11 @@ export function MailInbox({
         </ul>
       )}
 
-      {pageCount > 1 && (
-        <div className="mt-4 flex items-center justify-center gap-3">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => goToPage(page - 1)}
-            className="h-9 rounded-full border border-line bg-white px-4 text-sm font-semibold text-ink disabled:opacity-40"
-          >
-            Назад
-          </button>
-          <span className="text-sm text-muted">
-            Страница {page} от {pageCount}
-          </span>
-          <button
-            type="button"
-            disabled={page >= pageCount}
-            onClick={() => goToPage(page + 1)}
-            className="h-9 rounded-full border border-line bg-white px-4 text-sm font-semibold text-ink disabled:opacity-40"
-          >
-            Напред
-          </button>
-        </div>
-      )}
+      <AdminPagination
+        page={page}
+        pageCount={pageCount}
+        hrefFor={(p) => hrefWith({ page: p > 1 ? String(p) : null }, true)}
+      />
     </div>
   );
 }

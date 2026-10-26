@@ -1,17 +1,22 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
-import type { AdminLeadView } from "@/types/admin.type";
 import { LeadFilters } from "@/components/admin/lead-filters";
 import { LeadStatusBadge } from "@/components/admin/lead-status-badge";
+import { AdminEmptyState, AdminPagination } from "@/components/admin/ui";
+import type { AdminLeadView } from "@/types/admin.type";
+import { useSearchParams } from "next/navigation";
+import { useState } from "react";
 import { LeadDetailDrawer } from "./lead-detail-drawer";
 
 /**
- * The generic lead inbox: filter bar + a table of leads + a detail drawer, plus
+ * The generic lead inbox: filter bar + a list of leads + a detail drawer, plus
  * pagination. Type-agnostic — the server maps each lead type's rows to the
  * shared `AdminLeadView` (compact `cells` aligned to `columns`, full `details`
- * for the drawer). Clicking a row opens the drawer where status/notes are edited.
+ * for the drawer). Opening a lead shows the drawer where status/notes are edited.
+ *
+ * Cards while the list is narrower than 48rem, a table above — a container
+ * query on the list's own wrapper, not the window: next to the sidebar a
+ * laptop leaves less room than a tablet.
  */
 export function LeadInbox({
   basePath,
@@ -28,55 +33,57 @@ export function LeadInbox({
   pageCount: number;
   total: number;
 }) {
-  const router = useRouter();
   const params = useSearchParams();
+  const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<AdminLeadView | null>(null);
 
-  function goToPage(next: number) {
+  function openLead(lead: AdminLeadView) {
+    setSelected(lead);
+    setOpen(true);
+  }
+
+  function hrefFor(next: number): string {
     const sp = new URLSearchParams(params.toString());
     if (next <= 1) sp.delete("page");
     else sp.set("page", String(next));
     const qs = sp.toString();
-    router.push(qs ? `${basePath}?${qs}` : basePath);
+    return qs ? `${basePath}?${qs}` : basePath;
   }
 
   return (
-    <div>
+    <div className="flex flex-col gap-4">
       <LeadFilters basePath={basePath} />
 
-      <p className="mb-2 text-sm text-muted">
+      <p className="text-sm text-muted">
         Намерени: <span className="font-bold text-ink">{total}</span>
       </p>
 
       {leads.length === 0 ? (
-        <div className="rounded-2xl border border-line bg-white px-6 py-16 text-center text-muted">
-          Няма заявки за този филтър.
-        </div>
+        <AdminEmptyState title="Няма заявки за този филтър." />
       ) : (
-        <>
-          {/* Mobile: tappable cards (a table would need to scroll horizontally). */}
-          <ul className="space-y-3 md:hidden">
+        <div className="@container">
+          <ul className="m-0 grid list-none gap-2 p-0 @xl:grid-cols-2 @3xl:hidden">
             {leads.map((lead) => (
-              <li key={lead.id}>
+              <li key={lead.id} className="min-w-0">
                 <button
                   type="button"
-                  onClick={() => setSelected(lead)}
-                  className="flex w-full flex-col gap-2 rounded-2xl border border-line bg-white p-4 text-left transition-colors active:bg-[#fafafa]"
+                  onClick={() => openLead(lead)}
+                  className="flex size-full flex-col gap-2 rounded-xl border border-line bg-white p-4 text-left transition-colors hover:border-brand/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand active:bg-[#fafafa]"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <span className="font-bold text-ink">{lead.cells[0]}</span>
+                    <span className="min-w-0 font-bold wrap-anywhere text-ink">{lead.cells[0]}</span>
                     <LeadStatusBadge status={lead.status} />
                   </div>
-                  <dl className="space-y-1 text-sm">
+                  <dl className="m-0 flex flex-col gap-1 text-sm">
                     {columns.slice(1).map((col, i) => (
                       <div key={col} className="flex justify-between gap-3">
                         <dt className="shrink-0 text-muted">{col}</dt>
-                        <dd className="wrap-break-word text-right text-ink">{lead.cells[i + 1]}</dd>
+                        <dd className="m-0 min-w-0 text-right wrap-anywhere text-ink">{lead.cells[i + 1]}</dd>
                       </div>
                     ))}
                     <div className="flex justify-between gap-3">
                       <dt className="shrink-0 text-muted">Получено</dt>
-                      <dd className="text-right text-muted">{lead.createdAt}</dd>
+                      <dd className="m-0 text-right text-muted">{lead.createdAt}</dd>
                     </div>
                   </dl>
                 </button>
@@ -84,36 +91,51 @@ export function LeadInbox({
             ))}
           </ul>
 
-          {/* Desktop: full table. */}
-          <div className="hidden overflow-x-auto rounded-2xl border border-line bg-white md:block">
-            <table className="w-full min-w-184 text-left text-sm">
+          <div className="hidden overflow-hidden rounded-xl border border-line bg-white @3xl:block">
+            <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-line text-xs uppercase tracking-wide text-muted">
+                <tr className="border-b border-line text-xs tracking-wide text-muted uppercase">
                   {columns.map((c) => (
-                    <th key={c} className="px-4 py-3 font-bold">
+                    <th key={c} scope="col" className="px-4 py-3 font-bold">
                       {c}
                     </th>
                   ))}
-                  <th className="px-4 py-3 font-bold">Получено</th>
-                  <th className="px-4 py-3 font-bold">Статус</th>
+                  <th scope="col" className="px-4 py-3 font-bold">
+                    Получено
+                  </th>
+                  <th scope="col" className="px-4 py-3 font-bold">
+                    Статус
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {leads.map((lead) => (
+                  // The row opens the lead for a mouse; the first cell's button is
+                  // the same action for the keyboard and screen readers.
                   <tr
                     key={lead.id}
-                    onClick={() => setSelected(lead)}
-                    className="cursor-pointer border-b border-line/60 transition-colors last:border-0 hover:bg-[#fafafa]"
+                    onClick={() => openLead(lead)}
+                    className="cursor-pointer border-b border-line/60 align-top transition-colors last:border-0 hover:bg-[#fafafa]"
                   >
                     {lead.cells.map((cell, i) => (
                       <td
                         key={i}
-                        className={`px-4 py-3 ${i === 0 ? "font-semibold text-ink" : "text-muted"}`}
+                        className={`px-4 py-3 wrap-anywhere ${i === 0 ? "font-semibold text-ink" : "text-muted"}`}
                       >
-                        {cell}
+                        {i === 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => openLead(lead)}
+                            className="text-left font-semibold text-ink hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                          >
+                            {cell}
+                          </button>
+                        ) : (
+                          cell
+                        )}
                       </td>
                     ))}
-                    <td className="whitespace-nowrap px-4 py-3 text-muted">{lead.createdAt}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-muted">{lead.createdAt}</td>
                     <td className="px-4 py-3">
                       <LeadStatusBadge status={lead.status} />
                     </td>
@@ -122,34 +144,20 @@ export function LeadInbox({
               </tbody>
             </table>
           </div>
-        </>
-      )}
-
-      {pageCount > 1 && (
-        <div className="mt-4 flex items-center justify-center gap-3">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => goToPage(page - 1)}
-            className="h-9 rounded-full border border-line bg-white px-4 text-sm font-semibold text-ink disabled:opacity-40"
-          >
-            Назад
-          </button>
-          <span className="text-sm text-muted">
-            Страница {page} от {pageCount}
-          </span>
-          <button
-            type="button"
-            disabled={page >= pageCount}
-            onClick={() => goToPage(page + 1)}
-            className="h-9 rounded-full border border-line bg-white px-4 text-sm font-semibold text-ink disabled:opacity-40"
-          >
-            Напред
-          </button>
         </div>
       )}
 
-      {selected && <LeadDetailDrawer lead={selected} onClose={() => setSelected(null)} />}
+      <AdminPagination page={page} pageCount={pageCount} hrefFor={hrefFor} />
+
+      <LeadDetailDrawer
+        lead={selected}
+        open={open}
+        onOpenChange={setOpen}
+        // Clear only once the drawer has animated out, so it doesn't empty mid-slide.
+        onOpenChangeComplete={(isOpen) => {
+          if (!isOpen) setSelected(null);
+        }}
+      />
     </div>
   );
 }

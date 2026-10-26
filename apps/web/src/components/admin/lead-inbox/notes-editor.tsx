@@ -1,24 +1,18 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-import { updateLead } from "@/mutations/admin";
+import { ADMIN_INPUT, AdminButton } from "@/components/admin/ui";
 import type { LeadType } from "@/constants/admin";
+import { updateLead } from "@/mutations/admin";
+import { useRouter } from "next/navigation";
+import { useId, useState, useTransition } from "react";
 
 /**
  * Free-text follow-up notes for a lead. Textarea + save button; saves via
  * `updateLead` and refreshes. Dirty-tracked (save disabled until changed).
  */
-export function NotesEditor({
-  type,
-  id,
-  value,
-}: {
-  type: LeadType;
-  id: number;
-  value: string | null;
-}) {
+export function NotesEditor({ type, id, value }: { type: LeadType; id: number; value: string | null }) {
   const router = useRouter();
+  const fieldId = useId();
   const [text, setText] = useState(value ?? "");
   const [saved, setSaved] = useState(value ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -44,8 +38,11 @@ export function NotesEditor({
 
   return (
     <div className="flex flex-col gap-2">
-      <label className="text-xs font-bold uppercase tracking-wide text-muted">Бележки</label>
+      <label htmlFor={fieldId} className="text-xs font-bold tracking-wide text-muted uppercase">
+        Бележки
+      </label>
       <textarea
+        id={fieldId}
         value={text}
         onChange={(e) => {
           setText(e.target.value);
@@ -53,19 +50,22 @@ export function NotesEditor({
         }}
         rows={4}
         placeholder="Добавете бележки за проследяване на този контакт…"
-        className="w-full resize-y rounded-lg border border-line bg-white p-3 text-sm text-ink outline-none focus:border-brand"
+        className={`${ADMIN_INPUT} min-h-28 resize-y`}
       />
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={save}
-          disabled={!dirty || pending}
-          className="h-9 rounded-full bg-ink px-4 text-sm font-bold text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
-        >
+      <div className="flex flex-wrap items-center gap-3">
+        <AdminButton variant="primary" onClick={save} disabled={!dirty || pending}>
           {pending ? "Запазване…" : "Запази бележки"}
-        </button>
-        {ok && !dirty && <span className="text-xs font-semibold text-emerald-600">Запазено</span>}
-        {error && <span className="text-xs text-rose-600">{error}</span>}
+        </AdminButton>
+        {ok && !dirty && (
+          <span role="status" className="text-xs font-semibold text-emerald-600">
+            Запазено
+          </span>
+        )}
+        {error && (
+          <span role="alert" className="text-xs text-rose-600">
+            {error}
+          </span>
+        )}
       </div>
     </div>
   );

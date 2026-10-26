@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LeadInbox } from "@/components/admin";
+import { AdminPageHeader } from "@/components/admin/ui";
 import { requireAdminPage } from "@/lib/admin";
 import { LEAD_TYPE_META } from "@/constants/admin";
 import { CALCULATOR_COLUMNS, toCalculatorView } from "@/lib/admin-lead-view";
@@ -24,10 +25,8 @@ export default async function AdminOffersPage({
   const { rows, total, page, pageCount } = await listCalculatorOffers(filters);
 
   return (
-    <div>
-      <h1 className="mb-4 text-2xl font-black tracking-tight text-ink">
-        {LEAD_TYPE_META.calculator.label}
-      </h1>
+    <div className="flex flex-col gap-4">
+      <AdminPageHeader title={LEAD_TYPE_META.calculator.label} />
       <LeadInbox
         basePath={LEAD_TYPE_META.calculator.href}
         columns={CALCULATOR_COLUMNS}

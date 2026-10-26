@@ -1,10 +1,10 @@
 "use client";
 
+import { Combobox } from "@/components/common";
+import { LEAD_STATUSES, LEAD_STATUS_META, type LeadStatus, type LeadType } from "@/constants/admin";
+import { updateLead } from "@/mutations/admin";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Combobox } from "@/components/common";
-import { updateLead } from "@/mutations/admin";
-import { LEAD_STATUSES, LEAD_STATUS_META, type LeadStatus, type LeadType } from "@/constants/admin";
 
 /**
  * Dropdown that changes a lead's status via the `updateLead` action, then
@@ -46,12 +46,17 @@ export function StatusSelect({
   return (
     <div className="flex flex-col gap-1">
       <Combobox
+        aria-label="Статус на заявката"
         options={LEAD_STATUSES.map((s) => ({ value: s, label: LEAD_STATUS_META[s].label }))}
         value={current}
         onValueChange={(v) => change(v as LeadStatus)}
         disabled={pending}
       />
-      {error && <span className="text-xs text-rose-600">{error}</span>}
+      {error && (
+        <span role="alert" className="text-xs text-rose-600">
+          {error}
+        </span>
+      )}
     </div>
   );
 }

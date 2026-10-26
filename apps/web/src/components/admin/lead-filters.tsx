@@ -1,8 +1,9 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { ADMIN_INPUT, AdminButton } from "@/components/admin/ui";
 import { LEAD_STATUS_META, LEAD_STATUSES } from "@/constants/admin";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useId, useState } from "react";
 
 /**
  * Inbox filter bar: a status tab row + a free-text search box. Both write to the
@@ -13,6 +14,7 @@ import { LEAD_STATUS_META, LEAD_STATUSES } from "@/constants/admin";
 export function LeadFilters({ basePath }: { basePath: string }) {
   const router = useRouter();
   const params = useSearchParams();
+  const searchId = useId();
   const currentStatus = params.get("status") ?? "";
   const [q, setQ] = useState(params.get("q") ?? "");
 
@@ -31,19 +33,50 @@ export function LeadFilters({ basePath }: { basePath: string }) {
     router.push(qs ? `${basePath}?${qs}` : basePath);
   }
 
-  const tabs = [{ key: "", label: "Всички" }, ...LEAD_STATUSES.map((s) => ({ key: s, label: LEAD_STATUS_META[s].label }))];
+  const tabs = [
+    { key: "", label: "Всички" },
+    ...LEAD_STATUSES.map((s) => ({ key: s, label: LEAD_STATUS_META[s].label })),
+  ];
 
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-3">
-      <div className="flex flex-wrap gap-1">
+    <div className="flex flex-col gap-3">
+      <form
+        role="search"
+        className="flex flex-col gap-2 sm:flex-row"
+        onSubmit={(e) => {
+          e.preventDefault();
+          apply({ q });
+        }}
+      >
+        <label htmlFor={searchId} className="sr-only">
+          Търсене
+        </label>
+        <input
+          id={searchId}
+          type="search"
+          enterKeyHint="search"
+          autoCapitalize="off"
+          autoCorrect="off"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Търси по име, телефон, VIN…"
+          className={`${ADMIN_INPUT} sm:max-w-md`}
+        />
+        <AdminButton type="submit" variant="primary" className="shrink-0">
+          Търси
+        </AdminButton>
+      </form>
+
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Филтър по статус">
         {tabs.map((t) => {
           const active = currentStatus === t.key;
           return (
             <button
               key={t.key || "all"}
               type="button"
+              aria-pressed={active}
               onClick={() => apply({ status: t.key })}
-              className={`rounded-full px-3 py-1.5 text-sm font-semibold transition-colors ${
+              className={`inline-flex min-h-10 items-center rounded-full px-4 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
                 active ? "bg-ink text-white" : "bg-white text-muted ring-1 ring-line hover:text-ink"
               }`}
             >
@@ -52,28 +85,6 @@ export function LeadFilters({ basePath }: { basePath: string }) {
           );
         })}
       </div>
-
-      <form
-        className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto"
-        onSubmit={(e) => {
-          e.preventDefault();
-          apply({ q });
-        }}
-      >
-        <input
-          type="search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Търси по име, телефон, VIN…"
-          className="h-10 w-full rounded-full border border-line bg-white px-4 text-sm text-ink outline-none focus:border-brand sm:w-64"
-        />
-        <button
-          type="submit"
-          className="h-10 rounded-full bg-brand px-4 text-sm font-bold text-white transition-colors hover:bg-brand-dark"
-        >
-          Търси
-        </button>
-      </form>
     </div>
   );
 }

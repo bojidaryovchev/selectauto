@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
 import { MailInbox } from "@/components/admin/mail";
+import { AdminPageHeader } from "@/components/admin/ui";
 import { requireAdminPage } from "@/lib/admin";
 import { listMailThreads } from "@/queries/mail";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Поща" };
 
@@ -29,11 +30,11 @@ export default async function AdminMailPage({
   });
 
   return (
-    <div>
-      <h1 className="mb-1 text-2xl font-black tracking-tight text-ink">Поща</h1>
-      <p className="mb-4 text-sm text-muted">
-        Съобщения до info@selectauto.bg. Отговорите се изпращат от същия адрес.
-      </p>
+    <div className="flex flex-col gap-4">
+      <AdminPageHeader
+        title="Поща"
+        description="Съобщения до info@selectauto.bg. Отговорите се изпращат от същия адрес."
+      />
       <MailInbox threads={threads} page={page} pageCount={pageCount} total={total} />
     </div>
   );

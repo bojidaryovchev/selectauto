@@ -1,12 +1,13 @@
 "use client";
 
-import Link from "next/link";
+import { AdminBanner, AdminPageHeader } from "@/components/admin/ui";
+import { formatSofiaDateTime } from "@/lib/sofia-time";
+import { markThreadRead } from "@/mutations/mail";
+import type { MailThreadDetail } from "@/queries/mail";
 import { useEffect, useRef } from "react";
 import { MailThreadStatusSelect } from "./mail-thread-status-select";
 import { MessageBody } from "./message-body";
 import { ReplyComposer } from "./reply-composer";
-import { markThreadRead } from "@/mutations/mail";
-import type { MailThreadDetail } from "@/queries/mail";
 
 /**
  * One conversation: header, the messages oldest-first, then the composer.
@@ -25,75 +26,61 @@ export function MailThreadView({ thread }: { thread: MailThreadDetail }) {
     void markThreadRead(thread.id);
   }, [thread.id, thread.unread]);
 
-  const attachmentsFor = (messageId: number) =>
-    thread.attachments.filter((a) => a.messageId === messageId);
+  const attachmentsFor = (messageId: number) => thread.attachments.filter((a) => a.messageId === messageId);
 
   return (
-    <div className="space-y-4">
-      <div>
-        <Link href="/admin/poshta" className="text-sm font-semibold text-muted hover:text-ink">
-          ← Поща
-        </Link>
-        <h1 className="mt-2 text-2xl font-black tracking-tight text-ink">
-          {thread.subject || "(без тема)"}
-        </h1>
-        <p className="mt-1 text-sm text-muted">
-          {thread.participantName ? `${thread.participantName} · ` : ""}
-          {thread.participantEmail}
-        </p>
-      </div>
+    <div className="flex flex-col gap-4">
+      <AdminPageHeader
+        back={{ href: "/admin/poshta", label: "Поща" }}
+        title={thread.subject || "(без тема)"}
+        description={
+          <span className="wrap-anywhere">
+            {thread.participantName ? `${thread.participantName} · ` : ""}
+            {thread.participantEmail}
+          </span>
+        }
+      />
 
-      <div className="flex items-center gap-3">
-        <span className="text-sm text-muted">Статус</span>
+      <div className="flex max-w-xs flex-col gap-1">
+        <span className="text-sm font-semibold text-muted">Статус</span>
         <MailThreadStatusSelect threadId={thread.id} value={thread.status} />
       </div>
 
-      <ul className="space-y-3">
+      <ul className="m-0 flex list-none flex-col gap-3 p-0">
         {thread.messages.map((m) => {
           const outbound = m.direction === "outbound";
           const files = attachmentsFor(m.id);
           return (
             <li
               key={m.id}
-              className={`rounded-2xl border p-4 ${
-                outbound ? "border-brand/30 bg-brand/5" : "border-line bg-white"
-              }`}
+              className={`min-w-0 rounded-xl border p-4 ${outbound ? "border-brand/30 bg-brand/5" : "border-line bg-white"}`}
             >
               <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-                <span className="text-sm font-bold text-ink">
+                <span className="min-w-0 text-sm font-bold wrap-anywhere text-ink">
                   {outbound ? "SelectAuto" : m.fromName || m.fromAddress}
                 </span>
-                <span className="text-xs text-muted">
-                  {new Date(m.createdAt).toLocaleString("bg-BG")}
-                </span>
+                <span className="text-xs text-muted">{formatSofiaDateTime(m.createdAt)}</span>
               </div>
 
               {/* A failed reply must be impossible to mistake for a sent one. */}
               {outbound && m.deliveryState === "failed" && (
-                <p className="mb-2 rounded-lg bg-[#fdecea] px-3 py-2 text-sm font-semibold text-[#b3261e]">
+                <AdminBanner tone="error" className="mb-2">
                   НЕ е изпратено{m.deliveryError ? `: ${m.deliveryError}` : "."}
-                </p>
+                </AdminBanner>
               )}
               {outbound && m.deliveryState === "sending" && (
-                <p className="mb-2 text-xs italic text-muted">изпраща се…</p>
+                <p className="mb-2 text-xs text-muted italic">изпраща се…</p>
               )}
 
-              <MessageBody
-                textBody={m.textBody}
-                htmlBody={m.htmlBody}
-                fetched={outbound || m.bodyFetchedAt !== null}
-              />
+              <MessageBody textBody={m.textBody} htmlBody={m.htmlBody} fetched={outbound || m.bodyFetchedAt !== null} />
 
               {files.length > 0 && (
-                <ul className="mt-3 flex flex-wrap gap-2">
+                <ul className="m-0 mt-3 flex list-none flex-wrap gap-2 p-0">
                   {files.map((f, i) => (
-                    <li
-                      key={i}
-                      className="rounded-full border border-line px-3 py-1 text-xs text-muted"
-                      title={f.contentType ?? undefined}
-                    >
+                    <li key={i} className="rounded-full border border-line px-3 py-1 text-xs break-all text-muted">
                       {f.filename || "прикачен файл"}
                       {f.sizeBytes ? ` · ${Math.ceil(f.sizeBytes / 1024)} KB` : ""}
+                      {f.contentType ? ` · ${f.contentType}` : ""}
                     </li>
                   ))}
                 </ul>
@@ -104,9 +91,7 @@ export function MailThreadView({ thread }: { thread: MailThreadDetail }) {
       </ul>
 
       {thread.attachments.length > 0 && (
-        <p className="text-xs text-muted">
-          Прикачените файлове се съхраняват в Resend и още не се свалят от панела.
-        </p>
+        <p className="text-xs text-muted">Прикачените файлове се съхраняват в Resend и още не се свалят от панела.</p>
       )}
 
       <ReplyComposer threadId={thread.id} to={thread.participantEmail} />

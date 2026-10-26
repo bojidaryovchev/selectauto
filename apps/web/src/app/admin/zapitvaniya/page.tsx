@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LeadInbox } from "@/components/admin";
+import { AdminPageHeader } from "@/components/admin/ui";
 import { requireAdminPage } from "@/lib/admin";
 import { LEAD_TYPE_META } from "@/constants/admin";
 import { INQUIRY_COLUMNS, toInquiryView } from "@/lib/admin-lead-view";
@@ -23,10 +24,8 @@ export default async function AdminInquiriesPage({
   const { rows, total, page, pageCount } = await listInquiries(filters);
 
   return (
-    <div>
-      <h1 className="mb-4 text-2xl font-black tracking-tight text-ink">
-        {LEAD_TYPE_META.inquiry.label}
-      </h1>
+    <div className="flex flex-col gap-4">
+      <AdminPageHeader title={LEAD_TYPE_META.inquiry.label} />
       <LeadInbox
         basePath={LEAD_TYPE_META.inquiry.href}
         columns={INQUIRY_COLUMNS}

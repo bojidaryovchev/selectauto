@@ -1,10 +1,10 @@
 "use client";
 
+import { Combobox } from "@/components/common";
+import { MAIL_THREAD_STATUSES, MAIL_THREAD_STATUS_META, type MailThreadStatus } from "@/constants/mail";
+import { updateThreadStatus } from "@/mutations/mail";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Combobox } from "@/components/common";
-import { updateThreadStatus } from "@/mutations/mail";
-import { MAIL_THREAD_STATUSES, MAIL_THREAD_STATUS_META, type MailThreadStatus } from "@/constants/mail";
 
 /**
  * Thread status dropdown. Mirrors the lead inbox's `StatusSelect`: shows the
@@ -34,6 +34,7 @@ export function MailThreadStatusSelect({ threadId, value }: { threadId: number; 
   return (
     <div className="flex flex-col gap-1">
       <Combobox
+        aria-label="Статус на разговора"
         options={MAIL_THREAD_STATUSES.map((s) => ({
           value: s,
           label: MAIL_THREAD_STATUS_META[s].label,
