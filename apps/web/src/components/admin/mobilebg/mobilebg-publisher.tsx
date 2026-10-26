@@ -1,14 +1,14 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { ADMIN_HINT, ADMIN_INPUT, ADMIN_LABEL, AdminBanner, AdminButton } from "@/components/admin/ui";
 import { Combobox, ConfirmDialog } from "@/components/common";
+import { ChevronDownIcon } from "@/components/icons";
 import { advertUrl } from "@/lib/mobilebg/advert-url";
-import { carTitle } from "@/lib/mobilebg/car-title";
-import { PRICE_DDS_OPTIONS } from "@/lib/mobilebg/price-dds";
-import type { MobilebgOverrides } from "@/lib/mobilebg/map-car";
 import { BATTERY_ENGINE_TYPES, parseBatteryKm, parseBatteryKwh } from "@/lib/mobilebg/battery";
+import { carTitle } from "@/lib/mobilebg/car-title";
+import type { MobilebgOverrides } from "@/lib/mobilebg/map-car";
 import { parseManualPrice } from "@/lib/mobilebg/parse-price";
+import { PRICE_DDS_OPTIONS } from "@/lib/mobilebg/price-dds";
 import {
   lookupCarAction,
   previewAdvertAction,
@@ -17,6 +17,8 @@ import {
   saveMobilebgModelMapping,
 } from "@/mutations/mobilebg";
 import type { CarLookupHit, MobilebgPreview } from "@/queries/mobilebg";
+import { useRouter } from "next/navigation";
+import { useId, useState, useTransition } from "react";
 
 /**
  * Търси → преглед → публикувай.
@@ -45,8 +47,18 @@ import type { CarLookupHit, MobilebgPreview } from "@/queries/mobilebg";
  */
 
 const MONTHS = [
-  "януари", "февруари", "март", "април", "май", "юни",
-  "юли", "август", "септември", "октомври", "ноември", "декември",
+  "януари",
+  "февруари",
+  "март",
+  "април",
+  "май",
+  "юни",
+  "юли",
+  "август",
+  "септември",
+  "октомври",
+  "ноември",
+  "декември",
 ];
 
 function markaProvenance(p: MobilebgPreview): string {
@@ -86,6 +98,7 @@ function modelProvenance(p: MobilebgPreview): string {
 
 export function MobilebgPublisher() {
   const router = useRouter();
+  const uid = useId();
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<CarLookupHit[]>([]);
   const [preview, setPreview] = useState<MobilebgPreview | null>(null);
@@ -302,9 +315,7 @@ export function MobilebgPublisher() {
         return;
       }
       const skipped =
-        res.data.skippedPictures.length > 0
-          ? ` Пропуснати снимки: ${res.data.skippedPictures.length}.`
-          : "";
+        res.data.skippedPictures.length > 0 ? ` Пропуснати снимки: ${res.data.skippedPictures.length}.` : "";
       setNotice({
         text: `${res.data.edited ? "Обявата е коригирана" : "Обявата е публикувана"}: ID ${res.data.ida}, ${res.data.pictureCount} снимки.${skipped}`,
         url: advertUrl(res.data.ida),
@@ -347,66 +358,74 @@ export function MobilebgPublisher() {
     ),
   ];
 
+  // What an action said: next to the search before a car is open, in the
+  // action bar once one is — on a phone, the top of the page is a long way
+  // from the publish button that caused it.
+  const feedback =
+    error || notice ? (
+      <div className="flex flex-col gap-2">
+        {error ? <AdminBanner tone="error">{error}</AdminBanner> : null}
+        {notice ? (
+          <AdminBanner tone="success">
+            {notice.text}{" "}
+            {notice.url && (
+              <a href={notice.url} target="_blank" rel="noreferrer" className="font-bold underline">
+                Виж обявата в mobile.bg
+              </a>
+            )}
+          </AdminBanner>
+        ) : null}
+      </div>
+    ) : null;
+
   return (
-    <div className="space-y-4">
-      <div className="rounded-2xl border border-line bg-white p-4">
-        <label htmlFor="mobilebg-q" className="mb-1 block text-sm font-semibold text-ink">
+    <div className="flex flex-col gap-4">
+      <form
+        role="search"
+        onSubmit={(e) => {
+          e.preventDefault();
+          search();
+        }}
+        className="rounded-xl border border-line bg-white p-4"
+      >
+        <label htmlFor="mobilebg-q" className={`mb-1 block ${ADMIN_LABEL}`}>
           ID на автомобил, VIN, номер на лот или линк към обявата
         </label>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <input
             id="mobilebg-q"
+            type="search"
+            enterKeyHint="search"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") search();
-            }}
             placeholder="напр. 50290 или https://www.selectauto.bg/avtomobil/50290"
-            className="h-10 min-w-64 flex-1 rounded-full border border-line bg-white px-4 text-sm text-ink outline-none focus:border-brand"
+            className={ADMIN_INPUT}
           />
-          <button
-            type="button"
-            onClick={search}
-            disabled={pending || !query.trim()}
-            className="h-10 rounded-full bg-brand px-5 text-sm font-bold text-white disabled:opacity-40"
-          >
+          <AdminButton type="submit" variant="primary" disabled={pending || !query.trim()} className="shrink-0">
             {pending ? "Търси…" : "Търси"}
-          </button>
+          </AdminButton>
         </div>
-      </div>
+      </form>
 
-      {error && <p className="rounded-lg bg-[#fdecea] px-3 py-2 text-sm text-[#b3261e]">{error}</p>}
-      {notice && (
-        <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-          {notice.text}{" "}
-          {notice.url && (
-            <a
-              href={notice.url}
-              target="_blank"
-              rel="noreferrer"
-              className="font-bold underline"
-            >
-              Виж обявата в mobile.bg
-            </a>
-          )}
-        </p>
-      )}
+      {!preview ? feedback : null}
 
       {hits.length > 1 && !preview && (
-        <div className="rounded-2xl border border-line bg-white p-4">
+        <div className="rounded-xl border border-line bg-white p-4">
           <h2 className="mb-2 font-bold text-ink">Изберете автомобил</h2>
-          <ul className="space-y-1">
+          <ul className="m-0 flex list-none flex-col gap-1 p-0">
             {hits.map((h) => (
               <li key={h.carId}>
                 <button
                   type="button"
                   onClick={() => openCar(h.carId)}
-                  className="w-full rounded-lg px-3 py-2 text-left text-sm text-ink hover:bg-neutral-100"
+                  className="flex min-h-11 w-full flex-col justify-center rounded-lg px-3 py-2 text-left text-sm text-ink transition-colors hover:bg-neutral-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
                 >
                   <span className="font-semibold">{carTitle(h.year, h.title, h.carId)}</span>
                   <span className="text-muted">
-                    {" "}
-                    · #{h.carId}
+                    #{h.carId}
                     {h.lotNumber ? ` · лот ${h.lotNumber}` : ""}
                     {h.domainName ? ` · ${h.domainName}` : ""}
                   </span>
@@ -418,12 +437,12 @@ export function MobilebgPublisher() {
       )}
 
       {preview && mapping && (
-        <div className="space-y-4 rounded-2xl border border-line bg-white p-4">
-          <div>
-            <h2 className="font-bold text-ink">
+        <div className="@container flex flex-col gap-4 rounded-xl border border-line bg-white p-4 sm:p-5">
+          <div className="min-w-0">
+            <h2 className="font-bold wrap-anywhere text-ink">
               {carTitle(preview.source.year, preview.source.title, preview.source.carId)}
             </h2>
-            <p className="text-sm text-muted">
+            <p className="text-sm wrap-anywhere text-muted">
               #{preview.source.carId}
               {preview.source.vin ? ` · VIN ${preview.source.vin}` : ""}
               {preview.source.lotNumber ? ` · лот ${preview.source.lotNumber}` : ""}
@@ -431,24 +450,22 @@ export function MobilebgPublisher() {
               {preview.source.images.length} снимки
             </p>
             {preview.advert?.ida && (
-              <p className="mt-1 text-sm">
-                <a
-                  href={advertUrl(preview.advert.ida)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-bold text-brand hover:underline"
-                >
-                  Обявата в mobile.bg (ID {preview.advert.ida})
-                </a>
-              </p>
+              <a
+                href={advertUrl(preview.advert.ida)}
+                target="_blank"
+                rel="noreferrer"
+                className="-my-2 inline-block py-2 text-sm font-bold text-brand hover:underline"
+              >
+                Обявата в mobile.bg (ID {preview.advert.ida})
+              </a>
             )}
           </div>
 
           {!preview.credentialsConfigured && (
-            <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              Акаунтът за импорт в mobile.bg още не е конфигуриран. Обявата се изчислява напълно, но
-              не може да бъде изпратена.
-            </p>
+            <AdminBanner tone="warning">
+              Акаунтът за импорт в mobile.bg още не е конфигуриран. Обявата се изчислява напълно, но не може да бъде
+              изпратена.
+            </AdminBanner>
           )}
 
           {/* Brand / model — resolved automatically, with the evidence shown. */}
@@ -456,11 +473,11 @@ export function MobilebgPublisher() {
             <p className="text-sm font-bold text-ink">Марка и модел в mobile.bg</p>
             {mapping.unavailable ? (
               <p className="mt-1 text-sm text-[#b3261e]">
-                Речникът на mobile.bg не отговаря — съответствието не може да бъде проверено.
-                Опитайте „Преизчисли“ след малко.
+                Речникът на mobile.bg не отговаря — съответствието не може да бъде проверено. Опитайте „Преизчисли“ след
+                малко.
               </p>
             ) : (
-              <ul className="mt-1 space-y-0.5 text-sm text-ink">
+              <ul className="mt-1 flex flex-col gap-0.5 text-sm text-ink">
                 <li>
                   Марка: <strong>{mapping.marka ?? "—"}</strong>
                   {mapping.marka && <span className="text-muted"> — {markaProvenance(preview)}</span>}
@@ -472,7 +489,7 @@ export function MobilebgPublisher() {
                     <button
                       type="button"
                       onClick={() => setChangingModel(true)}
-                      className="ml-2 text-xs font-bold text-brand"
+                      className="-my-2 ml-1 inline-flex min-h-10 items-center rounded-md px-1.5 text-sm font-bold text-brand hover:underline focus-visible:outline-2 focus-visible:outline-brand"
                     >
                       промени
                     </button>
@@ -482,12 +499,13 @@ export function MobilebgPublisher() {
             )}
 
             {!mapping.marka && mapping.markaOptions.length > 0 && (
-              <div className="mt-3 flex flex-wrap items-end gap-2">
-                <div className="min-w-56 flex-1">
-                  <label className="mb-1 block text-xs font-semibold text-muted">
+              <div className="mt-3 flex flex-col gap-2 @lg:flex-row @lg:items-end">
+                <div className="min-w-0 flex-1">
+                  <p className="mb-1 text-xs font-semibold text-muted">
                     Марката „{preview.source.brandName ?? "—"}“ в mobile.bg е:
-                  </label>
+                  </p>
                   <Combobox
+                    aria-label={`Марката „${preview.source.brandName ?? "—"}“ в mobile.bg`}
                     options={[
                       { value: "", label: "— изберете —" },
                       ...mapping.markaOptions.map((m) => ({ value: m, label: m })),
@@ -496,25 +514,21 @@ export function MobilebgPublisher() {
                     onValueChange={setPickedMarka}
                   />
                 </div>
-                <button
-                  type="button"
-                  onClick={saveBrand}
-                  disabled={pending || !pickedMarka}
-                  className="h-11 rounded-full bg-brand px-5 text-sm font-bold text-white disabled:opacity-40"
-                >
+                <AdminButton variant="primary" size="lg" onClick={saveBrand} disabled={pending || !pickedMarka}>
                   Запомни марката
-                </button>
+                </AdminButton>
               </div>
             )}
 
             {showModelPicker && (
-              <div className="mt-3 space-y-2">
-                <div className="flex flex-wrap items-end gap-2">
-                  <div className="min-w-56 flex-1">
-                    <label className="mb-1 block text-xs font-semibold text-muted">
+              <div className="mt-3 flex flex-col gap-2">
+                <div className="flex flex-col gap-2 @lg:flex-row @lg:items-end">
+                  <div className="min-w-0 flex-1">
+                    <p className="mb-1 text-xs font-semibold text-muted">
                       Моделът „{preview.source.modelName ?? "—"}“ в mobile.bg е:
-                    </label>
+                    </p>
                     <Combobox
+                      aria-label={`Моделът „${preview.source.modelName ?? "—"}“ в mobile.bg`}
                       options={[
                         { value: "", label: "— изберете —" },
                         ...mapping.modelOptions.map((m) => ({ value: m, label: m })),
@@ -523,27 +537,21 @@ export function MobilebgPublisher() {
                       onValueChange={setPickedModel}
                     />
                   </div>
-                  <button
-                    type="button"
-                    onClick={applyModel}
-                    disabled={pending || !pickedModel}
-                    className="h-11 rounded-full bg-brand px-5 text-sm font-bold text-white disabled:opacity-40"
-                  >
+                  <AdminButton variant="primary" size="lg" onClick={applyModel} disabled={pending || !pickedModel}>
                     Използвай
-                  </button>
+                  </AdminButton>
                 </div>
                 {preview.source.modelExternalId !== null && (
-                  <label className="flex items-start gap-2 text-xs text-ink">
+                  <label className="flex min-h-10 cursor-pointer items-start gap-3 py-1 text-xs text-ink">
                     <input
                       type="checkbox"
                       checked={rememberModel}
                       onChange={(e) => setRememberModel(e.target.checked)}
-                      className="mt-0.5"
+                      className="mt-0.5 size-5 shrink-0 accent-brand"
                     />
                     <span>
-                      Запомни за всички коли с модел „{preview.source.modelName ?? "—"}“. Махнете
-                      отметката, ако зависи от версията — напр. BMW „3er“ е „320“ или „330“ според
-                      двигателя.
+                      Запомни за всички коли с модел „{preview.source.modelName ?? "—"}“. Махнете отметката, ако зависи
+                      от версията — напр. BMW „3er“ е „320“ или „330“ според двигателя.
                     </span>
                   </label>
                 )}
@@ -552,47 +560,46 @@ export function MobilebgPublisher() {
           </div>
 
           {blockers.length > 0 && (
-            <div className="rounded-lg bg-[#fdecea] px-3 py-2 text-sm text-[#b3261e]">
+            <AdminBanner tone="error">
               <p className="mb-1 font-bold">Публикуването е спряно:</p>
-              <ul className="list-disc space-y-1 pl-5">
+              <ul className="list-disc space-y-1 pl-5 font-normal">
                 {blockers.map((b) => (
                   <li key={b}>{b}</li>
                 ))}
               </ul>
-            </div>
+            </AdminBanner>
           )}
 
           {/* Not a fault with the car: required choices the admin still has to make. */}
           {missing.length > 0 && (
-            <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            <AdminBanner tone="warning">
               <p className="mb-1 font-bold">Попълнете, за да публикувате:</p>
-              <ul className="list-disc space-y-1 pl-5">
+              <ul className="list-disc space-y-1 pl-5 font-normal">
                 {missing.map((m) => (
                   <li key={m.field}>{m.message}</li>
                 ))}
               </ul>
-            </div>
+            </AdminBanner>
           )}
 
           {invalid.length > 0 && (
-            <div className="rounded-lg bg-[#fdecea] px-3 py-2 text-sm text-[#b3261e]">
+            <AdminBanner tone="error">
               <p className="mb-1 font-bold">Стойности, които mobile.bg не разпознава:</p>
-              <ul className="list-disc space-y-1 pl-5">
+              <ul className="list-disc space-y-1 pl-5 font-normal">
                 {invalid.map((v) => (
                   <li key={`${v.field}:${v.value}`}>
                     <code>{v.field}</code> = „{v.value}“
                   </li>
                 ))}
               </ul>
-            </div>
+            </AdminBanner>
           )}
 
           {/* Price — always shown with its derivation, never as a bare number. */}
           <div className="rounded-xl border border-line p-3">
             <p className="text-sm font-bold text-ink">Цена в обявата</p>
             <p className="text-sm text-muted">
-              Себестойност до България:{" "}
-              {mapped?.landedEur ? `${mapped.landedEur.toLocaleString("bg-BG")} €` : "—"}
+              Себестойност до България: {mapped?.landedEur ? `${mapped.landedEur.toLocaleString("bg-BG")} €` : "—"}
               {" · надценка "}
               {preview.markupPct}%{" → "}
               {mapped?.computedPriceEur ? `${mapped.computedPriceEur.toLocaleString("bg-BG")} €` : "—"}
@@ -620,40 +627,34 @@ export function MobilebgPublisher() {
           </div>
 
           {mapped && mapped.warnings.length > 0 && (
-            <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            <AdminBanner tone="warning">
               <p className="mb-1 font-bold">За проверка:</p>
-              <ul className="list-disc space-y-1 pl-5">
+              <ul className="list-disc space-y-1 pl-5 font-normal">
                 {mapped.warnings.map((w) => (
                   <li key={`${w.field}:${w.message}`}>
                     <code>{w.field}</code> — {w.message}
                   </li>
                 ))}
               </ul>
-            </div>
+            </AdminBanner>
           )}
 
           {/* Fields our data cannot supply. */}
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-sm font-semibold text-ink">Месец на производство</label>
+          <div className="grid gap-4 @lg:grid-cols-2">
+            <PickField label="Месец на производство" required={missingFields.has("month")}>
               <Combobox
-                options={[
-                  { value: "", label: "Изберете" },
-                  ...MONTHS.map((m) => ({ value: m, label: m })),
-                ]}
+                aria-label="Месец на производство"
+                options={[{ value: "", label: "Изберете" }, ...MONTHS.map((m) => ({ value: m, label: m }))]}
                 value={month}
                 onValueChange={(v) => {
                   setMonth(v);
                   reloadWith({ month: v || undefined });
                 }}
               />
-              {missingFields.has("month") && <p className="mt-1 text-xs font-semibold text-[#b3261e]">Задължително</p>}
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-semibold text-ink">
-                Валидност (дни) — за дилъри е само статистика
-              </label>
+            </PickField>
+            <PickField label="Валидност (дни) — за дилъри е само статистика">
               <Combobox
+                aria-label="Валидност (дни)"
                 options={[
                   { value: "35", label: "35 дни" },
                   { value: "49", label: "49 дни" },
@@ -661,10 +662,10 @@ export function MobilebgPublisher() {
                 value={term}
                 onValueChange={setTerm}
               />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-semibold text-ink">Категория</label>
+            </PickField>
+            <PickField label="Категория" required={missingFields.has("category")}>
               <Combobox
+                aria-label="Категория"
                 options={categoryChoices}
                 value={effectiveCategory}
                 onValueChange={(v) => {
@@ -672,11 +673,10 @@ export function MobilebgPublisher() {
                   reloadWith({ category: v || undefined });
                 }}
               />
-              {missingFields.has("category") && <p className="mt-1 text-xs font-semibold text-[#b3261e]">Задължително</p>}
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-semibold text-ink">Държава (извън страната)</label>
+            </PickField>
+            <PickField label="Държава (извън страната)" required={missingFields.has("locatc")}>
               <Combobox
+                aria-label="Държава (извън страната)"
                 options={countryChoices}
                 value={effectiveCountry}
                 onValueChange={(v) => {
@@ -684,11 +684,10 @@ export function MobilebgPublisher() {
                   reloadWith({ locatc: v || undefined });
                 }}
               />
-              {missingFields.has("locatc") && <p className="mt-1 text-xs font-semibold text-[#b3261e]">Задължително</p>}
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-semibold text-ink">ДДС статус на цената</label>
+            </PickField>
+            <PickField label="ДДС статус на цената" required={missingFields.has("price_dds")}>
               <Combobox
+                aria-label="ДДС статус на цената"
                 options={[
                   { value: "", label: "Изберете" },
                   ...PRICE_DDS_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
@@ -699,13 +698,13 @@ export function MobilebgPublisher() {
                   reloadWith({ priceDds: v || undefined });
                 }}
               />
-              {missingFields.has("price_dds") && <p className="mt-1 text-xs font-semibold text-[#b3261e]">Задължително</p>}
-            </div>
+            </PickField>
             {needsBattery && (
               <>
                 <div>
                   <TextField
                     label="Пробег с едно зареждане (WLTP), км"
+                    inputMode="numeric"
                     value={batteryKm}
                     onChange={setBatteryKm}
                     onCommit={() => {
@@ -724,6 +723,7 @@ export function MobilebgPublisher() {
                 <div>
                   <TextField
                     label="Капацитет на батерията, kWh"
+                    inputMode="decimal"
                     value={batteryKwh}
                     onChange={setBatteryKwh}
                     onCommit={() => {
@@ -744,6 +744,7 @@ export function MobilebgPublisher() {
             <div>
               <TextField
                 label="Цена (EUR) — ръчно"
+                inputMode="decimal"
                 value={priceOverride}
                 onChange={setPriceOverride}
                 onCommit={() => {
@@ -767,7 +768,7 @@ export function MobilebgPublisher() {
               placeholder="Кожен салон/Парктроник/7 места"
             />
             <div className="flex items-end">
-              <label className="flex items-center gap-2 text-sm font-semibold text-ink">
+              <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold text-ink">
                 <input
                   type="checkbox"
                   checked={priceOnRequest}
@@ -775,6 +776,7 @@ export function MobilebgPublisher() {
                     setPriceOnRequest(e.target.checked);
                     reloadWith({ priceOnRequest: e.target.checked || undefined });
                   }}
+                  className="size-5 shrink-0 accent-brand"
                 />
                 Цена при запитване
               </label>
@@ -782,69 +784,55 @@ export function MobilebgPublisher() {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-semibold text-ink">Описание (extinfo)</label>
+            <label htmlFor={`${uid}-extinfo`} className={`mb-1 block ${ADMIN_LABEL}`}>
+              Описание (extinfo)
+            </label>
             <textarea
+              id={`${uid}-extinfo`}
               value={extinfo}
               onChange={(e) => setExtinfo(e.target.value)}
               rows={4}
               placeholder={mapped?.params.extinfo ?? ""}
-              className="w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-brand"
+              className={`${ADMIN_INPUT} min-h-28`}
             />
-            <p className="mt-1 text-xs text-muted">
-              Празно = генерираното описание (показано като плейсхолдър).
-            </p>
+            <p className={`mt-1 ${ADMIN_HINT}`}>Празно = генерираното описание (показано като плейсхолдър).</p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={refresh}
-              disabled={pending}
-              className="h-10 rounded-full border border-line bg-white px-5 text-sm font-bold text-ink disabled:opacity-40"
-            >
-              Преизчисли
-            </button>
-            <button
-              type="button"
-              onClick={openConfirm}
-              disabled={pending || !canPublish}
-              className="h-10 rounded-full bg-brand px-5 text-sm font-bold text-white disabled:opacity-40"
-            >
-              {preview.advert?.ida ? "Коригирай обявата" : "Публикувай в mobile.bg"}
-            </button>
-            {preview.unchanged && (
-              <span className="self-center text-sm text-muted">Няма промени спрямо публикуваното.</span>
-            )}
-          </div>
-
-          {/* The exact wire format — the whole point of a preview. */}
+          {/* The exact wire format — the whole point of a preview. A list, not a
+              wide table: it reads on a phone. */}
           {mapped && Object.keys(mapped.params).length > 0 && (
-            <details className="rounded-xl border border-line p-3">
-              <summary className="cursor-pointer text-sm font-bold text-ink">
+            <details className="group rounded-xl border border-line">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 text-sm font-bold text-ink [&::-webkit-details-marker]:hidden">
                 Параметри към advertpub ({Object.keys(mapped.params).length})
+                <ChevronDownIcon className="size-4 shrink-0 transition-transform group-open:rotate-180" />
               </summary>
-              <div className="mt-2 overflow-x-auto">
-                <table className="w-full min-w-120 text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-line text-xs uppercase tracking-wide text-muted">
-                      <th className="px-2 py-1 font-bold">Поле</th>
-                      <th className="px-2 py-1 font-bold">Описание</th>
-                      <th className="px-2 py-1 font-bold">Стойност</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(mapped.params).map(([k, v]) => (
-                      <tr key={k} className="border-b border-line/60 last:border-0">
-                        <td className="px-2 py-1 font-mono text-xs text-ink">{k}</td>
-                        <td className="px-2 py-1 text-muted">{preview.catfields[k]?.ftext ?? "—"}</td>
-                        <td className="px-2 py-1 whitespace-pre-wrap text-ink">{v || "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <dl className="m-0 divide-y divide-line/60 border-t border-line px-3 text-sm">
+                {Object.entries(mapped.params).map(([k, v]) => (
+                  <div key={k} className="grid gap-x-3 py-2 @lg:grid-cols-[10rem_minmax(0,1fr)]">
+                    <dt className="min-w-0">
+                      <span className="font-mono text-xs text-ink">{k}</span>
+                      <span className="block text-xs text-muted">{preview.catfields[k]?.ftext ?? "—"}</span>
+                    </dt>
+                    <dd className="min-w-0 wrap-anywhere whitespace-pre-wrap text-ink">{v || "—"}</dd>
+                  </div>
+                ))}
+              </dl>
             </details>
           )}
+
+          {/* Sticky: the outcome of „Публикувай" shows where the tap was. */}
+          <div className="sticky bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-10 flex flex-col gap-3 rounded-xl border border-line bg-white/95 p-3 shadow-card backdrop-blur-sm">
+            {feedback}
+            <div className="flex flex-wrap items-center gap-2">
+              <AdminButton variant="secondary" onClick={refresh} disabled={pending}>
+                Преизчисли
+              </AdminButton>
+              <AdminButton variant="primary" onClick={openConfirm} disabled={pending || !canPublish}>
+                {preview.advert?.ida ? "Коригирай обявата" : "Публикувай в mobile.bg"}
+              </AdminButton>
+              {preview.unchanged && <span className="text-sm text-muted">Няма промени спрямо публикуваното.</span>}
+            </div>
+          </div>
         </div>
       )}
 
@@ -860,26 +848,34 @@ export function MobilebgPublisher() {
           <>
             {preview?.advert?.ida ? (
               <>
-                Обявата ще бъде обновена в mobile.bg (ID {preview.advert.ida}). Корекциите са
-                безплатни (Общи условия, т. I.15).
+                Обявата ще бъде обновена в mobile.bg (ID {preview.advert.ida}). Корекциите са безплатни (Общи условия,
+                т. I.15).
               </>
             ) : (
               <>
-                Ще бъде създадена НОВА обява в mobile.bg. Докато е активна, mobile.bg начислява
-                седмична такса по дилърската тарифа (т. I.16) — обявата не изтича сама, а стои до
-                изтриване.
+                Ще бъде създадена НОВА обява в mobile.bg. Докато е активна, mobile.bg начислява седмична такса по
+                дилърската тарифа (т. I.16) — обявата не изтича сама, а стои до изтриване.
               </>
             )}{" "}
             Цената в обявата ще бъде{" "}
             <strong>
-              {mapped?.sentPriceEur != null
-                ? `${mapped.sentPriceEur.toLocaleString("bg-BG")} €`
-                : "„при запитване“"}
+              {mapped?.sentPriceEur != null ? `${mapped.sentPriceEur.toLocaleString("bg-BG")} €` : "„при запитване“"}
             </strong>
             .
           </>
         }
       />
+    </div>
+  );
+}
+
+/** A Combobox under a visible caption (the Combobox carries the same text as its accessible name). */
+function PickField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <p className={`mb-1 ${ADMIN_LABEL}`}>{label}</p>
+      {children}
+      {required && <p className="mt-1 text-xs font-semibold text-[#b3261e]">Задължително</p>}
     </div>
   );
 }
@@ -890,6 +886,7 @@ function TextField({
   onChange,
   onCommit,
   placeholder,
+  inputMode,
 }: {
   label: string;
   value: string;
@@ -897,11 +894,17 @@ function TextField({
   /** Leaving the field or pressing Enter: the moment to recompute. */
   onCommit?: () => void;
   placeholder?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
 }) {
+  const id = useId();
   return (
-    <div>
-      <label className="mb-1 block text-sm font-semibold text-ink">{label}</label>
+    <div className="min-w-0">
+      <label htmlFor={id} className={`mb-1 block ${ADMIN_LABEL}`}>
+        {label}
+      </label>
       <input
+        id={id}
+        inputMode={inputMode}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onBlur={onCommit}
@@ -909,7 +912,7 @@ function TextField({
           if (e.key === "Enter") onCommit?.();
         }}
         placeholder={placeholder}
-        className="h-11 w-full rounded-[10px] border border-line bg-white px-3.5 text-sm text-ink outline-none focus:border-brand"
+        className={ADMIN_INPUT}
       />
     </div>
   );

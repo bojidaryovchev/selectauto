@@ -1,9 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { AdminBanner, AdminButton, AdminEmptyState } from "@/components/admin/ui";
 import { deleteMobilebgBrandMapping, deleteMobilebgModelMapping } from "@/mutations/mobilebg";
 import type { MobilebgBrandMapRow, MobilebgModelMapRow } from "@/queries/mobilebg";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 
 /**
  * The remembered overrides — every brand/model pairing an admin confirmed from
@@ -44,26 +45,26 @@ export function MobilebgMappingDesk({
   }
 
   return (
-    <div className="space-y-4">
-      {error && <p className="rounded-lg bg-[#fdecea] px-3 py-2 text-sm text-[#b3261e]">{error}</p>}
+    <div className="flex flex-col gap-4">
+      {error && <AdminBanner tone="error">{error}</AdminBanner>}
 
-      <MappingTable
+      <MappingList
         title={`Марки (${brands.length})`}
-        headers={["Наша марка", "mobile.bg", ""]}
         rows={brands.map((b) => ({
           key: `b-${b.manufacturerExternalId}`,
-          cells: [b.ourName ?? `#${b.manufacturerExternalId}`, b.marka],
+          ours: b.ourName ?? `#${b.manufacturerExternalId}`,
+          theirs: b.marka,
           onRemove: () => removeBrand(b.manufacturerExternalId),
         }))}
         pending={pending}
       />
 
-      <MappingTable
+      <MappingList
         title={`Модели (${models.length})`}
-        headers={["Наш модел", "mobile.bg", ""]}
         rows={models.map((m) => ({
           key: `m-${m.modelExternalId}`,
-          cells: [m.ourName ?? `#${m.modelExternalId}`, `${m.marka} ${m.model}`],
+          ours: m.ourName ?? `#${m.modelExternalId}`,
+          theirs: `${m.marka} ${m.model}`,
           onRemove: () => removeModel(m.modelExternalId, m.manufacturerExternalId),
         }))}
         pending={pending}
@@ -72,59 +73,34 @@ export function MobilebgMappingDesk({
   );
 }
 
-function MappingTable({
+/** One pairing per row — „наше → mobile.bg" — which reads the same at any width. */
+function MappingList({
   title,
-  headers,
   rows,
   pending,
 }: {
   title: string;
-  headers: string[];
-  rows: { key: string; cells: string[]; onRemove: () => void }[];
+  rows: { key: string; ours: string; theirs: string; onRemove: () => void }[];
   pending: boolean;
 }) {
   return (
     <div>
       <h3 className="mb-2 font-bold text-ink">{title}</h3>
       {rows.length === 0 ? (
-        <p className="rounded-2xl border border-line bg-white p-4 text-sm text-muted">
-          Няма ръчни съответствия — всичко се разпознава автоматично.
-        </p>
+        <AdminEmptyState title="Няма ръчни съответствия — всичко се разпознава автоматично." />
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-line bg-white">
-          <table className="w-full min-w-120 text-left text-sm">
-            <thead>
-              <tr className="border-b border-line text-xs uppercase tracking-wide text-muted">
-                {headers.map((h) => (
-                  <th key={h} className="px-3 py-2 font-bold">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.key} className="border-b border-line/60 last:border-0">
-                  {r.cells.map((c) => (
-                    <td key={c} className="px-3 py-2 text-ink">
-                      {c}
-                    </td>
-                  ))}
-                  <td className="px-3 py-2">
-                    <button
-                      type="button"
-                      onClick={r.onRemove}
-                      disabled={pending}
-                      className="rounded-full border border-line px-3 py-1 text-xs font-bold text-ink disabled:opacity-40"
-                    >
-                      Премахни
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ul className="m-0 list-none divide-y divide-line/60 rounded-xl border border-line bg-white p-0">
+          {rows.map((r) => (
+            <li key={r.key} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2 text-sm">
+              <span className="min-w-0 wrap-anywhere text-ink">
+                {r.ours} <span className="text-muted">→</span> <strong>{r.theirs}</strong>
+              </span>
+              <AdminButton variant="secondary" onClick={r.onRemove} disabled={pending}>
+                Премахни
+              </AdminButton>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

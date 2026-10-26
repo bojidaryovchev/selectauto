@@ -1,12 +1,9 @@
-import type { Metadata } from "next";
-import {
-  MobilebgAdvertList,
-  MobilebgMappingDesk,
-  MobilebgPublisher,
-} from "@/components/admin/mobilebg";
+import { MobilebgAdvertList, MobilebgMappingDesk, MobilebgPublisher } from "@/components/admin/mobilebg";
+import { AdminBanner, AdminPageHeader } from "@/components/admin/ui";
 import { requirePageWith } from "@/lib/admin";
 import { isConfigured } from "@/lib/mobilebg/client";
 import { listMobilebgAdverts, listMobilebgMappings } from "@/queries/mobilebg";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "mobile.bg" };
 
@@ -19,11 +16,7 @@ export const metadata: Metadata = { title: "mobile.bg" };
  * the preview, the blockers and the confirm dialog rather than the role. The
  * markup % behind the price stays in /admin/тарифи, which remains admin-only.
  */
-export default async function AdminMobilebgPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ page?: string }>;
-}) {
+export default async function AdminMobilebgPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   await requirePageWith("mobilebg.publish");
   const sp = await searchParams;
 
@@ -33,43 +26,40 @@ export default async function AdminMobilebgPage({
   ]);
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="mb-1 text-2xl font-black tracking-tight text-ink">mobile.bg</h1>
-        <p className="text-sm text-muted">
-          Публикуване на автомобил от каталога като обява в mobile.bg. Цената в обявата е крайната
-          цена за България (себестойност от калкулатора + надценката от „Тарифи“), а не аукционната
-          цена на лота.
-        </p>
+    <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-4">
+        <AdminPageHeader
+          title="mobile.bg"
+          description="Публикуване на автомобил от каталога като обява в mobile.bg. Цената в обявата е крайната цена за България (себестойност от калкулатора + надценката от „Тарифи“), а не аукционната цена на лота."
+        />
+
+        {!isConfigured() && (
+          <AdminBanner tone="warning" className="font-normal">
+            Акаунтът за импорт още не е конфигуриран. Задайте <code>MOBILEBG_USERNAME</code> и{" "}
+            <code>MOBILEBG_PASSWORD</code>, след като mobile.bg оторизира акаунта и регистрира домейна за снимките.
+            Дотогава всичко тук се изчислява и проверява, но нищо не се изпраща.
+          </AdminBanner>
+        )}
+
+        <MobilebgPublisher />
       </div>
 
-      {!isConfigured() && (
-        <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          Акаунтът за импорт още не е конфигуриран. Задайте <code>MOBILEBG_USERNAME</code> и{" "}
-          <code>MOBILEBG_PASSWORD</code>, след като mobile.bg оторизира акаунта и регистрира
-          домейна за снимките. Дотогава всичко тук се изчислява и проверява, но нищо не се изпраща.
-        </p>
-      )}
-
-      <MobilebgPublisher />
-
-      <div>
+      <section>
         <h2 className="mb-2 text-lg font-black tracking-tight text-ink">
           Обяви <span className="text-sm font-semibold text-muted">({total})</span>
         </h2>
         <MobilebgAdvertList rows={rows} />
-      </div>
+      </section>
 
-      <div>
+      <section>
         <h2 className="mb-1 text-lg font-black tracking-tight text-ink">Запомнени съответствия</h2>
-        <p className="mb-3 text-sm text-muted">
-          Марките и моделите се разпознават автоматично по речника на mobile.bg — по същото име,
-          известен синоним или обозначението в заглавието („330I“ → „330“). Тук са само ръчно
-          потвърдените изключения, зададени от прегледа на обявата. Премахването връща модела към
-          автоматичното разпознаване.
+        <p className="mb-3 max-w-3xl text-sm text-muted">
+          Марките и моделите се разпознават автоматично по речника на mobile.bg — по същото име, известен синоним или
+          обозначението в заглавието („330I“ → „330“). Тук са само ръчно потвърдените изключения, зададени от прегледа
+          на обявата. Премахването връща модела към автоматичното разпознаване.
         </p>
         <MobilebgMappingDesk brands={mappings.brands} models={mappings.models} />
-      </div>
+      </section>
     </div>
   );
 }
