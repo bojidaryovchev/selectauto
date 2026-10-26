@@ -36,6 +36,47 @@ function registerFonts() {
   fontsRegistered = true;
 }
 
+/** The slice of a fontkit font the repair below touches. */
+type GlyphLookup = {
+  getGlyph: (id: number, codePoints?: number[]) => { codePoints: number[] } | null;
+};
+
+const repairedFonts = new WeakSet<object>();
+
+/**
+ * fontkit caches every glyph object with the code points of its FIRST lookup.
+ * Subsetting a finished document fetches composite components by id with no
+ * code points — PT Sans builds Cyrillic „Е" from Latin „E" — so from the second
+ * document on, a Latin glyph can come back with `codePoints = []`. react-pdf's
+ * text layout counts characters by `codePoints.length`, and those documents
+ * silently lose the letters next to it („14 480.00 UR", "SECOND" → "COND").
+ * One server process renders many documents, so this reached real PDFs. Each
+ * lookup that knows its code points now fills in the empty ones (fontkit 2.0.4,
+ * the latest release, still caches this way).
+ */
+function repairGlyphCodePoints(font: GlyphLookup) {
+  if (repairedFonts.has(font)) return;
+  const getGlyph = font.getGlyph.bind(font);
+  font.getGlyph = (id, codePoints = []) => {
+    const glyph = getGlyph(id, codePoints);
+    if (glyph && codePoints.length > 0 && glyph.codePoints.length === 0) glyph.codePoints = codePoints;
+    return glyph;
+  };
+  repairedFonts.add(font);
+}
+
+/** Registers and loads PT Sans, then applies the glyph repair to both weights. */
+async function prepareFonts() {
+  registerFonts();
+  await Promise.all([
+    Font.load({ fontFamily: "PTSans", fontWeight: "normal" }),
+    Font.load({ fontFamily: "PTSans", fontWeight: "bold" }),
+  ]);
+  for (const source of Font.getRegisteredFonts().PTSans?.sources ?? []) {
+    if (source.data) repairGlyphCodePoints(source.data as unknown as GlyphLookup);
+  }
+}
+
 /**
  * The company stamp + signature, scanned and keyed onto transparency. Read as a
  * BUFFER rather than passed as a path: react-pdf treats a bare string `src` as a
@@ -55,7 +96,7 @@ function stampImage(): { data: Buffer; format: "png" } | undefined {
 
 /** Renders a CONTRACT document (посредничество or доставка) from its snapshot. */
 export async function renderContractPdf(snapshot: ContractDocSnapshot): Promise<Buffer> {
-  registerFonts();
+  await prepareFonts();
   const component =
     snapshot.kind === "deposit"
       ? DepositContractPdf
@@ -69,7 +110,7 @@ export async function renderContractPdf(snapshot: ContractDocSnapshot): Promise<
 
 /** Renders a payment notice PDF from its frozen snapshot. */
 export async function renderPaymentNoticePdf(snapshot: NoticeSnapshot): Promise<Buffer> {
-  registerFonts();
+  await prepareFonts();
   // renderToBuffer types its argument as the inner <Document>'s props; a
   // wrapper component that RENDERS a Document is fine at runtime — cast.
   return renderToBuffer(createElement(PaymentNoticePdf, { snapshot }) as unknown as ReactElement<DocumentProps>);
