@@ -1,10 +1,11 @@
-import { cacheLife, cacheTag } from "next/cache";
-import { asc, eq } from "drizzle-orm";
 import { OWNER_QUOTED_YARDS } from "@/data/us-transport-owner-yards";
 import { US_TARIFF_SEED } from "@/data/us-transport-seed";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { getDb, schema } from "@/lib/db";
 import type { UsTariffData } from "@/lib/us-transport";
+import { eq } from "drizzle-orm";
+import { cacheLife, cacheTag } from "next/cache";
+import { readTariffUpload } from "./read-tariff-upload";
 
 /**
  * The active US/Canada transport tariffs (admin-uploaded via /admin/tarifi),
@@ -12,10 +13,12 @@ import type { UsTariffData } from "@/lib/us-transport";
  * (the /api/us-tariffs route the client fetches, and the calculator-offer
  * recompute) so client + server always agree.
  *
- * Cached with `"use cache"` + tag `usTariffs` (revalidated on upload) + a long
- * `cacheLife("days")` — tariffs change only when the owner uploads a new file.
+ * Cached with `"use cache"` + tag `usTariffs` (expired on upload/activation) + a
+ * long `cacheLife("days")` — tariffs change only when the owner uploads a new file.
  * Falls back to the generated static seed when no active version exists or the
- * DB is unreachable (same convention as the catalog queries).
+ * DB is unreachable (same convention as the catalog queries). The unreachable
+ * case is kept for minutes only: it is a stand-in, not the active table, and a
+ * day of it would quietly undo an upload.
  *
  * `OWNER_QUOTED_YARDS` is appended to an uploaded dataset too. The upload tables
  * have no column for `flatUsdByType`, so without this overlay the first admin
@@ -26,54 +29,21 @@ import type { UsTariffData } from "@/lib/us-transport";
 export async function getUsTariffs(): Promise<UsTariffData> {
   "use cache";
   cacheTag(CACHE_TAGS.usTariffs);
-  cacheLife("days");
 
   try {
-    const db = getDb();
-    const active = await db
+    const active = await getDb()
       .select({ id: schema.tariffUploads.id })
       .from(schema.tariffUploads)
       .where(eq(schema.tariffUploads.active, true))
       .limit(1);
     const uploadId = active[0]?.id;
-    if (!uploadId) return US_TARIFF_SEED;
-
-    const [inlandRows, containerRows] = await Promise.all([
-      db
-        .select()
-        .from(schema.usInlandTariffs)
-        .where(eq(schema.usInlandTariffs.uploadId, uploadId))
-        .orderBy(asc(schema.usInlandTariffs.location)),
-      db
-        .select()
-        .from(schema.usContainerPrices)
-        .where(eq(schema.usContainerPrices.uploadId, uploadId)),
-    ]);
-
-    if (inlandRows.length === 0 || containerRows.length === 0) return US_TARIFF_SEED;
-
-    const container: UsTariffData["container"] = {};
-    for (const r of containerRows) {
-      (container[r.config] ??= {})[r.terminal] = r.price;
-    }
-
-    return {
-      inland: [
-        ...inlandRows.map((r) => ({
-          location: r.location,
-          auction: r.auction,
-          city: r.city ?? "",
-          state: r.state ?? "",
-          zip: r.zip ?? "",
-          terminal: r.terminal,
-          inland: r.inland,
-        })),
-        ...OWNER_QUOTED_YARDS,
-      ],
-      container,
-    };
+    const uploaded = uploadId ? await readTariffUpload(uploadId) : null;
+    cacheLife("days");
+    if (!uploaded) return US_TARIFF_SEED;
+    return { inland: [...uploaded.inland, ...OWNER_QUOTED_YARDS], container: uploaded.container };
   } catch (error) {
     console.error("[get-us-tariffs] query failed, using static seed", error);
+    cacheLife("minutes");
     return US_TARIFF_SEED;
   }
 }
