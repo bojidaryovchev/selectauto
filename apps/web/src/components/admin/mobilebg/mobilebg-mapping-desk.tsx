@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminBanner, AdminButton, AdminEmptyState } from "@/components/admin/ui";
+import { ConfirmDialog } from "@/components/common";
 import { deleteMobilebgBrandMapping, deleteMobilebgModelMapping } from "@/mutations/mobilebg";
 import type { MobilebgBrandMapRow, MobilebgModelMapRow } from "@/queries/mobilebg";
 import { useRouter } from "next/navigation";
@@ -25,6 +26,9 @@ export function MobilebgMappingDesk({
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // Asked first: on a phone „Премахни" sits right under a scrolling thumb, and a
+  // removed pairing is only re-made from a preview of a car of that model.
+  const [removal, setRemoval] = useState<{ label: string; run: () => void } | null>(null);
 
   function removeBrand(id: number) {
     setError(null);
@@ -54,7 +58,11 @@ export function MobilebgMappingDesk({
           key: `b-${b.manufacturerExternalId}`,
           ours: b.ourName ?? `#${b.manufacturerExternalId}`,
           theirs: b.marka,
-          onRemove: () => removeBrand(b.manufacturerExternalId),
+          onRemove: () =>
+            setRemoval({
+              label: `${b.ourName ?? `#${b.manufacturerExternalId}`} → ${b.marka}`,
+              run: () => removeBrand(b.manufacturerExternalId),
+            }),
         }))}
         pending={pending}
       />
@@ -65,9 +73,27 @@ export function MobilebgMappingDesk({
           key: `m-${m.modelExternalId}`,
           ours: m.ourName ?? `#${m.modelExternalId}`,
           theirs: `${m.marka} ${m.model}`,
-          onRemove: () => removeModel(m.modelExternalId, m.manufacturerExternalId),
+          onRemove: () =>
+            setRemoval({
+              label: `${m.ourName ?? `#${m.modelExternalId}`} → ${m.marka} ${m.model}`,
+              run: () => removeModel(m.modelExternalId, m.manufacturerExternalId),
+            }),
         }))}
         pending={pending}
+      />
+
+      <ConfirmDialog
+        isOpen={removal !== null}
+        tone="danger"
+        title="Премахване на съответствието?"
+        confirmLabel="Премахни"
+        isPending={pending}
+        onConfirm={() => {
+          removal?.run();
+          setRemoval(null);
+        }}
+        onCancel={() => setRemoval(null)}
+        message={`„${removal?.label ?? ""}“ — ще се разпознава отново автоматично.`}
       />
     </div>
   );
