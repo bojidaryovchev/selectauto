@@ -1,6 +1,7 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNotNull, ne, sql } from "drizzle-orm";
 import { getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
+import { isUsableVin, normalizeVin } from "@/lib/vin";
 import { calcVehicleTypeFromBody } from "@/data/import-rates";
 import { type MobilebgCarSource, mobilebgMarket } from "@/lib/mobilebg/map-car";
 import { type ResolvedMapping, resolveMobilebgMapping } from "@/lib/mobilebg/resolve";
@@ -35,6 +36,12 @@ export type MobilebgSourceResult = {
     lastError: string | null;
     pictureCount: number;
   } | null;
+  /**
+   * Live adverts of OTHER listings of the same vehicle (same VIN — a relist, or
+   * Copart→IAAI). Publishing this car would be a second, separately billed
+   * advert for one car; the publisher warns.
+   */
+  sameVinAdverts: { carId: number; ida: string }[];
 };
 
 /** `raw_json.hp` — horsepower, the one engine figure upstream carries reliably. */
@@ -286,5 +293,27 @@ export async function getMobilebgCarSource(
     overrideModel,
   });
 
-  return { source, mapping, advert: advertRows[0] ?? null };
+  // Same expression as `cars_vin_normalized_idx` (migration 0044, partial on
+  // `vin IS NOT NULL`) — one index probe, a handful of rows at most.
+  const vinKey = normalizeVin(car.vin);
+  const a = schema.mobilebgAdverts;
+  const sameVinAdverts = isUsableVin(vinKey)
+    ? (
+        await db
+          .select({ carId: a.carId, ida: a.ida })
+          .from(a)
+          .innerJoin(schema.cars, eq(schema.cars.id, a.carId))
+          .where(
+            and(
+              isNotNull(schema.cars.vin),
+              sql`upper(btrim(${schema.cars.vin})) = ${vinKey}`,
+              ne(a.carId, carId),
+              isNotNull(a.ida),
+              ne(a.status, "deleted"),
+            ),
+          )
+      ).map((r) => ({ carId: r.carId, ida: r.ida! }))
+    : [];
+
+  return { source, mapping, advert: advertRows[0] ?? null, sameVinAdverts };
 }

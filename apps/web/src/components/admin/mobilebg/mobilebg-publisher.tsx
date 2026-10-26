@@ -483,6 +483,29 @@ export function MobilebgPublisher() {
             </AdminBanner>
           )}
 
+          {/* A relist (or the same car at another auction) that is already advertised. */}
+          {preview.sameVinAdverts.length > 0 && !preview.advert?.ida && (
+            <AdminBanner tone="warning">
+              Същият автомобил (VIN {preview.source.vin}) вече има обява в mobile.bg:{" "}
+              {preview.sameVinAdverts.map((s, i) => (
+                <span key={s.carId}>
+                  {i > 0 ? ", " : ""}
+                  <a
+                    href={advertUrl(s.ida)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="-my-2 inline-block py-2 underline"
+                  >
+                    ID {s.ida}
+                  </a>{" "}
+                  (кола №{s.carId})
+                </span>
+              ))}
+              . Публикуването тук ще създаде втора, отделно платена обява за една кола — по-добре коригирайте или
+              изтрийте съществуващата.
+            </AdminBanner>
+          )}
+
           {/* Brand / model — resolved automatically, with the evidence shown. */}
           <div className="rounded-xl border border-line p-3">
             <p className="text-sm font-bold text-ink">Марка и модел в mobile.bg</p>
@@ -870,6 +893,9 @@ export function MobilebgPublisher() {
               <>
                 Ще бъде създадена НОВА обява в mobile.bg. Докато е активна, mobile.bg начислява седмична такса по
                 дилърската тарифа (т. I.16) — обявата не изтича сама, а стои до изтриване.
+                {preview && preview.sameVinAdverts.length > 0 ? (
+                  <strong> Същият автомобил вече има обява там — това ще е втора, платена отделно.</strong>
+                ) : null}
               </>
             )}{" "}
             Цената в обявата ще бъде{" "}

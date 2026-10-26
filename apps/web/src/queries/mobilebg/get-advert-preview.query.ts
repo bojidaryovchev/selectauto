@@ -57,6 +57,8 @@ export type MobilebgPreview = {
     lastError: string | null;
     pictureCount: number;
   } | null;
+  /** Live adverts of other listings of the same vehicle (same VIN) — publishing would add a second one. */
+  sameVinAdverts: { carId: number; ida: string }[];
   /** False when MOBILEBG_USERNAME / MOBILEBG_PASSWORD are absent. */
   credentialsConfigured: boolean;
   /** The markup % that produced the price, echoed for the UI. */
@@ -121,6 +123,7 @@ export async function getMobilebgPreview(
       found.advert.payloadHash !== null &&
       found.advert.payloadHash === payloadHash,
     advert: found.advert,
+    sameVinAdverts: found.sameVinAdverts,
     credentialsConfigured: isConfigured(),
     markupPct: config.mobilebgMarkupPct,
     countryOptions,
