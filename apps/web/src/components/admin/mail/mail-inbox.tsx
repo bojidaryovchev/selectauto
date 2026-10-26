@@ -123,8 +123,12 @@ export function MailInbox({
         <ul className="m-0 list-none overflow-hidden rounded-xl border border-line bg-white p-0">
           {threads.map((t) => (
             <li key={t.id} className="border-b border-line/60 last:border-0">
+              {/* No prefetch: a prefetch renders the whole thread page, and that
+                  render pulls missing bodies from Resend and saves them — for
+                  every thread in view, opened or not. */}
               <Link
                 href={`/admin/poshta/${t.id}`}
+                prefetch={false}
                 className="flex flex-col gap-1 px-4 py-3 transition-colors hover:bg-[#fafafa] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
               >
                 <div className="flex items-start justify-between gap-3">
