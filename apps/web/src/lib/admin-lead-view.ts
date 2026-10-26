@@ -84,13 +84,15 @@ export function toCarfaxView(row: CarfaxRequestRow): AdminLeadView {
 }
 
 export function toInquiryView(row: InquiryRow): AdminLeadView {
-  const interest =
-    row.specificModel || [row.brand, row.model].filter(Boolean).join(" ") || dash;
+  // „Интерес" is the car asked about. `specific_model` is not a model: it is the
+  // modal's answer to „Търсите ли конкретен модел?" — „Да"/„Не" — and taking it
+  // first put „Да"/„Не" in this column for every inquiry.
+  const interest = [row.brand, row.model].filter(Boolean).join(" ") || dash;
   const details: AdminDetailField[] = [
     { label: "Име", value: row.name },
     { label: "Телефон", value: row.phone, href: `tel:${row.phone}` },
   ];
-  if (row.specificModel) details.push({ label: "Конкретен модел", value: row.specificModel });
+  if (row.specificModel) details.push({ label: "Търси конкретен модел", value: row.specificModel });
   if (row.brand) details.push({ label: "Марка", value: row.brand });
   if (row.model) details.push({ label: "Модел", value: row.model });
   if (row.budgetRange) details.push({ label: "Бюджет", value: row.budgetRange });
