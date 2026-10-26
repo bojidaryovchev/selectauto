@@ -66,8 +66,9 @@ matter more than the visuals, several with **production impact** ✔:
 | 7 | A paid de-index doesn't follow the VIN to newly ingested listings, and doesn't withdraw the paid mobile.bg advert | nothing in ingestion or de-index touches either |
 | 8 | From the second PDF a server process renders, letters next to some Latin glyphs vanish („14 480.00 UR") | reproduced deterministically; fontkit's glyph cache (found while fixing #1) |
 
-**Status 2026-10-26:** #1, #2, #4, #5, #6 and #8 are fixed (§5, B1/B2/B4/B5/B8/B9/B34);
-#3 is next.
+**Status 2026-10-26:** #1–#6 and #8 are fixed (§5: B1–B5, B8, B9, B13, B26,
+B34), and phases 0–2 are done — the new shell (§2) is in. #7 (B6, B7) waits
+for phase 5. Next: phase 3.
 
 **Plan.** Two tracks, kept in separate commits:
 
@@ -348,8 +349,18 @@ redesign work. Track B items are numbered in §5.
   `users-manager.tsx`, `mobilebg-advert-list.tsx`, deposit/contract document
   buttons) — on Vercel's UTC servers that is a hydration mismatch on full loads
   (inferred, not observed).
-- **Out of date:** `admin-nav.tsx` doc comment ("admins only", "one inbox per
-  lead type"); "layout gates to admins" comments in the carfax, zapitvaniya,
+- **Prefetch runs whole pages** ✔ (measured before and after the shell, same
+  result): every admin `<Link>` that scrolls into view prefetches its route, and
+  the prefetch response is the **full page with its data** (the `/admin/dnevnik`
+  prefetch carries the audit rows, `/admin/depoziti` the deposits; 25–165 KB
+  each). A desktop admin page view therefore renders the ~13 sidebar
+  destinations in the background — each with its auth and queries. That is why
+  a tap now shows the next page in 50–80 ms, and it is the default for
+  `cacheComponents` without `partialPrefetching`. Fine for eight staff
+  accounts; if it ever matters, hover-prefetch the sidebar or adopt Partial
+  Prefetching (App Shell only). Its one real side effect is B35.
+- **Out of date:** ~~`admin-nav.tsx` doc comment~~ (file removed in phase 2);
+  "layout gates to admins" comments in the carfax, zapitvaniya,
   oferti, tarifi and poluchateli pages; `update-lead.mutation.ts` "proxy blocks
   non-admins" ◇ (see §9).
 
@@ -369,7 +380,12 @@ redesign work. Track B items are numbered in §5.
 - **Wiring:** webhook → ingest → list → thread → reply OK ◇; Resend 6.17.2 calls
   match the installed types ◇. **A page view writes:** the server pulls missing
   bodies from Resend and saves them, and the client marks the thread read on
-  mount ✔.
+  mount ✔. Because the inbox's thread rows are `<Link>`s and a prefetch renders
+  the whole page (§4.1), **opening the inbox already runs that server half for
+  every visible thread** — Resend calls and body writes for threads nobody
+  opened (B35) — from the code plus the prefetch behaviour measured on the
+  other admin routes; not run on a thread, since the local tests abort those
+  URLs to avoid the writes.
 - **Defects:** status dropdown keeps the old value after a reply moves the
   thread to „В процес" (B20) ✔; `MAIL_IGNORE_SENDERS=` (empty, as
   `.env.example` ships it) turns the robot-mail filter off — `??` instead of
@@ -591,7 +607,8 @@ and the sample notices:
   notices may not use a rate (§16.2/§16.4), so the operator states the deduction in the
   contract's currency when the two differ.
 
-**Done 2026-10-26** (branch `admin-phase0-fixes`): B1, B2, B4, B5, B8, B9, and B34 below.
+**Done 2026-10-26:** B1, B2, B3, B4, B5, B8, B9 and B34 below, and from P1
+B13 (a deduction larger than Точка 1 is refused) and B26.
 
 | # | Defect | Fix sketch | Where |
 |---|---|---|---|
@@ -634,6 +651,7 @@ and the sample notices:
 | B31 | Times in Europe/Sofia everywhere (shared formatter) |
 | B32 | Recipients: SSANCAR IBAN format; flag rows with missing bank data |
 | B33 | Pagers for the de-index and mobile.bg registers |
+| B35 | Inbox prefetch pulls thread bodies — `prefetch={false}` on the thread links, or move the Resend body fetch out of the page render |
 
 ### P2 (housekeeping)
 
@@ -652,9 +670,9 @@ Each phase ships on its own to `main` (Vercel production), smallest first.
 
 | Phase | Content | Done when |
 |---|---|---|
-| 0 — Hotfixes | B5, B8 (one-line each), B1 + B2 + B9 (notice math + server preview), B4 | owner can save settings; register taps right on iOS 26; a typed amount never yields a 0 or double-deducted total; a removed role stops working within minutes |
-| 1 — Base UI 1.9.0 | dependency bump only | Combobox flows unchanged (filters, notice recipient, mobile.bg pickers) |
-| 2 — Shell | §2 complete: sidebar, top bar + drawer, nav config, icons, skeleton, `loading/not-found/error`, titles, public widgets out | §7 checks pass for all 15 pages × 3 roles |
+| 0 — Hotfixes ✔ | B5, B8 (one-line each), B1 + B2 + B9 (notice math + server preview), B4 | owner can save settings; register taps right on iOS 26; a typed amount never yields a 0 or double-deducted total; a removed role stops working within minutes |
+| 1 — Base UI 1.9.0 ✔ | dependency bump only | Combobox flows unchanged (filters, notice recipient, mobile.bg pickers) |
+| 2 — Shell ✔ | §2 complete: sidebar, top bar + drawer, nav config, icons, skeleton, `loading/not-found/error`, titles, public widgets out | §7 checks pass for all 15 pages × 3 roles — passed: 134 loads at 360–1 920 px, no page overflow, no public widgets, nav and active link right per role; tap → next page 50–80 ms (desktop, prefetched) or skeleton ~40 ms then page ~350 ms (drawer) |
 | 3 — Building blocks | §3 primitives + container-query list pattern | used by at least one page end to end (Договори register) |
 | 4 — Page pass | Договори (register → detail → create) · Депозити · mobile.bg · Поща + lead inboxes · Тарифи · Скрити обяви · Получатели · Потребители · Дневник · Табло — with that section's P1 fixes as separate commits | per page: §7 checks + feature walk-through unchanged |
 | 5 — Remaining P0/P1 | B6, B7 (touch ingestion / paid adverts — careful, own commits), B10–B19 left over | |
@@ -670,10 +688,12 @@ Order inside phase 4 follows daily use: observers and the supervisor work in
 - `pnpm run check` (type-check + lint) and `next build` on every phase.
 - **Render pass (the one used for §1):** local production build, minted JWT per
   role, Playwright (Chromium) at 360, 375, 390, 768, 1 024, 1 280, 1 440,
-  1 920 px; abort every non-GET and every prefetch; skip `/admin/poshta/[id]`
-  (writes on view). Assert per page × role: no page-level horizontal overflow; no
-  Viber pill / back-to-top in /admin; nav present and correct for the role; h1
-  present; no error boundary; screenshots before/after.
+  1 920 px; abort every non-GET and every request for `/admin/poshta/<id>`
+  (a thread page writes on view, and a prefetch is a view — §4.1). Other GET
+  prefetches may run: they are what makes navigation instant. Assert per page ×
+  role: no page-level horizontal overflow; no Viber pill / back-to-top in
+  /admin; nav present and correct for the role; h1 present; no error boundary;
+  screenshots before/after.
 - **Navigation:** tap → skeleton ≤ ~100 ms (re-run the §1 timing test).
 - **Devices:** iPhone on iOS 26 **and** 27 (the `<tr>` containing-block bug
   differs), an Android phone, an iPad in portrait/landscape: drawer swipe, safe
@@ -709,7 +729,7 @@ Order inside phase 4 follows daily use: observers and the supervisor work in
 
 ## 9. Stale docs and comments (fix in phase 6)
 
-- `components/admin/admin-nav.tsx` (replaced in phase 2); "layout gates to
+- ~~`components/admin/admin-nav.tsx`~~ (removed in phase 2); "layout gates to
   admins" in `carfax`, `zapitvaniya`, `oferti`, `tarifi`, `poluchateli` pages;
   `update-lead.mutation.ts` / `list-carfax-requests.query.ts` proxy claims;
   "admin-gated" in `list-recipients`, `list-clients`, `list-deposits`,
