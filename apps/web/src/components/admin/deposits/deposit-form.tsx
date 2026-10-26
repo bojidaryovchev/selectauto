@@ -270,7 +270,7 @@ export function DepositForm({ clients, onDone }: { clients: ClientRow[]; onDone?
               aria-label="Валута на бюджета и депозита"
               value={budgetCurrency}
               onChange={(e) => setBudgetCurrency(e.target.value as "EUR" | "USD")}
-              className={`${ADMIN_CONTROL} w-24 shrink-0 pr-8`}
+              className={`${ADMIN_CONTROL} w-28 shrink-0 pr-8`}
             >
               <option value="EUR">EUR</option>
               <option value="USD">USD</option>
