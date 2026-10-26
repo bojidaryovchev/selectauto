@@ -43,7 +43,9 @@ export function MailThreadView({ thread }: { thread: MailThreadDetail }) {
 
       <div className="flex max-w-xs flex-col gap-1">
         <span className="text-sm font-semibold text-muted">Статус</span>
-        <MailThreadStatusSelect threadId={thread.id} value={thread.status} />
+        {/* Keyed on the server value: a reply moves the thread to „В процес“, and the
+            select used to keep showing the status it was opened with. */}
+        <MailThreadStatusSelect key={thread.status} threadId={thread.id} value={thread.status} />
       </div>
 
       <ul className="m-0 flex list-none flex-col gap-3 p-0">
