@@ -13,7 +13,7 @@ import { useId, useState } from "react";
  * from the template (500 EUR, чл. 3) is a placeholder hint, not a hard rule.
  * The server action mints the independent deposit number series.
  */
-type Status = { kind: "idle" } | { kind: "error"; message: string };
+type Status = { kind: "idle" } | { kind: "error"; message: string } | { kind: "created"; number: string };
 
 /** A labelled control. */
 function Field({ id, label, children }: { id: string; label: React.ReactNode; children: React.ReactNode }) {
@@ -76,6 +76,22 @@ export function DepositForm({ clients, onDone }: { clients: ClientRow[]; onDone?
         depositAmount,
       });
       if (result.success) {
+        // Start over and say what was made: the form used to stay filled in
+        // with no word of success, inviting a second click — and a second
+        // deposit (and, for a new client, a second client).
+        setClientId(undefined);
+        setClientName("");
+        setClientEgn("");
+        setClientEik("");
+        setClientAddress("");
+        setClientPhone("");
+        setClientEmail("");
+        setDepositDate("");
+        setVehicleDescription("ЛЕК АВТОМОБИЛ");
+        setBudgetAmount("");
+        setBudgetCurrency("EUR");
+        setDepositAmount("500");
+        setStatus({ kind: "created", number: result.data.number });
         onDone?.();
         router.refresh();
       } else {
@@ -274,6 +290,9 @@ export function DepositForm({ clients, onDone }: { clients: ClientRow[]; onDone?
       </div>
 
       {status.kind === "error" ? <AdminBanner tone="error">{status.message}</AdminBanner> : null}
+      {status.kind === "created" ? (
+        <AdminBanner tone="success">Договор за депозит № {status.number} е създаден — вижте го в списъка.</AdminBanner>
+      ) : null}
 
       <AdminButton type="submit" variant="primary" size="lg" disabled={busy} className="self-start">
         {busy ? "Запазване…" : "Създай депозит"}
