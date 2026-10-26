@@ -40,6 +40,18 @@ function price(r: MobilebgAdvertRow): string {
   return r.priceEur ? `${Math.round(Number(r.priceEur)).toLocaleString("bg-BG")} €` : "при запитване";
 }
 
+/** A live advert for a car the site no longer offers — still billed weekly until deleted. */
+function Stale({ r, className }: { r: MobilebgAdvertRow; className?: string }) {
+  if (!r.ida || r.status === "deleted" || r.listing === "listed") return null;
+  return (
+    <span
+      className={`inline-flex w-fit items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-900 ring-1 ring-amber-300 ring-inset ${className ?? ""}`}
+    >
+      {r.listing === "ended" ? "търгът е приключил" : "колата не е в сайта"}
+    </span>
+  );
+}
+
 function Ida({ ida }: { ida: string | null }) {
   if (!ida) return <span className="text-muted">няма</span>;
   return (
@@ -127,6 +139,7 @@ export function MobilebgAdvertList({ rows }: { rows: MobilebgAdvertRow[] }) {
                 #{r.carId}
                 {r.vin ? ` · ${r.vin}` : ""}
               </p>
+              <Stale r={r} />
               {r.lastError && <p className="text-xs wrap-anywhere text-rose-700">{r.lastError}</p>}
               <p className="text-muted">
                 mobile.bg: <Ida ida={r.ida} /> · {price(r)} · {r.pictureCount} снимки
@@ -178,6 +191,7 @@ export function MobilebgAdvertList({ rows }: { rows: MobilebgAdvertRow[] }) {
                       #{r.carId}
                       {r.vin ? ` · ${r.vin}` : ""}
                     </div>
+                    <Stale r={r} className="mt-1" />
                     {r.lastError && <div className="mt-1 text-xs wrap-anywhere text-rose-700">{r.lastError}</div>}
                   </td>
                   <td className="px-3 py-2">
