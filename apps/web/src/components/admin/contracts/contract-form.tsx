@@ -8,6 +8,7 @@ import {
   AdminBanner,
   AdminButton,
   AdminCard,
+  adminChipClass,
 } from "@/components/admin/ui";
 import {
   CLIENT_KIND_META,
@@ -235,13 +236,6 @@ export function ContractForm({
     }
   }
 
-  // A choice pill: a real radio, visually hidden (not display:none, so the
-  // keyboard and screen readers still reach it), with its label as the pill.
-  const choiceClass = (active: boolean) =>
-    `flex min-h-10 cursor-pointer items-center rounded-full border px-4 text-sm font-semibold transition-colors has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand ${
-      active ? "border-brand bg-brand/10 text-brand" : "border-line text-muted hover:border-brand/50"
-    }`;
-
   return (
     <form onSubmit={onSubmit} className="@container flex flex-col gap-6">
       {/* ── 1. Тип договор ── */}
@@ -254,8 +248,10 @@ export function ContractForm({
         ) : (
           <fieldset className="flex min-w-0 flex-wrap gap-2">
             <legend className="sr-only">Тип договор</legend>
+            {/* A choice pill: a real radio, visually hidden (not display:none, so the
+                keyboard and screen readers still reach it), with its label as the pill. */}
             {CONTRACT_MARKETS.map((m) => (
-              <label key={m} className={choiceClass(market === m)}>
+              <label key={m} className={adminChipClass(market === m)}>
                 <input
                   type="radio"
                   name="market"
@@ -307,7 +303,7 @@ export function ContractForm({
           <h2 className="text-lg font-black text-ink">2. Клиент</h2>
           <fieldset className="flex min-w-0 flex-wrap gap-2">
             <legend className="sr-only">Клиент</legend>
-            <label className={choiceClass(clientMode === "existing")}>
+            <label className={adminChipClass(clientMode === "existing")}>
               <input
                 type="radio"
                 name="clientMode"
@@ -317,7 +313,7 @@ export function ContractForm({
               />
               Съществуващ клиент
             </label>
-            <label className={choiceClass(clientMode === "new")}>
+            <label className={adminChipClass(clientMode === "new")}>
               <input
                 type="radio"
                 name="clientMode"

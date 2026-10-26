@@ -60,7 +60,7 @@ export function AdminPagination({
                 href={hrefFor(p)}
                 prefetch={false}
                 aria-current={p === page ? "page" : undefined}
-                className={`${NUMBER} ${p === page ? "bg-brand/10 text-brand" : "text-muted hover:bg-neutral-100 hover:text-ink"}`}
+                className={`${NUMBER} ${p === page ? "bg-ink text-white" : "text-muted hover:bg-neutral-100 hover:text-ink"}`}
               >
                 {p}
               </Link>

@@ -7,6 +7,7 @@ export {
   type AdminButtonVariant,
 } from "./admin-button";
 export { AdminCard } from "./admin-card";
+export { adminChipClass } from "./admin-chip";
 export { AdminEmptyState } from "./admin-empty-state";
 export { ADMIN_CONTROL, ADMIN_HINT, ADMIN_INPUT, ADMIN_LABEL, ADMIN_SELECT } from "./admin-field";
 export { AdminPageHeader } from "./admin-page-header";

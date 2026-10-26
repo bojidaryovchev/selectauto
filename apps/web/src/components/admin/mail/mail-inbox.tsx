@@ -1,6 +1,6 @@
 "use client";
 
-import { ADMIN_INPUT, AdminButton, AdminEmptyState, AdminPagination } from "@/components/admin/ui";
+import { ADMIN_INPUT, AdminButton, AdminEmptyState, AdminPagination, adminChipClass } from "@/components/admin/ui";
 import { MAIL_THREAD_STATUSES, MAIL_THREAD_STATUS_META } from "@/constants/mail";
 import { formatSofiaDateTime } from "@/lib/sofia-time";
 import type { MailThreadRow } from "@/queries/mail";
@@ -8,13 +8,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { MailStatusBadge } from "./mail-status-badge";
-
-/** A filter chip: 40 px tall, filled when active. */
-function chipClass(active: boolean): string {
-  return `inline-flex min-h-10 shrink-0 items-center rounded-full px-4 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
-    active ? "bg-brand text-white" : "border border-line bg-white text-ink hover:bg-neutral-50"
-  }`;
-}
 
 /**
  * The mail inbox list: a filter row, then one line per thread. Unlike the lead
@@ -88,7 +81,7 @@ export function MailInbox({
           type="button"
           aria-pressed={status === ""}
           onClick={() => setParam("status", null)}
-          className={chipClass(status === "")}
+          className={adminChipClass(status === "")}
         >
           Всички
         </button>
@@ -98,7 +91,7 @@ export function MailInbox({
             type="button"
             aria-pressed={status === s}
             onClick={() => setParam("status", s)}
-            className={chipClass(status === s)}
+            className={adminChipClass(status === s)}
           >
             {MAIL_THREAD_STATUS_META[s].label}
           </button>
@@ -107,7 +100,7 @@ export function MailInbox({
           type="button"
           aria-pressed={unreadOnly}
           onClick={() => setParam("unread", unreadOnly ? null : "1")}
-          className={chipClass(unreadOnly)}
+          className={adminChipClass(unreadOnly)}
         >
           Само непрочетени
         </button>

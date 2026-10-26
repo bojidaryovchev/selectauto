@@ -1,6 +1,6 @@
 "use client";
 
-import { ADMIN_INPUT, AdminButton } from "@/components/admin/ui";
+import { ADMIN_INPUT, AdminButton, adminChipClass } from "@/components/admin/ui";
 import { LEAD_STATUS_META, LEAD_STATUSES } from "@/constants/admin";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useId, useState } from "react";
@@ -76,9 +76,7 @@ export function LeadFilters({ basePath }: { basePath: string }) {
               type="button"
               aria-pressed={active}
               onClick={() => apply({ status: t.key })}
-              className={`inline-flex min-h-10 items-center rounded-full px-4 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
-                active ? "bg-ink text-white" : "bg-white text-muted ring-1 ring-line hover:text-ink"
-              }`}
+              className={adminChipClass(active)}
             >
               {t.label}
             </button>

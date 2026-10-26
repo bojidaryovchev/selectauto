@@ -1,6 +1,14 @@
 "use client";
 
-import { ADMIN_CONTROL, ADMIN_INPUT, ADMIN_LABEL, ADMIN_SELECT, AdminBanner, AdminButton } from "@/components/admin/ui";
+import {
+  ADMIN_CONTROL,
+  ADMIN_INPUT,
+  ADMIN_LABEL,
+  ADMIN_SELECT,
+  AdminBanner,
+  AdminButton,
+  adminChipClass,
+} from "@/components/admin/ui";
 import { CLIENT_KIND_META, type ClientKind } from "@/constants/contracts";
 import { createDeposit } from "@/mutations/deposits";
 import type { ClientRow } from "@/queries/clients";
@@ -104,18 +112,13 @@ export function DepositForm({ clients, onDone }: { clients: ClientRow[]; onDone?
     }
   }
 
-  // A choice pill: a real radio, visually hidden (not display:none, so the
-  // keyboard and screen readers still reach it), with its label as the pill.
-  const choiceClass = (active: boolean) =>
-    `flex min-h-10 cursor-pointer items-center rounded-full border px-4 text-sm font-semibold transition-colors has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand ${
-      active ? "border-brand bg-brand/10 text-brand" : "border-line text-muted hover:border-brand/50"
-    }`;
-
   return (
     <form onSubmit={onSubmit} className="@container flex flex-col gap-4">
       <fieldset className="flex min-w-0 flex-wrap gap-2">
         <legend className="sr-only">Клиент</legend>
-        <label className={choiceClass(clientMode === "existing")}>
+        {/* A choice pill: a real radio, visually hidden (not display:none, so the
+            keyboard and screen readers still reach it), with its label as the pill. */}
+        <label className={adminChipClass(clientMode === "existing")}>
           <input
             type="radio"
             name="depositClientMode"
@@ -125,7 +128,7 @@ export function DepositForm({ clients, onDone }: { clients: ClientRow[]; onDone?
           />
           Съществуващ клиент
         </label>
-        <label className={choiceClass(clientMode === "new")}>
+        <label className={adminChipClass(clientMode === "new")}>
           <input
             type="radio"
             name="depositClientMode"
