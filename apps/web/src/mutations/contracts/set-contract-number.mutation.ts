@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
@@ -11,7 +11,10 @@ import type { ActionResult } from "@/types/action-result.type";
  * deleted entry, or fixing a number typed wrong (owner, 07.2026: renumber the
  * paid 2026-094 down to the freed 2026-093).
  *
- * The number must be free. Already-generated documents are NOT rewritten: they
+ * The number must be free. The contract's основание and its stages' follow the
+ * new number when they still carry the default „Договор № <стар номер>" — the
+ * stage's is the one a new notice prints. A custom one (a CargoLoop reference)
+ * stays. Already-generated documents are NOT rewritten: they
  * carry their own frozen snapshot (§2), so a notice issued as 2026-094 keeps
  * saying so — the caller is warned in the UI and should regenerate, which adds a
  * new version carrying the new number.
@@ -46,13 +49,20 @@ export async function setContractNumber(id: number, newNumber: string): Promise<
         .set({ number, updatedBy: actorId, updatedAt: new Date() })
         .where(eq(schema.contracts.id, id));
 
-      // Keep the payment stages' основание in step when it was the default one.
+      // Keep the основание in step where it was the default one: the contract's,
+      // and each stage's — the stage's is what a new notice prints, and only
+      // the contract's used to follow (2026-114, renumbered from 2026-113,
+      // issued a notice on „Договор № 2026-113").
       const oldBasis = `Договор № ${contract.number}`;
       const newBasis = `Договор № ${number}`;
       await tx
         .update(schema.contracts)
         .set({ paymentBasis: contract.paymentBasis === oldBasis ? newBasis : contract.paymentBasis })
         .where(eq(schema.contracts.id, id));
+      await tx
+        .update(schema.contractPayments)
+        .set({ basis: newBasis, updatedAt: new Date() })
+        .where(and(eq(schema.contractPayments.contractId, id), eq(schema.contractPayments.basis, oldBasis)));
 
       await tx.insert(schema.contractEvents).values({
         entity: "contract",

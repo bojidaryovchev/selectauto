@@ -103,9 +103,20 @@ export async function updateContract(id: number, input: unknown): Promise<Action
         .set({ ...patch, updatedBy: actorId, updatedAt: new Date() })
         .where(eq(c.id, id));
 
+      const p = schema.contractPayments;
+
+      // The contract's основание is its stages' default: stages still carrying
+      // the old one take the new one (a custom one, e.g. a CargoLoop reference,
+      // stays). It is what a new notice prints.
+      if (existing.paymentBasis && patch.paymentBasis !== existing.paymentBasis) {
+        await tx
+          .update(p)
+          .set({ basis: patch.paymentBasis, updatedAt: new Date() })
+          .where(and(eq(p.contractId, id), eq(p.basis, existing.paymentBasis)));
+      }
+
       // Re-sync due amounts on stages that are still payable (not paid/cancelled).
       const depositDeductionCents = dbToCents(existing.depositDeduction);
-      const p = schema.contractPayments;
       for (const def of market.stages) {
         const sum = def.points.reduce((s, key) => s + amounts[key], 0);
         const due = def.stage === "vehicle" ? Math.max(0, sum - depositDeductionCents) : sum;
