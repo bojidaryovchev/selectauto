@@ -2,6 +2,7 @@ export { addPaymentAttachment } from "./add-payment-attachment.mutation";
 export { createContract } from "./create-contract.mutation";
 export { generateContractDocument } from "./generate-contract-document.mutation";
 export { generatePaymentNotice, type GeneratePaymentNoticeInput } from "./generate-payment-notice.mutation";
+export { previewPaymentNotice } from "./preview-payment-notice.action";
 export { markNoticeSent } from "./mark-notice-sent.mutation";
 export { markPaymentPaid, type MarkPaymentPaidInput } from "./mark-payment-paid.mutation";
 export { revertPayment } from "./revert-payment.mutation";

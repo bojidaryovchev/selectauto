@@ -2,57 +2,27 @@
 
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { DEFAULT_PAYMENT_TERM_DAYS, STAGE_ALLOWED_RECIPIENT_KINDS, type PaymentStage } from "@/constants/contracts";
 import { getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
-import { centsToDb, parseAmountToCents } from "@/lib/money";
-import { buildNoticeSnapshot } from "@/lib/notice";
+import { centsToDb } from "@/lib/money";
+import { prepareNotice, type PaymentNoticeInput } from "@/lib/prepare-notice";
 import { isDocumentStorageConfigured, putDocument } from "@/lib/s3";
 import { renderPaymentNoticePdf } from "@/pdf/render";
 import type { ActionResult } from "@/types/action-result.type";
 
-export type GeneratePaymentNoticeInput = {
-  paymentId: number;
-  recipientId: number;
-  /** Курс USD→EUR — REQUIRED iff us_ca contract + SelectAuto recipient (§16). */
-  usdEurRate?: string;
-  /**
-   * The payable amount, typed by the operator. Overrides the contract's stage
-   * amount — required when paying a customs broker from a non-EUR contract,
-   * optional elsewhere (owner, 07.2026: the contract sums are estimates).
-   */
-  amountOverride?: string;
-  /** Per-stage основание override (customs references etc. — §5.3). */
-  basis?: string;
-  /** Падеж (optional, ISO date). */
-  dueDate?: string;
-};
-
-/** Today as YYYY-MM-DD in Europe/Sofia. */
-function todaySofia(): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Sofia" }).format(new Date());
-}
-
-function addDays(iso: string, days: number): string {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
+export type GeneratePaymentNoticeInput = PaymentNoticeInput;
 
 /**
- * Needs `notices.generate`: generate a payment notice for one stage (spec §6). Validates the
- * §5/§10/§16 matrix server-side (the UI already hides invalid options):
+ * Needs `notices.generate`: generate a payment notice for one stage (spec §6).
+ * `prepareNotice` validates the §5/§10/§16 matrix server-side and freezes the
+ * NoticeSnapshot — the same code the preview runs, so the operator confirms
+ * exactly what gets issued.
  *
- *  - recipient kind allowed for the stage; recipient active;
- *  - курс: required positive decimal for us_ca+SelectAuto, FORBIDDEN otherwise;
- *  - recipient bank data complete, else generation blocks with a clear message.
- *
- * Then freezes a NoticeSnapshot and, in one transaction: inserts the next
- * `generated_documents` version for this stage (append-only — regeneration adds
- * v+1, §10), stores the recipient/основание/падеж on the payment, flips
- * 'not_requested' → 'awaiting_payment' (§6.4), and appends the audit event.
- * The PDF itself is rendered on download from the frozen snapshot, so any
- * version stays byte-reproducible forever.
+ * Then, in one transaction: inserts the next `generated_documents` version for
+ * this stage (append-only — regeneration adds v+1, §10), stores the
+ * recipient/основание/падеж on the payment, flips 'not_requested' →
+ * 'awaiting_payment' (§6.4), and appends the audit event. The PDF is rendered
+ * from the frozen snapshot, so any version can be rendered again for download.
  */
 export async function generatePaymentNotice(
   input: GeneratePaymentNoticeInput,
@@ -60,113 +30,14 @@ export async function generatePaymentNotice(
   const session = await getSessionWith("notices.generate");
   if (!session) return { success: false, error: "Нямате достъп до тази операция." };
 
-  const paymentId = input?.paymentId;
-  const recipientId = input?.recipientId;
-  if (!Number.isInteger(paymentId) || paymentId <= 0 || !Number.isInteger(recipientId) || recipientId <= 0) {
-    return { success: false, error: "Невалидни данни." };
-  }
-  const explicitDueDate = input?.dueDate?.trim() || null;
-  if (explicitDueDate && !/^\d{4}-\d{2}-\d{2}$/.test(explicitDueDate)) {
-    return { success: false, error: "Невалиден падеж." };
-  }
-
   const db = getDb();
 
   try {
+    const prepared = await prepareNotice(input);
+    if (!prepared.ok) return { success: false, error: prepared.error };
+    const { snapshot, contract, payment, recipient, usdEurRate, overrideCents, basis, dueDate } = prepared.notice;
+    const paymentId = payment.id;
     const p = schema.contractPayments;
-    const [payment] = await db.select().from(p).where(eq(p.id, paymentId));
-    if (!payment) return { success: false, error: "Плащането не е намерено." };
-
-    const [contract] = await db.select().from(schema.contracts).where(eq(schema.contracts.id, payment.contractId));
-    if (!contract) return { success: false, error: "Договорът не е намерен." };
-    if (contract.status === "cancelled") {
-      return { success: false, error: "Договорът е анулиран — известия не се генерират." };
-    }
-
-    const r = schema.paymentRecipients;
-    const [recipient] = await db.select().from(r).where(eq(r.id, recipientId));
-    if (!recipient) return { success: false, error: "Получателят не е намерен." };
-    if (!recipient.active) return { success: false, error: "Получателят е деактивиран." };
-
-    // §5: recipient kind must be allowed for this stage (hidden in the UI, but
-    // enforced here — defence-in-depth).
-    const allowedKinds = STAGE_ALLOWED_RECIPIENT_KINDS[payment.stage as PaymentStage];
-    if (!allowedKinds || !allowedKinds.includes(recipient.kind as (typeof allowedKinds)[number])) {
-      return { success: false, error: "Този получател не е допустим за този етап на плащане." };
-    }
-
-    // §16: курс required iff САЩ + SelectAuto — that's the only case where the
-    // operator supplies it per notice. Канада also prints rate columns, but its
-    // rate is fixed on the contract at creation, so nothing is entered here.
-    const needsRate = contract.market === "us" && recipient.kind === "selectauto";
-    let usdEurRate: number | null = null;
-    if (needsRate) {
-      const raw = input?.usdEurRate?.trim().replace(",", ".") ?? "";
-      const rate = Number(raw);
-      if (!raw || !Number.isFinite(rate) || rate <= 0 || rate >= 100) {
-        return { success: false, error: "Въведете валиден положителен курс USD/EUR." };
-      }
-      usdEurRate = Math.round(rate * 1e6) / 1e6;
-    } else if (input?.usdEurRate?.trim()) {
-      return { success: false, error: "За този получател не се използва валутен курс." };
-    }
-
-    // The operator's typed amount, in the notice's own currency. Auto America /
-    // Lean Customs are always paid in EUR, so a USD contract MUST state the euro
-    // sum (either typed, or converted with a rate).
-    const rawOverride = input?.amountOverride?.trim();
-    let overrideCents: number | null = null;
-    if (rawOverride) {
-      overrideCents = parseAmountToCents(rawOverride);
-      if (overrideCents === null || overrideCents <= 0) {
-        return { success: false, error: "Невалидна сума за плащане." };
-      }
-    }
-    const isCustomsBroker = recipient.kind === "customs_broker";
-    if (isCustomsBroker && contract.currency !== "EUR" && overrideCents === null) {
-      return {
-        success: false,
-        error: `Плащанията към ${recipient.name} са в евро — въведете сумата в евро.`,
-      };
-    }
-
-    // §10: bank data must be complete before a notice can be generated.
-    if (!recipient.bankName || !recipient.iban || !recipient.swiftBic) {
-      return {
-        success: false,
-        error: `Банковите данни на „${recipient.name}“ са непълни — попълнете ги в Получатели преди генериране.`,
-      };
-    }
-
-    // The Издал block comes from the fixed SelectAuto row.
-    const [issuer] = await db.select().from(r).where(eq(r.slug, "selectauto"));
-    if (!issuer) return { success: false, error: "Липсва конфигурираният получател SelectAuto." };
-
-    // The deposit row, only when the vehicle stage carries a deduction (§14.2).
-    const deposit =
-      payment.stage === "vehicle" && contract.depositContractId
-        ? (
-            await db
-              .select()
-              .from(schema.depositContracts)
-              .where(eq(schema.depositContracts.id, contract.depositContractId))
-          )[0] ?? null
-        : null;
-
-    const basis = input?.basis?.trim() || payment.basis || contract.paymentBasis || `Договор № ${contract.number}`;
-    const noticeDate = todaySofia();
-    const dueDate = explicitDueDate ?? addDays(noticeDate, DEFAULT_PAYMENT_TERM_DAYS);
-    const snapshot = buildNoticeSnapshot({
-      contract,
-      payment,
-      recipient,
-      issuer,
-      deposit,
-      usdEurRate,
-      overrideCents,
-      noticeDate,
-      basis,
-    });
 
     const actorId = session.user?.id ?? null;
     const created = await db.transaction(async (tx) => {
@@ -185,7 +56,7 @@ export async function generatePaymentNotice(
           contractId: contract.id,
           paymentId,
           version,
-          recipientId,
+          recipientId: recipient.id,
           snapshot,
           ...(snapshot.variant === "selectauto_usd" && usdEurRate
             ? {
@@ -203,7 +74,7 @@ export async function generatePaymentNotice(
       await tx
         .update(p)
         .set({
-          recipientId,
+          recipientId: recipient.id,
           basis,
           dueDate,
           status: payment.status === "not_requested" || payment.status === "overdue" ? "awaiting_payment" : payment.status,
@@ -224,6 +95,7 @@ export async function generatePaymentNotice(
           total: centsToDb(snapshot.totalCents),
           currency: snapshot.totalCurrencyLabel,
           ...(usdEurRate ? { usdEurRate } : {}),
+          ...(overrideCents != null ? { typedAmount: centsToDb(overrideCents), typedCurrency: snapshot.currency } : {}),
         },
       });
 

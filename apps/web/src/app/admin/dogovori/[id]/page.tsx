@@ -222,6 +222,9 @@ export default async function AdminContractDetailPage({ params }: { params: Prom
                 market: contract.market,
                 currency: contract.currency,
                 status: contract.status,
+                foreignCurrency: contract.foreignCurrency,
+                amountCarForeign: contract.amountCarForeign,
+                depositDeduction: contract.depositDeduction,
               }}
               recipients={activeRecipients}
               documents={documents.filter((d) => d.paymentId === p.id && d.kind === "payment_notice")}

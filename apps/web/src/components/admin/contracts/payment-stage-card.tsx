@@ -12,9 +12,17 @@ import {
   type PaymentStage,
 } from "@/constants/contracts";
 import { dbToCents, formatCents, formatDbAmount } from "@/lib/money";
-import { addPaymentAttachment, generatePaymentNotice, markPaymentPaid, revertPayment } from "@/mutations/contracts";
+import { contractLineCents, noticeLineCurrency } from "@/lib/notice";
+import {
+  addPaymentAttachment,
+  generatePaymentNotice,
+  markPaymentPaid,
+  previewPaymentNotice,
+  revertPayment,
+} from "@/mutations/contracts";
 import type { ContractPaymentWithRecipient, GeneratedDocumentRow, PaymentAttachmentRow } from "@/queries/contracts";
 import type { RecipientRow } from "@/queries/recipients";
+import type { NoticeSnapshot } from "@/types/notice-snapshot.type";
 import { NoticeSentButton } from "./notice-sent-button";
 import { PaymentStatusBadge } from "./payment-status-badge";
 
@@ -51,7 +59,18 @@ export function PaymentStageCard({
   actions,
 }: {
   payment: ContractPaymentWithRecipient;
-  contract: { id: number; number: string; market: string; currency: string; status: string };
+  contract: {
+    id: number;
+    number: string;
+    market: string;
+    currency: string;
+    status: string;
+    /** Канада „кола + транспорт": the CAD side of Точка 1 (see lib/notice). */
+    foreignCurrency: string | null;
+    amountCarForeign: string | null;
+    /** The deposit taken off Точка 1, "0" when none. */
+    depositDeduction: string;
+  };
   /** ACTIVE recipients only (the page filters). */
   recipients: RecipientRow[];
   /** Notice versions for THIS payment, newest first. */
@@ -86,7 +105,12 @@ export function PaymentStageCard({
   const [rate, setRate] = useState("");
   const [amountOverride, setAmountOverride] = useState("");
   const [basis, setBasis] = useState(payment.basis ?? "");
-  const [dueDate, setDueDate] = useState(payment.dueDate ?? defaultDueDate());
+  // A regenerated notice must not inherit a падеж that has already passed — the
+  // overdue sweep would flip the stage back to „Просрочено" the next morning.
+  const [dueDate, setDueDate] = useState(() =>
+    payment.dueDate && payment.dueDate >= todayIso() ? payment.dueDate : defaultDueDate(),
+  );
+  const [preview, setPreview] = useState<NoticeSnapshot | null>(null);
   const [paidAmount, setPaidAmount] = useState("");
   const [paidAt, setPaidAt] = useState(todayIso());
   const [note, setNote] = useState("");
@@ -102,9 +126,13 @@ export function PaymentStageCard({
    * Auto America / Lean Customs are always paid in EUR (owner, 07.2026), so on a
    * non-EUR contract the euro sum has to be stated here. The field is offered on
    * every notice though — the contract sums are estimates, and the operator may
-   * want to type the real amount instead of relying on the contract figure.
+   * want to type the real amount instead of relying on the contract figure. It
+   * replaces the stage's LINE (the gross Точка 1 when a deposit applies) in the
+   * currency the PDF prints that line in; the курс and the deposit still apply.
    */
-  const payoutCurrency = chosen?.kind === "customs_broker" ? "EUR" : (chosen?.currency ?? contract.currency);
+  const lineCurrency = noticeLineCurrency(contract, stage, chosen?.kind ?? "");
+  const depositCents = stage === "vehicle" ? dbToCents(contract.depositDeduction) : 0;
+  const lineCents = contractLineCents(contract, payment, depositCents);
   const amountRequired = chosen?.kind === "customs_broker" && contract.currency !== "EUR";
   const remainingCents = dbToCents(payment.dueAmount) - dbToCents(payment.paidAmount);
   const versionCount = documents.length;
@@ -118,7 +146,40 @@ export function PaymentStageCard({
 
   function resetPanels() {
     setPanel("none");
+    setPreview(null);
     setError(null);
+  }
+
+  /** The exact input both the preview and the generation receive. */
+  function noticeInput(recipient: RecipientRow) {
+    return {
+      paymentId: payment.id,
+      recipientId: recipient.id,
+      usdEurRate: needsRate ? rate : undefined,
+      amountOverride: amountOverride.trim() || undefined,
+      basis,
+      dueDate: dueDate || undefined,
+    };
+  }
+
+  /** §6.3 — the server builds the snapshot the PDF will print, nothing is written. */
+  async function onPreview() {
+    if (!chosen) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await previewPaymentNotice(noticeInput(chosen));
+      if (result.success) {
+        setPreview(result.data);
+        setPanel("preview");
+      } else {
+        setError(result.error);
+      }
+    } catch {
+      setError("Възникна грешка. Моля опитайте отново.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function onGenerateConfirm() {
@@ -126,14 +187,7 @@ export function PaymentStageCard({
     setBusy(true);
     setError(null);
     try {
-      const result = await generatePaymentNotice({
-        paymentId: payment.id,
-        recipientId: chosen.id,
-        usdEurRate: needsRate ? rate : undefined,
-        amountOverride: amountOverride.trim() || undefined,
-        basis,
-        dueDate: dueDate || undefined,
-      });
+      const result = await generatePaymentNotice(noticeInput(chosen));
       if (result.success) {
         resetPanels();
         router.refresh();
@@ -371,34 +425,35 @@ export function PaymentStageCard({
               <label className={LABEL}>Курс USD/EUR *</label>
               <input
                 type="text"
+                inputMode="decimal"
                 value={rate}
                 onChange={(e) => setRate(e.target.value)}
                 placeholder="напр. 0.86"
                 className={INPUT}
               />
-              {rate && rateValid ? (
-                <p className="text-xs text-muted">
-                  {formatDbAmount(payment.dueAmount)} USD × {rate.replace(",", ".")} ={" "}
-                  {formatCents(Math.round(dbToCents(payment.dueAmount) * Number(rate.replace(",", "."))))} EUR
-                </p>
-              ) : null}
+              <p className="text-xs text-muted">Евро се изчисляват автоматично — виждате ги в прегледа.</p>
             </div>
           ) : null}
           <div className="flex flex-col gap-1">
             <label className={LABEL}>
-              Сума за плащане ({payoutCurrency}){amountRequired ? " *" : " — по избор"}
+              Сума по етапа ({lineCurrency}){amountRequired ? " *" : " — по избор"}
             </label>
             <input
               type="text"
+              inputMode="decimal"
               value={amountOverride}
               onChange={(e) => setAmountOverride(e.target.value)}
-              placeholder={amountRequired ? `сума в ${payoutCurrency}` : formatDbAmount(payment.dueAmount)}
+              placeholder={amountRequired ? `сума в ${lineCurrency}` : formatCents(lineCents)}
               className={INPUT}
             />
             <p className="text-xs text-muted">
               {amountRequired
                 ? `Плащанията към ${chosen?.name} са в евро — въведете реалната сума по фактурата им.`
-                : "Празно = сумата от договора. Попълва се, когато реалната сума се различава."}
+                : `Празно = сумата от договора (${formatCents(lineCents)} ${lineCurrency}). Попълва се, когато реалната сума се различава.`}
+              {depositCents > 0 && !amountRequired
+                ? ` Депозитът (−${formatCents(depositCents)} ${contract.currency}) се приспада автоматично — не го вадете от сумата.`
+                : ""}
+              {needsRate ? " Курсът се прилага и към въведената сума." : ""}
             </p>
           </div>
           <div className="flex flex-col gap-1">
@@ -416,10 +471,10 @@ export function PaymentStageCard({
             <button
               type="button"
               disabled={busy || !chosen || (needsRate && !rateValid) || (amountRequired && !amountOverride.trim())}
-              onClick={() => setPanel("preview")}
+              onClick={() => void onPreview()}
               className="rounded-full bg-brand px-4 py-1.5 text-sm font-extrabold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
             >
-              Преглед →
+              {busy ? "Изчисляване…" : "Преглед →"}
             </button>
             <button type="button" onClick={resetPanels} className="rounded-full px-4 py-1.5 text-sm font-semibold text-muted">
               Отказ
@@ -428,42 +483,44 @@ export function PaymentStageCard({
         </div>
       ) : null}
 
-      {/* ── Preview (§6.3) + confirm ── */}
-      {panel === "preview" && chosen ? (
+      {/* ── Preview (§6.3) + confirm — the snapshot the PDF prints, built on the server ── */}
+      {panel === "preview" && chosen && preview ? (
         <div className="flex flex-col gap-2 rounded-lg border border-brand/40 bg-brand/5 p-3 text-sm">
           <p className="font-bold text-ink">Преглед преди генериране</p>
           <dl className="flex flex-col gap-0.5">
             <div>
               <dt className="inline text-muted">Договор: </dt>
-              <dd className="inline font-semibold text-ink">{contract.number}</dd>
+              <dd className="inline font-semibold text-ink">{preview.contractNumber}</dd>
             </div>
             <div>
               <dt className="inline text-muted">Етап: </dt>
-              <dd className="inline font-semibold text-ink">{stageMeta?.label}</dd>
+              <dd className="inline font-semibold text-ink">{heading}</dd>
             </div>
             <div>
               <dt className="inline text-muted">Получател: </dt>
-              <dd className="inline font-semibold text-ink">{chosen.name}</dd>
+              <dd className="inline font-semibold text-ink">{preview.recipient.name}</dd>
             </div>
-            <div>
-              <dt className="inline text-muted">Сума: </dt>
-              <dd className="inline font-semibold text-ink">
-                {amountOverride.trim()
-                  ? `${amountOverride.trim()} ${payoutCurrency}`
-                  : `${formatDbAmount(payment.dueAmount)} ${payment.currency}`}
-              </dd>
-            </div>
-            {needsRate ? (
-              <div>
-                <dt className="inline text-muted">Курс / EUR: </dt>
-                <dd className="inline font-semibold text-ink">
-                  {rate.replace(",", ".")} → {formatCents(Math.round(dbToCents(payment.dueAmount) * Number(rate.replace(",", "."))))} EUR
-                </dd>
-              </div>
-            ) : null}
+          </dl>
+          <ul className="flex flex-col gap-1 rounded-lg bg-white p-2">
+            {preview.lines.map((line, i) => (
+              <li key={i} className="flex flex-wrap items-baseline justify-between gap-x-3">
+                <span className="min-w-0 text-ink">{line.description}</span>
+                <span className="whitespace-nowrap font-semibold text-ink">
+                  {formatCents(line.amountCents)} {preview.currency}
+                  {preview.showRateColumns && preview.usdEurRate !== undefined
+                    ? ` × ${preview.usdEurRate} = ${formatCents(line.amountEurCents ?? 0)} EUR`
+                    : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="font-black text-ink">
+            Обща сума за плащане: {formatCents(preview.totalCents)} {preview.totalCurrencyLabel}
+          </p>
+          <dl className="flex flex-col gap-0.5">
             <div>
               <dt className="inline text-muted">Основание: </dt>
-              <dd className="inline font-semibold text-ink">{basis || `Договор № ${contract.number}`}</dd>
+              <dd className="inline font-semibold text-ink">{preview.basis}</dd>
             </div>
           </dl>
           {versionCount > 0 ? (
@@ -483,7 +540,10 @@ export function PaymentStageCard({
             </button>
             <button
               type="button"
-              onClick={() => setPanel("generate")}
+              onClick={() => {
+                setPreview(null);
+                setPanel("generate");
+              }}
               className="rounded-full px-4 py-1.5 text-sm font-semibold text-muted"
             >
               ← Назад

@@ -22,6 +22,50 @@ type ClientSnapshot = {
   address?: string | null;
 };
 
+type ContractRow = typeof schema.contracts.$inferSelect;
+type PaymentRow = typeof schema.contractPayments.$inferSelect;
+
+/**
+ * КАНАДА, етап „кола + транспорт": the wire leaves in CAD (to ALCO IMPEX) while
+ * the contract's leading value is the euro equivalent, fixed by the rate entered
+ * at contract creation. The stage's stored due_amount is the EUR side.
+ */
+function isCanadaFirstStage(contract: Pick<ContractRow, "foreignCurrency" | "amountCarForeign">, stage: string) {
+  return stage === "vehicle" && Boolean(contract.foreignCurrency) && contract.amountCarForeign !== null;
+}
+
+/**
+ * Currency of a notice's FIRST amount column — the currency the stage amount and
+ * a typed amount are in: EUR for the customs brokers, CAD on the Канада „кола +
+ * транспорт" stage, else the contract's. The stage card labels its amount field
+ * with this, so the field always names the currency the PDF prints.
+ */
+export function noticeLineCurrency(
+  contract: Pick<ContractRow, "currency" | "foreignCurrency" | "amountCarForeign">,
+  stage: string,
+  recipientKind: string,
+): string {
+  if (recipientKind === "customs_broker") return "EUR";
+  if (isCanadaFirstStage(contract, stage)) return contract.foreignCurrency ?? contract.currency;
+  return contract.currency;
+}
+
+/**
+ * The contract's own figure for a stage's first column — the line a typed
+ * amount replaces. On the vehicle stage that is the GROSS Точка 1: the stored
+ * due_amount already nets the deposit out, and the deposit is printed as its
+ * own negative line (§14.2).
+ */
+export function contractLineCents(
+  contract: Pick<ContractRow, "foreignCurrency" | "amountCarForeign">,
+  payment: Pick<PaymentRow, "stage" | "dueAmount">,
+  depositCents: number,
+): number {
+  if (isCanadaFirstStage(contract, payment.stage)) return dbToCents(contract.amountCarForeign);
+  const dueCents = dbToCents(payment.dueAmount);
+  return payment.stage === "vehicle" ? dueCents + depositCents : dueCents;
+}
+
 export function buildNoticeSnapshot(args: {
   contract: typeof schema.contracts.$inferSelect;
   payment: typeof schema.contractPayments.$inferSelect;
@@ -33,10 +77,12 @@ export function buildNoticeSnapshot(args: {
   /** Курс USD→EUR — required iff us_ca + SelectAuto (validated by the caller). */
   usdEurRate: number | null;
   /**
-   * The payable amount typed by the operator at generation, in the notice's own
-   * currency. Overrides the stage's contract amount — the customs sums are
-   * explicitly "ориентировъчни" and the broker's real invoice differs (owner,
-   * 07.2026: "да не взема сумата в договора в предвид").
+   * An amount typed by the operator at generation, in the first column's
+   * currency (`noticeLineCurrency`). It replaces the contract's figure for the
+   * stage — the customs sums are explicitly "ориентировъчни" and the broker's
+   * real invoice differs (owner, 07.2026: "да не взема сумата в договора в
+   * предвид") — and everything else still applies: the курс conversion (§16.4,
+   * the EUR value is never typed by hand) and the deposit line (§14.2).
    */
   overrideCents?: number | null;
   /** Today in Europe/Sofia, ISO. */
@@ -66,28 +112,22 @@ export function buildNoticeSnapshot(args: {
   // Line items: the stage sum, plus the deposit as its own negative line on the
   // vehicle stage (§14.2 — the stored due_amount already nets it out, so the
   // gross line is due + deduction and the deposit line brings it back down).
-  const dueCents = dbToCents(payment.dueAmount);
   const depositCents = deposit ? dbToCents(contract.depositDeduction) : 0;
-  const stageMainCents = payment.stage === "vehicle" ? dueCents + depositCents : dueCents;
 
   const description =
     payment.stage === "customs_vat" ? "Мито и ДДС" : `Разходи по договор №${contract.number}`;
 
-  /**
-   * КАНАДА, етап „кола + транспорт": the wire leaves in CAD (to ALCO IMPEX) while
-   * the contract's leading value is the euro equivalent, fixed by the rate
-   * entered at contract creation. The stage's stored due_amount is the EUR side.
-   */
-  const canadaFirstStage =
-    payment.stage === "vehicle" && Boolean(contract.foreignCurrency) && contract.amountCarForeign !== null;
+  const canadaFirstStage = isCanadaFirstStage(contract, payment.stage);
 
   const contractRate = contract.foreignRate ? Number(contract.foreignRate) : null;
   /** The rate that drives the three-column table, whichever case we're in. */
   const rate = canadaFirstStage ? contractRate : usdEurRate;
-  // A customs notice is EUR-only, and a typed amount replaces the conversion —
-  // in both cases there is nothing to show a курс column for.
+  // A customs notice is EUR-only, so it never shows a курс column. A typed
+  // amount does NOT drop the conversion: on САЩ → SelectAuto it replaces the USD
+  // value and the euro is still USD × курс (§16.1/§16.4). Dropping it once left
+  // the lines without a euro value, and those notices totalled 0.00 евро.
   const showRateColumns =
-    rate !== null && !isCustomsBroker && overrideCents == null && (canadaFirstStage || variant === "selectauto_usd");
+    rate !== null && !isCustomsBroker && (canadaFirstStage || variant === "selectauto_usd");
 
   /**
    * Foreign currency → EUR, ROUNDED TO THE WHOLE EURO (owner, 07.2026 — "да се
@@ -99,10 +139,9 @@ export function buildNoticeSnapshot(args: {
   /** …and back, for the deposit line on a Canadian first stage. */
   const toForeign = (eurCents: number) => (rate ? Math.round(eurCents / rate / 100) * 100 : eurCents);
 
-  // First column = what actually leaves the bank. A typed amount wins; then CAD
-  // for the Canadian first stage; otherwise the stage's contract amount.
-  const mainFirstCol =
-    overrideCents != null ? overrideCents : canadaFirstStage ? dbToCents(contract.amountCarForeign) : stageMainCents;
+  // First column = what actually leaves the bank: a typed amount, else the
+  // contract's figure (CAD on the Canadian first stage).
+  const mainFirstCol = overrideCents ?? contractLineCents(contract, payment, depositCents);
   const depositFirstCol = canadaFirstStage ? toForeign(depositCents) : depositCents;
 
   const lines: NoticeLine[] = [
@@ -110,8 +149,12 @@ export function buildNoticeSnapshot(args: {
       description,
       amountCents: mainFirstCol,
       quantity: 1,
+      // Канада keeps the contract's own euro value unless an amount was typed.
       ...(showRateColumns
-        ? { amountEurCents: canadaFirstStage ? dbToCents(contract.amountCar) : toEur(mainFirstCol) }
+        ? {
+            amountEurCents:
+              canadaFirstStage && overrideCents == null ? dbToCents(contract.amountCar) : toEur(mainFirstCol),
+          }
         : {}),
     },
   ];
@@ -156,13 +199,7 @@ export function buildNoticeSnapshot(args: {
     stage: payment.stage,
     variant,
     showRateColumns,
-    // The notice's currency: EUR for the customs brokers, CAD on a Canadian
-    // first stage, else the contract's.
-    currency: isCustomsBroker
-      ? "EUR"
-      : canadaFirstStage
-        ? (contract.foreignCurrency ?? contract.currency)
-        : contract.currency,
+    currency: noticeLineCurrency(contract, payment.stage, recipient.kind),
     lines,
     ...(showRateColumns && rate ? { usdEurRate: rate } : {}),
     totalCents,
