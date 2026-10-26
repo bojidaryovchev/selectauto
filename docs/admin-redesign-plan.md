@@ -67,8 +67,10 @@ matter more than the visuals, several with **production impact** ✔:
 | 8 | From the second PDF a server process renders, letters next to some Latin glyphs vanish („14 480.00 UR") | reproduced deterministically; fontkit's glyph cache (found while fixing #1) |
 
 **Status 2026-10-26:** #1–#6 and #8 are fixed (§5: B1–B5, B8, B9, B13, B26,
-B34), and phases 0–2 are done — the new shell (§2) is in. #7 (B6, B7) waits
-for phase 5. Next: phase 3.
+B34). Phases 0–3 are done — the new shell (§2) and the building blocks (§3)
+are in. Phase 4 has covered Договори, Депозити, mobile.bg, Поща and the three
+lead inboxes, each with its P1 fixes (§5). #7 (B6, B7) waits for phase 5.
+Next: Тарифи.
 
 **Plan.** Two tracks, kept in separate commits:
 
@@ -301,6 +303,7 @@ harmless; leave it.
 | Field styles (`text-base sm:text-sm`, `min-h-11`, `inputMode`, `autoCapitalize`/`autoCorrect` for VIN/IBAN/SWIFT, labels with `htmlFor`) | 14 px inputs (iOS zoom), hidden radios that keyboards can't reach |
 | `AdminPagination` (prev / current / next on phones, numbers on wide) | 4 different pagers; none at all on the de-index and mobile.bg registers |
 | `AdminEmptyState` | ad-hoc empty rows (one is developer text: „приложете миграция 0038") |
+| `adminChipClass` (filter and choice pills, 40 px; the chosen one solid ink) | four pill styles — orange fill, black fill, and orange text on an orange tint (3:1, below AA) |
 | `ResponsiveList` pattern: cards below a container width, table above | desktop tables on phones |
 
 ### 3.2 Lists: cards ↔ table by container width
@@ -610,6 +613,15 @@ and the sample notices:
 **Done 2026-10-26:** B1, B2, B3, B4, B5, B8, B9 and B34 below, and from P1
 B13 (a deduction larger than Точка 1 is refused) and B26.
 
+Also fixed during the phase-4 pass, outside the numbered list: the new-deposit
+form resets after a create (a second click made a duplicate deposit and
+client); a deposit PDF asks before issuing a new version; „Премахни" on a
+mobile.bg mapping asks first; the reply box names the address the reply really
+goes to (Reply-To); and a dropped connection during a server action is reported
+next to the button in mobile.bg, the mail thread and the lead drawer — before,
+it replaced the page with the error screen ✔ (reproduced by aborting the
+request).
+
 | # | Defect | Fix sketch | Where |
 |---|---|---|---|
 | B34 | From the second document a process renders, PDFs lose letters next to glyphs fontkit cached with `codePoints = []` (composite components fetched by id while subsetting) ✔ | Wrap `getGlyph` on the PT Sans fontkit instances so a lookup with code points fills empty ones (done; fontkit 2.0.4 is the latest release) | `pdf/render.ts` |
@@ -625,33 +637,33 @@ B13 (a deduction larger than Точка 1 is refused) and B26.
 
 ### P1 (fix while restyling the section)
 
-| # | Defect |
-|---|---|
-| B10 | Proof uploads > ~4.5 MB fail on Vercel — presigned PUT from the browser, or a client-side ≤ 4 MB check with a clear message |
-| B11 | Failed upload after recording a payment invites a double payment — close the form once the payment succeeds; attach separately |
-| B12 | Admins can't attach a proof to a paid stage / without paying — show the standalone attach to every `payments.attach` holder |
-| B13 | Deposit deduction clamped to Точка 1 and frozen — reject when Точка 1 < deposit, or recompute on edit |
-| B14 | Tariff paste replaces everything without preview/confirm/undo — summary + diff vs the active version, confirm on row-count drop, re-activate older version |
-| B15 | Tariff/settings changes are stale on the next visit — `updateTag` in both actions, short/no browser `max-age` |
-| B16 | `/api/calc-config` publishes the mobile.bg markup — strip it from the public payload |
-| B17 | Lot-number lookup unreachable (de-index and mobile.bg) — query id **and** lot, show both kinds of hit |
-| B18 | De-index: reset request fields per lookup; update (not ignore) a repeated request; confirm revoke; allow URL lookups for VIN-less cars or say why not |
-| B19 | mobile.bg: guard concurrent publish (row state check), record/reconcile `ida`, warn on a second advert for the same VIN, store the per-advert overrides incl. description |
-| B20 | Mail status dropdown stale after reply |
-| B21 | `MAIL_IGNORE_SENDERS` empty → filter off (`??` → `||`) |
-| B22 | Second reply loses threading / Reply-To (filter the last inbound by direction) |
-| B23 | Консултации „Интерес" shows „Да"/„Не" — show brand + model; relabel the yes/no answer |
-| B24 | Lead drawer drops unsaved notes on status change / Escape |
-| B25 | Оферти: show vehicle type and US auction location |
-| B26 | Contract create: ignore CAD fields outside Канада (as `update-contract` already does) |
-| B27 | Renumber: update each stage's default основание too |
-| B28 | Contract edit form: re-key on data change so it never writes back stale status/основание |
-| B29 | Users: confirm before granting/removing Администратор |
-| B30 | Дневник: labels for every written event; `id DESC` tiebreaker; stop deleting history on delete |
-| B31 | Times in Europe/Sofia everywhere (shared formatter) |
-| B32 | Recipients: SSANCAR IBAN format; flag rows with missing bank data |
-| B33 | Pagers for the de-index and mobile.bg registers |
-| B35 | Inbox prefetch pulls thread bodies — `prefetch={false}` on the thread links, or move the Resend body fetch out of the page render |
+| # | Defect | Status |
+|---|---|---|
+| B10 | Proof uploads > ~4.5 MB fail on Vercel — presigned PUT from the browser, or a client-side ≤ 4 MB check with a clear message | fixed — 4 MB checked in the browser and on the server, with a clear message; the action body limit is 4.5 MB, Vercel's cap (all 21 production uploads are < 720 KB ✔) |
+| B11 | Failed upload after recording a payment invites a double payment — close the form once the payment succeeds; attach separately | fixed |
+| B12 | Admins can't attach a proof to a paid stage / without paying — show the standalone attach to every `payments.attach` holder | fixed |
+| B13 | Deposit deduction clamped to Точка 1 and frozen — reject when Точка 1 < deposit, or recompute on edit | fixed (rejected) |
+| B14 | Tariff paste replaces everything without preview/confirm/undo — summary + diff vs the active version, confirm on row-count drop, re-activate older version | |
+| B15 | Tariff/settings changes are stale on the next visit — `updateTag` in both actions, short/no browser `max-age` | |
+| B16 | `/api/calc-config` publishes the mobile.bg markup — strip it from the public payload | |
+| B17 | Lot-number lookup unreachable (de-index and mobile.bg) — query id **and** lot, show both kinds of hit | mobile.bg fixed (26 713 lot numbers equal another car's id ✔); de-index with Скрити обяви |
+| B18 | De-index: reset request fields per lookup; update (not ignore) a repeated request; confirm revoke; allow URL lookups for VIN-less cars or say why not | |
+| B19 | mobile.bg: guard concurrent publish (row state check), record/reconcile `ida`, warn on a second advert for the same VIN, store the per-advert overrides incl. description | phase 5 |
+| B20 | Mail status dropdown stale after reply | fixed |
+| B21 | `MAIL_IGNORE_SENDERS` empty → filter off (`??` → `||`) | fixed |
+| B22 | Second reply loses threading / Reply-To (filter the last inbound by direction) | fixed (115 of 152 inbound mails carry a Reply-To ✔) |
+| B23 | Консултации „Интерес" shows „Да"/„Не" — show brand + model; relabel the yes/no answer | fixed |
+| B24 | Lead drawer drops unsaved notes on status change / Escape | fixed — a status change keeps the drawer open; any close asks while the note is unsaved |
+| B25 | Оферти: show vehicle type and US auction location | fixed |
+| B26 | Contract create: ignore CAD fields outside Канада (as `update-contract` already does) | fixed |
+| B27 | Renumber: update each stage's default основание too | fixed — also a changed основание on edit; contract 2026-114's notice 204 (printed „Договор № 2026-113") is for the owner to re-issue |
+| B28 | Contract edit form: re-key on data change so it never writes back stale status/основание | fixed |
+| B29 | Users: confirm before granting/removing Администратор | |
+| B30 | Дневник: labels for every written event; `id DESC` tiebreaker; stop deleting history on delete | |
+| B31 | Times in Europe/Sofia everywhere (shared formatter) | `lib/sofia-time.ts`; done in Договори, Депозити, mobile.bg, Поща, lead inboxes |
+| B32 | Recipients: SSANCAR IBAN format; flag rows with missing bank data | |
+| B33 | Pagers for the de-index and mobile.bg registers | mobile.bg fixed; de-index with Скрити обяви |
+| B35 | Inbox prefetch pulls thread bodies — `prefetch={false}` on the thread links, or move the Resend body fetch out of the page render | fixed (`prefetch={false}`; the inbox now sends 0 thread requests ✔) |
 
 ### P2 (housekeeping)
 
@@ -673,8 +685,8 @@ Each phase ships on its own to `main` (Vercel production), smallest first.
 | 0 — Hotfixes ✔ | B5, B8 (one-line each), B1 + B2 + B9 (notice math + server preview), B4 | owner can save settings; register taps right on iOS 26; a typed amount never yields a 0 or double-deducted total; a removed role stops working within minutes |
 | 1 — Base UI 1.9.0 ✔ | dependency bump only | Combobox flows unchanged (filters, notice recipient, mobile.bg pickers) |
 | 2 — Shell ✔ | §2 complete: sidebar, top bar + drawer, nav config, icons, skeleton, `loading/not-found/error`, titles, public widgets out | §7 checks pass for all 15 pages × 3 roles — passed: 134 loads at 360–1 920 px, no page overflow, no public widgets, nav and active link right per role; tap → next page 50–80 ms (desktop, prefetched) or skeleton ~40 ms then page ~350 ms (drawer) |
-| 3 — Building blocks | §3 primitives + container-query list pattern | used by at least one page end to end (Договори register) |
-| 4 — Page pass | Договори (register → detail → create) · Депозити · mobile.bg · Поща + lead inboxes · Тарифи · Скрити обяви · Получатели · Потребители · Дневник · Табло — with that section's P1 fixes as separate commits | per page: §7 checks + feature walk-through unchanged |
+| 3 — Building blocks ✔ | §3 primitives + container-query list pattern | used by at least one page end to end (Договори register) |
+| 4 — Page pass (in progress) | Договори (register → detail → create) ✔ · Депозити ✔ · mobile.bg ✔ · Поща + lead inboxes ✔ · Тарифи · Скрити обяви · Получатели · Потребители · Дневник · Табло — with that section's P1 fixes as separate commits | per page: §7 checks + feature walk-through unchanged |
 | 5 — Remaining P0/P1 | B6, B7 (touch ingestion / paid adverts — careful, own commits), B10–B19 left over | |
 | 6 — Cleanup | §9 stale comments/docs, unused exports, `docs/02` tables | |
 
