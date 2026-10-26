@@ -1,5 +1,6 @@
 import { MobilebgAdvertList, MobilebgMappingDesk, MobilebgPublisher } from "@/components/admin/mobilebg";
-import { AdminBanner, AdminPageHeader } from "@/components/admin/ui";
+import { AdminBanner, AdminPageHeader, AdminPagination } from "@/components/admin/ui";
+import { ADMIN_PAGE_SIZE } from "@/constants/admin";
 import { requirePageWith } from "@/lib/admin";
 import { isConfigured } from "@/lib/mobilebg/client";
 import { listMobilebgAdverts, listMobilebgMappings } from "@/queries/mobilebg";
@@ -20,10 +21,11 @@ export default async function AdminMobilebgPage({ searchParams }: { searchParams
   await requirePageWith("mobilebg.publish");
   const sp = await searchParams;
 
-  const [{ rows, total }, mappings] = await Promise.all([
-    listMobilebgAdverts(Number(sp.page) || 1),
-    listMobilebgMappings(),
-  ]);
+  const page = Math.max(1, Number(sp.page) || 1);
+  const [{ rows, total }, mappings] = await Promise.all([listMobilebgAdverts(page), listMobilebgMappings()]);
+  // The register was cut at 50 rows with no way to the rest; `?page=` worked
+  // but nothing linked to it.
+  const pageCount = Math.max(1, Math.ceil(total / ADMIN_PAGE_SIZE));
 
   return (
     <div className="flex flex-col gap-8">
@@ -48,7 +50,14 @@ export default async function AdminMobilebgPage({ searchParams }: { searchParams
         <h2 className="mb-2 text-lg font-black tracking-tight text-ink">
           Обяви <span className="text-sm font-semibold text-muted">({total})</span>
         </h2>
-        <MobilebgAdvertList rows={rows} />
+        <div className="flex flex-col gap-4">
+          <MobilebgAdvertList rows={rows} />
+          <AdminPagination
+            page={page}
+            pageCount={pageCount}
+            hrefFor={(p) => (p > 1 ? `/admin/mobile-bg?page=${p}` : "/admin/mobile-bg")}
+          />
+        </div>
       </section>
 
       <section>
