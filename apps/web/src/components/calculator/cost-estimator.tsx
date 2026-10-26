@@ -198,14 +198,15 @@ export function CostEstimator({
 
   // Editable calculator config (fees/commission/transport/rates). Starts from the
   // built-in defaults (correct + tiny) and swaps to the admin-set values from
-  // /api/calc-config once loaded — no loading gate needed.
+  // /api/calc-config once loaded — no loading gate needed. The route leaves out
+  // the mobile.bg markup (unused here), so the answer is laid over the defaults.
   const [config, setConfig] = useState<CalcConfig>(DEFAULT_CALC_CONFIG);
   useEffect(() => {
     let cancelled = false;
     fetch("/api/calc-config")
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((c: CalcConfig) => {
-        if (!cancelled) setConfig(c);
+      .then((c: Partial<CalcConfig>) => {
+        if (!cancelled) setConfig({ ...DEFAULT_CALC_CONFIG, ...c });
       })
       .catch(() => {
         /* keep defaults */

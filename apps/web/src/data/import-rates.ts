@@ -78,7 +78,8 @@ export type CalcConfig = {
    * the car on the ground in Bulgaria, so advertising it unmarked would sell at
    * cost. Lives here rather than in its own settings row so it rides the same
    * admin-editable `calculator_settings` JSONB the rest of the money already
-   * uses. Only `lib/mobilebg/map-car.ts` reads it; the public calculator does not.
+   * uses. Only `lib/mobilebg/map-car.ts` reads it; /api/calc-config leaves it
+   * out of what the public calculator downloads.
    */
   mobilebgMarkupPct: number;
 };
