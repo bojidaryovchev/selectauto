@@ -26,6 +26,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   roles_changed: "Промяна на роли",
   deindexed: "Скрита обява",
   deindex_revoked: "Възстановена обява",
+  deindex_extended: "Скрити нови обяви на същия VIN",
   deleted: "Изтриване",
   published: "Публикуване",
 };
