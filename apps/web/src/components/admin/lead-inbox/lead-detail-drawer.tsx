@@ -1,10 +1,13 @@
 "use client";
 
 import { LeadStatusBadge } from "@/components/admin/lead-status-badge";
+import { adminButtonClass } from "@/components/admin/ui";
 import { CloseIcon } from "@/components/icons";
 import { LEAD_TYPE_META } from "@/constants/admin";
 import type { AdminDetailField, AdminLeadView } from "@/types/admin.type";
+import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Drawer } from "@base-ui/react/drawer";
+import { useState } from "react";
 import { NotesEditor } from "./notes-editor";
 import { StatusSelect } from "./status-select";
 
@@ -17,24 +20,46 @@ import { StatusSelect } from "./status-select";
  * the admin shell can trap its fixed positioning. The lead data comes
  * pre-formatted from the server mapper (lib/admin-lead-view) — this is
  * presentation only.
+ *
+ * Unsaved notes are never thrown away silently: a status change no longer
+ * closes the drawer (it used to, and took the half-written note with it), and
+ * any way of closing it — ✕, Escape, the backdrop, a swipe — first asks while
+ * the note is unsaved (Base UI's close confirmation: the close is cancelled in
+ * onOpenChange and a nested alert dialog asks).
  */
 export function LeadDetailDrawer({
   lead,
   open,
   onOpenChange,
   onOpenChangeComplete,
+  onStatusChanged,
 }: {
   /** The lead shown; kept while the drawer animates out. */
   lead: AdminLeadView | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onOpenChangeComplete?: (open: boolean) => void;
+  /** The status was changed from the drawer (it stays open). */
+  onStatusChanged?: (status: AdminLeadView["status"]) => void;
 }) {
+  const [notesDirty, setNotesDirty] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+
   return (
     <Drawer.Root
       open={open}
-      onOpenChange={onOpenChange}
-      onOpenChangeComplete={onOpenChangeComplete}
+      onOpenChange={(next, eventDetails) => {
+        if (!next && notesDirty) {
+          eventDetails.cancel();
+          setConfirmDiscard(true);
+          return;
+        }
+        onOpenChange(next);
+      }}
+      onOpenChangeComplete={(isOpen) => {
+        if (!isOpen) setNotesDirty(false);
+        onOpenChangeComplete?.(isOpen);
+      }}
       swipeDirection="right"
     >
       <Drawer.Portal>
@@ -68,21 +93,44 @@ export function LeadDetailDrawer({
 
                   <div className="rounded-xl border border-line bg-[#fafafa] p-4">
                     <p className="mb-2 text-xs font-bold tracking-wide text-muted uppercase">Статус</p>
-                    <StatusSelect
-                      type={lead.type}
-                      id={lead.id}
-                      value={lead.status}
-                      onChanged={() => onOpenChange(false)}
-                    />
+                    <StatusSelect type={lead.type} id={lead.id} value={lead.status} onChanged={onStatusChanged} />
                   </div>
 
-                  <NotesEditor type={lead.type} id={lead.id} value={lead.adminNotes} />
+                  <NotesEditor type={lead.type} id={lead.id} value={lead.adminNotes} onDirtyChange={setNotesDirty} />
                 </div>
               </Drawer.Content>
             ) : null}
           </Drawer.Popup>
         </Drawer.Viewport>
       </Drawer.Portal>
+
+      <AlertDialog.Root open={confirmDiscard} onOpenChange={setConfirmDiscard}>
+        <AlertDialog.Portal>
+          <AlertDialog.Backdrop className="fixed inset-0 z-70 min-h-dvh bg-black/30 transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 supports-[-webkit-touch-callout:none]:absolute" />
+          <AlertDialog.Popup className="fixed top-1/2 left-1/2 z-70 flex w-96 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-2xl bg-white p-5 shadow-2xl transition-[scale,opacity] duration-150 outline-none data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-starting-style:scale-[0.98] data-starting-style:opacity-0">
+            <div className="flex flex-col gap-1">
+              <AlertDialog.Title className="text-base font-black text-ink">Бележката не е запазена</AlertDialog.Title>
+              <AlertDialog.Description className="text-sm text-muted">
+                Ако затворите, написаното ще се загуби.
+              </AlertDialog.Description>
+            </div>
+            <div className="flex flex-wrap justify-end gap-2">
+              <AlertDialog.Close className={adminButtonClass("secondary")}>Върни се</AlertDialog.Close>
+              <button
+                type="button"
+                className={adminButtonClass("danger")}
+                onClick={() => {
+                  setConfirmDiscard(false);
+                  setNotesDirty(false);
+                  onOpenChange(false);
+                }}
+              >
+                Затвори без запазване
+              </button>
+            </div>
+          </AlertDialog.Popup>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
     </Drawer.Root>
   );
 }

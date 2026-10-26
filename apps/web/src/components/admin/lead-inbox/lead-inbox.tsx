@@ -36,6 +36,11 @@ export function LeadInbox({
   const params = useSearchParams();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<AdminLeadView | null>(null);
+  // The drawer stays open across a refresh (a status change, saved notes), so
+  // show the refreshed row when the list still has it
+  // (keeping the status chosen here, which may be newer than the list).
+  const fresh = selected && leads.find((l) => l.type === selected.type && l.id === selected.id);
+  const shown = selected ? { ...(fresh ?? selected), status: selected.status } : null;
 
   function openLead(lead: AdminLeadView) {
     setSelected(lead);
@@ -150,9 +155,11 @@ export function LeadInbox({
       <AdminPagination page={page} pageCount={pageCount} hrefFor={hrefFor} />
 
       <LeadDetailDrawer
-        lead={selected}
+        lead={shown}
         open={open}
         onOpenChange={setOpen}
+        // A lead the current filter no longer lists keeps its new status here.
+        onStatusChanged={(status) => setSelected((prev) => (prev ? { ...prev, status } : prev))}
         // Clear only once the drawer has animated out, so it doesn't empty mid-slide.
         onOpenChangeComplete={(isOpen) => {
           if (!isOpen) setSelected(null);

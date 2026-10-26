@@ -4,13 +4,24 @@ import { ADMIN_INPUT, AdminButton } from "@/components/admin/ui";
 import type { LeadType } from "@/constants/admin";
 import { updateLead } from "@/mutations/admin";
 import { useRouter } from "next/navigation";
-import { useId, useState, useTransition } from "react";
+import { useEffect, useId, useState, useTransition } from "react";
 
 /**
  * Free-text follow-up notes for a lead. Textarea + save button; saves via
- * `updateLead` and refreshes. Dirty-tracked (save disabled until changed).
+ * `updateLead` and refreshes. Dirty-tracked (save disabled until changed), and
+ * the dirty flag is reported up so the drawer can ask before closing.
  */
-export function NotesEditor({ type, id, value }: { type: LeadType; id: number; value: string | null }) {
+export function NotesEditor({
+  type,
+  id,
+  value,
+  onDirtyChange,
+}: {
+  type: LeadType;
+  id: number;
+  value: string | null;
+  onDirtyChange?: (dirty: boolean) => void;
+}) {
   const router = useRouter();
   const fieldId = useId();
   const [text, setText] = useState(value ?? "");
@@ -20,6 +31,10 @@ export function NotesEditor({ type, id, value }: { type: LeadType; id: number; v
   const [pending, startTransition] = useTransition();
 
   const dirty = text !== saved;
+
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
 
   function save() {
     setError(null);
