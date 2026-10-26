@@ -47,7 +47,7 @@ function Ida({ ida }: { ida: string | null }) {
       href={advertUrl(ida)}
       target="_blank"
       rel="noreferrer"
-      className="-my-2 inline-block py-2 font-mono text-xs text-brand hover:underline"
+      className="-my-3 inline-block py-3 font-mono text-xs text-brand hover:underline"
     >
       {ida}
     </a>
@@ -115,7 +115,7 @@ export function MobilebgAdvertList({ rows }: { rows: MobilebgAdvertRow[] }) {
               <div className="flex items-start justify-between gap-3">
                 <Link
                   href={`/avtomobil/${r.carId}`}
-                  className="-my-1 min-w-0 py-1 font-semibold wrap-anywhere text-ink hover:text-brand"
+                  className="-my-2.5 min-w-0 py-2.5 font-semibold wrap-anywhere text-ink hover:text-brand"
                 >
                   {carTitle(r.year, r.title, r.carId)}
                 </Link>
