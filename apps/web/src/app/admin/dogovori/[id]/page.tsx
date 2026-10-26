@@ -206,7 +206,11 @@ export default async function AdminContractDetailPage({ params }: { params: Prom
               Промените обновяват дължимите суми на неплатените етапи. Вече генерирани документи НЕ се променят — при
               нужда се генерира нова версия. Клиентът и приспаднатият депозит не се променят след създаване.
             </p>
-            <ContractForm contract={contract} />
+            {/* Keyed on the last change: the form keeps its own copy of the values,
+                and a renumber, a status flip from a payment or another save must
+                not be written back over by its stale copy (2026-114 lost its new
+                основание to a save 7 s after the renumber). */}
+            <ContractForm key={contract.updatedAt.getTime()} contract={contract} />
           </div>
         </details>
       ) : null}
