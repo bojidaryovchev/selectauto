@@ -26,6 +26,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   roles_changed: "Промяна на роли",
   deindexed: "Скрита обява",
   deindex_revoked: "Възстановена обява",
+  deleted: "Изтриване",
+  published: "Публикуване",
 };
 
 export const AUDIT_ENTITY_LABELS: Record<string, string> = {
@@ -36,6 +38,8 @@ export const AUDIT_ENTITY_LABELS: Record<string, string> = {
   client: "Клиент",
   user: "Потребител",
   car_deindex: "Скриване на обява",
+  numbering: "Номерация",
+  mobilebg_advert: "Обява в mobile.bg",
 };
 
 export function auditActionLabel(action: string): string {
