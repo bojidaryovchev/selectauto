@@ -1,4 +1,4 @@
-import { BackToTop, ScrollToTop, ViberGroupPopup } from "@/components/layout";
+import { PublicWidgets, ScrollToTop } from "@/components/layout";
 import { Providers } from "@/components/providers";
 import { SITE_NAME, SITE_URL } from "@/constants";
 import { buildOrganizationJsonLd, buildWebsiteJsonLd } from "@/lib/site-jsonld";
@@ -88,15 +88,14 @@ export default function RootLayout({
           <Providers>{children}</Providers>
         </SessionProvider>
 
-        {/* Floating Viber-group CTA: reveals on scroll-down, hides on scroll-up,
-            dismissable for the session. Self-contained client singleton — no
-            usePathname, so (unlike ScrollToTop) it needs no Suspense boundary. */}
-        <ViberGroupPopup />
-
-        {/* Floating "back to top" button: reveals once scrolled past ~one
-            viewport, smooth-scrolls to the top on click. Self-contained client
-            singleton, lifted above the mobile bottom nav. */}
-        <BackToTop />
+        {/* The floating Viber-group CTA (reveals on scroll-down, hides on
+            scroll-up, dismissable for the session) and the "back to top" button
+            (reveals past ~one viewport, lifted above the mobile bottom nav) —
+            public pages only: PublicWidgets renders nothing under /admin. It
+            reads usePathname, so it needs a Suspense boundary like ScrollToTop. */}
+        <Suspense fallback={null}>
+          <PublicWidgets />
+        </Suspense>
 
         {/* Vercel Web Analytics: page views + custom events, billed at $0.03/1K
             events. The ONLY Vercel telemetry we keep. Speed Insights was removed

@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import { LeadInbox } from "@/components/admin";
 import { requireAdminPage } from "@/lib/admin";
 import { LEAD_TYPE_META } from "@/constants/admin";
 import { INQUIRY_COLUMNS, toInquiryView } from "@/lib/admin-lead-view";
 import { parseLeadFilters, type LeadSearchParams } from "@/lib/admin-lead-filters";
 import { listInquiries } from "@/queries/admin";
+
+export const metadata: Metadata = { title: LEAD_TYPE_META.inquiry.label };
 
 /**
  * /admin/zapitvaniya — the "Безплатна консултация" lead inbox. Same shape as the

@@ -1,6 +1,9 @@
+import type { Metadata } from "next";
 import { DeindexManager, DeindexRequestList } from "@/components/admin/deindex";
 import { requireAdminPage } from "@/lib/admin";
 import { listDeindexRequests } from "@/queries/deindex";
+
+export const metadata: Metadata = { title: "Скрити обяви" };
 
 /**
  * /admin/skriti-obyavi — the paid de-listing desk.
@@ -8,9 +11,6 @@ import { listDeindexRequests } from "@/queries/deindex";
  * Admin-only, explicitly: the /admin layout gates only to back-office level, and
  * this both takes money and changes what the public site shows. An „Наблюдаващ"
  * must not reach it.
- *
- * The slug deliberately avoids being a prefix of any other admin route (the nav
- * highlights with `pathname.startsWith`).
  */
 export default async function AdminDeindexPage({
   searchParams,

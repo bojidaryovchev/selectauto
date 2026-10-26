@@ -6,7 +6,8 @@ import { CloseIcon, ViberGlyphIcon } from "@/components/icons";
 import { SOCIALS } from "@/constants";
 
 /**
- * Floating "Влез във Viber групата" CTA pill, mounted once in the root layout.
+ * Floating "Влез във Viber групата" CTA pill, mounted once in the root layout
+ * (through PublicWidgets, which leaves it out of /admin).
  *
  * Behaviour (per product spec):
  *  - Reveals while the user scrolls DOWN (past a small threshold), hides while

@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { MailThreadView } from "@/components/admin/mail";
 import { requireAdminPage } from "@/lib/admin";
 import { getMailThread } from "@/queries/mail";
+
+export const metadata: Metadata = { title: "Писмо" };
 
 /**
  * /admin/poshta/[id] — one conversation, with the reply composer.

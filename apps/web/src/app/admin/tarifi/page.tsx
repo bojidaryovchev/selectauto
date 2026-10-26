@@ -1,6 +1,9 @@
+import type { Metadata } from "next";
 import { CalcConfigForm, TariffUploadForm } from "@/components/admin";
 import { requireAdminPage } from "@/lib/admin";
 import { getCalcConfig, listTariffUploads } from "@/queries/tariffs";
+
+export const metadata: Metadata = { title: "Тарифи" };
 
 /**
  * /admin/tarifi — the import-calculator manager. Two independent controls:

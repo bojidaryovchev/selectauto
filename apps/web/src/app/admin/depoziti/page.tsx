@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { auth } from "@/auth";
 import { NumberingSettings } from "@/components/admin/contracts";
@@ -8,6 +9,8 @@ import { formatDbAmount } from "@/lib/money";
 import { listClients } from "@/queries/clients";
 import { getNumbering } from "@/queries/contracts";
 import { listDeposits } from "@/queries/deposits";
+
+export const metadata: Metadata = { title: "Депозити" };
 
 /**
  * /admin/depoziti — the deposit-contracts module (spec §14): independent number

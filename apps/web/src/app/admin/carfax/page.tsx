@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import { LeadInbox } from "@/components/admin";
 import { requireAdminPage } from "@/lib/admin";
 import { LEAD_TYPE_META } from "@/constants/admin";
 import { CARFAX_COLUMNS, toCarfaxView } from "@/lib/admin-lead-view";
 import { parseLeadFilters, type LeadSearchParams } from "@/lib/admin-lead-filters";
 import { listCarfaxRequests } from "@/queries/admin";
+
+export const metadata: Metadata = { title: LEAD_TYPE_META.carfax.label };
 
 /**
  * /admin/carfax — the Carfax / VIN-report lead inbox. Reads the URL filters

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -10,6 +11,10 @@ import {
   LEAD_TYPE_META,
 } from "@/constants/admin";
 import type { StatusCounts } from "@/queries/admin";
+
+// Spelled out: the admin layout's `title.template` applies to child segments
+// only, not to the page in its own folder.
+export const metadata: Metadata = { title: "Табло · Админ · SelectAuto" };
 
 /**
  * /admin dashboard — a summary card per lead type (total + a highlighted "new"

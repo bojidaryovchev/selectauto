@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { requireAdminPage } from "@/lib/admin";
 import { listAuditEvents } from "@/queries/admin";
 import { auditActionLabel, auditEntityLabel } from "@/constants/audit";
+
+export const metadata: Metadata = { title: "Дневник" };
 
 /**
  * /admin/dnevnik — the global audit log.

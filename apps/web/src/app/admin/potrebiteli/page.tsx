@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { UsersManager } from "@/components/admin/users";
 import { APP_ROLE_META, APP_ROLES } from "@/constants/admin";
 import { requireAdminPage } from "@/lib/admin";
 import { listUsers } from "@/queries/users";
+
+export const metadata: Metadata = { title: "Потребители" };
 
 /**
  * /admin/potrebiteli — account roles. „Наблюдаващ" (e.g. Радка и другите, които

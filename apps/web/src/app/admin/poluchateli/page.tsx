@@ -1,6 +1,9 @@
+import type { Metadata } from "next";
 import { RecipientsManager } from "@/components/admin/recipients";
 import { requireAdminPage } from "@/lib/admin";
 import { listRecipients } from "@/queries/recipients";
+
+export const metadata: Metadata = { title: "Получатели" };
 
 /**
  * /admin/poluchateli — the "Получатели" settings (contracts & payments module,

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { auth } from "@/auth";
 import { ContractFilters, NoticeSentButton, NumberingSettings, PaymentStatusBadge } from "@/components/admin/contracts";
@@ -15,6 +16,8 @@ import {
 } from "@/constants/contracts";
 import { formatDbAmount } from "@/lib/money";
 import { listContracts } from "@/queries/contracts";
+
+export const metadata: Metadata = { title: "Договори" };
 
 /**
  * /admin/dogovori — the mediation-contracts register (spec §4/§11): one row per

@@ -1,6 +1,9 @@
+import type { Metadata } from "next";
 import { MailInbox } from "@/components/admin/mail";
 import { requireAdminPage } from "@/lib/admin";
 import { listMailThreads } from "@/queries/mail";
+
+export const metadata: Metadata = { title: "Поща" };
 
 /**
  * /admin/poshta — the info@selectauto.bg inbox.

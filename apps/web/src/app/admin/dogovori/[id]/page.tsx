@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ContractAdminTools, ContractDocumentButton, ContractForm } from "@/components/admin/contracts";
@@ -16,6 +17,8 @@ import { can } from "@/lib/admin";
 import { dbToCents, formatDbAmount } from "@/lib/money";
 import { getContract } from "@/queries/contracts";
 import { listRecipients } from "@/queries/recipients";
+
+export const metadata: Metadata = { title: "Договор" };
 
 // Audit-trail labels now live in `constants/audit.ts`, shared with the global
 // log at /admin/dnevnik — two copies would drift the moment a new action is

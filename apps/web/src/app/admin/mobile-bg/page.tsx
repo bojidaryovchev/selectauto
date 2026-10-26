@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import {
   MobilebgAdvertList,
   MobilebgMappingDesk,
@@ -6,6 +7,8 @@ import {
 import { requirePageWith } from "@/lib/admin";
 import { isConfigured } from "@/lib/mobilebg/client";
 import { listMobilebgAdverts, listMobilebgMappings } from "@/queries/mobilebg";
+
+export const metadata: Metadata = { title: "mobile.bg" };
 
 /**
  * /admin/mobile-bg — публикуване на автомобили в mobile.bg.

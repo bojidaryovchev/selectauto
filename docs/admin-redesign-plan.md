@@ -102,10 +102,10 @@ Other facts established:
   `app/globals.css` beats Tailwind's layered utility, so the reserve is
   **0 px everywhere** (computed style) ✔. Harmless for /admin; worth a separate
   look on the public site, where the fixed bottom nav may cover the footer.
-- There is no `error.tsx`, `global-error.tsx` or `loading.tsx` anywhere in
-  `app/`, and no `not-found.tsx` under `app/admin/` ✔ — so `notFound()` in an
-  admin page renders the **public** 404 with the public header, and any thrown
-  error shows Next's default error screen.
+- There is no `error.tsx` or `global-error.tsx` anywhere in `app/`, and no
+  `loading.tsx` or `not-found.tsx` under `app/admin/` (the only `loading.tsx` is
+  the catalog's) ✔ — so `notFound()` in an admin page renders the **public** 404
+  with the public header, and any thrown error shows Next's default error screen.
 - No admin page sets its own title; every tab reads „Админ панел | SelectAuto" ✔.
 - Production roles: 2 admin, 5 observer, 1 supervisor ✔ (so someone can clear
   the „за изпращане" list after `f6006fa`).
@@ -120,7 +120,7 @@ Other facts established:
 ```
 ≥ 1024 px (lg)                                   < 1024 px
 ┌───────────────┬──────────────────────────┐    ┌──────────────────────────┐
-│ SELECTAUTO    │ ‹main› @container/main   │    │ ☰  SELECTAUTO АДМИН       │ ← sticky top bar, h-14
+│ SELECTAUTO    │ ‹main›                   │    │ ☰  SELECTAUTO АДМИН       │ ← sticky top bar, h-14
 │ АДМИН         │                          │    ├──────────────────────────┤
 │───────────────│  Page header             │    │  Page header             │
 │ ▣ Табло       │  (title · text · actions)│    │  cards instead of tables │
@@ -156,9 +156,13 @@ Other facts established:
   roughly 880 px by estimate, so it scrolls on short laptop screens), account footer (pinned:
   name/e-mail and role label from `APP_ROLE_META`, „← Към сайта", „Изход").
 - **Content:** `lg:pl-64`, `main` keeps `mx-auto max-w-7xl`, gutters
-  `px-4 lg:px-8`, plus **`min-w-0`** so no child can widen the page, and
-  **`@container/main`** so lists switch layout on the content's width, not the
-  viewport's (with a sidebar, content at 1 024 px is narrower than at 768 px).
+  `px-4 lg:px-8`, plus **`min-w-0`** so no child can widen the page. Lists switch
+  layout on the content's width, not the viewport's (with a sidebar, content at
+  1 024 px is narrower than at 768 px) — but through a container on **each list's
+  own wrapper, not on `main`**: `container-type: inline-size` applies layout
+  containment, which makes the element the containing block of its
+  `position: fixed` descendants, and the lead inboxes' detail drawer
+  (`fixed inset-0`, not portaled) would be trapped inside the content column.
 - **Keep the window as the scroller** (no inner scrolling `main`).
   `ScrollToTop`, `ConfirmDialog`'s scroll lock (`body.style.overflow`), Base UI
   popups and native mobile behaviour (address-bar collapse, tap-status-bar to
@@ -195,7 +199,8 @@ proposal (§8):
 - Brand link goes to the role's home: `/admin` for admins,
   `/admin/dogovori` otherwise (today a non-admin bounces through a redirect).
 - **Icons:** new files in `components/icons/`, one per file, the house style
-  (`viewBox="0 0 24 24"`, stroke 1.7, `currentColor`, `aria-hidden`). Reuse
+  (`viewBox="0 0 24 24"`, `currentColor`, `aria-hidden`; stroke 2, like the
+  reused glyphs, so the list reads as one set). Reuse
   `MailIcon`, `EyeOffIcon`, `ClockIcon`, `CloseIcon`; add ~11: grid
   (Табло), file-search (Carfax), message (Консултации), calculator (Оферти),
   file-text (Договори), wallet (Депозити), megaphone (mobile.bg), percent
@@ -251,10 +256,11 @@ proposal (§8):
 ### 2.5 Keep public-site widgets out of /admin
 
 `ViberGroupPopup` and `BackToTop` are mounted for every route in
-`app/layout.tsx` ✔. Make both return `null` when the path starts with
-`/admin`, and wrap them in `<Suspense fallback={null}>` in the root layout (the
-`ScrollToTop` precedent — `usePathname` needs it under `cacheComponents`).
-`FavoritesProvider`'s one favourites fetch on admin pages is harmless; leave it.
+`app/layout.tsx` ✔. Done as one wrapper, `components/layout/public-widgets.tsx`,
+that renders both except under `/admin`, inside `<Suspense fallback={null}>` in
+the root layout (the `ScrollToTop` precedent — `usePathname` needs it under
+`cacheComponents`). `FavoritesProvider`'s one favourites fetch on admin pages is
+harmless; leave it.
 
 ### 2.6 Layers, focus, scroll-lock rules
 
@@ -274,9 +280,9 @@ proposal (§8):
 | Rewrite shell | `app/admin/layout.tsx` |
 | New | `app/admin/loading.tsx`, `app/admin/not-found.tsx`, `app/admin/error.tsx` |
 | New nav config | `constants/admin-nav.ts` |
-| Replace `admin-nav.tsx` with a folder (one component per file + barrel) | `components/admin/shell/{admin-sidebar,admin-top-bar,admin-nav-drawer,admin-nav-list,admin-account-card,admin-shell-skeleton,index}.tsx` |
+| Replace `admin-nav.tsx` with a folder (one component per file + barrel) | `components/admin/shell/{admin-chrome,admin-sidebar,admin-top-bar,admin-nav-drawer,admin-nav-list,admin-nav-icon,admin-account-card,admin-brand,admin-shell-skeleton,admin-page-skeleton,index}` |
 | New icons | `components/icons/*-icon.tsx` + `index.ts` |
-| Public widgets out of /admin | `components/layout/viber-group-popup.tsx`, `components/layout/back-to-top.tsx`, `app/layout.tsx` |
+| Public widgets out of /admin | `components/layout/public-widgets.tsx`, `app/layout.tsx` |
 | Titles | each `app/admin/**/page.tsx` (metadata only) |
 
 ---
@@ -298,10 +304,11 @@ proposal (§8):
 
 ### 3.2 Lists: cards ↔ table by container width
 
-Tailwind 4.3 container queries (docs checked): mark `main`'s inner wrapper
-`@container/main`; render a card list with `@4xl/main:hidden` and the table
-with `hidden @4xl/main:block` (896 px; per list pick `@3xl`–`@5xl` or an
-arbitrary `@min-[…]`). The lead inboxes already switch to cards below `md` —
+Tailwind 4.3 container queries (docs checked): mark each list's own wrapper
+`@container` (named, e.g. `@container/list`, when containers nest) — never
+`main`, see §2.1; render a card list with `@4xl:hidden` and the table with
+`hidden @4xl:block` (896 px; per list pick `@3xl`–`@5xl` or an arbitrary
+`@min-[…]`). The lead inboxes already switch to cards below `md` —
 the pattern to generalise. Rebalance wide tables (merge №/date, client/car,
 VIN under the title) so the main registers fit ~880 px of content (a 1 280 px
 laptop with the sidebar). Every action a row offers must be reachable on the
@@ -514,7 +521,9 @@ redesign work. Track B items are numbered in §5.
   adverts) ◇; an advert can exist without its `ida` recorded (no timeout, no
   reconcile) ◇; a relisted VIN gets a second advert ◇; register has no pager ◇;
   lot-number search broken like B17 ◇; generated description says „включва
-  ДДС" whatever the VAT status ◇; engine/transmission/km required but no input ◇.
+  ДДС" whatever the VAT status ◇; engine/transmission/km required but no input ◇;
+  a Korean car photo hot-linked from `sellers.import-motor.com` shows broken —
+  the host's response is refused cross-origin (`ERR_BLOCKED_BY_RESPONSE.NotSameOrigin`) ✔.
   **Todo item „description … default with ability to edit":** a default is
   generated but shown only as a placeholder — editing replaces it entirely, and
   nothing is stored, so a correction silently reverts to the generated text ◇.

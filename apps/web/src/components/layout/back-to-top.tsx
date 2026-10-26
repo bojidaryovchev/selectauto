@@ -6,7 +6,8 @@ import { ArrowUpIcon } from "@/components/icons";
 
 /**
  * Floating "обратно нагоре" (back-to-top) button, mounted once in the root
- * layout. Reveals once the page has been scrolled past {@link REVEAL_AFTER_PX}
+ * layout (through PublicWidgets, which leaves it out of /admin). Reveals once
+ * the page has been scrolled past {@link REVEAL_AFTER_PX}
  * and scrolls the window smoothly back to the top on click.
  *
  * Positioning: fixed to the bottom-right. On mobile it's lifted above the fixed

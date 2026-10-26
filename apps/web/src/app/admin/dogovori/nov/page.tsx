@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import { ContractForm } from "@/components/admin/contracts";
 import { requirePageWith } from "@/lib/admin";
 import { listClients } from "@/queries/clients";
 import { listAvailableDeposits } from "@/queries/deposits";
+
+export const metadata: Metadata = { title: "Нов договор" };
 
 /**
  * /admin/dogovori/nov — the contract-creation wizard (spec §3/§11.1): type,
