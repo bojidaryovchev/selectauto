@@ -12,8 +12,9 @@ export const metadata: Metadata = { title: LEAD_TYPE_META.carfax.label };
 /**
  * /admin/carfax — the Carfax / VIN-report lead inbox. Reads the URL filters
  * (status/q/page), queries one page of `carfax_requests`, maps each row to the
- * shared AdminLeadView, and hands it to the generic <LeadInbox>. The layout gates
- * the route to admins.
+ * shared AdminLeadView, and hands it to the generic <LeadInbox>.
+ * `requireAdminPage()` is the gate — the /admin layout (and the proxy) only
+ * require back-office access, which observers have too.
  */
 export default async function AdminCarfaxPage({
   searchParams,

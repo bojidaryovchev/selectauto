@@ -5,10 +5,10 @@ import { getDb, schema } from "@/lib/db";
 export type RecipientRow = typeof schema.paymentRecipients.$inferSelect;
 
 /**
- * All payment recipients for the /admin/poluchateli settings screen, grouped by
- * kind then name. NOT cached (request-scoped, admin-only, tiny table — same
- * reasoning as the lead-inbox queries). Admin-gated defensively (the page +
- * proxy already gate).
+ * All payment recipients, grouped by kind then name — for the /admin/poluchateli
+ * settings screen (admin-only) and the notice panel of a contract's page, which
+ * observers reach too; hence the back-office gate. NOT cached (request-scoped,
+ * tiny table — same reasoning as the lead-inbox queries).
  */
 export async function listRecipients(): Promise<RecipientRow[]> {
   if (!(await getSessionWith("backoffice.enter"))) throw new Error("FORBIDDEN");

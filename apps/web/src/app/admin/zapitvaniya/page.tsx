@@ -11,7 +11,8 @@ export const metadata: Metadata = { title: LEAD_TYPE_META.inquiry.label };
 
 /**
  * /admin/zapitvaniya — the "Безплатна консултация" lead inbox. Same shape as the
- * Carfax inbox over the `inquiries` table. The layout gates the route to admins.
+ * Carfax inbox over the `inquiries` table. `requireAdminPage()` is the gate — the
+ * /admin layout (and the proxy) only require back-office access.
  */
 export default async function AdminInquiriesPage({
   searchParams,

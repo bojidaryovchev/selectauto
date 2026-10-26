@@ -8,8 +8,9 @@ import { clientSchema } from "./client.schema";
  * detail-page edit — spec §3). Shared by the client wizard and the server
  * actions. Amounts arrive as human-entered strings ("15 480,50") and are
  * validated against the money parser; the mutations convert them to NUMERIC
- * strings for the DB. The five points may be zero (e.g. Мито и ДДС ориентировъчно
- * попълнено по-късно) — they are editable until the stage is paid.
+ * strings for the DB. Any перо may be zero (e.g. Мито и ДДС ориентировъчно
+ * попълнено по-късно) — they are editable until the stage is paid. How many there
+ * are depends on the market (CONTRACT_MARKET_META).
  */
 
 /** A non-negative money amount with up to 2 decimals; empty = 0. */

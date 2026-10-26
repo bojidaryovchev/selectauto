@@ -25,16 +25,16 @@ const nextConfig: NextConfig = {
   //     into the static shell — these have no per-request key and change only as
   //     fast as ingestion. Caching getCarBrands specifically is what lets the
   //     homepage fully prerender (it renders outside any Suspense boundary).
-  //   - CATALOG queries (page/count/facets/detail) are NOT cached: they're already
+  //   - CATALOG feed queries (page/count) are NOT cached: they're already
   //     DB-cheap (keyset reads + the counts/facets summary tables, migrations
   //     0016/0017) and their keys are per-request-unique (filters × cursor), and
   //     the catalog route is dynamic anyway (reads searchParams).
-  //   - We use plain `"use cache"` (in-memory LRU), NOT `"use cache: remote"`:
-  //     without a configured cacheHandlers.remote the two are identical, and on
-  //     Vercel serverless the in-memory store is best-effort per instance. A
-  //     durable cross-instance cache would need a Redis/KV handler — intentionally
-  //     not added (catalog perf was solved at the DB layer). See cache-tags.ts and
-  //     node_modules/next/dist/docs (use-cache, use-cache-remote, cacheHandlers).
+  //   - The car detail, the related-cars pool and the facet base DO cache across
+  //     requests, with `"use cache: remote"` — on Vercel its handler, the Runtime
+  //     Cache, is provided automatically. Everything else uses plain `"use cache"`
+  //     (in-memory, best-effort per instance on serverless). A paid de-index
+  //     expires these by tag. See lib/cache-tags.ts and node_modules/next/dist/docs
+  //     (use-cache, use-cache-remote, cacheHandlers).
   cacheComponents: true,
   // Resolve `three` from its per-file source instead of its published build. The
   // build is two pre-bundled files (three.core.js + three.module.js), and a

@@ -32,9 +32,11 @@ function cents(value: string | undefined): number {
  *     contracts.deposit_contract_id makes reuse impossible even under a race.
  *  3. Mint the visible number from contract_counters (atomic upsert-increment;
  *     series 'contract', year of the contract date) → "2026-088".
- *  4. Insert the contract with a frozen client snapshot; total = т.1+…+т.5.
- *  5. Insert the FOUR payment stages (§4): vehicle = т.1 − депозит, transport,
- *     customs_vat, final = т.4 + т.5; all 'not_requested'.
+ *  4. Insert the contract with a frozen client snapshot; total = the sum of the
+ *     market's пера.
+ *  5. Insert the market's payment stages (§4 — four for САЩ/Корея, three for
+ *     Канада, two for Европа), each the sum of its пера, the vehicle stage less
+ *     the deposit; all 'not_requested'.
  *  6. Append audit events (§9).
  *
  * Returns the new contract id for the redirect to /admin/dogovori/[id].

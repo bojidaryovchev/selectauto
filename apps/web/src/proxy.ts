@@ -12,9 +12,12 @@ import { isCarGone, parseAvtomobilId } from "@/lib/sold-lot-gone";
  *    car carries a PAID de-index (`cars.deindexed_at`, migration 0043) — the
  *    crawl-budget-cheaper de-index signal the PPR page can't emit itself (a
  *    page.tsx streams a 200 shell; see docs/11-web-seo-and-indexing.md §3).
- *    Just-sold lots fall through to the page's own `noindex, follow`. Both
- *    reasons cost ONE uncached DB round trip, so a paid delisting takes effect on
- *    the very next request.
+ *    Just-sold lots fall through to the page's own `noindex, follow`. The check
+ *    (lib/sold-lot-gone.ts) reads a per-instance snapshot of the de-indexed ids,
+ *    refreshed every 30 s, and otherwise ONE uncached point lookup covering both
+ *    reasons — which runs for every other car while any archived lot is past
+ *    the threshold (true since late September 2026), so a paid delisting takes
+ *    effect on the very next request, and within 30 s at worst.
  * 2. **Admin gate.** `/admin/**` is the one force-protected area (roles ride on
  *    the Auth.js JWT); signed-out → sign-in, signed-in without back-office
  *    access → home.

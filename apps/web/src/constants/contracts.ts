@@ -143,7 +143,7 @@ export function stageLabel(market: ContractMarket, stage: PaymentStage): string 
   return def?.label ?? PAYMENT_STAGE_META[stage]?.label ?? stage;
 }
 
-/** The four payment stages (§4), in display order. */
+/** Every payment stage (§4), in display order — a market uses all or some of them (CONTRACT_MARKET_META). */
 export const PAYMENT_STAGES = ["vehicle", "transport", "customs_vat", "final"] as const;
 
 export type PaymentStage = (typeof PAYMENT_STAGES)[number];
@@ -179,7 +179,7 @@ export const PAYMENT_STATUS_META: Record<PaymentStatus, { label: string; badgeCl
   cancelled: { label: "Анулирано", badgeClass: "bg-neutral-200 text-neutral-700 ring-neutral-300" },
 };
 
-/** Contract lifecycle statuses. `fully_paid` = all four stages paid (§11.8). */
+/** Contract lifecycle statuses. `fully_paid` = all of the contract's stages paid (§11.8). */
 export const CONTRACT_STATUSES = ["draft", "active", "fully_paid", "cancelled"] as const;
 
 export type ContractStatus = (typeof CONTRACT_STATUSES)[number];

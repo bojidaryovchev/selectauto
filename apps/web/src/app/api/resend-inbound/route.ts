@@ -13,9 +13,10 @@ import { ingestInboundEmail } from "@/mutations/mail";
  * Resend webhook endpoint — currently handles `email.received` only.
  *
  * Mail to any `@selectauto.bg` address is accepted by Resend (the apex MX points
- * at its receiving endpoint) and announced here. Phase 0 forwards it to a real
- * mailbox so a human can read it; see `lib/inbound-mail.ts` for why, and
- * docs/admin-mail-and-deindex-plan.md for the admin-inbox phase that follows.
+ * at its receiving endpoint) and announced here. It is stored as a conversation in
+ * the admin inbox (/admin/poshta) — the only record, there is no mailbox behind
+ * info@ — and, when MAIL_FORWARD_TO is set, a copy goes to a human mailbox (see
+ * `lib/inbound-mail.ts`).
  *
  * AUTH: the Svix/Standard-Webhooks SIGNATURE is the only gate. The proxy does not
  * force-protect `/api` (only `/admin`), and there is no session on a vendor

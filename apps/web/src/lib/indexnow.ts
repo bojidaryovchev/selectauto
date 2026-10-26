@@ -19,8 +19,8 @@ import { SITE_URL } from "@/constants";
  * A 200 means "received", not "actioned": "The HTTP 200 response code only
  * indicates that the search engine has received your URL."
  *
- * Ownership is proved by hosting `{key}.txt` at the site root — see
- * `app/[key]/route.ts`-style static route in `app/indexnow-key.txt/route.ts`.
+ * Ownership is proved by hosting `{key}.txt` at the site root: next.config.ts
+ * rewrites that path onto `app/api/indexnow-key/route.ts`.
  * Without INDEXNOW_KEY set, submission is skipped rather than failing the
  * de-index: the site-side suppression is what the customer actually bought.
  */

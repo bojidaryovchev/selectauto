@@ -40,9 +40,11 @@ export type ContractDetail = {
 };
 
 /**
- * Full detail for /admin/dogovori/[id]: contract + client + the four payment
- * stages (with recipient names) + the linked deposit + the audit trail. Returns
- * null when the id doesn't exist. NOT cached; admin-gated defensively.
+ * Full detail for /admin/dogovori/[id]: contract + client + its payment stages
+ * (four for САЩ and Корея, three for Канада, two for Европа — see
+ * CONTRACT_MARKET_META), with recipient names + the linked deposit + the audit trail. Returns
+ * null when the id doesn't exist. NOT cached. Gated on back-office access, then
+ * on whether this session may see this contract (`canSeeRecord`).
  */
 export async function getContract(id: number): Promise<ContractDetail | null> {
   const session = await getSessionWith("backoffice.enter");

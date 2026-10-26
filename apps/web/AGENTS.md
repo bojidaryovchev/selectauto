@@ -52,9 +52,13 @@ that is ever needed; and `lib/db.ts` / `lib/email.ts` start with
 `import "server-only"`, so a Client Component that reaches them fails the build
 instead of leaking server code.
 
-Cache invalidation: when listings change, call
-`revalidateTag(CACHE_TAGS.buyNowCars | auctionCars, "max")` (the single-arg form
-is deprecated). DB schema/types come from `@selectauto/db/schema`; the
-UI listing type is `CarView` (distinct from the DB `Car` row).
+Cache invalidation: in a Server Action, `updateTag(tag)` — the next request waits
+for fresh data. Outside one (a route handler, a cron), `revalidateTag(tag,
+{ expire: 0 })` does the same. `revalidateTag(tag, "max")` serves the stale entry
+once more while it refreshes, so keep it for changes that may lag; never for a
+paid de-index or a price (see `lib/cache-tags.ts`). The single-argument
+`revalidateTag(tag)` is deprecated. DB schema/types come from
+`@selectauto/db/schema`; the UI listing type is `CarView` (distinct from the DB
+`Car` row).
 
 `RESTRUCTURE-PLAN.md` documents the full migration that produced this layout.

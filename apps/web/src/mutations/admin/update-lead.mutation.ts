@@ -32,8 +32,9 @@ export type UpdateLeadInput = {
  * Admin-only: update a lead's `status` and/or `admin_notes` (and bump
  * `updated_at`). Parameterised over the three lead tables. Returns an
  * `ActionResult` — a non-admin caller gets `{ success:false }` rather than a
- * redirect (an action can't redirect mid-flow); the proxy + page already block
- * non-admins from ever reaching a screen that calls this.
+ * redirect (an action can't redirect mid-flow). The inbox pages are admin-only
+ * too, but this check is the one that counts: a server action is a POST anyone
+ * can send, and the proxy only requires back-office access.
  *
  * Persist-first is trivial here (there's no email side-effect). On success it
  * revalidates the /admin tree so the inbox + dashboard counts reflect the change.

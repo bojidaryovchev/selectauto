@@ -735,9 +735,10 @@ export const carListingFacets = pgTable(
 /**
  * Contracts & payments module (техническо задание "договори и плащания" — see
  * docs/contracts-payments-plan.md and migrations/0038_contracts_payments.sql,
- * keep in sync). The mediation contract is the single source of truth: client,
- * car and the five financial points are entered once; saving auto-creates the
- * four payment stages; notices are generated as immutable versioned snapshots.
+ * keep in sync). The contract is the single source of truth: client, car and
+ * the financial пера (five for САЩ/Корея, four for Канада, three for Европа)
+ * are entered once; saving auto-creates the market's payment stages (four,
+ * three or two); notices are generated as immutable versioned snapshots.
  */
 
 /**
@@ -856,8 +857,9 @@ export const depositContracts = pgTable(
 /**
  * contracts — the mediation contract (договор за посредничество). One row per
  * deal; documents link by `id` (the internal key), `number` is for humans/print.
- * The five points (§3.5) live here and are entered ONCE; the four payment stages
- * are derived rows in contract_payments created in the same transaction.
+ * The пера (§3.5) live here and are entered ONCE; the payment stages (four,
+ * three or two, by market) are derived rows in contract_payments created in the
+ * same transaction.
  */
 export const contracts = pgTable(
   "contracts",
@@ -959,8 +961,9 @@ export const contractPayments = pgTable(
  * plus the contract/deposit-contract documents themselves. `snapshot` freezes
  * the COMPLETE render payload at generation time (§2 — a contract edit or
  * recipient edit never changes an already generated document); regeneration
- * inserts version+1, nothing is overwritten or deleted (§9). The USD columns
- * snapshot the §16 conversion (us_ca notices to SelectAuto only).
+ * inserts version+1 and nothing is overwritten (§9). Rows go only with their
+ * contract or deposit, when a cancelled one is deleted. The USD columns
+ * snapshot the §16 conversion (САЩ notices to SelectAuto only).
  */
 export const generatedDocuments = pgTable(
   "generated_documents",
@@ -1025,15 +1028,17 @@ export const paymentAttachments = pgTable(
 );
 
 /**
- * contract_events — append-only audit trail for the module (§9): who created/
- * edited what, status changes, generated versions, mark-paid actions. Written in
- * the same transaction as the mutation it records. Never updated or deleted.
+ * contract_events — the append-only audit trail (§9), rendered at /admin/dnevnik:
+ * who created/edited what, status changes, generated versions, mark-paid actions,
+ * role changes, numbering, de-indexes and mobile.bg adverts. Written in the same
+ * transaction as the mutation it records. Never updated or deleted — a deleted
+ * cancelled contract or deposit keeps its history.
  */
 export const contractEvents = pgTable(
   "contract_events",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
-    /** 'contract' | 'payment' | 'deposit' | 'recipient' | 'client'. */
+    /** 'contract' | 'payment' | 'deposit' | 'recipient' | 'client' | 'user' | 'numbering' | 'car_deindex' | 'mobilebg_advert' (labels: apps/web/src/constants/audit.ts). */
     entity: text("entity").notNull(),
     entityId: integer("entity_id").notNull(),
     /** e.g. 'created' | 'updated' | 'status_changed' | 'document_generated' | 'marked_paid'. */

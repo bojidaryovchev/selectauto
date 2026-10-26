@@ -7,8 +7,9 @@ import type { NoticeLine, NoticeSnapshot, NoticeVariant } from "@/types/notice-s
  * rows. Pure — no I/O; the mutation loads/validates everything and this
  * assembles the exact payload the PDF renders from.
  *
- * Currency logic (§16): us_ca + SelectAuto → USD lines × курс = EUR total;
- * us_ca + partner → USD only; kr → EUR. The лв. equivalent that appeared on the
+ * Currency logic (§16): САЩ + SelectAuto → USD lines × курс = EUR total;
+ * САЩ + partner → USD only; Канада's first stage → its CAD value × the
+ * contract's rate; customs brokers, Корея and Европа → EUR. The лв. equivalent that appeared on the
  * older samples is deliberately NOT printed — the owner confirmed (07.2026) it
  * no longer serves a purpose now that BG is in the eurozone.
  */
@@ -74,7 +75,7 @@ export function buildNoticeSnapshot(args: {
   issuer: typeof schema.paymentRecipients.$inferSelect;
   /** Linked deposit, only when the VEHICLE stage carries a deduction (§14.2). */
   deposit: typeof schema.depositContracts.$inferSelect | null;
-  /** Курс USD→EUR — required iff us_ca + SelectAuto (validated by the caller). */
+  /** Курс USD→EUR — required iff САЩ + SelectAuto (validated by the caller). */
   usdEurRate: number | null;
   /**
    * An amount typed by the operator at generation, in the first column's

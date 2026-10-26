@@ -17,7 +17,8 @@ export type DepositListRow = {
  * All deposit contracts for /admin/depoziti, newest first. Deliberately
  * unpaginated (deposits accrue at deal pace). The used-by link rides a LEFT
  * JOIN on contracts.deposit_contract_id (§14.3 — the history keeps the
- * deposit↔contract relation visible). Admin-gated defensively.
+ * deposit↔contract relation visible). Gated on back-office access; without
+ * `contracts.viewAll` a session sees only the deposits it created.
  */
 export async function listDeposits(): Promise<DepositListRow[]> {
   const session = await getSessionWith("backoffice.enter");

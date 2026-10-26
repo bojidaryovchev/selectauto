@@ -82,27 +82,23 @@ export function fromListRow(row: ListReceivingEmail): InboundEmailInput {
 }
 
 /**
- * Inbound mail — forwarding to a human mailbox.
+ * Inbound mail — the copy to a human mailbox.
  *
  * `selectauto.bg`'s apex MX points at Resend's receiving endpoint
  * (`inbound-smtp.eu-west-1.amazonaws.com`), so every message sent to ANY address
  * at the domain is accepted by Resend. `info@selectauto.bg` is the site's public
  * contact address (`CONTACT.email`), but Resend receiving offers no IMAP/POP —
  * there is no mailbox, and until this route existed nothing consumed the mail at
- * all. This module hands it to a real inbox so a human can read it.
- *
- * This is deliberately the SMALLEST thing that restores visibility: no DB, no
- * threads, no reply UI. The admin inbox + „отговори като info@" composer is the
- * next phase (see docs/admin-mail-and-deindex-plan.md §2.5–2.6); this keeps mail
- * flowing to a person while that gets built, and stays useful afterwards as a
- * belt-and-braces copy.
+ * all. Every message is now stored as a conversation in the admin inbox
+ * (/admin/poshta) — the record, and where replies are sent from as info@. This
+ * module forwards a copy to a person's mailbox (MAIL_FORWARD_TO): it began as the
+ * stopgap before that inbox existed and stays as a belt-and-braces notification.
  *
  * TWO LIMITS TO KNOW:
  *  1. **Replying from the forwarded copy does not reach the customer.** The
  *     forward is re-sent from our own domain, so a reply in the destination inbox
- *     goes back to `info@` (i.e. to Resend, i.e. back here) rather than to the
- *     original sender. Until the admin composer ships, replies must be started as
- *     a NEW message to the sender's address.
+ *     goes back to `info@` (i.e. into the admin inbox) rather than to the
+ *     original sender. Reply from /admin/poshta instead.
  *  2. **Every forward is an outbound send.** Resend counts inbound AND outbound
  *     against the same quota, so each forwarded message costs 2 (one receive, one
  *     send). That is the price of visibility; the address allowlist below is what
@@ -227,8 +223,10 @@ export function isOwnNotification(data: InboundEmailInput): boolean {
 
 /**
  * Forward one received message to the destination mailbox, reproducing the
- * original (`passthrough: true` — Resend fetches the body and attachments itself,
- * so we never download multi-MB payloads into a serverless function).
+ * original (`passthrough: true`). The SDK does that by downloading the raw
+ * message into this function, parsing it and sending it again with its
+ * attachments (resend 6.17.2, `forwardPassthrough`) — a large message is held in
+ * memory here.
  *
  * Idempotent: webhook delivery is at-least-once and Resend retries on 5xx, so the
  * `email_id`-derived idempotency key means a redelivered event cannot send the

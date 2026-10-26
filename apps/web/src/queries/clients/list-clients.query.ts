@@ -8,8 +8,8 @@ export type ClientRow = typeof schema.clients.$inferSelect;
  * All clients for the contract-creation wizard's "existing client" picker,
  * ordered by name. Deliberately unpaginated: clients accrue at deal pace (a few
  * hundred a year at most), so shipping the full list to the admin form and
- * filtering client-side beats a search round-trip. NOT cached (request-scoped,
- * admin-only). Admin-gated defensively.
+ * filtering client-side beats a search round-trip. NOT cached (request-scoped).
+ * Gated on `contracts.create` — the contract and deposit forms read it.
  */
 export async function listClients(): Promise<ClientRow[]> {
   if (!(await getSessionWith("contracts.create"))) throw new Error("FORBIDDEN");

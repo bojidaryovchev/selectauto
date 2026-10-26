@@ -24,7 +24,7 @@ function todaySofia(): string {
  * Needs `payments.record`: „Отбележи като платено“ (spec §4.3). Records the real paid
  * amount (partial allowed — status becomes 'partially_paid' until the due sum
  * is covered, §4.2), the payment date (editable, defaults to today) and a note.
- * Cancelled stages can't be paid. When all four stages of the contract land on
+ * Cancelled stages can't be paid. When every stage of the contract lands on
  * 'paid', the contract itself flips to 'fully_paid' (§11.8). Audited (§9);
  * reverting is a separate action that also stays in the history.
  */
@@ -90,7 +90,7 @@ export async function markPaymentPaid(input: MarkPaymentPaidInput): Promise<Acti
         },
       });
 
-      // §11.8: all four stages paid → the deal is fully paid.
+      // §11.8: every stage paid → the deal is fully paid.
       if (newStatus === "paid") {
         const siblings = await tx
           .select({ id: p.id, status: p.status })

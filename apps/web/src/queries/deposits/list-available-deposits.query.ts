@@ -16,8 +16,8 @@ export type AvailableDepositRow = {
  * status 'paid' (депозитът е реално постъпил) and not yet linked to any
  * mediation contract. The single-use guarantee is the partial UNIQUE index on
  * contracts.deposit_contract_id; this query just hides already-used ones. The
- * wizard filters by the selected client on the client side. Admin-gated
- * defensively.
+ * wizard filters by the selected client on the client side. Gated on
+ * `contracts.create`, like the wizard that reads it.
  */
 export async function listAvailableDeposits(): Promise<AvailableDepositRow[]> {
   if (!(await getSessionWith("contracts.create"))) throw new Error("FORBIDDEN");

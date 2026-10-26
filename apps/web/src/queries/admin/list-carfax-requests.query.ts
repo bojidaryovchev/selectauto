@@ -9,7 +9,8 @@ export type CarfaxRequestRow = typeof schema.carfaxRequests.$inferSelect;
 /**
  * Carfax lead inbox — one page of `carfax_requests`, newest first, for /admin.
  * NOT cached (request-scoped, admin-only, low volume — same reasoning as the
- * favorites queries). Admin-gated defensively (the page + proxy already gate).
+ * favorites queries). Admin-gated here as well as on the page — the proxy and the
+ * /admin layout only require back-office access.
  *
  * Filtering: a specific `status`, else everything EXCEPT `archived` (the default
  * working view hides handled-and-filed leads). `q` matches name/phone/vin/email/

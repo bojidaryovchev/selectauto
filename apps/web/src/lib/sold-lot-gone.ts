@@ -44,14 +44,16 @@ import { SOLD_LOT_410_AFTER } from "@/constants";
  * ⚠️ The reason-2 short-circuit expires with the calendar. Verified 2026-08-14:
  * 1,054,465 archived rows, ZERO over 90 days, oldest `archived_at` 2026-06-23 —
  * so the probe stays false, and this module makes zero per-request queries, until
- * roughly **2026-09-21**. After that the fallback below runs again for every car
- * page that isn't de-indexed. If crawler volume still matters then, the durable
+ * roughly **2026-09-21** — and that date has passed: checked 2026-10-26, archived
+ * rows over 90 days exist (oldest `archived_at` 2026-06-23), so the fallback below
+ * runs again for every car page that isn't de-indexed. If crawler volume still matters then, the durable
  * fix is to materialise gone-ness into the data (the 410 date of an archived row
  * is `archived_at + 90 days`, known and immutable the moment it is archived)
  * rather than to re-derive it per request.
  *
- * Freshness: a paid de-index now takes effect within `SNAPSHOT_TTL_MS` rather than
- * on the very next request. 30s keeps "the customer can verify their URL is dead
+ * Freshness: while the reason-2 short-circuit holds, a paid de-index takes effect
+ * within `SNAPSHOT_TTL_MS` rather than on the very next request (once the fallback
+ * runs, as now, the per-id query catches it on the next request). 30s keeps "the customer can verify their URL is dead
  * while still on the phone" true, at 1 query per instance per 30s instead of one
  * per request.
  *

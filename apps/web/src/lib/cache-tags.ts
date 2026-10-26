@@ -44,15 +44,15 @@
  * React `cache()` collapses it to a single read per request. See the Next caching
  * docs in node_modules/next/dist/docs (use-cache, use-cache-remote).
  *
- * Invalidation today is purely TTL-based: the homepage queries set
- * `cacheLife("hours")`, and ingestion runs hourly, so the cache naturally tracks
- * the data within ~an hour with no hook. There is intentionally NO `revalidateTag`
- * call wired anywhere — listings change only via the separate ingestion Lambdas,
- * which write straight to Neon and never run Next code, so they can't (and don't
- * need to) call into Next's cache. These tags exist so that IF a Next-side
- * mutation or an ingestion→site webhook is ever added, it can expire the homepage
- * immediately via `revalidateTag(CACHE_TAGS.buyNowCars)` instead of waiting out
- * the TTL.
+ * Listings are invalidated by TTL: the homepage queries set `cacheLife("hours")`,
+ * and ingestion runs hourly, so the cache tracks the data within ~an hour with no
+ * hook — ingestion writes straight to Neon from separate Lambdas and never runs
+ * Next code. The one listing change made in the site is the paid de-index: the
+ * desk (`updateTag`) and its sweep cron (`revalidateTag(tag, { expire: 0 })` —
+ * `updateTag` is Server-Action-only) expire the car's own tag, `cars` and both
+ * homepage tags at once. `usTariffs` and `calcConfig` are expired by the
+ * /admin/tarifi actions. Never `revalidateTag(tag, "max")` for these: it serves
+ * the stale entry once more while refreshing.
  *
  * NOTE on persistence: the homepage/hub/sitemap queries use plain `"use cache"` —
  * they render into the STATIC SHELL, where the output is durably cached by
