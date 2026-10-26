@@ -1,24 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { ADMIN_HINT, ADMIN_INPUT, ADMIN_LABEL, ADMIN_SELECT, AdminBanner, AdminButton } from "@/components/admin/ui";
 import { RECIPIENT_KIND_META, type RecipientKind } from "@/constants/contracts";
 import { saveRecipient } from "@/mutations/recipients";
 import type { RecipientRow } from "@/queries/recipients";
+import { useEffect, useId, useRef, useState } from "react";
 
 /**
  * Create/edit form for one payment recipient (/admin/poluchateli — spec §8).
- * Plain controlled inputs like the other admin forms (TariffUploadForm); the
- * shared zod schema re-validates server-side in `saveRecipient`. The fixed
- * SelectAuto row keeps its kind and can't be deactivated (the mutation enforces
- * it too); admins may add international partners and customs brokers only.
+ * Plain controlled inputs like the other admin forms; the shared zod schema
+ * re-validates server-side in `saveRecipient`. The fixed SelectAuto row keeps
+ * its kind and can't be deactivated (the mutation enforces it too); admins may
+ * add international partners and customs brokers only.
  */
 type Status = { kind: "idle" } | { kind: "error"; message: string };
 
-const INPUT =
-  "w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-brand";
-
 /** The kinds an admin may pick for a NEW recipient (SelectAuto is a seeded singleton). */
 const CREATABLE_KINDS: RecipientKind[] = ["international_partner", "customs_broker"];
+
+/** Codes typed in capitals and never „corrected" by a phone keyboard. */
+const CODE = { autoCapitalize: "characters", autoCorrect: "off", spellCheck: false } as const;
 
 export function RecipientForm({
   recipient,
@@ -32,6 +33,8 @@ export function RecipientForm({
   onCancel: () => void;
 }) {
   const isSelectAuto = recipient?.slug === "selectauto";
+  const ref = useRef<HTMLFormElement>(null);
+  const id = useId();
 
   const [kind, setKind] = useState<RecipientKind>(
     (recipient?.kind as RecipientKind | undefined) ?? "international_partner",
@@ -51,6 +54,11 @@ export function RecipientForm({
   const [active, setActive] = useState(recipient?.active ?? true);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [busy, setBusy] = useState(false);
+
+  // The form replaces its card in place; bring all of it into view when it opens.
+  useEffect(() => {
+    ref.current?.scrollIntoView({ block: "nearest" });
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -82,148 +90,229 @@ export function RecipientForm({
         setStatus({ kind: "error", message: result.error });
       }
     } catch {
-      setStatus({ kind: "error", message: "Възникна грешка при запис. Моля опитайте отново." });
+      setStatus({ kind: "error", message: "Връзката прекъсна — получателят не е запазен. Опитайте отново." });
     } finally {
       setBusy(false);
     }
   }
 
-  return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4 rounded-xl border border-line bg-white p-5">
-      <h3 className="text-lg font-black text-ink">
-        {recipient ? `Редакция: ${recipient.name}` : "Нов получател"}
-      </h3>
+  const field = (key: string) => `${id}-${key}`;
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-semibold text-ink">Тип</label>
+  return (
+    // Edited in place of its card, so it stands out from the cards around it.
+    <section className="min-w-0 rounded-xl border border-brand/40 bg-white p-4 shadow-card sm:p-5">
+      <form ref={ref} onSubmit={onSubmit} className="@container flex scroll-mt-20 flex-col gap-4">
+        <h2 className="text-lg font-black wrap-anywhere text-ink">
+          {recipient ? `Редакция: ${recipient.name}` : "Нов получател"}
+        </h2>
+
+        {isSelectAuto ? (
+          <p className={ADMIN_HINT}>
+            Тези данни отиват в известията за плащане. Договорите и договорите за депозит печатат данните на SelectAuto
+            от кода на сайта (сега са същите) — промяна тук не ги променя.
+          </p>
+        ) : null}
+
+        <div className="grid gap-4 @xl:grid-cols-2">
           {isSelectAuto ? (
-            <p className="rounded-lg border border-line bg-neutral-50 px-3 py-2 text-sm text-muted">
-              SelectAuto (фиксиран)
-            </p>
+            <div className="flex min-w-0 flex-col gap-1">
+              <span className={ADMIN_LABEL}>Тип</span>
+              <p className="rounded-lg border border-line bg-neutral-50 px-3 py-2.5 text-base text-muted sm:text-sm">
+                SelectAuto (фиксиран)
+              </p>
+            </div>
           ) : (
-            <select value={kind} onChange={(e) => setKind(e.target.value as RecipientKind)} className={INPUT}>
-              {CREATABLE_KINDS.map((k) => (
-                <option key={k} value={k}>
-                  {RECIPIENT_KIND_META[k].label}
-                </option>
-              ))}
-            </select>
+            <Field id={field("kind")} label="Тип">
+              <select
+                id={field("kind")}
+                value={kind}
+                onChange={(e) => setKind(e.target.value as RecipientKind)}
+                className={ADMIN_SELECT}
+              >
+                {CREATABLE_KINDS.map((k) => (
+                  <option key={k} value={k}>
+                    {RECIPIENT_KIND_META[k].label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+
+          <Field id={field("name")} label="Наименование *">
+            <input
+              id={field("name")}
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className={ADMIN_INPUT}
+            />
+          </Field>
+
+          <Field id={field("country")} label="Държава">
+            <input
+              id={field("country")}
+              type="text"
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              className={ADMIN_INPUT}
+            />
+          </Field>
+
+          <Field id={field("vat")} label="ДДС / рег. номер">
+            <input
+              id={field("vat")}
+              type="text"
+              value={vatNumber}
+              onChange={(e) => setVatNumber(e.target.value)}
+              {...CODE}
+              className={ADMIN_INPUT}
+            />
+          </Field>
+
+          <Field id={field("address")} label="Адрес" wide>
+            <input
+              id={field("address")}
+              type="text"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              className={ADMIN_INPUT}
+            />
+          </Field>
+
+          <Field id={field("bank")} label="Банка">
+            <input
+              id={field("bank")}
+              type="text"
+              value={bankName}
+              onChange={(e) => setBankName(e.target.value)}
+              className={ADMIN_INPUT}
+            />
+          </Field>
+
+          <Field id={field("bankAddress")} label="Адрес на банката">
+            <input
+              id={field("bankAddress")}
+              type="text"
+              value={bankAddress}
+              onChange={(e) => setBankAddress(e.target.value)}
+              className={ADMIN_INPUT}
+            />
+          </Field>
+
+          <Field id={field("iban")} label="IBAN / Сметка">
+            <input
+              id={field("iban")}
+              type="text"
+              value={iban}
+              onChange={(e) => setIban(e.target.value)}
+              {...CODE}
+              className={`${ADMIN_INPUT} font-mono`}
+            />
+          </Field>
+
+          <Field id={field("swift")} label="SWIFT / BIC">
+            <input
+              id={field("swift")}
+              type="text"
+              value={swiftBic}
+              onChange={(e) => setSwiftBic(e.target.value)}
+              {...CODE}
+              className={`${ADMIN_INPUT} font-mono`}
+            />
+          </Field>
+
+          <Field id={field("routing")} label="Routing code (за неевропейски преводи)">
+            <input
+              id={field("routing")}
+              type="text"
+              value={routingCode}
+              onChange={(e) => setRoutingCode(e.target.value)}
+              placeholder="напр. CC000100381"
+              {...CODE}
+              className={`${ADMIN_INPUT} font-mono`}
+            />
+          </Field>
+
+          <Field id={field("currency")} label="Валута">
+            <input
+              id={field("currency")}
+              type="text"
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              placeholder="EUR / USD"
+              {...CODE}
+              className={ADMIN_INPUT}
+            />
+          </Field>
+
+          <Field id={field("charges")} label="Разноски на превода">
+            <input
+              id={field("charges")}
+              type="text"
+              value={chargesInstruction}
+              onChange={(e) => setChargesInstruction(e.target.value)}
+              placeholder="напр. За сметка на изпращача (OUR)"
+              className={ADMIN_INPUT}
+            />
+          </Field>
+
+          <Field id={field("method")} label="Вид плащане">
+            <input
+              id={field("method")}
+              type="text"
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              placeholder="напр. BLINK"
+              className={ADMIN_INPUT}
+            />
+          </Field>
+
+          {isSelectAuto ? null : (
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 self-end text-sm font-semibold text-ink">
+              <input
+                type="checkbox"
+                checked={active}
+                onChange={(e) => setActive(e.target.checked)}
+                className="size-5 accent-brand"
+              />
+              Активен — предлага се при генериране на известия
+            </label>
           )}
         </div>
 
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-semibold text-ink">Наименование *</label>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className={INPUT} />
+        {status.kind === "error" ? <AdminBanner tone="error">{status.message}</AdminBanner> : null}
+
+        <div className="flex flex-wrap gap-2">
+          <AdminButton type="submit" variant="primary" size="lg" disabled={busy}>
+            {busy ? "Запазване…" : "Запази"}
+          </AdminButton>
+          <AdminButton variant="secondary" size="lg" onClick={onCancel} disabled={busy}>
+            Отказ
+          </AdminButton>
         </div>
+      </form>
+    </section>
+  );
+}
 
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-semibold text-ink">Държава</label>
-          <input type="text" value={country} onChange={(e) => setCountry(e.target.value)} className={INPUT} />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-semibold text-ink">ДДС / рег. номер</label>
-          <input type="text" value={vatNumber} onChange={(e) => setVatNumber(e.target.value)} className={INPUT} />
-        </div>
-
-        <div className="flex flex-col gap-1 sm:col-span-2">
-          <label className="text-sm font-semibold text-ink">Адрес</label>
-          <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} className={INPUT} />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-semibold text-ink">Банка</label>
-          <input type="text" value={bankName} onChange={(e) => setBankName(e.target.value)} className={INPUT} />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-semibold text-ink">Адрес на банката</label>
-          <input type="text" value={bankAddress} onChange={(e) => setBankAddress(e.target.value)} className={INPUT} />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-semibold text-ink">IBAN / Сметка</label>
-          <input type="text" value={iban} onChange={(e) => setIban(e.target.value)} className={INPUT} />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-semibold text-ink">SWIFT / BIC</label>
-          <input type="text" value={swiftBic} onChange={(e) => setSwiftBic(e.target.value)} className={INPUT} />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-semibold text-ink">Routing code (за неевропейски преводи)</label>
-          <input
-            type="text"
-            value={routingCode}
-            onChange={(e) => setRoutingCode(e.target.value)}
-            placeholder="напр. CC000100381"
-            className={INPUT}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-semibold text-ink">Валута</label>
-          <input type="text" value={currency} onChange={(e) => setCurrency(e.target.value)} placeholder="EUR / USD" className={INPUT} />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-semibold text-ink">Разноски на превода</label>
-          <input
-            type="text"
-            value={chargesInstruction}
-            onChange={(e) => setChargesInstruction(e.target.value)}
-            placeholder="напр. За сметка на изпращача (OUR)"
-            className={INPUT}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-semibold text-ink">Вид плащане</label>
-          <input
-            type="text"
-            value={paymentMethod}
-            onChange={(e) => setPaymentMethod(e.target.value)}
-            placeholder="напр. BLINK"
-            className={INPUT}
-          />
-        </div>
-
-        {isSelectAuto ? null : (
-          <label className="flex items-center gap-2 self-end pb-2 text-sm font-semibold text-ink">
-            <input
-              type="checkbox"
-              checked={active}
-              onChange={(e) => setActive(e.target.checked)}
-              className="size-4 accent-brand"
-            />
-            Активен
-          </label>
-        )}
-      </div>
-
-      {status.kind === "error" ? (
-        <p className="rounded-lg bg-[#fdecea] px-3 py-2 text-sm font-semibold text-[#b3261e]">{status.message}</p>
-      ) : null}
-
-      <div className="flex gap-3">
-        <button
-          type="submit"
-          disabled={busy}
-          className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-6 text-sm font-extrabold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-        >
-          {busy ? "Запазване…" : "Запази"}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={busy}
-          className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-white px-6 text-sm font-extrabold text-ink transition-colors hover:bg-neutral-50 disabled:opacity-60"
-        >
-          Отказ
-        </button>
-      </div>
-    </form>
+function Field({
+  id,
+  label,
+  wide,
+  children,
+}: {
+  id: string;
+  label: string;
+  wide?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={`flex min-w-0 flex-col gap-1 ${wide ? "@xl:col-span-2" : ""}`}>
+      <label htmlFor={id} className={ADMIN_LABEL}>
+        {label}
+      </label>
+      {children}
+    </div>
   );
 }
