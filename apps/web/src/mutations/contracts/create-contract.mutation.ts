@@ -25,9 +25,11 @@ function cents(value: string | undefined): number {
  *
  *  1. Resolve the client — an existing row, or insert the new one (audited).
  *  2. When a deposit is applied (§14): re-validate it is 'paid', belongs to
- *     this client and is unused, then mark it 'used'. The deduction is clamped
- *     to point 1 and the partial UNIQUE index on contracts.deposit_contract_id
- *     makes reuse impossible even under a race.
+ *     this client and is unused, then mark it 'used'. The whole deposit is
+ *     deducted, in the contract's currency (the operator states the equivalent
+ *     when the deposit is in another one), and a deposit larger than point 1 is
+ *     refused rather than used up for less. The partial UNIQUE index on
+ *     contracts.deposit_contract_id makes reuse impossible even under a race.
  *  3. Mint the visible number from contract_counters (atomic upsert-increment;
  *     series 'contract', year of the contract date) → "2026-088".
  *  4. Insert the contract with a frozen client snapshot; total = т.1+…+т.5.
@@ -130,7 +132,27 @@ export async function createContract(input: unknown): Promise<ActionResult<{ id:
           .where(eq(schema.contracts.depositContractId, deposit.id));
         if (usedBy) throw new Error("BG:Депозитът вече е използван по друг договор.");
 
-        depositDeductionCents = Math.min(dbToCents(deposit.depositAmount), amountByKey.amountCar);
+        // The deduction is in the contract's currency. A deposit in another
+        // currency (EUR on a USD contract) needs the operator's equivalent —
+        // 1:1 credited a 1 000 EUR deposit as 1 000 USD on 2026-072.
+        const depositCurrency = deposit.budgetCurrency || "EUR";
+        if (depositCurrency === currency) {
+          depositDeductionCents = dbToCents(deposit.depositAmount);
+        } else {
+          depositDeductionCents = cents(values.depositDeductionAmount);
+          if (depositDeductionCents <= 0) {
+            throw new Error(
+              `BG:Депозит № ${deposit.number} е в ${depositCurrency}, а договорът е в ${currency} — въведете сумата за приспадане в ${currency}.`,
+            );
+          }
+        }
+        // Used up for less would be lost: the deduction is frozen at creation and
+        // the deposit becomes „Използван" either way.
+        if (depositDeductionCents > amountByKey.amountCar) {
+          throw new Error(
+            `BG:Депозитът за приспадане (${centsToDb(depositDeductionCents)} ${currency}) е по-голям от Точка 1 (${centsToDb(amountByKey.amountCar)} ${currency}) — попълнете Точка 1 или не приспадайте депозита сега.`,
+          );
+        }
         depositNumber = deposit.number;
         await tx
           .update(schema.depositContracts)
@@ -244,7 +266,13 @@ export async function createContract(input: unknown): Promise<ActionResult<{ id:
           market: values.market,
           total: centsToDb(totalCents),
           currency,
-          ...(depositNumber ? { deposit: depositNumber, depositDeduction: centsToDb(depositDeductionCents) } : {}),
+          ...(depositNumber
+            ? {
+                deposit: depositNumber,
+                depositDeduction: centsToDb(depositDeductionCents),
+                depositDeductionCurrency: currency,
+              }
+            : {}),
         },
       });
 

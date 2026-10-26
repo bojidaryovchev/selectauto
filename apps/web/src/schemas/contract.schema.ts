@@ -72,6 +72,13 @@ export const createContractSchema = z
     paymentBasis: z.string().trim().max(200).optional(),
     /** A paid deposit of this client to deduct from payment 1 (§14). */
     depositContractId: z.number().int().positive().optional(),
+    /**
+     * The deduction in the CONTRACT's currency — required only when the deposit
+     * is in another currency (a EUR deposit on a САЩ contract in USD). The spec
+     * gives no conversion, and a partner's notice may not use a курс (§16.4), so
+     * the operator states the equivalent.
+     */
+    depositDeductionAmount: amountField.optional(),
   })
   .superRefine((values, ctx) => {
     if (!values.clientId && !values.newClient) {

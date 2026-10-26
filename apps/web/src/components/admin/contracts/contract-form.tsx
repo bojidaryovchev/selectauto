@@ -76,6 +76,8 @@ export function ContractForm({
 
   // ── Deposit (create mode, §14) ─────────────────────────────────────────────
   const [depositContractId, setDepositContractId] = useState<number | undefined>(undefined);
+  /** The deduction in the contract's currency, when the deposit is in another one. */
+  const [depositDeductionAmount, setDepositDeductionAmount] = useState("");
   const clientDeposits = useMemo(
     () => (clientMode === "existing" && clientId ? deposits.filter((d) => d.clientId === clientId) : []),
     [clientMode, clientId, deposits],
@@ -109,6 +111,17 @@ export function ContractForm({
 
   const marketMeta = CONTRACT_MARKET_META[market];
   const currency = marketMeta.currency;
+  // A deposit in another currency (EUR on a САЩ contract in USD) is deducted at
+  // the equivalent the operator states — never 1:1.
+  const depositCurrency = selectedDeposit ? selectedDeposit.budgetCurrency || "EUR" : null;
+  const depositCrossCurrency = depositCurrency !== null && depositCurrency !== currency;
+  const depositNote = selectedDeposit
+    ? depositCrossCurrency
+      ? depositDeductionAmount.trim()
+        ? `${depositDeductionAmount.trim()} ${currency} за ${formatDbAmount(selectedDeposit.depositAmount)} ${depositCurrency}`
+        : `${formatDbAmount(selectedDeposit.depositAmount)} ${depositCurrency} — въведете равностойността в ${currency}`
+      : `${formatDbAmount(selectedDeposit.depositAmount)} ${currency}`
+    : "";
 
   // Канада: перо 1 is typed in CAD and the EUR value is derived (rounded to the
   // whole euro, exactly as the server stores it).
@@ -199,6 +212,8 @@ export function ContractForm({
           foreignRate,
           paymentBasis,
           depositContractId: clientMode === "existing" ? depositContractId : undefined,
+          depositDeductionAmount:
+            clientMode === "existing" && depositCrossCurrency ? depositDeductionAmount : undefined,
         });
         if (result.success) {
           router.push(`/admin/dogovori/${result.data.id}`);
@@ -305,6 +320,7 @@ export function ContractForm({
                 onChange={(e) => {
                   setClientId(e.target.value ? Number(e.target.value) : undefined);
                   setDepositContractId(undefined);
+                  setDepositDeductionAmount("");
                 }}
                 className={INPUT}
               >
@@ -325,12 +341,32 @@ export function ContractForm({
                       <input
                         type="checkbox"
                         checked={depositContractId === d.id}
-                        onChange={(e) => setDepositContractId(e.target.checked ? d.id : undefined)}
+                        onChange={(e) => {
+                          setDepositContractId(e.target.checked ? d.id : undefined);
+                          setDepositDeductionAmount("");
+                        }}
                         className="size-4 accent-brand"
                       />
                       Депозит № {d.number} — {formatDbAmount(d.depositAmount)} {d.budgetCurrency}
                     </label>
                   ))}
+                  {selectedDeposit && depositCrossCurrency ? (
+                    <div className="flex flex-col gap-1">
+                      <label className={LABEL}>Сума за приспадане в {currency} *</label>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={depositDeductionAmount}
+                        onChange={(e) => setDepositDeductionAmount(e.target.value)}
+                        placeholder={`равностойност на ${formatDbAmount(selectedDeposit.depositAmount)} ${depositCurrency}`}
+                        className={INPUT}
+                      />
+                      <p className="text-xs text-muted">
+                        Депозитът е в {depositCurrency}, а договорът — в {currency}. Въведете равностойността, която се
+                        приспада от Точка 1.
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -477,8 +513,7 @@ export function ContractForm({
                 </p>
                 {selectedDeposit ? (
                   <p className="text-xs font-semibold text-brand">
-                    − Депозит № {selectedDeposit.number} ({formatDbAmount(selectedDeposit.depositAmount)}) ще се
-                    приспадне от това плащане.
+                    − Депозит № {selectedDeposit.number} ({depositNote}) ще се приспадне от това плащане.
                   </p>
                 ) : null}
               </div>
@@ -494,8 +529,7 @@ export function ContractForm({
                 />
                 {point.key === "amountCar" && selectedDeposit ? (
                   <p className="text-xs font-semibold text-brand">
-                    − Депозит № {selectedDeposit.number} ({formatDbAmount(selectedDeposit.depositAmount)}) ще се
-                    приспадне от това плащане.
+                    − Депозит № {selectedDeposit.number} ({depositNote}) ще се приспадне от това плащане.
                   </p>
                 ) : null}
               </div>
