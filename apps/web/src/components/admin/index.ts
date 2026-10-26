@@ -2,6 +2,7 @@ export { LeadFilters } from "./lead-filters";
 export { LeadStatusBadge } from "./lead-status-badge";
 export { LeadInbox } from "./lead-inbox";
 export { CalcConfigForm } from "./calc-config-form";
+export { TariffHistory } from "./tariff-history";
 export { TariffUploadForm } from "./tariff-upload-form";
 export { RecipientForm, RecipientsManager } from "./recipients";
 export { ContractFilters, ContractForm, PaymentStatusBadge } from "./contracts";
