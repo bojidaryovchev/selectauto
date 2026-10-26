@@ -13,6 +13,13 @@ import { updateCalcConfig } from "@/mutations/tariffs";
  */
 type Status = { kind: "idle" } | { kind: "ok" } | { kind: "error"; message: string };
 
+/**
+ * The auction percentages are stored as fractions and edited as percents; the
+ * ×100 / ÷100 round trip leaves float noise (7 → "7.000000000000001"), so both
+ * directions are cut back to 6 decimals.
+ */
+const roundPct = (n: number) => Math.round(n * 1e6) / 1e6;
+
 const INPUT =
   "w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-sm font-semibold text-ink outline-none focus:border-brand";
 
@@ -20,13 +27,11 @@ function Field({
   label,
   value,
   onChange,
-  step = 1,
   suffix,
 }: {
   label: string;
   value: number;
   onChange: (v: number) => void;
-  step?: number;
   suffix?: string;
 }) {
   return (
@@ -35,9 +40,13 @@ function Field({
         {label}
         {suffix ? ` (${suffix})` : ""}
       </span>
+      {/* step="any": the browser refuses to submit a value off the input's step,
+          and the form has no other client check — the BC jeep default 3185
+          against step 10 made the whole form unsavable. zod on the server is
+          the rule. */}
       <input
         type="number"
-        step={step}
+        step="any"
         min={0}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
@@ -95,15 +104,15 @@ export function CalcConfigForm({ initial }: { initial: CalcConfig }) {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
       <Section title="Общи (мито, ДДС, курс)">
-        <Field label="Мито" suffix="%" value={cfg.dutyPct} onChange={(v) => patch({ dutyPct: v })} step={0.5} />
-        <Field label="ДДС" suffix="%" value={cfg.vatPct} onChange={(v) => patch({ vatPct: v })} step={0.5} />
-        <Field label="Курс EUR→USD" value={cfg.eurUsd} onChange={(v) => patch({ eurUsd: v })} step={0.01} />
-        <Field label="Технотест" suffix="€" value={cfg.technotestEur} onChange={(v) => patch({ technotestEur: v })} step={10} />
+        <Field label="Мито" suffix="%" value={cfg.dutyPct} onChange={(v) => patch({ dutyPct: v })} />
+        <Field label="ДДС" suffix="%" value={cfg.vatPct} onChange={(v) => patch({ vatPct: v })} />
+        <Field label="Курс EUR→USD" value={cfg.eurUsd} onChange={(v) => patch({ eurUsd: v })} />
+        <Field label="Технотест" suffix="€" value={cfg.technotestEur} onChange={(v) => patch({ technotestEur: v })} />
       </Section>
 
       <Section title="Корея — Плащане 1 (ENCAR + документи)">
-        <Field label="ENCAR такса" suffix="€" value={cfg.krEncarFeeEur} onChange={(v) => patch({ krEncarFeeEur: v })} step={10} />
-        <Field label="Документи" suffix="%" value={cfg.krDocsPct} onChange={(v) => patch({ krDocsPct: v })} step={0.1} />
+        <Field label="ENCAR такса" suffix="€" value={cfg.krEncarFeeEur} onChange={(v) => patch({ krEncarFeeEur: v })} />
+        <Field label="Документи" suffix="%" value={cfg.krDocsPct} onChange={(v) => patch({ krDocsPct: v })} />
       </Section>
 
       <Section title="Корея — морски транспорт (€)">
@@ -112,14 +121,12 @@ export function CalcConfigForm({ initial }: { initial: CalcConfig }) {
           suffix="€"
           value={cfg.krTransportEur.sedan}
           onChange={(v) => patch({ krTransportEur: { ...cfg.krTransportEur, sedan: v } })}
-          step={10}
         />
         <Field
           label="Джип / SUV"
           suffix="€"
           value={cfg.krTransportEur.suv}
           onChange={(v) => patch({ krTransportEur: { ...cfg.krTransportEur, suv: v } })}
-          step={10}
         />
       </Section>
 
@@ -131,7 +138,7 @@ export function CalcConfigForm({ initial }: { initial: CalcConfig }) {
               <span className="w-16 shrink-0 text-xs text-muted">до {t.maxPriceEur} €</span>
               <input
                 type="number"
-                step={50}
+                step="any"
                 min={0}
                 value={t.commissionEur}
                 onChange={(e) => setTier(i, "commissionEur", Number(e.target.value))}
@@ -144,27 +151,24 @@ export function CalcConfigForm({ initial }: { initial: CalcConfig }) {
             suffix="€"
             value={cfg.commissionCapEur}
             onChange={(v) => patch({ commissionCapEur: v })}
-            step={100}
           />
         </div>
       </fieldset>
 
       <Section title="САЩ / Канада — аукционна такса">
-        <Field label="Фикс. такса (≤ праг)" suffix="$" value={cfg.usAuctionFlatUsd} onChange={(v) => patch({ usAuctionFlatUsd: v })} step={10} />
-        <Field label="Праг" suffix="$" value={cfg.usAuctionThresholdUsd} onChange={(v) => patch({ usAuctionThresholdUsd: v })} step={500} />
+        <Field label="Фикс. такса (≤ праг)" suffix="$" value={cfg.usAuctionFlatUsd} onChange={(v) => patch({ usAuctionFlatUsd: v })} />
+        <Field label="Праг" suffix="$" value={cfg.usAuctionThresholdUsd} onChange={(v) => patch({ usAuctionThresholdUsd: v })} />
         <Field
           label="Copart над прага"
           suffix="%"
-          value={cfg.usAuctionPct.copart * 100}
-          onChange={(v) => patch({ usAuctionPct: { ...cfg.usAuctionPct, copart: v / 100 } })}
-          step={0.1}
+          value={roundPct(cfg.usAuctionPct.copart * 100)}
+          onChange={(v) => patch({ usAuctionPct: { ...cfg.usAuctionPct, copart: roundPct(v / 100) } })}
         />
         <Field
           label="IAAI над прага"
           suffix="%"
-          value={cfg.usAuctionPct.iaai * 100}
-          onChange={(v) => patch({ usAuctionPct: { ...cfg.usAuctionPct, iaai: v / 100 } })}
-          step={0.1}
+          value={roundPct(cfg.usAuctionPct.iaai * 100)}
+          onChange={(v) => patch({ usAuctionPct: { ...cfg.usAuctionPct, iaai: roundPct(v / 100) } })}
         />
       </Section>
 
@@ -176,23 +180,21 @@ export function CalcConfigForm({ initial }: { initial: CalcConfig }) {
       </Section>
 
       <Section title="След Холандия — агенция и автовоз до БГ (всички пазари)">
-        <Field label="Митн. агенция" suffix="€" value={cfg.agencyEur} onChange={(v) => patch({ agencyEur: v })} step={10} />
-        <Field label="Автовоз БГ — седан" suffix="€" value={cfg.bgTransportEur.sedan} onChange={(v) => patch({ bgTransportEur: { ...cfg.bgTransportEur, sedan: v } })} step={10} />
-        <Field label="Автовоз БГ — джип" suffix="€" value={cfg.bgTransportEur.suv} onChange={(v) => patch({ bgTransportEur: { ...cfg.bgTransportEur, suv: v } })} step={10} />
-        <Field label="Канада транспорт" suffix="$" value={cfg.caTransportUsd} onChange={(v) => patch({ caTransportUsd: v })} step={10} />
+        <Field label="Митн. агенция" suffix="€" value={cfg.agencyEur} onChange={(v) => patch({ agencyEur: v })} />
+        <Field label="Автовоз БГ — седан" suffix="€" value={cfg.bgTransportEur.sedan} onChange={(v) => patch({ bgTransportEur: { ...cfg.bgTransportEur, sedan: v } })} />
+        <Field label="Автовоз БГ — джип" suffix="€" value={cfg.bgTransportEur.suv} onChange={(v) => patch({ bgTransportEur: { ...cfg.bgTransportEur, suv: v } })} />
+        <Field label="Канада транспорт" suffix="$" value={cfg.caTransportUsd} onChange={(v) => patch({ caTransportUsd: v })} />
         <Field
           label="Канада (Бр. Колумбия) — седан"
           suffix="$"
           value={cfg.caTransportBcUsd.sedan}
           onChange={(v) => patch({ caTransportBcUsd: { ...cfg.caTransportBcUsd, sedan: v } })}
-          step={10}
         />
         <Field
           label="Канада (Бр. Колумбия) — джип"
           suffix="$"
           value={cfg.caTransportBcUsd.suv}
           onChange={(v) => patch({ caTransportBcUsd: { ...cfg.caTransportBcUsd, suv: v } })}
-          step={10}
         />
       </Section>
 
@@ -202,7 +204,6 @@ export function CalcConfigForm({ initial }: { initial: CalcConfig }) {
           suffix="%"
           value={cfg.mobilebgMarkupPct}
           onChange={(v) => patch({ mobilebgMarkupPct: v })}
-          step={0.5}
         />
       </Section>
       <p className="-mt-2 text-xs text-muted">
