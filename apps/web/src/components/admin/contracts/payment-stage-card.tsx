@@ -4,6 +4,7 @@ import { ADMIN_HINT, ADMIN_INPUT, ADMIN_SELECT, AdminBanner, AdminButton } from 
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import {
   DEFAULT_PAYMENT_TERM_DAYS,
+  MAX_ATTACHMENT_BYTES,
   PAYMENT_STAGE_META,
   STAGE_ALLOWED_RECIPIENT_KINDS,
   stageLabel,
@@ -38,6 +39,8 @@ import { PaymentStatusBadge } from "./payment-status-badge";
 type Panel = "none" | "generate" | "preview" | "paid";
 
 const LABEL = "text-xs font-semibold text-ink";
+
+const TOO_BIG = "Файлът е по-голям от 4 MB — намалете снимката или изберете по-малък файл.";
 
 // The proof-of-payment picker's own button, sized like the other controls.
 const FILE_INPUT =
@@ -216,6 +219,13 @@ export function PaymentStageCard({
 
   async function onMarkPaid(e: React.FormEvent) {
     e.preventDefault();
+    // A file that can't be sent is caught before the payment is recorded, so it
+    // can be swapped first.
+    const file = fileRef.current?.files?.[0];
+    if (file && file.size > MAX_ATTACHMENT_BYTES) {
+      setError(TOO_BIG);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -225,25 +235,33 @@ export function PaymentStageCard({
         return;
       }
 
-      // The payment is recorded; attaching the proof is a separate, secondary
-      // step — a failed upload reports itself but never un-records the payment.
-      const file = fileRef.current?.files?.[0];
-      if (file) {
-        const fd = new FormData();
-        fd.set("paymentId", String(payment.id));
-        fd.set("file", file);
-        const upload = await addPaymentAttachment(fd);
-        if (!upload.success) {
-          setError(`Плащането е записано, но файлът не се прикачи: ${upload.error}`);
-          router.refresh();
-          return;
-        }
-      }
-
+      // Recorded. Close the form at once: payments add up, so a form left open
+      // after a failed upload invited a second „Запази плащането" — and recorded
+      // the payment twice.
       resetPanels();
       setPaidAmount("");
       setNote("");
       if (fileRef.current) fileRef.current.value = "";
+
+      // Attaching the proof is a separate, secondary step: a failed upload
+      // reports itself and is repeated with „＋ Прикачи платежен документ".
+      if (file) {
+        let uploadError: string | null = null;
+        try {
+          const fd = new FormData();
+          fd.set("paymentId", String(payment.id));
+          fd.set("file", file);
+          const upload = await addPaymentAttachment(fd);
+          if (!upload.success) uploadError = upload.error;
+        } catch {
+          uploadError = "файлът не стигна до сървъра.";
+        }
+        if (uploadError) {
+          setError(
+            `Плащането е записано, но файлът не се прикачи: ${uploadError} Прикачете го отново с „＋ Прикачи платежен документ“.`,
+          );
+        }
+      }
       router.refresh();
     } catch {
       setError("Възникна грешка. Моля опитайте отново.");
@@ -253,13 +271,18 @@ export function PaymentStageCard({
   }
 
   /**
-   * Standalone upload — for whoever may attach but not record payments (e.g. a
-   * „Наблюдаващ": they may attach bank documents to a notice, but not issue
-   * notices or set statuses). Recording a payment attaches in the same step.
+   * Standalone upload, for every `payments.attach` holder: a „Наблюдаващ"'s one
+   * write action (no notices, no statuses), and how anyone adds a proof to a
+   * stage that is already paid, or repeats an upload that failed.
    */
   async function onAttachOnly(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      setError(TOO_BIG);
+      if (attachOnlyRef.current) attachOnlyRef.current.value = "";
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -618,7 +641,7 @@ export function PaymentStageCard({
           {actions.attach ? (
             <div className="flex flex-col gap-1">
               <label htmlFor={fieldId("proof")} className={LABEL}>
-                Платежен документ (PDF/снимка, до 8 MB)
+                Платежен документ (PDF/снимка, до 4 MB)
               </label>
               <input
                 id={fieldId("proof")}
@@ -674,8 +697,9 @@ export function PaymentStageCard({
         </div>
       ) : null}
 
-      {/* „Наблюдаващ": attaching bank documents is their one write action. */}
-      {actions.attach && !actions.recordPayments && !cancelled ? (
+      {/* Everyone who may attach can do it here at any time — also once the
+          stage is paid; recording a payment can attach in the same step. */}
+      {actions.attach && !cancelled && panel === "none" ? (
         <div className="mt-auto pt-2">
           {/* Visually hidden, not display:none, so the keyboard can still reach the input. */}
           <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-full px-1 text-sm font-bold text-brand hover:underline has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand">

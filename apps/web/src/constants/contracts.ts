@@ -13,6 +13,15 @@
 export const DEFAULT_PAYMENT_TERM_DAYS = 10;
 
 /**
+ * Largest proof-of-payment file the back office takes. Vercel caps a function's
+ * request body — a server action's included — at 4.5 MB and answers anything
+ * bigger with 413 FUNCTION_PAYLOAD_TOO_LARGE (vercel.com/docs/functions/limitations),
+ * so 4 MB leaves room for the rest of the multipart body. The card checks it
+ * before sending anything; the action checks again.
+ */
+export const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024;
+
+/**
  * Contract markets. The spec (§3.1) knew only "САЩ/Канада (USD)" and "Корея
  * (EUR)", but the owner's signed contracts and his answers (07.2026) show four
  * genuinely different shapes, so the market drives the document type, the
@@ -32,11 +41,7 @@ export type ContractMarket = (typeof CONTRACT_MARKETS)[number];
 
 /** The contract amount columns a перо can map onto. */
 export type ContractAmountKey =
-  | "amountCar"
-  | "amountTransport"
-  | "amountCustomsVat"
-  | "amountTransportEuBg"
-  | "amountCommission";
+  "amountCar" | "amountTransport" | "amountCustomsVat" | "amountTransportEuBg" | "amountCommission";
 
 export type ContractPointDef = {
   key: ContractAmountKey;
@@ -145,7 +150,10 @@ export type PaymentStage = (typeof PAYMENT_STAGES)[number];
 
 export const PAYMENT_STAGE_META: Record<PaymentStage, { label: string; description: string }> = {
   vehicle: { label: "Кола", description: "Точка 1 — цена на автомобила, тръжни такси, документи, банкови такси" },
-  transport: { label: "Транспорт", description: "Точка 2 — сухоземен и морски транспорт, товарене, предмитническа подготовка" },
+  transport: {
+    label: "Транспорт",
+    description: "Точка 2 — сухоземен и морски транспорт, товарене, предмитническа подготовка",
+  },
   customs_vat: { label: "Мито и ДДС", description: "Точка 3 — мито, ДДС, разтоварване, митнически брокер" },
   final: { label: "Финално плащане", description: "Точка 4 + Точка 5 — транспорт Европа→България и комисионна" },
 };

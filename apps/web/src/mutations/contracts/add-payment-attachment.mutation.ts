@@ -1,15 +1,16 @@
 "use server";
 
-import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { MAX_ATTACHMENT_BYTES } from "@/constants/contracts";
 import { canSeeRecord, getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import { isDocumentStorageConfigured, putDocument } from "@/lib/s3";
 import type { ActionResult } from "@/types/action-result.type";
+import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 
 /** Accepted proof-of-payment formats — a bank PDF or a photo/scan of a slip. */
 const ALLOWED_TYPES = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
-const MAX_BYTES = 8 * 1024 * 1024; // matches serverActions.bodySizeLimit in next.config
+const MAX_BYTES = MAX_ATTACHMENT_BYTES;
 
 /** Strips path/odd characters so the stored name is safe in headers and keys. */
 function sanitizeFilename(name: string): string {
@@ -57,7 +58,7 @@ export async function addPaymentAttachment(formData: FormData): Promise<ActionRe
     return { success: false, error: "Изберете файл за прикачване." };
   }
   if (file.size > MAX_BYTES) {
-    return { success: false, error: "Файлът е твърде голям (максимум 8 MB)." };
+    return { success: false, error: "Файлът е твърде голям (максимум 4 MB)." };
   }
   if (!ALLOWED_TYPES.has(file.type)) {
     return { success: false, error: "Допустими формати: PDF, JPG, PNG, WEBP." };

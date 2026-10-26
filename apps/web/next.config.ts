@@ -1,8 +1,8 @@
 import { withBotId } from "botid/next/config";
-import { existsSync } from "node:fs";
-import { loadEnvFile } from "node:process";
-import { resolve } from "node:path";
 import type { NextConfig } from "next";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
+import { loadEnvFile } from "node:process";
 
 // Load the repo-root .env so server-side secrets shared with the rest of the
 // monorepo (NEON_DATABASE_URL, RESEND_API_KEY, CARFAX_NOTIFY_EMAIL) are available
@@ -70,9 +70,12 @@ const nextConfig: NextConfig = {
   },
   // Proof-of-payment uploads (прикачен платежен документ, contracts module) go
   // through a server action as multipart FormData; the default 1MB body cap is
-  // too small for phone photos of payment slips.
+  // too small for phone photos of payment slips. 4.5 MB is also Vercel's cap on
+  // a function's request body, so a larger setting only moved the failure from
+  // Next's clear error to Vercel's bare 413. Files themselves stop at 4 MB
+  // (MAX_ATTACHMENT_BYTES), which leaves room for the multipart overhead.
   experimental: {
-    serverActions: { bodySizeLimit: "8mb" },
+    serverActions: { bodySizeLimit: "4.5mb" },
   },
   // next/image now serves ONLY a handful of LOCAL, immutable static assets — the
   // header/footer logo (/logo.png) and the brand-logo grid (/brand-logos/*.png);
