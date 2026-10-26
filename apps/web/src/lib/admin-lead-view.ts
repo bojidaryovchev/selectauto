@@ -117,23 +117,52 @@ export function toInquiryView(row: InquiryRow): AdminLeadView {
  *  rows), plus the raw estimator `inputs` and the rates version the numbers
  *  were computed against. */
 type BreakdownJson = {
+  inputs?: {
+    vehicleType?: string;
+    auction?: string;
+    location?: string;
+    caFromBc?: boolean;
+    technotest?: boolean;
+    originDeclaration?: boolean;
+  };
   lines?: { label: string; amountUsd: number; amountEur?: number }[];
   ratesVerifiedAt?: string;
 };
 
+/** The estimator's own labels (components/calculator/cost-estimator.tsx). */
+const VEHICLE_TYPE_LABEL: Record<string, string> = { sedan: "Седан", suv: "Джип / SUV" };
+const AUCTION_LABEL: Record<string, string> = { copart: "Copart", iaai: "IAAI" };
+
 export function toCalculatorView(row: CalculatorOfferRow): AdminLeadView {
   const marketLabel = MARKET_LABEL[row.market] ?? row.market;
+  const breakdown = (row.breakdownJson ?? {}) as BreakdownJson;
+  const inputs = breakdown.inputs ?? {};
   const details: AdminDetailField[] = [
     { label: "Име", value: row.name },
     { label: "Телефон", value: row.phone, href: `tel:${row.phone}` },
     { label: "Имейл", value: row.email, href: `mailto:${row.email}` },
     { label: "Пазар", value: marketLabel },
-    { label: "Цена на автомобил", value: usd(row.carPriceEur) },
-    { label: "Обща оферта", value: usd(row.totalEur) },
   ];
+  // What the visitor chose — stored with every offer, and the transport line of
+  // a САЩ quote depends on the auction and the yard, yet none of it was shown.
+  if (inputs.vehicleType) {
+    details.push({ label: "Тип", value: VEHICLE_TYPE_LABEL[inputs.vehicleType] ?? inputs.vehicleType });
+  }
+  if (row.market === "us" && inputs.auction) {
+    details.push({ label: "Аукцион", value: AUCTION_LABEL[inputs.auction] ?? inputs.auction });
+  }
+  if (row.market === "us" && inputs.location) details.push({ label: "Локация", value: inputs.location });
+  if (row.market === "ca" && typeof inputs.caFromBc === "boolean") {
+    details.push({ label: "Провинция", value: inputs.caFromBc ? "Британска Колумбия" : "Друга провинция" });
+  }
+  if (row.market === "kr" && typeof inputs.originDeclaration === "boolean") {
+    details.push({ label: "Декларация за произход", value: inputs.originDeclaration ? "Да" : "Не" });
+  }
+  if (inputs.technotest) details.push({ label: "Технотест", value: "Да" });
+  details.push({ label: "Цена на автомобил", value: usd(row.carPriceEur) });
+  details.push({ label: "Обща оферта", value: usd(row.totalEur) });
 
   // Itemised breakdown snapshot — exactly what the visitor saw/received.
-  const breakdown = (row.breakdownJson ?? {}) as BreakdownJson;
   for (const line of breakdown.lines ?? []) {
     details.push({
       label: line.label,
