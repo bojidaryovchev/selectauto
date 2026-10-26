@@ -25,7 +25,7 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     id?: string;
-    /** Elevated roles — minted at sign-in by the jwt callback in auth.ts. */
+    /** Elevated roles — minted at sign-in by the jwt callback in auth.ts, re-read ≤ 1 min later while non-empty. */
     roles?: string[];
     /** Provider id of the sign-in that minted this token (auth.ts jwt callback). */
     provider?: string;

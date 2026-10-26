@@ -8,6 +8,44 @@ import { signInSchema } from "@/schemas/auth.schema";
 import { authConfig } from "@/auth.config";
 
 /**
+ * Roles re-read for staff tokens, per server instance. Auth.js re-signs the
+ * session cookie on every visit, so a token minted at sign-in can live for as
+ * long as its holder keeps coming back — roles read only at sign-in would make
+ * taking a role away a no-op. A minute keeps that to one primary-key read per
+ * staff member per instance, and only tokens that already carry a role pay it.
+ */
+const ROLES_TTL_MS = 60_000;
+const rolesCache = new Map<string, { roles: string[]; at: number }>();
+
+async function readRoles(userId: string): Promise<string[]> {
+  const rows = await getDb()
+    .select({ roles: schema.users.roles })
+    .from(schema.users)
+    .where(eq(schema.users.id, userId))
+    .limit(1);
+  return rows[0]?.roles ?? [];
+}
+
+/** The user's current roles, cached for ROLES_TTL_MS; keeps `fallback` if the DB can't be read. */
+async function currentRoles(userId: string, fallback: string[]): Promise<string[]> {
+  const hit = rolesCache.get(userId);
+  if (hit && Date.now() - hit.at < ROLES_TTL_MS) return hit.roles;
+  try {
+    const roles = await readRoles(userId);
+    rolesCache.set(userId, { roles, at: Date.now() });
+    return roles;
+  } catch (error) {
+    console.error("[auth] roles re-read failed; keeping the token's roles", error);
+    return fallback;
+  }
+}
+
+/** Drops a user's cached roles, so a change made on this instance applies at once. */
+export function forgetCachedRoles(userId: string): void {
+  rolesCache.delete(userId);
+}
+
+/**
  * Full Auth.js (NextAuth v5) instance — server/Node side. Spreads the edge-safe
  * `authConfig` (Google + JWT + callbacks) and adds the parts that need Node:
  *  - the Drizzle adapter (DB persistence of users/accounts/verification tokens),
@@ -24,13 +62,16 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   callbacks: {
     ...authConfig.callbacks,
     /**
-     * Node-side override of the edge `jwt` callback (auth.config.ts). Runs only
-     * on the initial sign-in (when `user` is present), where we're in the Node
-     * route handler and can hit the DB. Stamps `id` (as before) AND `roles` onto
-     * the token so the /admin gate can authorise from the JWT alone — no per-
-     * request DB read in the proxy. On later requests `user` is undefined, so the
-     * existing token (with its roles) passes through untouched. The edge config's
-     * `jwt` never runs with a `user`, so it never needs the DB.
+     * Node-side override of the edge `jwt` callback (auth.config.ts). On the
+     * initial sign-in (when `user` is present) it stamps `id` AND `roles` onto
+     * the token. On later requests a token that carries roles re-reads them
+     * (`currentRoles`, ≤ 1 min old), so a role taken away in /admin/potrebiteli
+     * stops working within a minute for every page and action, which all read
+     * the session through this config. The proxy runs the DB-free edge config
+     * and keeps the cookie's roles until the cookie is re-signed here — fine,
+     * because every back-office page and action re-checks. A role GRANTED to an
+     * account that had none still waits for its next sign-in: role-less tokens
+     * skip the read so public sessions cost nothing.
      *
      * Also stamps `provider` — which method just signed the user in — so the
      * client can mark it as "last used" on /sign-in even though the Google flow
@@ -46,13 +87,16 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         token.provider = account.provider;
       }
       if (user?.id) {
+        const roles = await readRoles(user.id);
         token.id = user.id;
-        const rows = await getDb()
-          .select({ roles: schema.users.roles })
-          .from(schema.users)
-          .where(eq(schema.users.id, user.id))
-          .limit(1);
-        token.roles = rows[0]?.roles ?? [];
+        token.roles = roles;
+        rolesCache.set(user.id, { roles, at: Date.now() });
+        return token;
+      }
+      const id = typeof token.id === "string" ? token.id : null;
+      const roles = Array.isArray(token.roles) ? (token.roles as string[]) : [];
+      if (id && roles.length > 0) {
+        token.roles = await currentRoles(id, roles);
       }
       return token;
     },

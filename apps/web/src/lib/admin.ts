@@ -8,8 +8,9 @@ import { rolesGrant, type AppRole, type Capability } from "@/constants/admin";
  * Authorisation helpers for the owner-facing /admin back office.
  *
  * Roles live on the Auth.js JWT (`session.user.roles`, minted at sign-in from
- * `users.roles` — migrations 0029→0031). Everything here reads that session;
- * there is no per-request DB lookup. Defence-in-depth: the proxy already
+ * `users.roles` — migrations 0029→0031 — and re-read at most a minute later for
+ * tokens that carry a role, see auth.ts). Everything here reads that session.
+ * Defence-in-depth: the proxy already
  * redirects anyone without back-office access away from `/admin/**`, but every
  * page/query/mutation ALSO calls one of these (the repo gates per-action, not
  * by route alone — see auth.config `authorized`).

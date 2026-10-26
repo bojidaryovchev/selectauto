@@ -46,8 +46,8 @@ export const authConfig = {
      * Expose the user id, roles and sign-in provider on `session.user` so server
      * code (favourites, the /admin gate) and the client (`useSession`) can read
      * them. `roles` is minted onto the token by the full config's `jwt` callback
-     * (auth.ts, a DB read at sign-in); a token without it (older session) reads as
-     * `[]`. `authProvider` is the Auth.js provider id of the method that minted
+     * (auth.ts: read at sign-in, and re-read at most a minute later while the
+     * token carries a role); a token without it (older session) reads as `[]`. `authProvider` is the Auth.js provider id of the method that minted
      * the session ("google" | "credentials"); the client uses it to remember the
      * last-used sign-in method (components/auth/remember-auth-method.tsx), and it
      * is `undefined` on sessions issued before that claim existed.

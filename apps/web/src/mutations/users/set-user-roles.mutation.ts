@@ -2,6 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { forgetCachedRoles } from "@/auth";
 import { APP_ROLES, type AppRole } from "@/constants/admin";
 import { getAdminSession } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
@@ -22,8 +23,10 @@ export type SetUserRolesInput = {
  *  - an admin cannot change THEIR OWN roles, which makes locking yourself (or
  *    the last admin) out of the back office impossible through this screen.
  *
- * NB: roles ride on the Auth.js JWT, minted from the DB at SIGN-IN, so a change
- * takes effect the next time that person signs in (the UI says so).
+ * NB: roles ride on the Auth.js JWT. A token that carries roles re-reads them at
+ * most a minute later (auth.ts `currentRoles`), so removing or changing a role
+ * of someone already working takes effect within a minute; a first role for an
+ * account that had none applies at its next sign-in (the UI says so).
  */
 export async function setUserRoles(input: SetUserRolesInput): Promise<ActionResult> {
   const session = await getAdminSession();
@@ -63,6 +66,7 @@ export async function setUserRoles(input: SetUserRolesInput): Promise<ActionResu
       });
     });
 
+    forgetCachedRoles(userId);
     revalidatePath("/admin", "layout");
     return { success: true, data: undefined };
   } catch (error) {
