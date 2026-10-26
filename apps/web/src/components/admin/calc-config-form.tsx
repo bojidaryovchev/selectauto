@@ -1,9 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { ADMIN_HINT, ADMIN_INPUT, ADMIN_LABEL, AdminBanner, AdminButton, AdminCard } from "@/components/admin/ui";
 import { type CalcConfig } from "@/data/import-rates";
 import { updateCalcConfig } from "@/mutations/tariffs";
+import { useRouter } from "next/navigation";
+import { useId, useState } from "react";
 
 /**
  * Admin form for the calculator's business constants (fees, commission tiers,
@@ -20,48 +21,81 @@ type Status = { kind: "idle" } | { kind: "ok" } | { kind: "error"; message: stri
  */
 const roundPct = (n: number) => Math.round(n * 1e6) / 1e6;
 
-const INPUT =
-  "w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-sm font-semibold text-ink outline-none focus:border-brand";
+/** "10 000" — the commission brackets' limits. */
+const eur = (n: number) => n.toLocaleString("bg-BG");
+
+/**
+ * Key order differs between the defaults and a config read back from jsonb, so
+ * „unsaved changes" compares the two canonically.
+ */
+function canonical(value: unknown): string {
+  return JSON.stringify(value, (_key, v: unknown) =>
+    v && typeof v === "object" && !Array.isArray(v)
+      ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b)))
+      : v,
+  );
+}
 
 function Field({
   label,
   value,
   onChange,
   suffix,
+  min = 0,
+  max = 1_000_000,
 }: {
   label: string;
   value: number;
   onChange: (v: number) => void;
   suffix?: string;
+  min?: number;
+  max?: number;
 }) {
+  const id = useId();
+  // The text being typed. Clearing a field used to save it as 0 (a VAT of 0 %
+  // on every quote); now an empty field keeps its value and gets it back on blur.
+  const [draft, setDraft] = useState<string | null>(null);
   return (
-    <label className="flex flex-col gap-1">
-      <span className="text-xs font-medium text-muted">
+    <div className="flex min-w-0 flex-col gap-1">
+      <label htmlFor={id} className={ADMIN_LABEL}>
         {label}
-        {suffix ? ` (${suffix})` : ""}
-      </span>
+        {suffix ? <span className="font-normal text-muted"> ({suffix})</span> : null}
+      </label>
       {/* step="any": the browser refuses to submit a value off the input's step,
-          and the form has no other client check — the BC jeep default 3185
-          against step 10 made the whole form unsavable. zod on the server is
-          the rule. */}
+          and the BC jeep default 3185 against step 10 once made the whole form
+          unsavable. min/max mirror the server's limits, so the browser points at
+          the field; zod on the server is still the rule. */}
       <input
+        id={id}
         type="number"
+        inputMode="decimal"
         step="any"
-        min={0}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className={INPUT}
+        min={min}
+        max={max}
+        required
+        value={draft ?? String(value)}
+        onChange={(e) => {
+          const raw = e.target.value;
+          setDraft(raw);
+          if (raw === "") return;
+          const n = Number(raw);
+          if (Number.isFinite(n)) onChange(n);
+        }}
+        onBlur={() => setDraft(null)}
+        className={ADMIN_INPUT}
       />
-    </label>
+    </div>
   );
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <fieldset className="rounded-xl border border-line bg-white p-4">
-      <legend className="px-1 text-sm font-black text-ink">{title}</legend>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{children}</div>
-    </fieldset>
+    <AdminCard>
+      <fieldset className="min-w-0">
+        <legend className="mb-3 text-base font-black text-ink">{title}</legend>
+        <div className="grid gap-3 @lg:grid-cols-2 @4xl:grid-cols-3">{children}</div>
+      </fieldset>
+    </AdminCard>
   );
 }
 
@@ -70,16 +104,19 @@ export function CalcConfigForm({ initial }: { initial: CalcConfig }) {
   const [cfg, setCfg] = useState<CalcConfig>(initial);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [busy, setBusy] = useState(false);
+  const dirty = canonical(cfg) !== canonical(initial);
 
   // Immutable nested update by shallow-cloning the touched branch.
   function patch(next: Partial<CalcConfig>) {
     setCfg((c) => ({ ...c, ...next }));
+    setStatus({ kind: "idle" });
   }
-  function setTier(idx: number, key: "maxPriceEur" | "commissionEur", v: number) {
-    setCfg((c) => {
-      const tiers = c.commissionTiers.map((t, i) => (i === idx ? { ...t, [key]: v } : t));
-      return { ...c, commissionTiers: tiers };
-    });
+  function setTier(idx: number, v: number) {
+    setCfg((c) => ({
+      ...c,
+      commissionTiers: c.commissionTiers.map((t, i) => (i === idx ? { ...t, commissionEur: v } : t)),
+    }));
+    setStatus({ kind: "idle" });
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -95,27 +132,27 @@ export function CalcConfigForm({ initial }: { initial: CalcConfig }) {
         setStatus({ kind: "error", message: result.error });
       }
     } catch {
-      setStatus({ kind: "error", message: "Грешка при запис. Моля опитайте отново." });
+      setStatus({ kind: "error", message: "Връзката прекъсна — настройките не са запазени. Опитайте отново." });
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+    <form onSubmit={onSubmit} className="@container flex flex-col gap-4">
       <Section title="Общи (мито, ДДС, курс)">
-        <Field label="Мито" suffix="%" value={cfg.dutyPct} onChange={(v) => patch({ dutyPct: v })} />
-        <Field label="ДДС" suffix="%" value={cfg.vatPct} onChange={(v) => patch({ vatPct: v })} />
-        <Field label="Курс EUR→USD" value={cfg.eurUsd} onChange={(v) => patch({ eurUsd: v })} />
+        <Field label="Мито" suffix="%" max={100} value={cfg.dutyPct} onChange={(v) => patch({ dutyPct: v })} />
+        <Field label="ДДС" suffix="%" max={100} value={cfg.vatPct} onChange={(v) => patch({ vatPct: v })} />
+        <Field label="Курс EUR→USD" min={0.1} max={10} value={cfg.eurUsd} onChange={(v) => patch({ eurUsd: v })} />
         <Field label="Технотест" suffix="€" value={cfg.technotestEur} onChange={(v) => patch({ technotestEur: v })} />
       </Section>
 
       <Section title="Корея — Плащане 1 (ENCAR + документи)">
         <Field label="ENCAR такса" suffix="€" value={cfg.krEncarFeeEur} onChange={(v) => patch({ krEncarFeeEur: v })} />
-        <Field label="Документи" suffix="%" value={cfg.krDocsPct} onChange={(v) => patch({ krDocsPct: v })} />
+        <Field label="Документи" suffix="%" max={100} value={cfg.krDocsPct} onChange={(v) => patch({ krDocsPct: v })} />
       </Section>
 
-      <Section title="Корея — морски транспорт (€)">
+      <Section title="Корея — морски транспорт">
         <Field
           label="Седан"
           suffix="€"
@@ -130,60 +167,98 @@ export function CalcConfigForm({ initial }: { initial: CalcConfig }) {
         />
       </Section>
 
-      <fieldset className="rounded-xl border border-line bg-white p-4">
-        <legend className="px-1 text-sm font-black text-ink">Корея — комисионна (€)</legend>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {cfg.commissionTiers.map((t, i) => (
-            <label key={i} className="flex items-center gap-1.5">
-              <span className="w-16 shrink-0 text-xs text-muted">до {t.maxPriceEur} €</span>
-              <input
-                type="number"
-                step="any"
-                min={0}
-                value={t.commissionEur}
-                onChange={(e) => setTier(i, "commissionEur", Number(e.target.value))}
-                className={INPUT}
-              />
-            </label>
-          ))}
+      <Section title="Корея — комисионна (€)">
+        {cfg.commissionTiers.map((t, i) => (
           <Field
-            label="Таван (над последния праг)"
-            suffix="€"
-            value={cfg.commissionCapEur}
-            onChange={(v) => patch({ commissionCapEur: v })}
+            key={i}
+            label={`При цена до ${eur(t.maxPriceEur)} €`}
+            value={t.commissionEur}
+            onChange={(v) => setTier(i, v)}
           />
-        </div>
-      </fieldset>
+        ))}
+        <Field
+          label="Над последния праг"
+          value={cfg.commissionCapEur}
+          onChange={(v) => patch({ commissionCapEur: v })}
+        />
+      </Section>
 
       <Section title="САЩ / Канада — аукционна такса">
-        <Field label="Фикс. такса (≤ праг)" suffix="$" value={cfg.usAuctionFlatUsd} onChange={(v) => patch({ usAuctionFlatUsd: v })} />
-        <Field label="Праг" suffix="$" value={cfg.usAuctionThresholdUsd} onChange={(v) => patch({ usAuctionThresholdUsd: v })} />
+        <Field
+          label="Фикс. такса (≤ праг)"
+          suffix="$"
+          value={cfg.usAuctionFlatUsd}
+          onChange={(v) => patch({ usAuctionFlatUsd: v })}
+        />
+        <Field
+          label="Праг"
+          suffix="$"
+          value={cfg.usAuctionThresholdUsd}
+          onChange={(v) => patch({ usAuctionThresholdUsd: v })}
+        />
         <Field
           label="Copart над прага"
           suffix="%"
+          max={100}
           value={roundPct(cfg.usAuctionPct.copart * 100)}
           onChange={(v) => patch({ usAuctionPct: { ...cfg.usAuctionPct, copart: roundPct(v / 100) } })}
         />
         <Field
           label="IAAI над прага"
           suffix="%"
+          max={100}
           value={roundPct(cfg.usAuctionPct.iaai * 100)}
           onChange={(v) => patch({ usAuctionPct: { ...cfg.usAuctionPct, iaai: roundPct(v / 100) } })}
         />
       </Section>
 
-      <Section title="САЩ / Канада — фиксирани такси ($)">
-        <Field label="Title" suffix="$" value={cfg.usFixedFeesUsd.title} onChange={(v) => patch({ usFixedFeesUsd: { ...cfg.usFixedFeesUsd, title: v } })} />
-        <Field label="Environmental" suffix="$" value={cfg.usFixedFeesUsd.environmental} onChange={(v) => patch({ usFixedFeesUsd: { ...cfg.usFixedFeesUsd, environmental: v } })} />
-        <Field label="Re-invoicing" suffix="$" value={cfg.usFixedFeesUsd.reinvoicing} onChange={(v) => patch({ usFixedFeesUsd: { ...cfg.usFixedFeesUsd, reinvoicing: v } })} />
-        <Field label="Онлайн наддаване" suffix="$" value={cfg.usFixedFeesUsd.onlineBid} onChange={(v) => patch({ usFixedFeesUsd: { ...cfg.usFixedFeesUsd, onlineBid: v } })} />
+      <Section title="САЩ / Канада — фиксирани такси">
+        <Field
+          label="Title"
+          suffix="$"
+          value={cfg.usFixedFeesUsd.title}
+          onChange={(v) => patch({ usFixedFeesUsd: { ...cfg.usFixedFeesUsd, title: v } })}
+        />
+        <Field
+          label="Environmental"
+          suffix="$"
+          value={cfg.usFixedFeesUsd.environmental}
+          onChange={(v) => patch({ usFixedFeesUsd: { ...cfg.usFixedFeesUsd, environmental: v } })}
+        />
+        <Field
+          label="Re-invoicing"
+          suffix="$"
+          value={cfg.usFixedFeesUsd.reinvoicing}
+          onChange={(v) => patch({ usFixedFeesUsd: { ...cfg.usFixedFeesUsd, reinvoicing: v } })}
+        />
+        <Field
+          label="Онлайн наддаване"
+          suffix="$"
+          value={cfg.usFixedFeesUsd.onlineBid}
+          onChange={(v) => patch({ usFixedFeesUsd: { ...cfg.usFixedFeesUsd, onlineBid: v } })}
+        />
       </Section>
 
       <Section title="След Холандия — агенция и автовоз до БГ (всички пазари)">
         <Field label="Митн. агенция" suffix="€" value={cfg.agencyEur} onChange={(v) => patch({ agencyEur: v })} />
-        <Field label="Автовоз БГ — седан" suffix="€" value={cfg.bgTransportEur.sedan} onChange={(v) => patch({ bgTransportEur: { ...cfg.bgTransportEur, sedan: v } })} />
-        <Field label="Автовоз БГ — джип" suffix="€" value={cfg.bgTransportEur.suv} onChange={(v) => patch({ bgTransportEur: { ...cfg.bgTransportEur, suv: v } })} />
-        <Field label="Канада транспорт" suffix="$" value={cfg.caTransportUsd} onChange={(v) => patch({ caTransportUsd: v })} />
+        <Field
+          label="Автовоз БГ — седан"
+          suffix="€"
+          value={cfg.bgTransportEur.sedan}
+          onChange={(v) => patch({ bgTransportEur: { ...cfg.bgTransportEur, sedan: v } })}
+        />
+        <Field
+          label="Автовоз БГ — джип"
+          suffix="€"
+          value={cfg.bgTransportEur.suv}
+          onChange={(v) => patch({ bgTransportEur: { ...cfg.bgTransportEur, suv: v } })}
+        />
+        <Field
+          label="Канада транспорт"
+          suffix="$"
+          value={cfg.caTransportUsd}
+          onChange={(v) => patch({ caTransportUsd: v })}
+        />
         <Field
           label="Канада (Бр. Колумбия) — седан"
           suffix="$"
@@ -202,40 +277,44 @@ export function CalcConfigForm({ initial }: { initial: CalcConfig }) {
         <Field
           label="Надценка върху крайната цена"
           suffix="%"
+          max={100}
           value={cfg.mobilebgMarkupPct}
           onChange={(v) => patch({ mobilebgMarkupPct: v })}
         />
-      </Section>
-      <p className="-mt-2 text-xs text-muted">
-        Обявата в mobile.bg е продажба на дребно, а калкулаторът дава себестойността „до
-        България“. Надценката се прилага върху крайната сума и определя цената в обявата.
-        При 0% обявяваме на себестойност.
-      </p>
-
-      {status.kind === "error" ? (
-        <p className="rounded-lg bg-[#fdecea] px-3 py-2 text-sm font-semibold text-[#b3261e]">{status.message}</p>
-      ) : null}
-      {status.kind === "ok" ? (
-        <p className="rounded-lg bg-[#e8f5ec] px-3 py-2 text-sm font-semibold text-[#1d6b35]">
-          Запазено — калкулаторът ще ползва новите стойности.
+        <p className={`${ADMIN_HINT} @lg:col-span-2 @lg:self-end`}>
+          Обявата в mobile.bg е продажба на дребно, а калкулаторът дава себестойността „до България“. Надценката се
+          прилага върху крайната сума и определя цената в обявата. При 0% обявяваме на себестойност.
         </p>
-      ) : null}
+      </Section>
 
-      <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={busy}
-          className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-6 text-sm font-extrabold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-        >
-          {busy ? "Запазване…" : "Запази настройките"}
-        </button>
-        <button
-          type="button"
-          onClick={() => setCfg(initial)}
-          className="text-sm font-semibold text-muted underline-offset-2 hover:text-ink hover:underline"
-        >
-          Върни
-        </button>
+      {/* Sticky: the form is long, so the save button and its result stay in
+          reach wherever the edit was made. */}
+      <div className="sticky bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-10 flex flex-col gap-3 rounded-xl border border-line bg-white/95 p-3 shadow-card backdrop-blur-sm">
+        {status.kind === "error" ? <AdminBanner tone="error">{status.message}</AdminBanner> : null}
+        {status.kind === "ok" && !dirty ? (
+          <AdminBanner tone="success">Запазено — калкулаторът и mobile.bg вече ползват новите стойности.</AdminBanner>
+        ) : null}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-muted" aria-live="polite">
+            {dirty ? "Има незапазени промени." : "Няма незапазени промени."}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <AdminButton
+              variant="secondary"
+              size="lg"
+              disabled={!dirty || busy}
+              onClick={() => {
+                setCfg(initial);
+                setStatus({ kind: "idle" });
+              }}
+            >
+              Върни
+            </AdminButton>
+            <AdminButton type="submit" variant="primary" size="lg" disabled={busy}>
+              {busy ? "Запазване…" : "Запази настройките"}
+            </AdminButton>
+          </div>
+        </div>
       </div>
     </form>
   );
