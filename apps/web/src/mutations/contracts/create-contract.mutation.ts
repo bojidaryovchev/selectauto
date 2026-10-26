@@ -57,8 +57,13 @@ export async function createContract(input: unknown): Promise<ActionResult<{ id:
 
   // Канада: перо 1 is entered in CAD + rate; its EUR value (the contract's
   // leading amount) is DERIVED and rounded to the whole euro, like the notices.
-  const foreignRate = values.foreignRate?.trim() ? Number(values.foreignRate.replace(",", ".")) : null;
-  const carForeignCents = values.amountCarForeign?.trim() ? cents(values.amountCarForeign) : null;
+  // Only for a market with a foreign-currency перо: the wizard keeps whatever
+  // was typed in the CAD boxes after switching market, and using it there saved
+  // CAD × курс as Точка 1 of a САЩ contract (update-contract guards the same way).
+  const foreignPoint = market.points.find((p) => p.foreignCurrency);
+  const foreignRate =
+    foreignPoint && values.foreignRate?.trim() ? Number(values.foreignRate.replace(",", ".")) : null;
+  const carForeignCents = foreignPoint && values.amountCarForeign?.trim() ? cents(values.amountCarForeign) : null;
   const derivedCarCents =
     foreignRate !== null && carForeignCents !== null ? Math.round((carForeignCents * foreignRate) / 100) * 100 : null;
 
