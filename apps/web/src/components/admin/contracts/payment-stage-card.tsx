@@ -422,7 +422,8 @@ export function PaymentStageCard({
         </div>
       ) : null}
 
-      {error && panel !== "generate" ? <AdminBanner tone="error">{error}</AdminBanner> : null}
+      {/* The open panels show their own error; this one is for the closed card. */}
+      {error && panel === "none" ? <AdminBanner tone="error">{error}</AdminBanner> : null}
 
       {/* ── Generate panel ── */}
       {panel === "generate" ? (
