@@ -7,6 +7,7 @@ import { CACHE_TAGS, carCacheTag } from "@/lib/cache-tags";
 import { getDb, schema } from "@/lib/db";
 import { isUsableVin, normalizeVin } from "@/lib/vin";
 import { submitIndexNow } from "@/lib/indexnow";
+import { type WithdrawSummary, withdrawAdvertsOfCars } from "@/lib/mobilebg/withdraw";
 import { SITE_URL } from "@/constants";
 import type { ActionResult } from "@/types/action-result.type";
 
@@ -31,6 +32,11 @@ import type { ActionResult } from "@/types/action-result.type";
  *     part and permanently corrupt the summary tables, which are maintained by a
  *     before/after diff inside those wrappers.
  *  4. Expire the caches, per car and site-wide.
+ *  5. Withdraw the cars' live mobile.bg adverts — otherwise the car stays for
+ *     sale there, and billed weekly, after we were paid to take it down.
+ *
+ * Cars of the same VIN ingested LATER are stamped by the sweep
+ * (/api/cron/deindex-sweep), which repeats steps 3–5 for them.
  *
  * Step 3 CANNOT be left to ingestion: it only recomputes cars whose upstream
  * payload actually changed, so an untouched car would stay listed until the
@@ -50,6 +56,8 @@ export type ApplyDeindexResult = {
   vin: string;
   carIds: number[];
   indexNow: "submitted" | "skipped" | "failed";
+  /** The hidden cars' live mobile.bg adverts, and how many were taken down. */
+  adverts: WithdrawSummary;
 };
 
 export async function applyDeindex(
@@ -159,8 +167,11 @@ export async function applyDeindex(
   // them (it has no removal API at all) — the Search Console step stays manual.
   const indexNow = await submitIndexNow(carIds.map((id) => `${SITE_URL}/avtomobil/${id}`));
 
+  // A hidden car's mobile.bg advert kept selling it there, billed every week.
+  const adverts = await withdrawAdvertsOfCars(carIds, session.user?.id ?? null);
+
   revalidatePath("/admin", "layout");
-  return { success: true, data: { vin, carIds, indexNow } };
+  return { success: true, data: { vin, carIds, indexNow, adverts } };
 }
 
 /**

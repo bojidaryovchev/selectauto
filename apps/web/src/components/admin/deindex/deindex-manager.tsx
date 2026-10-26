@@ -108,10 +108,17 @@ export function DeindexManager() {
             : res.data.indexNow === "failed"
               ? "IndexNow: неуспешно (сайтът все пак е обновен)."
               : "IndexNow: пропуснато (няма ключ).";
+        const { found, withdrawn, failed } = res.data.adverts;
+        const advertsNote =
+          found === 0
+            ? ""
+            : failed === 0
+              ? ` mobile.bg: изтеглени ${withdrawn} ${withdrawn === 1 ? "обява" : "обяви"}.`
+              : ` mobile.bg: ${failed === 1 ? "1 обява не можа да бъде изтеглена" : `${failed} обяви не можаха да бъдат изтеглени`} — изтрийте от „mobile.bg“, иначе остават платени.`;
         setFeedback({
-          tone: "success",
+          tone: failed > 0 ? "error" : "success",
           text:
-            `Скрити ${res.data.carIds.length} обяви за VIN ${res.data.vin}. ${indexNowNote} ` +
+            `Скрити ${res.data.carIds.length} обяви за VIN ${res.data.vin}. ${indexNowNote}${advertsNote} ` +
             `Google няма API за премахване — подайте ръчно заявка в Search Console.`,
         });
         clearRequest();
