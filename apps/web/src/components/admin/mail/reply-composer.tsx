@@ -30,7 +30,18 @@ export function ReplyComposer({ threadId, to }: { threadId: number; to: string }
     }
     setError(null);
     startTransition(async () => {
-      const res = await sendReply({ threadId, body: trimmed });
+      // A call that never reaches the server (a dropped connection) rejects; inside a
+      // transition that used to reach the page's error boundary.
+      let res: Awaited<ReturnType<typeof sendReply>>;
+      try {
+        res = await sendReply({ threadId, body: trimmed });
+      } catch {
+        // The text stays in the box; the reply may still have gone out.
+        setError(
+          "Връзката прекъсна, докато отговорът се изпращаше. Проверете дали се появи в разговора, преди да изпратите отново.",
+        );
+        return;
+      }
       if (!res.success) {
         setError(res.error);
         return;

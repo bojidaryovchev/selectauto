@@ -40,7 +40,15 @@ export function NotesEditor({
     setError(null);
     setOk(false);
     startTransition(async () => {
-      const res = await updateLead({ type, id, notes: text });
+      // A call that never reaches the server (a dropped connection) rejects; inside a
+      // transition that used to reach the page's error boundary.
+      let res: Awaited<ReturnType<typeof updateLead>>;
+      try {
+        res = await updateLead({ type, id, notes: text });
+      } catch {
+        setError("Връзката прекъсна — бележките не са запазени.");
+        return;
+      }
       if (!res.success) {
         setError(res.error);
         return;

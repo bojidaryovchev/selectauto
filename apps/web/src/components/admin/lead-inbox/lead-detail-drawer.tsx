@@ -107,7 +107,7 @@ export function LeadDetailDrawer({
       <AlertDialog.Root open={confirmDiscard} onOpenChange={setConfirmDiscard}>
         <AlertDialog.Portal>
           <AlertDialog.Backdrop className="fixed inset-0 z-70 min-h-dvh bg-black/30 transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 supports-[-webkit-touch-callout:none]:absolute" />
-          <AlertDialog.Popup className="fixed top-1/2 left-1/2 z-70 flex w-96 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-2xl bg-white p-5 shadow-2xl transition-[scale,opacity] duration-150 outline-none data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-starting-style:scale-[0.98] data-starting-style:opacity-0">
+          <AlertDialog.Popup className="fixed top-1/2 left-1/2 z-70 flex w-96 max-w-[calc(100vw-2rem)] -translate-1/2 flex-col gap-4 rounded-2xl bg-white p-5 shadow-2xl transition-[scale,opacity] duration-150 outline-none data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-starting-style:scale-[0.98] data-starting-style:opacity-0">
             <div className="flex flex-col gap-1">
               <AlertDialog.Title className="text-base font-black text-ink">Бележката не е запазена</AlertDialog.Title>
               <AlertDialog.Description className="text-sm text-muted">

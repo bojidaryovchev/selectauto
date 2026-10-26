@@ -21,7 +21,16 @@ export function MailThreadStatusSelect({ threadId, value }: { threadId: number; 
     setCurrent(next);
     setError(null);
     startTransition(async () => {
-      const res = await updateThreadStatus(threadId, next);
+      // A call that never reaches the server (a dropped connection) rejects; inside a
+      // transition that used to reach the page's error boundary.
+      let res: Awaited<ReturnType<typeof updateThreadStatus>>;
+      try {
+        res = await updateThreadStatus(threadId, next);
+      } catch {
+        setCurrent(prev);
+        setError("Връзката прекъсна — статусът не е сменен.");
+        return;
+      }
       if (!res.success) {
         setCurrent(prev);
         setError(res.error);
