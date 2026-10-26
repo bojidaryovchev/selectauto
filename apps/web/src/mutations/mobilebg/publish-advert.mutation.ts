@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
@@ -47,7 +47,8 @@ import type { ActionResult } from "@/types/action-result.type";
  *  4. **Claim the row, then call.** The `mobilebg_adverts` row is written first
  *     (status `pending`), so a crash between the API call and the bookkeeping
  *     leaves a visible, diagnosable record rather than a silent orphan advert we
- *     keep paying for.
+ *     keep paying for. The claim is atomic, so two simultaneous publishes of one
+ *     car can't both create an advert.
  *
  *  5. **Pass the stored `ida` when we have one.** With it, `advertpub` is an edit;
  *     without it, a new — billable — advert. Losing that id means paying twice
@@ -121,7 +122,6 @@ export async function publishCarToMobilebg(
   }
 
   const db = getDb();
-  const existingIda = preview.advert?.ida ?? null;
 
   // 3. Photos first — an advert with broken photos is already paid for.
   const { picts, skipped } = await preparePictures(carId, preview.source.images);
@@ -132,9 +132,16 @@ export async function publishCarToMobilebg(
     };
   }
 
-  // 4. Claim the row before the external call.
-  await db
-    .insert(schema.mobilebgAdverts)
+  // 4. Claim the row before the external call — atomically. Two people pressing
+  //    „Публикувай" for the same car at once both reached `advertpub` without an
+  //    id: two paid adverts. Only one claim wins now; a claim still `pending`
+  //    after 10 minutes is a crashed attempt (a publish takes well under one) and
+  //    may be taken over. The id comes back from the claim, not from the
+  //    preview: a publish that finished between the two must be edited, not
+  //    created again.
+  const a = schema.mobilebgAdverts;
+  const [claim] = await db
+    .insert(a)
     .values({
       carId,
       status: "pending",
@@ -144,9 +151,18 @@ export async function publishCarToMobilebg(
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
-      target: schema.mobilebgAdverts.carId,
+      target: a.carId,
       set: { status: "pending", lastError: null, updatedAt: new Date() },
-    });
+      setWhere: sql`${a.status} <> 'pending' OR ${a.updatedAt} < now() - interval '10 minutes'`,
+    })
+    .returning({ ida: a.ida });
+  if (!claim) {
+    return {
+      success: false,
+      error: "Тази кола се публикува в момента (от вас или друг потребител). Изчакайте минута и опреснете.",
+    };
+  }
+  const existingIda = claim.ida ?? null;
 
   const sentPriceEur = preview.mapped.sentPriceEur;
   const logFields = {
