@@ -8,8 +8,9 @@
  * different tools with incompatible internal XML).
  *
  *  - Inland: rows with an "Auction Location" header + 6 terminal price columns.
- *    The preferred terminal is the CHEAPEST non-empty one (reproduces the source
- *    sheet's colour-coded routing — verified: the coloured cell is the min price).
+ *    The preferred terminal is the CHEAPEST non-empty one. (The source sheet also
+ *    colours one terminal per row; on 55 of its 596 rows that is not the cheapest
+ *    — which one to use is the owner's call, docs/admin-redesign-plan.md §8.)
  *  - Container: a config × terminal price-per-car grid.
  *
  * Fails CLOSED with a descriptive BG error if the shape is wrong — nothing is
@@ -42,12 +43,60 @@ function toNum(s: string | undefined): number {
   return Number.isFinite(n) ? n : NaN;
 }
 
-/** Split pasted TSV into a 2-D grid of trimmed cells (tab-delimited, \r?\n rows). */
+/**
+ * Split pasted TSV into a 2-D grid of cells (tab-delimited, \r?\n rows).
+ *
+ * Excel and Google Sheets copy a cell holding a line break, a tab or a quote as
+ * a quoted field (`"a⏎b"`, `"say ""hi"""`). Splitting on every newline cut such
+ * a cell — and its row — in two: two yards in the CargoLoop sheet have a line
+ * break in their name („CHARLESTON/Hu⏎rricane 25526", „CRASHEDTOYS⏎Memphis
+ * 38118") and came out named `rricane 25526"` and `Memphis 38118"`. A cell is
+ * read as quoted only when its closing quote ends the cell; anything else is
+ * taken literally, as before.
+ */
 function grid(tsv: string): string[][] {
-  return tsv
-    .replace(/\r\n?/g, "\n")
-    .split("\n")
-    .map((line) => line.split("\t"));
+  const text = tsv.replace(/\r\n?/g, "\n");
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let i = 0;
+  for (;;) {
+    let cell: string | null = null;
+    if (text[i] === '"') {
+      let j = i + 1;
+      let value = "";
+      while (j < text.length) {
+        if (text[j] === '"') {
+          if (text[j + 1] !== '"') break;
+          value += '"';
+          j += 2;
+        } else {
+          value += text[j];
+          j += 1;
+        }
+      }
+      const end = text[j + 1];
+      if (j < text.length && (end === undefined || end === "\t" || end === "\n")) {
+        cell = value;
+        i = j + 1;
+      }
+    }
+    if (cell === null) {
+      let j = i;
+      while (j < text.length && text[j] !== "\t" && text[j] !== "\n") j += 1;
+      cell = text.slice(i, j);
+      i = j;
+    }
+    row.push(cell);
+    if (i >= text.length) {
+      rows.push(row);
+      return rows;
+    }
+    if (text[i] === "\n") {
+      rows.push(row);
+      row = [];
+    }
+    i += 1;
+  }
 }
 
 /** Parse the inland TSV → resolved rows (preferred = cheapest terminal). */
