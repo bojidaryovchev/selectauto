@@ -3,6 +3,7 @@ import type { AdminDetailField, AdminLeadView } from "@/types/admin.type";
 import type { CarfaxRequestRow } from "@/queries/admin/list-carfax-requests.query";
 import type { InquiryRow } from "@/queries/admin/list-inquiries.query";
 import type { CalculatorOfferRow } from "@/queries/admin/list-calculator-offers.query";
+import { formatSofiaDateTime } from "@/lib/sofia-time";
 
 /**
  * Server-side mappers that turn a typed lead row into the shared `AdminLeadView`
@@ -10,16 +11,9 @@ import type { CalculatorOfferRow } from "@/queries/admin/list-calculator-offers.
  * so the client component stays presentation-only and type-agnostic.
  */
 
-const dateFmt = new Intl.DateTimeFormat("bg-BG", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
+/** Sofia time — the formatter used to have no time zone, so the server (UTC) printed every lead 2–3 h early. */
 function fmtDate(d: Date): string {
-  return dateFmt.format(d);
+  return formatSofiaDateTime(d);
 }
 
 /** The calculator computes in USD; the `*_eur` columns store USD, so amounts
