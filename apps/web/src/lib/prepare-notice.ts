@@ -5,6 +5,7 @@ import { DEFAULT_PAYMENT_TERM_DAYS, STAGE_ALLOWED_RECIPIENT_KINDS, type PaymentS
 import { getDb, schema } from "@/lib/db";
 import { formatCentsDoc, parseAmountToCents } from "@/lib/money";
 import { buildNoticeSnapshot } from "@/lib/notice";
+import { missingBankFields } from "@/lib/recipient-bank";
 import type { NoticeSnapshot } from "@/types/notice-snapshot.type";
 
 export type PaymentNoticeInput = {
@@ -128,7 +129,7 @@ export async function prepareNotice(
   }
 
   // §10: bank data must be complete before a notice can be generated.
-  if (!recipient.bankName || !recipient.iban || !recipient.swiftBic) {
+  if (missingBankFields(recipient).length > 0) {
     return {
       ok: false,
       error: `Банковите данни на „${recipient.name}“ са непълни — попълнете ги в Получатели преди генериране.`,

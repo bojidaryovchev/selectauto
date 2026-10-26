@@ -17,11 +17,14 @@ export const recipientSchema = z.object({
   vatNumber: z.string().trim().max(50).optional(),
   bankName: z.string().trim().max(200).optional(),
   bankAddress: z.string().trim().max(300).optional(),
+  // Hyphens too: a non-IBAN account number is written with them (SSANCAR's
+  // Shinhan account is 180-008-400167, and without them that row couldn't be
+  // saved at all — not even to untick „Активен").
   iban: z
     .string()
     .trim()
     .toUpperCase()
-    .regex(/^[A-Z0-9 ]*$/, { message: "IBAN/сметката може да съдържа само букви и цифри." })
+    .regex(/^[A-Z0-9 -]*$/, { message: "IBAN/сметката може да съдържа само букви, цифри, интервали и тирета." })
     .max(50)
     .optional(),
   swiftBic: z
