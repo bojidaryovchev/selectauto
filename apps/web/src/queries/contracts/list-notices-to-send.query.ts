@@ -19,10 +19,11 @@ export type NoticeToSendRow = {
  * NEWEST version per stage counts (a regeneration supersedes the older ones),
  * and a stage that is already paid or cancelled — or whose contract is
  * cancelled — has nothing left to send. Scoped like every contract read
- * (`visibleRecords`). Newest first. Needs `notices.markSent`.
+ * (`visibleRecords`). Newest first. For whoever forwards the notices
+ * (`notices.markSent`) and, read-only, whoever issues them (`notices.generate`).
  */
 export async function listNoticesToSend(): Promise<NoticeToSendRow[]> {
-  const session = await getSessionWith("notices.markSent");
+  const session = (await getSessionWith("notices.markSent")) ?? (await getSessionWith("notices.generate"));
   if (!session) throw new Error("FORBIDDEN");
 
   const g = schema.generatedDocuments;

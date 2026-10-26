@@ -49,7 +49,10 @@ export type AppRole = (typeof APP_ROLES)[number];
 
 /** BG label + one-line description per role — for /admin/potrebiteli. */
 export const APP_ROLE_META: Record<AppRole, { label: string; description: string }> = {
-  admin: { label: "Администратор", description: "пълен достъп." },
+  admin: {
+    label: "Администратор",
+    description: "пълен достъп; изпратените на клиента известия отбелязва този, който ги изпраща.",
+  },
   observer: {
     label: "Наблюдаващ",
     description:
@@ -74,7 +77,12 @@ export const APP_ROLE_META: Record<AppRole, { label: string; description: string
 const OBSERVER: readonly Capability[] = ["backoffice.enter", "contracts.create", "payments.attach", "mobilebg.publish"];
 
 export const ROLE_CAPABILITIES: Record<AppRole, readonly Capability[]> = {
-  admin: CAPABILITIES,
+  // Everything except marking notices sent: that belongs to whoever forwards
+  // them. The owner issues the notices, and when his own account could mark
+  // them, a click right after issuing (12:30, 26.10.2026) handed the forwarder
+  // notices already „изпратени" that he had never sent. The admin still sees the
+  // „за изпращане" list, read-only.
+  admin: CAPABILITIES.filter((c) => c !== "notices.markSent"),
   observer: OBSERVER,
   // Owner, 26.10.2026: an observer who sees ALL contracts and can download the
   // notices already issued to forward them to clients — still without issuing

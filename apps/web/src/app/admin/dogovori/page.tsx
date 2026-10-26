@@ -33,10 +33,12 @@ export default async function AdminContractsPage({
   const { rows, total, pageCount } = await listContracts({ q: sp.q, status: sp.status, page });
   const session = await auth();
   // Numbering belongs to `contracts.edit` — an observer never sees or edits it.
-  // The „за изпращане" list is the work queue of whoever forwards notices.
+  // The „за изпращане" list is the work queue of whoever forwards notices; the
+  // one who issues them sees it read-only, to follow what is still unsent.
+  const canMarkSent = can(session, "notices.markSent");
   const [numbering, toSend] = await Promise.all([
     can(session, "contracts.edit") ? getNumbering("contract") : null,
-    can(session, "notices.markSent") ? listNoticesToSend() : [],
+    canMarkSent || can(session, "notices.generate") ? listNoticesToSend() : [],
   ]);
 
   return (
@@ -79,7 +81,7 @@ export default async function AdminContractsPage({
                 >
                   PDF ⬇
                 </a>
-                <NoticeSentButton documentId={n.documentId} />
+                {canMarkSent ? <NoticeSentButton documentId={n.documentId} /> : null}
               </li>
             ))}
           </ul>
