@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
@@ -14,9 +14,12 @@ import type { ActionResult } from "@/types/action-result.type";
  *
  * Deliberately restricted to `cancelled`: an active or paid contract is business
  * history and must be cancelled first, which is itself an audited decision. The
- * whole tree goes — stages, generated documents, attachments, events — plus the
- * S3 objects, so nothing is orphaned in the bucket. A deposit that was deducted
- * into this contract is RELEASED back to 'paid' so it can be used again.
+ * whole tree goes — stages, generated documents, attachments — plus the S3
+ * objects, so nothing is orphaned in the bucket. Its audit events STAY (with the
+ * deletion recorded on top): they are the record of who did what, which is what
+ * /admin/dnevnik is for, and ids are never reused, so they can't attach to a
+ * later contract. A deposit that was deducted into this contract is RELEASED
+ * back to 'paid' so it can be used again.
  */
 export async function deleteContract(id: number): Promise<ActionResult<{ number: string }>> {
   const session = await getSessionWith("contracts.edit");
@@ -64,15 +67,7 @@ export async function deleteContract(id: number): Promise<ActionResult<{ number:
     await db.transaction(async (tx) => {
       if (paymentIds.length) {
         await tx.delete(schema.paymentAttachments).where(inArray(schema.paymentAttachments.paymentId, paymentIds));
-        // Stage-level history — scoped to entity='payment', since entity_id is
-        // only unique WITHIN an entity type.
-        await tx
-          .delete(schema.contractEvents)
-          .where(and(eq(schema.contractEvents.entity, "payment"), inArray(schema.contractEvents.entityId, paymentIds)));
       }
-      await tx
-        .delete(schema.contractEvents)
-        .where(and(eq(schema.contractEvents.entity, "contract"), eq(schema.contractEvents.entityId, id)));
       await tx.delete(schema.generatedDocuments).where(eq(schema.generatedDocuments.contractId, id));
       await tx.delete(schema.contractPayments).where(eq(schema.contractPayments.contractId, id));
 
@@ -86,7 +81,6 @@ export async function deleteContract(id: number): Promise<ActionResult<{ number:
 
       await tx.delete(schema.contracts).where(eq(schema.contracts.id, id));
 
-      // The contract's own trail goes too, but the deletion itself is recorded.
       await tx.insert(schema.contractEvents).values({
         entity: "contract",
         entityId: id,

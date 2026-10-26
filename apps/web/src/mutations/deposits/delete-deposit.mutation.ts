@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
@@ -12,7 +12,8 @@ import type { ActionResult } from "@/types/action-result.type";
  * "и тука ануалирания да го махнем"). Restricted to `cancelled` for the same
  * reason as contracts; a 'used' deposit additionally can't be removed because a
  * mediation contract still points at it. Generated PDFs go with it, including
- * the S3 copies.
+ * the S3 copies; its audit events stay, with the deletion recorded on top (see
+ * delete-contract).
  */
 export async function deleteDeposit(id: number): Promise<ActionResult<{ number: string }>> {
   const session = await getSessionWith("deposits.manage");
@@ -50,9 +51,6 @@ export async function deleteDeposit(id: number): Promise<ActionResult<{ number: 
 
     await db.transaction(async (tx) => {
       await tx.delete(schema.generatedDocuments).where(eq(schema.generatedDocuments.depositContractId, id));
-      await tx
-        .delete(schema.contractEvents)
-        .where(and(eq(schema.contractEvents.entity, "deposit"), eq(schema.contractEvents.entityId, id)));
       await tx.delete(schema.depositContracts).where(eq(schema.depositContracts.id, id));
       await tx.insert(schema.contractEvents).values({
         entity: "deposit",
