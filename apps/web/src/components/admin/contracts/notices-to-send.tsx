@@ -1,6 +1,7 @@
 import { adminButtonClass } from "@/components/admin/ui";
 import { ChevronDownIcon } from "@/components/icons";
 import { stageLabel, type ContractMarket, type PaymentStage } from "@/constants/contracts";
+import { formatSofiaDate } from "@/lib/sofia-time";
 import type { NoticeToSendRow } from "@/queries/contracts";
 import Link from "next/link";
 import { NoticeSentButton } from "./notice-sent-button";
@@ -31,7 +32,7 @@ export function NoticesToSend({ notices, canMarkSent }: { notices: NoticeToSendR
               </Link>
               <p className="wrap-anywhere text-ink">
                 {n.clientName} · {stageLabel(n.market as ContractMarket, n.stage as PaymentStage)} · версия {n.version}{" "}
-                от {n.createdAt.toLocaleDateString("bg-BG", { timeZone: "Europe/Sofia" })}
+                от {formatSofiaDate(n.createdAt)}
               </p>
             </div>
             <div className="flex shrink-0 flex-wrap items-center gap-2">

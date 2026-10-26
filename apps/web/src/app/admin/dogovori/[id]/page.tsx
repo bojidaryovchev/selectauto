@@ -15,6 +15,7 @@ import { auditActionLabel } from "@/constants/audit";
 import { auth } from "@/auth";
 import { can } from "@/lib/admin";
 import { dbToCents, formatDbAmount } from "@/lib/money";
+import { formatSofiaDateTime } from "@/lib/sofia-time";
 import { getContract } from "@/queries/contracts";
 import { listRecipients } from "@/queries/recipients";
 
@@ -275,7 +276,7 @@ export default async function AdminContractDetailPage({ params }: { params: Prom
               {events.map((e) => (
                 <li key={e.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 py-3 text-sm">
                   <span className="whitespace-nowrap font-mono text-xs text-muted">
-                    {e.createdAt.toLocaleString("bg-BG")}
+                    {formatSofiaDateTime(e.createdAt)}
                   </span>
                   <span className="font-semibold text-ink">{auditActionLabel(e.action)}</span>
                   <span className="text-muted">

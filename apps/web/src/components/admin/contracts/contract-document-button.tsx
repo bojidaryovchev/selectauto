@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { generateContractDocument } from "@/mutations/contracts";
+import { formatSofiaDate } from "@/lib/sofia-time";
 import type { GeneratedDocumentRow } from "@/queries/contracts";
 
 /**
@@ -63,7 +64,7 @@ export function ContractDocumentButton({
             rel="noreferrer"
             className="text-sm font-semibold text-brand hover:underline"
           >
-            Версия {d.version} ({d.createdAt.toLocaleDateString("bg-BG")}) ⬇
+            Версия {d.version} ({formatSofiaDate(d.createdAt)}) ⬇
           </a>
         ))}
       </div>

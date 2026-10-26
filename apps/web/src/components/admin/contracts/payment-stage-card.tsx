@@ -13,6 +13,7 @@ import {
 } from "@/constants/contracts";
 import { dbToCents, formatCents, formatDbAmount } from "@/lib/money";
 import { contractLineCents, noticeLineCurrency } from "@/lib/notice";
+import { formatSofiaDateTime } from "@/lib/sofia-time";
 import {
   addPaymentAttachment,
   generatePaymentNotice,
@@ -354,7 +355,7 @@ export function PaymentStageCard({
                 rel="noreferrer"
                 className="text-sm font-semibold text-brand hover:underline"
               >
-                Версия {d.version} — {d.createdAt.toLocaleString("bg-BG")} ⬇
+                Версия {d.version} — {formatSofiaDateTime(d.createdAt)} ⬇
               </a>
               {d.id === toSendId ? (
                 <div className="flex flex-wrap items-center gap-2">
@@ -365,7 +366,7 @@ export function PaymentStageCard({
                 </div>
               ) : d.clientSentAt && d.clientSentBy ? (
                 <span className="text-xs text-muted">
-                  Изпратено на клиента — {d.clientSentAt.toLocaleString("bg-BG")}
+                  Изпратено на клиента — {formatSofiaDateTime(d.clientSentAt)}
                 </span>
               ) : null}
             </div>
