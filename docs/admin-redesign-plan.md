@@ -67,10 +67,9 @@ matter more than the visuals, several with **production impact** ✔:
 | 8 | From the second PDF a server process renders, letters next to some Latin glyphs vanish („14 480.00 UR") | reproduced deterministically; fontkit's glyph cache (found while fixing #1) |
 
 **Status 2026-10-26:** #1–#6 and #8 are fixed (§5: B1–B5, B8, B9, B13, B26,
-B34). Phases 0–3 are done — the new shell (§2) and the building blocks (§3)
-are in. Phase 4 has covered Договори, Депозити, mobile.bg, Поща and the three
-lead inboxes, each with its P1 fixes (§5). #7 (B6, B7) waits for phase 5.
-Next: Тарифи.
+B34). Phases 0–4 are done: the new shell (§2), the building blocks (§3), and
+every admin page restyled with its P1 fixes (§5; all P1s except B19). #7 (B6,
+B7) and B19 wait for phase 5, the stale comments (§9) for phase 6.
 
 **Plan.** Two tracks, kept in separate commits:
 
@@ -503,8 +502,8 @@ redesign work. Track B items are numbered in §5.
   defaults for a day ◇; no audit of price changes ◇; two yards' names mangled by
   multi-line cells on paste ◇; `/api/calc-config` publishes the mobile.bg
   markup (B16) ✔; clearing a field saves 0 ◇; English zod messages ◇. **Owner
-  decision:** 56 of 596 yards use the cheapest terminal where the spec says the
-  highlighted one (−$800…+$450 sedan) ◇.
+  decision:** 55 of 596 yards use the cheapest terminal where the spec says the
+  highlighted one (−$800…+$450 sedan) ✔ (re-measured during phase 4).
 - **Redesign:** one column on phones (two cramped columns today), container
   query to 3; 16 px inputs; sticky save bar; history as cards.
 
@@ -618,9 +617,25 @@ form resets after a create (a second click made a duplicate deposit and
 client); a deposit PDF asks before issuing a new version; „Премахни" on a
 mobile.bg mapping asks first; the reply box names the address the reply really
 goes to (Reply-To); and a dropped connection during a server action is reported
-next to the button in mobile.bg, the mail thread and the lead drawer — before,
-it replaced the page with the error screen ✔ (reproduced by aborting the
-request).
+next to the button in mobile.bg, the mail thread, the lead drawer, Тарифи,
+Скрити обяви, Получатели and Потребители — before, it replaced the page with the
+error screen ✔ (reproduced by aborting the request). Further, from the later
+sections:
+
+- Tariff paste: two yards with a line break in their name came out mangled
+  (`rricane 25526"`) — quoted cells are now read whole; the owner's sheets parse
+  to the built-in table row for row ✔. An upload is one transaction.
+- Settings: clearing a field saved it as 0; the browser now checks each
+  field's limits and the server's messages are Bulgarian and name the field. A
+  failed settings/tariff read is cached for minutes, not a day (it would have
+  zeroed the mobile.bg markup until the next day).
+- Users: two admins demoting each other at once could leave none — the admin
+  rows are locked and the last admin keeps the role.
+- Contracts/deposits: deleting a cancelled one no longer deletes its audit
+  history (14 contracts and 17 deposits lost theirs so far ✔).
+- Табло: the card counts matched no inbox (they included the archive) ✔.
+- De-index: a VIN-less car found by id/lot said „not found"; it now says why it
+  can't be hidden (215 of 3.46 M cars have no usable VIN ✔).
 
 | # | Defect | Fix sketch | Where |
 |---|---|---|---|
@@ -643,11 +658,11 @@ request).
 | B11 | Failed upload after recording a payment invites a double payment — close the form once the payment succeeds; attach separately | fixed |
 | B12 | Admins can't attach a proof to a paid stage / without paying — show the standalone attach to every `payments.attach` holder | fixed |
 | B13 | Deposit deduction clamped to Точка 1 and frozen — reject when Точка 1 < deposit, or recompute on edit | fixed (rejected) |
-| B14 | Tariff paste replaces everything without preview/confirm/undo — summary + diff vs the active version, confirm on row-count drop, re-activate older version | |
-| B15 | Tariff/settings changes are stale on the next visit — `updateTag` in both actions, short/no browser `max-age` | |
-| B16 | `/api/calc-config` publishes the mobile.bg markup — strip it from the public payload | |
-| B17 | Lot-number lookup unreachable (de-index and mobile.bg) — query id **and** lot, show both kinds of hit | mobile.bg fixed (26 713 lot numbers equal another car's id ✔); de-index with Скрити обяви |
-| B18 | De-index: reset request fields per lookup; update (not ignore) a repeated request; confirm revoke; allow URL lookups for VIN-less cars or say why not | |
+| B14 | Tariff paste replaces everything without preview/confirm/undo — summary + diff vs the active version, confirm on row-count drop, re-activate older version | fixed — „Провери" shows rows dropped / prices changed against the active table, saving asks when yards lose their price, and any version or the built-in table can be re-activated |
+| B15 | Tariff/settings changes are stale on the next visit — `updateTag` in both actions, short/no browser `max-age` | fixed — `updateTag`; both routes `max-age=0`, still CDN-served (PRERENDER/HIT in production ✔) |
+| B16 | `/api/calc-config` publishes the mobile.bg markup — strip it from the public payload | fixed ✔ (production JSON) |
+| B17 | Lot-number lookup unreachable (de-index and mobile.bg) — query id **and** lot, show both kinds of hit | fixed in both (26 713 lot numbers equal another car's id ✔); when they're different vehicles the admin picks one |
+| B18 | De-index: reset request fields per lookup; update (not ignore) a repeated request; confirm revoke; allow URL lookups for VIN-less cars or say why not | fixed — the upsert is checked against the partial unique index (EXPLAIN, arbiter `car_deindex_requests_active_vin_ux` ✔); VIN-less cars are explained, not supported (requests are keyed on the VIN) |
 | B19 | mobile.bg: guard concurrent publish (row state check), record/reconcile `ida`, warn on a second advert for the same VIN, store the per-advert overrides incl. description | phase 5 |
 | B20 | Mail status dropdown stale after reply | fixed |
 | B21 | `MAIL_IGNORE_SENDERS` empty → filter off (`??` → `||`) | fixed |
@@ -658,11 +673,11 @@ request).
 | B26 | Contract create: ignore CAD fields outside Канада (as `update-contract` already does) | fixed |
 | B27 | Renumber: update each stage's default основание too | fixed — also a changed основание on edit; contract 2026-114's notice 204 (printed „Договор № 2026-113") is for the owner to re-issue |
 | B28 | Contract edit form: re-key on data change so it never writes back stale status/основание | fixed |
-| B29 | Users: confirm before granting/removing Администратор | |
-| B30 | Дневник: labels for every written event; `id DESC` tiebreaker; stop deleting history on delete | |
-| B31 | Times in Europe/Sofia everywhere (shared formatter) | `lib/sofia-time.ts`; done in Договори, Депозити, mobile.bg, Поща, lead inboxes |
-| B32 | Recipients: SSANCAR IBAN format; flag rows with missing bank data | |
-| B33 | Pagers for the de-index and mobile.bg registers | mobile.bg fixed; de-index with Скрити обяви |
+| B29 | Users: confirm before granting/removing Администратор | fixed |
+| B30 | Дневник: labels for every written event; `id DESC` tiebreaker; stop deleting history on delete | fixed — and the details read as Bulgarian label/value lines (an edit shows only what changed), linked to the record |
+| B31 | Times in Europe/Sofia everywhere (shared formatter) | fixed — `lib/sofia-time.ts` on every admin page |
+| B32 | Recipients: SSANCAR IBAN format; flag rows with missing bank data | fixed — main's schema rejected SSANCAR, the new one accepts all 7 production recipients ✔; one shared rule flags and refuses incomplete bank data |
+| B33 | Pagers for the de-index and mobile.bg registers | fixed |
 | B35 | Inbox prefetch pulls thread bodies — `prefetch={false}` on the thread links, or move the Resend body fetch out of the page render | fixed (`prefetch={false}`; the inbox now sends 0 thread requests ✔) |
 
 ### P2 (housekeeping)
@@ -686,7 +701,7 @@ Each phase ships on its own to `main` (Vercel production), smallest first.
 | 1 — Base UI 1.9.0 ✔ | dependency bump only | Combobox flows unchanged (filters, notice recipient, mobile.bg pickers) |
 | 2 — Shell ✔ | §2 complete: sidebar, top bar + drawer, nav config, icons, skeleton, `loading/not-found/error`, titles, public widgets out | §7 checks pass for all 15 pages × 3 roles — passed: 134 loads at 360–1 920 px, no page overflow, no public widgets, nav and active link right per role; tap → next page 50–80 ms (desktop, prefetched) or skeleton ~40 ms then page ~350 ms (drawer) |
 | 3 — Building blocks ✔ | §3 primitives + container-query list pattern | used by at least one page end to end (Договори register) |
-| 4 — Page pass (in progress) | Договори (register → detail → create) ✔ · Депозити ✔ · mobile.bg ✔ · Поща + lead inboxes ✔ · Тарифи · Скрити обяви · Получатели · Потребители · Дневник · Табло — with that section's P1 fixes as separate commits | per page: §7 checks + feature walk-through unchanged |
+| 4 — Page pass ✔ | Договори (register → detail → create) · Депозити · mobile.bg · Поща + lead inboxes · Тарифи · Скрити обяви · Получатели · Потребители · Дневник · Табло — with that section's P1 fixes as separate commits | per page: §7 checks + feature walk-through unchanged — passed; final sweep: all pages × 3 roles at 375/768/1 024/1 440 px, no overflow, no public widgets, redirects as designed, no new console errors |
 | 5 — Remaining P0/P1 | B6, B7 (touch ingestion / paid adverts — careful, own commits), B10–B19 left over | |
 | 6 — Cleanup | §9 stale comments/docs, unused exports, `docs/02` tables | |
 
@@ -728,7 +743,8 @@ Order inside phase 4 follows daily use: observers and the supervisor work in
 4. The 13 zero-total notices and the 4 double-deducted v1 notices (all
    superseded or marked sent): re-issue, or leave? And settling 2026-072's
    deposit (1 000 EUR credited as 1 000 USD; contract fully paid).
-5. Preferred (highlighted) vs cheapest terminal for 56 yards.
+5. Preferred (highlighted) vs cheapest terminal for 55 yards (re-measured on the
+   root sheets: the coloured cell is not the cheapest on 55 of 596 rows).
 6. The mobile.bg markup % (0 % today) once B5 is fixed; and Korea adverts
    including commission + markup vs US/Canada markup only.
 7. Should the supervisor be able to attach payment proofs on every contract
@@ -736,6 +752,13 @@ Order inside phase 4 follows daily use: observers and the supervisor work in
 8. Should observers/supervisors see every client's ЕГН/ЕИК in the pickers?
 9. mobile.bg description: default text pre-filled and editable, stored per
    advert?
+10. SelectAuto's bank details exist twice: in Получатели (notices) and in the
+    code (`lib/contract-doc.ts`, contract and deposit PDFs). They match today
+    ✔; editing them in Получатели changes only the notices (the form says so).
+    Make the PDFs read Получатели too?
+
+Found outside the admin (not changed): the public homepage scrolls sideways by
+8 px on a 360 px phone, for every visitor — production too ✔.
 
 ---
 
