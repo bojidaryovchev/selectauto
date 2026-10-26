@@ -66,10 +66,11 @@ matter more than the visuals, several with **production impact** ✔:
 | 7 | A paid de-index doesn't follow the VIN to newly ingested listings, and doesn't withdraw the paid mobile.bg advert | nothing in ingestion or de-index touches either |
 | 8 | From the second PDF a server process renders, letters next to some Latin glyphs vanish („14 480.00 UR") | reproduced deterministically; fontkit's glyph cache (found while fixing #1) |
 
-**Status 2026-10-26:** #1–#6 and #8 are fixed (§5: B1–B5, B8, B9, B13, B26,
-B34). Phases 0–4 are done: the new shell (§2), the building blocks (§3), and
-every admin page restyled with its P1 fixes (§5; all P1s except B19). #7 (B6,
-B7) and B19 wait for phase 5, the stale comments (§9) for phase 6.
+**Status 2026-10-26:** all eight are fixed (§5: B1–B9, B13, B26, B34). All
+phases are done: the new shell (§2), the building blocks (§3), every admin
+page restyled with its P1 fixes (§5), B6/B7 and most of B19 (phase 5), and the
+stale comments and docs (§9). Open: two parts of B19 (below), and the owner
+decisions in §8 — new ones there are 10 and 11.
 
 **Plan.** Two tracks, kept in separate commits:
 
@@ -609,8 +610,20 @@ and the sample notices:
   notices may not use a rate (§16.2/§16.4), so the operator states the deduction in the
   contract's currency when the two differ.
 
-**Done 2026-10-26:** B1, B2, B3, B4, B5, B8, B9 and B34 below, and from P1
-B13 (a deduction larger than Точка 1 is refused) and B26.
+**Done 2026-10-26:** every row below, and from P1 B13 (a deduction larger than
+Точка 1 is refused) and B26.
+
+- **B6** — not in the ingestion Lambdas (that needs an AWS deploy) but as the
+  „post-sync step" the design allows: `/api/cron/deindex-sweep`, every 15
+  minutes, stamps new rows of every active request's VIN, recomputes, expires
+  the caches, notifies IndexNow and withdraws adverts. Its UPDATE and dry-run
+  SELECT were EXPLAIN-checked on production (one `cars_vin_normalized_idx` probe
+  per active request) ✔; the dry run answers „nothing to hide" today (no
+  requests yet) ✔.
+- **B7** — applying a de-index (and the sweep) withdraws the cars' live adverts,
+  through the same deletion as „Изтрий". Separately, the register now flags live
+  adverts of cars no longer offered: **41 of 115** (auction over), still billed
+  weekly ✔ — whether to withdraw them is decision 11.
 
 Also fixed during the phase-4 pass, outside the numbered list: the new-deposit
 form resets after a create (a second click made a duplicate deposit and
@@ -663,7 +676,7 @@ sections:
 | B16 | `/api/calc-config` publishes the mobile.bg markup — strip it from the public payload | fixed ✔ (production JSON) |
 | B17 | Lot-number lookup unreachable (de-index and mobile.bg) — query id **and** lot, show both kinds of hit | fixed in both (26 713 lot numbers equal another car's id ✔); when they're different vehicles the admin picks one |
 | B18 | De-index: reset request fields per lookup; update (not ignore) a repeated request; confirm revoke; allow URL lookups for VIN-less cars or say why not | fixed — the upsert is checked against the partial unique index (EXPLAIN, arbiter `car_deindex_requests_active_vin_ux` ✔); VIN-less cars are explained, not supported (requests are keyed on the VIN) |
-| B19 | mobile.bg: guard concurrent publish (row state check), record/reconcile `ida`, warn on a second advert for the same VIN, store the per-advert overrides incl. description | phase 5 |
+| B19 | mobile.bg: guard concurrent publish (row state check), record/reconcile `ida`, warn on a second advert for the same VIN, store the per-advert overrides incl. description | partly — the row is claimed atomically (the id comes from the claim) and a second advert for a VIN is warned about. Open: reconciling `ida` with mobile.bg's `/adverts` needs that endpoint's response format, which isn't documented here and can only be read with the production credentials; storing overrides waits for decision 9 |
 | B20 | Mail status dropdown stale after reply | fixed |
 | B21 | `MAIL_IGNORE_SENDERS` empty → filter off (`??` → `||`) | fixed |
 | B22 | Second reply loses threading / Reply-To (filter the last inbound by direction) | fixed (115 of 152 inbound mails carry a Reply-To ✔) |
@@ -702,8 +715,8 @@ Each phase ships on its own to `main` (Vercel production), smallest first.
 | 2 — Shell ✔ | §2 complete: sidebar, top bar + drawer, nav config, icons, skeleton, `loading/not-found/error`, titles, public widgets out | §7 checks pass for all 15 pages × 3 roles — passed: 134 loads at 360–1 920 px, no page overflow, no public widgets, nav and active link right per role; tap → next page 50–80 ms (desktop, prefetched) or skeleton ~40 ms then page ~350 ms (drawer) |
 | 3 — Building blocks ✔ | §3 primitives + container-query list pattern | used by at least one page end to end (Договори register) |
 | 4 — Page pass ✔ | Договори (register → detail → create) · Депозити · mobile.bg · Поща + lead inboxes · Тарифи · Скрити обяви · Получатели · Потребители · Дневник · Табло — with that section's P1 fixes as separate commits | per page: §7 checks + feature walk-through unchanged — passed; final sweep: all pages × 3 roles at 375/768/1 024/1 440 px, no overflow, no public widgets, redirects as designed, no new console errors |
-| 5 — Remaining P0/P1 | B6, B7 (touch ingestion / paid adverts — careful, own commits), B10–B19 left over | |
-| 6 — Cleanup | §9 stale comments/docs, unused exports, `docs/02` tables | |
+| 5 — Remaining P0/P1 ✔ | B6, B7 (touch ingestion / paid adverts — careful, own commits), B10–B19 left over | B6 + B7 done; B19 partly (see §5) |
+| 6 — Cleanup ✔ | §9 stale comments/docs, unused exports, `docs/02` tables | every §9 item checked against the code and corrected; `.env.example` covers all variables the web app reads. Unused exports were not swept (no tool for it in the repo) |
 
 Order inside phase 4 follows daily use: observers and the supervisor work in
 Договори / Депозити / mobile.bg, most likely on phones.
@@ -756,13 +769,26 @@ Order inside phase 4 follows daily use: observers and the supervisor work in
     code (`lib/contract-doc.ts`, contract and deposit PDFs). They match today
     ✔; editing them in Получатели changes only the notices (the form says so).
     Make the PDFs read Получатели too?
+11. 41 of the 115 live mobile.bg adverts are for cars whose auction is over,
+    still billed weekly (the register flags them). Withdraw them — and should
+    an advert be withdrawn automatically when its car's auction ends (unless,
+    say, the car was bought for stock)?
 
-Found outside the admin (not changed): the public homepage scrolls sideways by
-8 px on a 360 px phone, for every visitor — production too ✔.
+Found outside the admin (not changed):
+
+- The public homepage scrolls sideways by 8 px on a 360 px phone, for every
+  visitor — production too ✔.
+- Since late September every car page's 410 check makes one uncached DB query
+  (`lib/sold-lot-gone.ts`: the „nothing is 90 days old yet" short-circuit has
+  expired ✔). Its own note names the durable fix if crawler volume makes that
+  costly: store the gone-date on the archived row.
 
 ---
 
-## 9. Stale docs and comments (fix in phase 6)
+## 9. Stale docs and comments — done in phase 6
+
+All checked against the code and corrected (two commits); kept below as the
+record of what was wrong.
 
 - ~~`components/admin/admin-nav.tsx`~~ (removed in phase 2); "layout gates to
   admins" in `carfax`, `zapitvaniya`, `oferti`, `tarifi`, `poluchateli` pages;
