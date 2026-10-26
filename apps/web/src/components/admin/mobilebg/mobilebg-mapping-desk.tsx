@@ -26,13 +26,28 @@ export function MobilebgMappingDesk({
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  /**
+   * Every server call goes through here. A dropped connection rejects the call,
+   * and inside a transition that rejection used to reach the page's error
+   * boundary — the whole screen replaced by „Нещо се обърка". Say it in place.
+   */
+  function run(task: () => Promise<void>, lost = "Връзката със сървъра прекъсна. Опитайте отново.") {
+    startTransition(async () => {
+      try {
+        await task();
+      } catch {
+        setError(lost);
+      }
+    });
+  }
   // Asked first: on a phone „Премахни" sits right under a scrolling thumb, and a
   // removed pairing is only re-made from a preview of a car of that model.
   const [removal, setRemoval] = useState<{ label: string; run: () => void } | null>(null);
 
   function removeBrand(id: number) {
     setError(null);
-    startTransition(async () => {
+    run(async () => {
       const res = await deleteMobilebgBrandMapping(id);
       if (!res.success) setError(res.error);
       router.refresh();
@@ -41,7 +56,7 @@ export function MobilebgMappingDesk({
 
   function removeModel(modelExternalId: number, manufacturerExternalId: number) {
     setError(null);
-    startTransition(async () => {
+    run(async () => {
       const res = await deleteMobilebgModelMapping(modelExternalId, manufacturerExternalId);
       if (!res.success) setError(res.error);
       router.refresh();

@@ -137,6 +137,21 @@ export function MobilebgPublisher() {
   const hasInvalidInput =
     manualPrice.kind === "invalid" || batteryKmInput.kind === "invalid" || batteryKwhInput.kind === "invalid";
 
+  /**
+   * Every server call goes through here. A dropped connection rejects the call,
+   * and inside a transition that rejection used to reach the page's error
+   * boundary — the whole screen replaced by „Нещо се обърка". Say it in place.
+   */
+  function run(task: () => Promise<void>, lost = "Връзката със сървъра прекъсна. Опитайте отново.") {
+    startTransition(async () => {
+      try {
+        await task();
+      } catch {
+        setError(lost);
+      }
+    });
+  }
+
   function overrides(): MobilebgOverrides {
     return {
       month: month || undefined,
@@ -160,7 +175,7 @@ export function MobilebgPublisher() {
   /** `over` is explicit because state set just before a load has not applied yet. */
   function load(carId: number, over: MobilebgOverrides = overrides()) {
     setError(null);
-    startTransition(async () => {
+    run(async () => {
       const res = await previewAdvertAction(carId, over);
       if (!res.success) {
         setError(res.error);
@@ -199,7 +214,7 @@ export function MobilebgPublisher() {
     setError(null);
     setNotice(null);
     setPreview(null);
-    startTransition(async () => {
+    run(async () => {
       const res = await lookupCarAction(q);
       if (!res.success) {
         setError(res.error);
@@ -226,7 +241,7 @@ export function MobilebgPublisher() {
     if (!preview || hasInvalidInput) return;
     const carId = preview.source.carId;
     setError(null);
-    startTransition(async () => {
+    run(async () => {
       const res = await previewAdvertAction(carId, overrides());
       if (!res.success) {
         setError(res.error);
@@ -263,7 +278,7 @@ export function MobilebgPublisher() {
       return;
     }
     setError(null);
-    startTransition(async () => {
+    run(async () => {
       const res = await saveMobilebgBrandMapping({ manufacturerExternalId, marka: pickedMarka });
       if (!res.success) {
         setError(res.error);
@@ -280,7 +295,7 @@ export function MobilebgPublisher() {
     setError(null);
 
     if (rememberModel && modelExternalId !== null && manufacturerExternalId !== null) {
-      startTransition(async () => {
+      run(async () => {
         const res = await saveMobilebgModelMapping({
           modelExternalId,
           manufacturerExternalId,
@@ -305,7 +320,7 @@ export function MobilebgPublisher() {
     setConfirming(false);
     if (!preview) return;
     setError(null);
-    startTransition(async () => {
+    run(async () => {
       const res = await publishCarToMobilebg({
         carId: preview.source.carId,
         overrides: overrides(),
@@ -322,7 +337,7 @@ export function MobilebgPublisher() {
       });
       load(preview.source.carId);
       router.refresh();
-    });
+    }, "Връзката прекъсна, докато обявата се изпращаше — проверете „Обяви“ по-долу, преди да опитате отново.");
   }
 
   const mapped = preview?.mapped;

@@ -60,12 +60,27 @@ export function MobilebgAdvertList({ rows }: { rows: MobilebgAdvertRow[] }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  /**
+   * Every server call goes through here. A dropped connection rejects the call,
+   * and inside a transition that rejection used to reach the page's error
+   * boundary — the whole screen replaced by „Нещо се обърка". Say it in place.
+   */
+  function run(task: () => Promise<void>, lost = "Връзката със сървъра прекъсна. Опитайте отново.") {
+    startTransition(async () => {
+      try {
+        await task();
+      } catch {
+        setError(lost);
+      }
+    });
+  }
+
   function confirmDelete() {
     const carId = target?.carId;
     setTarget(null);
     if (carId === undefined) return;
     setError(null);
-    startTransition(async () => {
+    run(async () => {
       const res = await deleteMobilebgAdvert(carId);
       if (!res.success) {
         setError(res.error);
