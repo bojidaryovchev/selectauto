@@ -22,6 +22,8 @@ export type MailMessageRow = {
   direction: string;
   fromAddress: string;
   fromName: string | null;
+  /** The sender's Reply-To, when set — where our reply goes (send-reply). */
+  replyToAddress: string | null;
   toAddresses: string[];
   subject: string | null;
   textBody: string | null;
@@ -49,6 +51,7 @@ const MESSAGE_COLUMNS = {
   direction: schema.emailMessages.direction,
   fromAddress: schema.emailMessages.fromAddress,
   fromName: schema.emailMessages.fromName,
+  replyToAddress: schema.emailMessages.replyToAddress,
   toAddresses: schema.emailMessages.toAddresses,
   subject: schema.emailMessages.subject,
   textBody: schema.emailMessages.textBody,

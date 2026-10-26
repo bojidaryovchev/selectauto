@@ -28,6 +28,12 @@ export function MailThreadView({ thread }: { thread: MailThreadDetail }) {
 
   const attachmentsFor = (messageId: number) => thread.attachments.filter((a) => a.messageId === messageId);
 
+  // Where a reply goes — the same rule as sendReply: the last inbound message's
+  // Reply-To, else the participant. The composer used to name the participant
+  // even when the reply went to the Reply-To address.
+  const lastInbound = [...thread.messages].reverse().find((m) => m.direction === "inbound");
+  const replyTo = lastInbound?.replyToAddress ?? thread.participantEmail;
+
   return (
     <div className="flex flex-col gap-4">
       <AdminPageHeader
@@ -96,7 +102,7 @@ export function MailThreadView({ thread }: { thread: MailThreadDetail }) {
         <p className="text-xs text-muted">Прикачените файлове се съхраняват в Resend и още не се свалят от панела.</p>
       )}
 
-      <ReplyComposer threadId={thread.id} to={thread.participantEmail} />
+      <ReplyComposer threadId={thread.id} to={replyTo} />
     </div>
   );
 }
