@@ -3,7 +3,7 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { DEFAULT_PAYMENT_TERM_DAYS, STAGE_ALLOWED_RECIPIENT_KINDS, type PaymentStage } from "@/constants/contracts";
-import { getAdminSession } from "@/lib/admin";
+import { getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import { centsToDb, parseAmountToCents } from "@/lib/money";
 import { buildNoticeSnapshot } from "@/lib/notice";
@@ -40,7 +40,7 @@ function addDays(iso: string, days: number): string {
 }
 
 /**
- * Admin-only: generate a payment notice for one stage (spec §6). Validates the
+ * Needs `notices.generate`: generate a payment notice for one stage (spec §6). Validates the
  * §5/§10/§16 matrix server-side (the UI already hides invalid options):
  *
  *  - recipient kind allowed for the stage; recipient active;
@@ -57,7 +57,7 @@ function addDays(iso: string, days: number): string {
 export async function generatePaymentNotice(
   input: GeneratePaymentNoticeInput,
 ): Promise<ActionResult<{ documentId: number; version: number }>> {
-  const session = await getAdminSession();
+  const session = await getSessionWith("notices.generate");
   if (!session) return { success: false, error: "Нямате достъп до тази операция." };
 
   const paymentId = input?.paymentId;

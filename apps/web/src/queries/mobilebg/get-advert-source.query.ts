@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { getBackOfficeSession } from "@/lib/admin";
+import { getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import { calcVehicleTypeFromBody } from "@/data/import-rates";
 import { type MobilebgCarSource, mobilebgMarket } from "@/lib/mobilebg/map-car";
@@ -76,7 +76,7 @@ export async function getMobilebgCarSource(
   carId: number,
   overrideModel?: string,
 ): Promise<MobilebgSourceResult | null> {
-  if (!(await getBackOfficeSession())) throw new Error("FORBIDDEN");
+  if (!(await getSessionWith("mobilebg.publish"))) throw new Error("FORBIDDEN");
   if (!Number.isInteger(carId) || carId <= 0) return null;
 
   const db = getDb();

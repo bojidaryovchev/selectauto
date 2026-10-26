@@ -2,7 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { getBackOfficeSession } from "@/lib/admin";
+import { getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import {
   MobilebgError,
@@ -20,9 +20,9 @@ import type { ActionResult } from "@/types/action-result.type";
 /**
  * Publish one car to mobile.bg — or correct the advert we already have there.
  *
- * Open to the whole back office, „Наблюдаващ“ included (the owner asked for it,
- * 18.09.2026) — a deliberate exception to the rule in lib/admin.ts that an
- * observer never edits. The guard is still the first statement, because a server
+ * Gated on `mobilebg.publish`, which „Наблюдаващ“ carries too (the owner asked
+ * for it, 18.09.2026) — a deliberate exception to an observer otherwise never
+ * editing. The guard is still the first statement, because a server
  * action is a POST anyone who can forge the request may call, and this one spends
  * money on an external platform and puts our name on a public advert. What stands
  * between a mistake and a paid advert is the preview, the blockers and the confirm
@@ -83,7 +83,7 @@ export type PublishAdvertResult = {
 export async function publishCarToMobilebg(
   input: PublishAdvertInput,
 ): Promise<ActionResult<PublishAdvertResult>> {
-  const session = await getBackOfficeSession();
+  const session = await getSessionWith("mobilebg.publish");
   if (!session) return { success: false, error: "Нямате достъп до тази операция." };
 
   const carId = Number(input?.carId);

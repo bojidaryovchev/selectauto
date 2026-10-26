@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { getAdminSession } from "@/lib/admin";
+import { getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 
 /** The two independent document series (spec §14 — deposits number separately). */
@@ -25,10 +25,10 @@ export function currentSofiaYear(): number {
  * The numbering state for one series, for the /admin editor. Reads the counter
  * (which holds the LAST used number) and the highest number actually present, so
  * the admin can see both "what comes next" and "what's already taken".
- * Admin-only — numbering drives legal document identifiers.
+ * Needs `contracts.edit` — numbering drives legal document identifiers.
  */
 export async function getNumbering(series: NumberSeries, year = currentSofiaYear()): Promise<NumberingRow> {
-  if (!(await getAdminSession())) throw new Error("FORBIDDEN");
+  if (!(await getSessionWith("contracts.edit"))) throw new Error("FORBIDDEN");
 
   const db = getDb();
   const counter = await db.execute(

@@ -10,11 +10,12 @@ import { LEAD_TYPE_META, LEAD_TYPES } from "@/constants/admin";
  * usePathname). Links: dashboard + one inbox per lead type + sign-out. Rendered
  * by the admin layout, which already gates the whole /admin tree to admins.
  */
-export function AdminNav({ isAdmin = true }: { isAdmin?: boolean }) {
+export function AdminNav({ isAdmin = true, showMobilebg = true }: { isAdmin?: boolean; showMobilebg?: boolean }) {
   const pathname = usePathname();
 
-  // „Наблюдаващ" works with contracts, deposits and the mobile.bg desk; leads,
-  // tariffs and the recipient settings stay admin-only (pages re-check server-side).
+  // „Наблюдаващ" works with contracts, deposits and (with `mobilebg.publish`) the
+  // mobile.bg desk; leads, tariffs and the recipient settings stay admin-only
+  // (pages re-check server-side).
   const links = isAdmin
     ? [
         { href: "/admin", label: "Табло" },
@@ -32,7 +33,7 @@ export function AdminNav({ isAdmin = true }: { isAdmin?: boolean }) {
     : [
         { href: "/admin/dogovori", label: "Договори" },
         { href: "/admin/depoziti", label: "Депозити" },
-        { href: "/admin/mobile-bg", label: "mobile.bg" },
+        ...(showMobilebg ? [{ href: "/admin/mobile-bg", label: "mobile.bg" }] : []),
       ];
 
   const renderLinks = () =>

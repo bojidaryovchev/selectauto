@@ -2,13 +2,13 @@
 
 import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { getAdminSession } from "@/lib/admin";
+import { getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import { deleteDocument, isDocumentStorageConfigured } from "@/lib/s3";
 import type { ActionResult } from "@/types/action-result.type";
 
 /**
- * Admin-only: permanently delete a CANCELLED contract — the way to clear a
+ * Needs `contracts.edit`: permanently delete a CANCELLED contract — the way to clear a
  * mistaken entry out of the register instead of leaving „Анулиран" rows in the
  * list forever (owner, 07.2026: "анулирания да го махнем").
  *
@@ -19,7 +19,7 @@ import type { ActionResult } from "@/types/action-result.type";
  * into this contract is RELEASED back to 'paid' so it can be used again.
  */
 export async function deleteContract(id: number): Promise<ActionResult<{ number: string }>> {
-  const session = await getAdminSession();
+  const session = await getSessionWith("contracts.edit");
   if (!session) return { success: false, error: "Нямате достъп до тази операция." };
   if (!Number.isInteger(id) || id <= 0) return { success: false, error: "Невалиден идентификатор." };
 

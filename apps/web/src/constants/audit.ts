@@ -21,6 +21,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   marked_paid: "Отбелязано плащане",
   payment_reverted: "Върнат статус на плащане",
   attachment_added: "Прикачен документ",
+  notice_sent: "Известие изпратено на клиента",
   roles_changed: "Промяна на роли",
   deindexed: "Скрита обява",
   deindex_revoked: "Възстановена обява",

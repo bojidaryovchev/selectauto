@@ -1,5 +1,5 @@
 import { desc, eq } from "drizzle-orm";
-import { getBackOfficeSession, isAdmin } from "@/lib/admin";
+import { getSessionWith, visibleRecords } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 
 export type DepositDocumentRow = { id: number; version: number; createdAt: Date };
@@ -20,7 +20,7 @@ export type DepositListRow = {
  * deposit↔contract relation visible). Admin-gated defensively.
  */
 export async function listDeposits(): Promise<DepositListRow[]> {
-  const session = await getBackOfficeSession();
+  const session = await getSessionWith("backoffice.enter");
   if (!session) throw new Error("FORBIDDEN");
 
   const d = schema.depositContracts;
@@ -37,8 +37,9 @@ export async function listDeposits(): Promise<DepositListRow[]> {
     .from(d)
     .innerJoin(cl, eq(cl.id, d.clientId))
     .leftJoin(c, eq(c.depositContractId, d.id))
-    // „Наблюдаващ" sees only their own deposits (same rule as contracts).
-    .where(isAdmin(session) ? undefined : eq(d.createdBy, session.user?.id ?? ""))
+    // Without `contracts.viewAll`, only the user's own deposits (same rule as
+    // contracts).
+    .where(visibleRecords(session, d.createdBy))
     .orderBy(desc(d.createdAt));
 
   // Generated deposit contracts for these rows, in one query.

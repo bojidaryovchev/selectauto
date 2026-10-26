@@ -1,6 +1,6 @@
 "use server";
 
-import { getBackOfficeSession } from "@/lib/admin";
+import { getSessionWith } from "@/lib/admin";
 import type { MobilebgOverrides } from "@/lib/mobilebg/map-car";
 import {
   type CarLookupHit,
@@ -21,7 +21,7 @@ import type { ActionResult } from "@/types/action-result.type";
  */
 
 export async function lookupCarAction(query: string): Promise<ActionResult<CarLookupHit[]>> {
-  if (!(await getBackOfficeSession())) return { success: false, error: "Нямате достъп до тази операция." };
+  if (!(await getSessionWith("mobilebg.publish"))) return { success: false, error: "Нямате достъп до тази операция." };
   try {
     return { success: true, data: await lookupCarForMobilebg(query) };
   } catch (error) {
@@ -34,7 +34,7 @@ export async function previewAdvertAction(
   carId: number,
   overrides?: MobilebgOverrides,
 ): Promise<ActionResult<MobilebgPreview>> {
-  if (!(await getBackOfficeSession())) return { success: false, error: "Нямате достъп до тази операция." };
+  if (!(await getSessionWith("mobilebg.publish"))) return { success: false, error: "Нямате достъп до тази операция." };
   try {
     const preview = await getMobilebgPreview(carId, overrides);
     if (!preview) return { success: false, error: "Автомобилът не е намерен или е скрит." };

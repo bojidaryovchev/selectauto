@@ -12,7 +12,7 @@ import {
 } from "@/constants/contracts";
 import { auditActionLabel } from "@/constants/audit";
 import { auth } from "@/auth";
-import { isAdmin } from "@/lib/admin";
+import { can } from "@/lib/admin";
 import { dbToCents, formatDbAmount } from "@/lib/money";
 import { getContract } from "@/queries/contracts";
 import { listRecipients } from "@/queries/recipients";
@@ -26,15 +26,22 @@ import { listRecipients } from "@/queries/recipients";
  * five points, the FOUR payment-stage cards with status/recipient/остатък, the
  * linked deposit, the audit trail, and an inline edit form. Notice generation
  * and mark-as-paid actions attach to the stage cards in the next phases. The
- * layout gates the route to admins.
+ * layout gates the route to the back office; getContract 404s a contract the
+ * user may not see.
  */
 export default async function AdminContractDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [detail, allRecipients, session] = await Promise.all([getContract(Number(id)), listRecipients(), auth()]);
   if (!detail) notFound();
-  // Editing the contract, issuing notices and recording payments are admin-only
-  // (owner spec 07.2026); „Наблюдаващ" follows everything read-only.
-  const canManage = isAdmin(session);
+  // Each action shows only with its capability (owner spec 07.2026: „Наблюдаващ"
+  // follows everything read-only, attaching bank documents aside).
+  const canEdit = can(session, "contracts.edit");
+  const stageActions = {
+    issueNotices: can(session, "notices.generate"),
+    recordPayments: can(session, "payments.record"),
+    attach: can(session, "payments.attach"),
+    markSent: can(session, "notices.markSent"),
+  };
   const { contract, client, payments, deposit, documents, attachments, events } = detail;
   const activeRecipients = allRecipients.filter((r) => r.active);
 
@@ -219,14 +226,14 @@ export default async function AdminContractDetailPage({ params }: { params: Prom
               recipients={activeRecipients}
               documents={documents.filter((d) => d.paymentId === p.id && d.kind === "payment_notice")}
               attachments={attachments.filter((a) => a.paymentId === p.id)}
-              canManage={canManage}
+              actions={stageActions}
             />
           ))}
         </div>
       </section>
 
-      {/* ── Редакция (само админ) ── */}
-      {!canManage ? null : (
+      {/* ── Редакция (contracts.edit) ── */}
+      {!canEdit ? null : (
       <details className="rounded-xl border border-line bg-white">
         <summary className="cursor-pointer select-none px-5 py-4 text-lg font-black text-ink">
           Редакция на договора
@@ -242,7 +249,7 @@ export default async function AdminContractDetailPage({ params }: { params: Prom
       )}
 
       {/* ── Административни действия (номер / изтриване) ── */}
-      {canManage ? (
+      {canEdit ? (
         <ContractAdminTools
           contractId={contract.id}
           number={contract.number}

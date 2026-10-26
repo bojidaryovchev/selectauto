@@ -138,8 +138,8 @@ change, and extend the `EVENT_LABELS` map.
 
 - **Route:** `apps/web/src/app/admin/<bg-slug>/page.tsx`, default export,
   `await requireAdminPage()` as the **first line**. The layout's `AdminGate` only
-  calls `requireBackOfficePage()` — an `observer` passes it. Never rely on the layout.
-  (The layout's own docstring says `requireAdminPage`; the code says otherwise.)
+  calls `requirePageWith("backoffice.enter")` — an `observer` passes it. Never
+  rely on the layout.
 - **Nav:** one entry in the `isAdmin` branch of `components/admin/admin-nav.tsx`.
   Active state is `pathname.startsWith(l.href)` — the new slug must not be a prefix
   of another.
@@ -278,7 +278,7 @@ Thread list + detail drawer, modelled on `components/admin/lead-inbox/`.
 > **Render `text/plain` by default.** If HTML is ever shown, it must be a sandboxed
 > iframe with an explicit per-route CSP — never inline.
 
-**Multi-admin concurrency has no data model today.** Roles are just `admin`/`observer`
+**Multi-admin concurrency has no data model today.** Roles are just `admin`/`observer`/`supervisor`
 with no assignment concept. Minimum additions so two admins don't both reply:
 read/unread, `claimed_by` + `claimed_at` (soft lock with timeout), and
 who-replied-when surfaced in the **list**, not just the drawer.

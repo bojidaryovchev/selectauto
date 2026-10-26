@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { auth } from "@/auth";
-import { isAdmin, requireBackOfficePage } from "@/lib/admin";
+import { can, isAdmin, requirePageWith } from "@/lib/admin";
 import { AdminNav } from "@/components/admin";
 
 export const metadata: Metadata = {
@@ -37,24 +37,27 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 }
 
 /**
- * Gates the whole /admin tree: `requireAdminPage` redirects a signed-out visitor
- * to sign-in and a signed-in non-admin home. Runs inside the layout's <Suspense>
- * (so its `auth()` read doesn't block the static shell), and BEFORE the children
- * render — so an unauthorised request never triggers any admin query. The proxy
- * already blocks `/admin/**`; this is the per-render defence-in-depth.
+ * Gates the whole /admin tree at BACK-OFFICE level (`backoffice.enter`): a
+ * signed-out visitor goes to sign-in, anyone without back-office access home.
+ * Admin-only pages still call `requireAdminPage` themselves. Runs inside the
+ * layout's <Suspense> (so its `auth()` read doesn't block the static shell), and
+ * BEFORE the children render — so an unauthorised request never triggers any
+ * admin query. The proxy already blocks `/admin/**`; this is the per-render
+ * defence-in-depth.
  */
 async function AdminGate({ children }: { children: React.ReactNode }) {
-  await requireBackOfficePage();
+  await requirePageWith("backoffice.enter");
   return <>{children}</>;
 }
 
 /**
- * The nav needs to know the role: an observer („Наблюдаващ") sees only the
- * contract/deposit sections, not the lead inboxes or the settings screens.
+ * The nav needs to know the role: a non-admin („Наблюдаващ" and the like) sees
+ * only the contract/deposit sections and, with the capability, mobile.bg — not
+ * the lead inboxes or the settings screens.
  */
 async function AdminNavForRole() {
   const session = await auth();
-  return <AdminNav isAdmin={isAdmin(session)} />;
+  return <AdminNav isAdmin={isAdmin(session)} showMobilebg={can(session, "mobilebg.publish")} />;
 }
 
 function AdminLoading() {

@@ -12,7 +12,7 @@ import type { ActionResult } from "@/types/action-result.type";
  * Reply to a thread AS `info@selectauto.bg`, and the two small thread-state
  * actions beside it.
  *
- * Admin-only (`getAdminSession`, not `getBackOfficeSession`): replying speaks for
+ * Admin-only (`getAdminSession`, not a capability gate): replying speaks for
  * the business to a customer, which is an edit-class action an „Наблюдаващ"
  * must not perform. The guard is the FIRST statement because a server action is
  * a POST reachable by anyone who can forge the request — render-time gating is

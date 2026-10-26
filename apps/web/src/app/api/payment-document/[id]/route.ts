@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { getBackOfficeSession, isAdmin } from "@/lib/admin";
+import { canSeeRecord, getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import { getDocument, isDocumentStorageConfigured } from "@/lib/s3";
 import { renderContractPdf, renderPaymentNoticePdf } from "@/pdf/render";
@@ -15,10 +15,10 @@ import type { NoticeSnapshot } from "@/types/notice-snapshot.type";
  *  2. A fresh render from the row's frozen snapshot (§2) — the fallback for
  *     rows generated before/without S3, so a download never 404s on storage.
  *
- * Admin-gated (the proxy doesn't cover /api).
+ * Back-office-gated (the proxy's /admin gate doesn't cover /api).
  */
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await getBackOfficeSession();
+  const session = await getSessionWith("backoffice.enter");
   if (!session) {
     return new Response("Forbidden", { status: 403 });
   }
@@ -38,24 +38,22 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     return new Response("Not found", { status: 404 });
   }
 
-  // A „Наблюдаващ" may download only documents of the contracts/deposits they
-  // created — notices and contract documents hang off `contractId`, deposit
-  // contracts off `depositContractId`. Same 404 as a missing id.
-  if (!isAdmin(session)) {
-    const [owner] = doc.contractId
+  // Only documents of a contract/deposit the user can see (`canSeeRecord`) —
+  // notices and contract documents hang off `contractId`, deposit contracts off
+  // `depositContractId`. Same 404 as a missing id.
+  const [owner] = doc.contractId
+    ? await db
+        .select({ createdBy: schema.contracts.createdBy })
+        .from(schema.contracts)
+        .where(eq(schema.contracts.id, doc.contractId))
+    : doc.depositContractId
       ? await db
-          .select({ createdBy: schema.contracts.createdBy })
-          .from(schema.contracts)
-          .where(eq(schema.contracts.id, doc.contractId))
-      : doc.depositContractId
-        ? await db
-            .select({ createdBy: schema.depositContracts.createdBy })
-            .from(schema.depositContracts)
-            .where(eq(schema.depositContracts.id, doc.depositContractId))
-        : [];
-    if (!owner?.createdBy || owner.createdBy !== session.user?.id) {
-      return new Response("Not found", { status: 404 });
-    }
+          .select({ createdBy: schema.depositContracts.createdBy })
+          .from(schema.depositContracts)
+          .where(eq(schema.depositContracts.id, doc.depositContractId))
+      : [];
+  if (!canSeeRecord(session, owner?.createdBy)) {
+    return new Response("Not found", { status: 404 });
   }
 
   const isContract = doc.kind === "contract" || doc.kind === "deposit_contract";

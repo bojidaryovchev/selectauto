@@ -3,7 +3,7 @@
 import { and, eq, notInArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { CONTRACT_MARKET_META, type ContractAmountKey, type ContractMarket } from "@/constants/contracts";
-import { getAdminSession } from "@/lib/admin";
+import { getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import { centsToDb, dbToCents, parseAmountToCents } from "@/lib/money";
 import { updateContractSchema } from "@/schemas/contract.schema";
@@ -15,7 +15,7 @@ function cents(value: string | undefined): number {
 }
 
 /**
- * Admin-only: edit a mediation contract (car data, dates, the five amounts,
+ * Needs `contracts.edit`: edit a mediation contract (car data, dates, the five amounts,
  * основание, lifecycle status). What an edit does and does NOT touch:
  *
  *  - The client and the applied deposit are frozen at creation.
@@ -28,7 +28,7 @@ function cents(value: string | undefined): number {
  * The old row + patch land in the audit trail (§9).
  */
 export async function updateContract(id: number, input: unknown): Promise<ActionResult> {
-  const session = await getAdminSession();
+  const session = await getSessionWith("contracts.edit");
   if (!session) return { success: false, error: "Нямате достъп до тази операция." };
 
   if (!Number.isInteger(id) || id <= 0) {

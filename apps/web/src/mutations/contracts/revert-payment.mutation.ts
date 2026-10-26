@@ -2,12 +2,12 @@
 
 import { and, count, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { getAdminSession } from "@/lib/admin";
+import { getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import type { ActionResult } from "@/types/action-result.type";
 
 /**
- * Admin-only: „Върни статус“ за плащане (spec §4.3 — a mistaken mark-as-paid
+ * Needs `payments.record`: „Върни статус“ за плащане (spec §4.3 — a mistaken mark-as-paid
  * can be undone, but the action stays in the history). Clears the recorded
  * paid amount/date and returns the stage to 'awaiting_payment' when a notice
  * has been generated, else 'not_requested'. The cleared values are preserved in
@@ -15,7 +15,7 @@ import type { ActionResult } from "@/types/action-result.type";
  * back to 'active'.
  */
 export async function revertPayment(paymentId: number): Promise<ActionResult> {
-  const session = await getAdminSession();
+  const session = await getSessionWith("payments.record");
   if (!session) return { success: false, error: "Нямате достъп до тази операция." };
 
   if (!Number.isInteger(paymentId) || paymentId <= 0) {

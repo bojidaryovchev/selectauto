@@ -2,7 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { getAdminSession } from "@/lib/admin";
+import { getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import { centsToDb, dbToCents, parseAmountToCents } from "@/lib/money";
 import type { ActionResult } from "@/types/action-result.type";
@@ -21,7 +21,7 @@ function todaySofia(): string {
 }
 
 /**
- * Admin-only: „Отбележи като платено“ (spec §4.3). Records the real paid
+ * Needs `payments.record`: „Отбележи като платено“ (spec §4.3). Records the real paid
  * amount (partial allowed — status becomes 'partially_paid' until the due sum
  * is covered, §4.2), the payment date (editable, defaults to today) and a note.
  * Cancelled stages can't be paid. When all four stages of the contract land on
@@ -29,7 +29,7 @@ function todaySofia(): string {
  * reverting is a separate action that also stays in the history.
  */
 export async function markPaymentPaid(input: MarkPaymentPaidInput): Promise<ActionResult> {
-  const session = await getAdminSession();
+  const session = await getSessionWith("payments.record");
   if (!session) return { success: false, error: "Нямате достъп до тази операция." };
 
   const paymentId = input?.paymentId;

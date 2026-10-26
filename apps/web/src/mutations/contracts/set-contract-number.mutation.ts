@@ -2,12 +2,12 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { getAdminSession } from "@/lib/admin";
+import { getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import type { ActionResult } from "@/types/action-result.type";
 
 /**
- * Admin-only: change a contract's visible number — for closing a gap left by a
+ * Needs `contracts.edit`: change a contract's visible number — for closing a gap left by a
  * deleted entry, or fixing a number typed wrong (owner, 07.2026: renumber the
  * paid 2026-094 down to the freed 2026-093).
  *
@@ -17,7 +17,7 @@ import type { ActionResult } from "@/types/action-result.type";
  * new version carrying the new number.
  */
 export async function setContractNumber(id: number, newNumber: string): Promise<ActionResult<{ number: string }>> {
-  const session = await getAdminSession();
+  const session = await getSessionWith("contracts.edit");
   if (!session) return { success: false, error: "Нямате достъп до тази операция." };
   if (!Number.isInteger(id) || id <= 0) return { success: false, error: "Невалиден идентификатор." };
 

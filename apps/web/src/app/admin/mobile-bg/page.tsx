@@ -3,15 +3,15 @@ import {
   MobilebgMappingDesk,
   MobilebgPublisher,
 } from "@/components/admin/mobilebg";
-import { requireBackOfficePage } from "@/lib/admin";
+import { requirePageWith } from "@/lib/admin";
 import { isConfigured } from "@/lib/mobilebg/client";
 import { listMobilebgAdverts, listMobilebgMappings } from "@/queries/mobilebg";
 
 /**
  * /admin/mobile-bg — публикуване на автомобили в mobile.bg.
  *
- * Open to the whole back office, „Наблюдаващ“ included, at the owner's request
- * (18.09.2026). Publishing still spends money (mobile.bg bills for every week an
+ * Gated on `mobilebg.publish`, which „Наблюдаващ“ carries too, at the owner's
+ * request (18.09.2026). Publishing still spends money (mobile.bg bills for every week an
  * advert stays active) and puts our name on a public advert, so the guardrails are
  * the preview, the blockers and the confirm dialog rather than the role. The
  * markup % behind the price stays in /admin/тарифи, which remains admin-only.
@@ -21,7 +21,7 @@ export default async function AdminMobilebgPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
-  await requireBackOfficePage();
+  await requirePageWith("mobilebg.publish");
   const sp = await searchParams;
 
   const [{ rows, total }, mappings] = await Promise.all([

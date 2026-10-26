@@ -6,7 +6,7 @@ import { listMailThreads } from "@/queries/mail";
  * /admin/poshta — the info@selectauto.bg inbox.
  *
  * `requireAdminPage()` is the first statement on purpose: the /admin layout only
- * gates to BACK OFFICE level (`requireBackOfficePage`), so an „Наблюдаващ" would
+ * gates to BACK OFFICE level (`requirePageWith("backoffice.enter")`), so an „Наблюдаващ" would
  * otherwise reach customer correspondence. Reading and answering mail on behalf
  * of the business is admin-only.
  */

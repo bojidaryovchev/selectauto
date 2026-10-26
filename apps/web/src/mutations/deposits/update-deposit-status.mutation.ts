@@ -3,12 +3,12 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { isDepositStatus } from "@/constants/contracts";
-import { getAdminSession } from "@/lib/admin";
+import { getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import type { ActionResult } from "@/types/action-result.type";
 
 /**
- * Admin-only: move a deposit through its lifecycle (spec §14 — Чернова →
+ * Needs `deposits.manage`: move a deposit through its lifecycle (spec §14 — Чернова →
  * Подписан → Депозит платен → Върнат/Анулиран). Two guards:
  *
  *  - 'used' can NEVER be set manually — only contract creation sets it (§14.3),
@@ -18,7 +18,7 @@ import type { ActionResult } from "@/types/action-result.type";
  * The transition lands in the audit trail.
  */
 export async function updateDepositStatus(depositId: number, status: string): Promise<ActionResult> {
-  const session = await getAdminSession();
+  const session = await getSessionWith("deposits.manage");
   if (!session) return { success: false, error: "Нямате достъп до тази операция." };
 
   if (!Number.isInteger(depositId) || depositId <= 0) {

@@ -1,4 +1,5 @@
 import { ContractForm } from "@/components/admin/contracts";
+import { requirePageWith } from "@/lib/admin";
 import { listClients } from "@/queries/clients";
 import { listAvailableDeposits } from "@/queries/deposits";
 
@@ -6,9 +7,10 @@ import { listAvailableDeposits } from "@/queries/deposits";
  * /admin/dogovori/nov — the contract-creation wizard (spec §3/§11.1): type,
  * client (existing or new, with the paid-deposit offer per §14.1), car and the
  * five financial points with a live total. Saving mints the number and creates
- * the four payment stages in one transaction. The layout gates the route.
+ * the four payment stages in one transaction. Needs `contracts.create`.
  */
 export default async function AdminNewContractPage() {
+  await requirePageWith("contracts.create");
   const [clients, deposits] = await Promise.all([listClients(), listAvailableDeposits()]);
 
   return (

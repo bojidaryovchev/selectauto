@@ -3,7 +3,7 @@
 import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { CONTRACT_MARKET_META, type ContractAmountKey } from "@/constants/contracts";
-import { getBackOfficeSession } from "@/lib/admin";
+import { getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import { centsToDb, dbToCents, parseAmountToCents } from "@/lib/money";
 import { createContractSchema } from "@/schemas/contract.schema";
@@ -21,7 +21,7 @@ function cents(value: string | undefined): number {
 }
 
 /**
- * Admin-only: create a mediation contract (spec §3/§11.1-2). One transaction:
+ * Needs `contracts.create`: create a mediation contract (spec §3/§11.1-2). One transaction:
  *
  *  1. Resolve the client — an existing row, or insert the new one (audited).
  *  2. When a deposit is applied (§14): re-validate it is 'paid', belongs to
@@ -39,8 +39,8 @@ function cents(value: string | undefined): number {
  */
 export async function createContract(input: unknown): Promise<ActionResult<{ id: number; number: string }>> {
   // Creating is allowed for „Наблюдаващ" too (owner spec 07.2026); EDITING the
-  // contract afterwards stays admin-only — see update-contract.mutation.ts.
-  const session = await getBackOfficeSession();
+  // contract afterwards needs `contracts.edit` — see update-contract.mutation.ts.
+  const session = await getSessionWith("contracts.create");
   if (!session) return { success: false, error: "Нямате достъп до тази операция." };
 
   const parsed = createContractSchema.safeParse(input);

@@ -1,5 +1,5 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
-import { getBackOfficeSession } from "@/lib/admin";
+import { getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 
 export type AvailableDepositRow = {
@@ -20,7 +20,7 @@ export type AvailableDepositRow = {
  * defensively.
  */
 export async function listAvailableDeposits(): Promise<AvailableDepositRow[]> {
-  if (!(await getBackOfficeSession())) throw new Error("FORBIDDEN");
+  if (!(await getSessionWith("contracts.create"))) throw new Error("FORBIDDEN");
 
   const d = schema.depositContracts;
   const c = schema.contracts;

@@ -979,6 +979,13 @@ export const generatedDocuments = pgTable(
     amountEur: numeric("amount_eur", { precision: 12, scale: 2 }),
     pdfS3Key: text("pdf_s3_key"),
     generatedBy: text("generated_by"),
+    /**
+     * Payment notices only (migration 0048): when the notice was marked as
+     * forwarded to the client, and by whom. NULL = „за изпращане" — only the
+     * newest version per stage counts, a regeneration supersedes older ones.
+     */
+    clientSentAt: timestamp("client_sent_at", { withTimezone: true }),
+    clientSentBy: text("client_sent_by"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [

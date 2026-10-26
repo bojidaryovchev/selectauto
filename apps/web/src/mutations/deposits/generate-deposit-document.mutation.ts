@@ -2,7 +2,7 @@
 
 import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { getBackOfficeSession, isAdmin } from "@/lib/admin";
+import { canSeeRecord, getSessionWith } from "@/lib/admin";
 import { buildDepositDocSnapshot } from "@/lib/contract-doc";
 import { getDb, schema } from "@/lib/db";
 import { isDocumentStorageConfigured, putDocument } from "@/lib/s3";
@@ -11,15 +11,15 @@ import type { ActionResult } from "@/types/action-result.type";
 
 /**
  * Generate the deposit contract PDF (spec §14 — "да се генерира по
- * предоставения шаблон"). Open to admins and to a „Наблюдаващ" for the deposits
- * they created. Same guarantees as the other documents: the snapshot is frozen
+ * предоставения шаблон"). Needs `contracts.create`, on a deposit the
+ * user can see (`canSeeRecord`). Same guarantees as the other documents: the snapshot is frozen
  * at generation, regeneration appends a new version, and the bytes are archived
  * to S3 so a later template change can't alter what the client signed.
  */
 export async function generateDepositDocument(
   depositId: number,
 ): Promise<ActionResult<{ documentId: number; version: number }>> {
-  const session = await getBackOfficeSession();
+  const session = await getSessionWith("contracts.create");
   if (!session) return { success: false, error: "Нямате достъп до тази операция." };
   if (!Number.isInteger(depositId) || depositId <= 0) {
     return { success: false, error: "Невалиден идентификатор." };
@@ -33,8 +33,8 @@ export async function generateDepositDocument(
       .select()
       .from(schema.depositContracts)
       .where(eq(schema.depositContracts.id, depositId));
-    // A „Наблюдаващ" may only print their OWN deposits (mirrors listDeposits).
-    if (!deposit || (!isAdmin(session) && deposit.createdBy !== session.user?.id)) {
+    // Only a deposit the user can see (mirrors listDeposits).
+    if (!deposit || !canSeeRecord(session, deposit.createdBy)) {
       return { success: false, error: "Депозитът не е намерен." };
     }
 

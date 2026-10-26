@@ -2,7 +2,7 @@
 
 import { sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { getAdminSession } from "@/lib/admin";
+import { getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import { currentSofiaYear, type NumberSeries } from "@/queries/contracts";
 import type { ActionResult } from "@/types/action-result.type";
@@ -15,7 +15,7 @@ export type SetNextNumberInput = {
 };
 
 /**
- * ADMIN-ONLY: set where a document series continues from — e.g. after issuing a
+ * Needs `contracts.edit`: set where a document series continues from — e.g. after issuing a
  * contract on paper, or to align the system with the existing register.
  *
  * The counter stores the LAST used number, so a requested "next = 94" is stored
@@ -25,7 +25,7 @@ export type SetNextNumberInput = {
  * (§9) — numbering identifies legal documents.
  */
 export async function setNextNumber(input: SetNextNumberInput): Promise<ActionResult<{ nextNumber: string }>> {
-  const session = await getAdminSession();
+  const session = await getSessionWith("contracts.edit");
   if (!session) return { success: false, error: "Нямате достъп до тази операция." };
 
   const series = input?.series;

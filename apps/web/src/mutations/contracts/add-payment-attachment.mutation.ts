@@ -2,7 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { getBackOfficeSession, isAdmin } from "@/lib/admin";
+import { canSeeRecord, getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import { isDocumentStorageConfigured, putDocument } from "@/lib/s3";
 import type { ActionResult } from "@/types/action-result.type";
@@ -22,7 +22,7 @@ function sanitizeFilename(name: string): string {
 }
 
 /**
- * Admin-only: attach a proof-of-payment document to a payment stage (spec §4.3
+ * Needs `payments.attach`: attach a proof-of-payment document to a payment stage (spec §4.3
  * „прикачване на платежен документ“). Takes multipart FormData (`paymentId` +
  * `file`) because a server action can't receive a File any other way.
  *
@@ -34,10 +34,10 @@ function sanitizeFilename(name: string): string {
  *
  * A „Наблюдаващ" MAY attach payment documents (owner, 07.2026 — "няма право да
  * генерира платежно и да отбелязва статут на плащането, но да може да прикача
- * платежни към известието"), but only on contracts they created.
+ * платежни към известието"), but only on contracts they can see.
  */
 export async function addPaymentAttachment(formData: FormData): Promise<ActionResult<{ id: number }>> {
-  const session = await getBackOfficeSession();
+  const session = await getSessionWith("payments.attach");
   if (!session) return { success: false, error: "Нямате достъп до тази операция." };
 
   if (!isDocumentStorageConfigured()) {
@@ -71,14 +71,12 @@ export async function addPaymentAttachment(formData: FormData): Promise<ActionRe
     const [payment] = await db.select().from(p).where(eq(p.id, paymentId));
     if (!payment) return { success: false, error: "Плащането не е намерено." };
 
-    if (!isAdmin(session)) {
-      const [contract] = await db
-        .select({ createdBy: schema.contracts.createdBy })
-        .from(schema.contracts)
-        .where(eq(schema.contracts.id, payment.contractId));
-      if (contract?.createdBy !== session.user?.id) {
-        return { success: false, error: "Нямате достъп до този договор." };
-      }
+    const [contract] = await db
+      .select({ createdBy: schema.contracts.createdBy })
+      .from(schema.contracts)
+      .where(eq(schema.contracts.id, payment.contractId));
+    if (!canSeeRecord(session, contract?.createdBy)) {
+      return { success: false, error: "Нямате достъп до този договор." };
     }
 
     const filename = sanitizeFilename(file.name);

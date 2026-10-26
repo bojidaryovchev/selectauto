@@ -1,6 +1,6 @@
 import { desc, eq, sql } from "drizzle-orm";
 import { PAYMENT_STAGES } from "@/constants/contracts";
-import { getBackOfficeSession, isAdmin } from "@/lib/admin";
+import { canSeeRecord, getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 
 export type ContractPaymentWithRecipient = typeof schema.contractPayments.$inferSelect & {
@@ -9,7 +9,17 @@ export type ContractPaymentWithRecipient = typeof schema.contractPayments.$infer
 
 export type GeneratedDocumentRow = Pick<
   typeof schema.generatedDocuments.$inferSelect,
-  "id" | "kind" | "paymentId" | "version" | "recipientId" | "amountUsd" | "usdEurRate" | "amountEur" | "createdAt"
+  | "id"
+  | "kind"
+  | "paymentId"
+  | "version"
+  | "recipientId"
+  | "amountUsd"
+  | "usdEurRate"
+  | "amountEur"
+  | "clientSentAt"
+  | "clientSentBy"
+  | "createdAt"
 >;
 
 export type PaymentAttachmentRow = typeof schema.paymentAttachments.$inferSelect;
@@ -35,7 +45,7 @@ export type ContractDetail = {
  * null when the id doesn't exist. NOT cached; admin-gated defensively.
  */
 export async function getContract(id: number): Promise<ContractDetail | null> {
-  const session = await getBackOfficeSession();
+  const session = await getSessionWith("backoffice.enter");
   if (!session) throw new Error("FORBIDDEN");
   if (!Number.isInteger(id) || id <= 0) return null;
 
@@ -44,9 +54,9 @@ export async function getContract(id: number): Promise<ContractDetail | null> {
 
   const [contract] = await db.select().from(c).where(eq(c.id, id));
   if (!contract) return null;
-  // A „Наблюдаващ" may only open their OWN contracts — same 404 as a missing id,
-  // so the URL doesn't reveal that someone else's contract exists.
-  if (!isAdmin(session) && contract.createdBy !== session.user?.id) return null;
+  // Without `contracts.viewAll`, only the user's OWN contracts — same 404 as a
+  // missing id, so the URL doesn't reveal that someone else's contract exists.
+  if (!canSeeRecord(session, contract.createdBy)) return null;
 
   const p = schema.contractPayments;
   const r = schema.paymentRecipients;
@@ -74,6 +84,8 @@ export async function getContract(id: number): Promise<ContractDetail | null> {
         amountUsd: g.amountUsd,
         usdEurRate: g.usdEurRate,
         amountEur: g.amountEur,
+        clientSentAt: g.clientSentAt,
+        clientSentBy: g.clientSentBy,
         createdAt: g.createdAt,
       })
       .from(g)

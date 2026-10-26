@@ -2,7 +2,7 @@
 
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { getBackOfficeSession, isAdmin } from "@/lib/admin";
+import { canSeeRecord, getSessionWith } from "@/lib/admin";
 import { buildContractDocSnapshot } from "@/lib/contract-doc";
 import { getDb, schema } from "@/lib/db";
 import { isDocumentStorageConfigured, putDocument } from "@/lib/s3";
@@ -12,7 +12,7 @@ import type { ActionResult } from "@/types/action-result.type";
 /**
  * Generate the CONTRACT document itself — договор за посредничество
  * (САЩ/Канада/Корея) or договор за доставка (Европа), chosen by the market.
- * Open to admins and to a „Наблюдаващ" for the contracts they created: printing
+ * Needs `contracts.create`, on a contract the user can see (`canSeeRecord`): printing
  * renders the stored data as-is and only appends a version, so it isn't editing.
  *
  * Same guarantees as the payment notices (§2/§9): the snapshot is frozen at
@@ -24,7 +24,7 @@ import type { ActionResult } from "@/types/action-result.type";
 export async function generateContractDocument(
   contractId: number,
 ): Promise<ActionResult<{ documentId: number; version: number }>> {
-  const session = await getBackOfficeSession();
+  const session = await getSessionWith("contracts.create");
   if (!session) return { success: false, error: "Нямате достъп до тази операция." };
   if (!Number.isInteger(contractId) || contractId <= 0) {
     return { success: false, error: "Невалиден идентификатор." };
@@ -35,9 +35,9 @@ export async function generateContractDocument(
 
   try {
     const [contract] = await db.select().from(schema.contracts).where(eq(schema.contracts.id, contractId));
-    // A „Наблюдаващ" may only print their OWN contracts — same answer as a
-    // missing id (mirrors getContract).
-    if (!contract || (!isAdmin(session) && contract.createdBy !== session.user?.id)) {
+    // Only a contract the user can see — same answer as a missing id (mirrors
+    // getContract).
+    if (!contract || !canSeeRecord(session, contract.createdBy)) {
       return { success: false, error: "Договорът не е намерен." };
     }
 

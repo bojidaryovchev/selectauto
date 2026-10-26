@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { NumberingSettings } from "@/components/admin/contracts";
 import { DepositDocumentButton, DepositForm, DepositRowActions } from "@/components/admin/deposits";
 import { DEPOSIT_STATUS_META, type DepositStatus } from "@/constants/contracts";
-import { isAdmin } from "@/lib/admin";
+import { can } from "@/lib/admin";
 import { formatDbAmount } from "@/lib/money";
 import { listClients } from "@/queries/clients";
 import { getNumbering } from "@/queries/contracts";
@@ -14,14 +14,21 @@ import { listDeposits } from "@/queries/deposits";
  * series, own lifecycle (Чернова → Подписан → Депозит платен → Използван /
  * Върнат / Анулиран). A 'paid' deposit becomes offerable in the contract
  * wizard; contract creation flips it to 'used' and links it (visible in the
- * "Използван по" column). The layout gates the route to admins.
+ * "Използван по" column). The layout gates the route to the back office, and
+ * listDeposits shows only the deposits the user may see.
  */
 export default async function AdminDepositsPage() {
-  const [deposits, clients, session] = await Promise.all([listDeposits(), listClients(), auth()]);
+  const session = await auth();
   // „Наблюдаващ" may create and print deposits but not move them through the
-  // lifecycle, and never sees the numbering setting.
-  const canManage = isAdmin(session);
-  const numbering = canManage ? await getNumbering("deposit") : null;
+  // lifecycle (`deposits.manage`), and never sees the numbering setting
+  // (`contracts.edit`).
+  const canCreate = can(session, "contracts.create");
+  const canManage = can(session, "deposits.manage");
+  const [deposits, clients, numbering] = await Promise.all([
+    listDeposits(),
+    canCreate ? listClients() : [],
+    can(session, "contracts.edit") ? getNumbering("deposit") : null,
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -110,7 +117,7 @@ export default async function AdminDepositsPage() {
         </table>
       </div>
 
-      <DepositForm clients={clients} />
+      {canCreate ? <DepositForm clients={clients} /> : null}
     </div>
   );
 }

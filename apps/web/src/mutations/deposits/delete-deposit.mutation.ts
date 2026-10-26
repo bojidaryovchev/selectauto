@@ -2,20 +2,20 @@
 
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { getAdminSession } from "@/lib/admin";
+import { getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import { deleteDocument, isDocumentStorageConfigured } from "@/lib/s3";
 import type { ActionResult } from "@/types/action-result.type";
 
 /**
- * Admin-only: permanently delete a CANCELLED deposit contract (owner, 07.2026 —
+ * Needs `deposits.manage`: permanently delete a CANCELLED deposit contract (owner, 07.2026 —
  * "и тука ануалирания да го махнем"). Restricted to `cancelled` for the same
  * reason as contracts; a 'used' deposit additionally can't be removed because a
  * mediation contract still points at it. Generated PDFs go with it, including
  * the S3 copies.
  */
 export async function deleteDeposit(id: number): Promise<ActionResult<{ number: string }>> {
-  const session = await getAdminSession();
+  const session = await getSessionWith("deposits.manage");
   if (!session) return { success: false, error: "Нямате достъп до тази операция." };
   if (!Number.isInteger(id) || id <= 0) return { success: false, error: "Невалиден идентификатор." };
 

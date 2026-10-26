@@ -15,6 +15,7 @@ import { dbToCents, formatCents, formatDbAmount } from "@/lib/money";
 import { addPaymentAttachment, generatePaymentNotice, markPaymentPaid, revertPayment } from "@/mutations/contracts";
 import type { ContractPaymentWithRecipient, GeneratedDocumentRow, PaymentAttachmentRow } from "@/queries/contracts";
 import type { RecipientRow } from "@/queries/recipients";
+import { NoticeSentButton } from "./notice-sent-button";
 import { PaymentStatusBadge } from "./payment-status-badge";
 
 /**
@@ -47,7 +48,7 @@ export function PaymentStageCard({
   recipients,
   documents,
   attachments,
-  canManage,
+  actions,
 }: {
   payment: ContractPaymentWithRecipient;
   contract: { id: number; number: string; market: string; currency: string; status: string };
@@ -58,10 +59,12 @@ export function PaymentStageCard({
   /** Uploaded proof-of-payment files for THIS payment, newest first. */
   attachments: PaymentAttachmentRow[];
   /**
-   * Admin: may issue notices and record payments. „Наблюдаващ" sees everything
-   * read-only (the mutations re-check server-side regardless).
+   * What the viewer's capabilities allow here (`notices.generate`,
+   * `payments.record`, `payments.attach`, `notices.markSent`). „Наблюдаващ" only
+   * attaches; everything else is read-only. The mutations re-check server-side
+   * regardless.
    */
-  canManage: boolean;
+  actions: { issueNotices: boolean; recordPayments: boolean; attach: boolean; markSent: boolean };
 }) {
   const router = useRouter();
   const stage = payment.stage as PaymentStage;
@@ -106,6 +109,12 @@ export function PaymentStageCard({
   const remainingCents = dbToCents(payment.dueAmount) - dbToCents(payment.paidAmount);
   const versionCount = documents.length;
   const cancelled = contract.status === "cancelled";
+  // „За изпращане" (owner, 26.10.2026): only the newest version can be waiting
+  // to go to the client, and only while the stage still expects a payment.
+  const toSendId =
+    documents[0] && !documents[0].clientSentAt && !cancelled && payment.status !== "paid" && payment.status !== "cancelled"
+      ? documents[0].id
+      : null;
 
   function resetPanels() {
     setPanel("none");
@@ -180,8 +189,9 @@ export function PaymentStageCard({
   }
 
   /**
-   * Standalone upload — the only payment action a „Наблюдаващ" has (they may
-   * attach bank documents to a notice, but not issue notices or set statuses).
+   * Standalone upload — for whoever may attach but not record payments (e.g. a
+   * „Наблюдаващ": they may attach bank documents to a notice, but not issue
+   * notices or set statuses). Recording a payment attaches in the same step.
    */
   async function onAttachOnly(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -283,15 +293,28 @@ export function PaymentStageCard({
         <div className="flex flex-col gap-1 rounded-lg bg-neutral-50 p-2">
           <p className="text-xs font-bold uppercase tracking-wide text-muted">Известия</p>
           {documents.map((d) => (
-            <a
-              key={d.id}
-              href={`/api/payment-document/${d.id}`}
-              target="_blank"
-              rel="noreferrer"
-              className="text-sm font-semibold text-brand hover:underline"
-            >
-              Версия {d.version} — {d.createdAt.toLocaleString("bg-BG")} ⬇
-            </a>
+            <div key={d.id} className="flex flex-col gap-1">
+              <a
+                href={`/api/payment-document/${d.id}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm font-semibold text-brand hover:underline"
+              >
+                Версия {d.version} — {d.createdAt.toLocaleString("bg-BG")} ⬇
+              </a>
+              {d.id === toSendId ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800 ring-1 ring-amber-200">
+                    За изпращане към клиента
+                  </span>
+                  {actions.markSent ? <NoticeSentButton documentId={d.id} /> : null}
+                </div>
+              ) : d.clientSentAt && d.clientSentBy ? (
+                <span className="text-xs text-muted">
+                  Изпратено на клиента — {d.clientSentAt.toLocaleString("bg-BG")}
+                </span>
+              ) : null}
+            </div>
           ))}
         </div>
       ) : null}
@@ -490,15 +513,17 @@ export function PaymentStageCard({
             <label className={LABEL}>Бележка</label>
             <input type="text" value={note} onChange={(e) => setNote(e.target.value)} className={INPUT} />
           </div>
-          <div className="flex flex-col gap-1">
-            <label className={LABEL}>Платежен документ (PDF/снимка, до 8 MB)</label>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="application/pdf,image/jpeg,image/png,image/webp"
-              className="text-xs text-muted file:mr-2 file:rounded-full file:border-0 file:bg-neutral-200 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-ink"
-            />
-          </div>
+          {actions.attach ? (
+            <div className="flex flex-col gap-1">
+              <label className={LABEL}>Платежен документ (PDF/снимка, до 8 MB)</label>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="application/pdf,image/jpeg,image/png,image/webp"
+                className="text-xs text-muted file:mr-2 file:rounded-full file:border-0 file:bg-neutral-200 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-ink"
+              />
+            </div>
+          ) : null}
           {error ? (
             <p className="rounded-lg bg-[#fdecea] px-3 py-2 text-xs font-semibold text-[#b3261e]">{error}</p>
           ) : null}
@@ -518,19 +543,21 @@ export function PaymentStageCard({
       ) : null}
 
       {/* ── Actions ── */}
-      {panel === "none" && !cancelled && canManage ? (
+      {panel === "none" && !cancelled && (actions.issueNotices || actions.recordPayments) ? (
         <div className="mt-auto flex flex-wrap gap-2 pt-2">
-          <button
-            type="button"
-            onClick={() => {
-              setPanel("generate");
-              setError(null);
-            }}
-            className="rounded-full bg-brand px-4 py-1.5 text-sm font-extrabold text-white transition-opacity hover:opacity-90"
-          >
-            Генерирай известие
-          </button>
-          {payment.status !== "paid" ? (
+          {actions.issueNotices ? (
+            <button
+              type="button"
+              onClick={() => {
+                setPanel("generate");
+                setError(null);
+              }}
+              className="rounded-full bg-brand px-4 py-1.5 text-sm font-extrabold text-white transition-opacity hover:opacity-90"
+            >
+              Генерирай известие
+            </button>
+          ) : null}
+          {actions.recordPayments && payment.status !== "paid" ? (
             <button
               type="button"
               onClick={() => {
@@ -542,7 +569,7 @@ export function PaymentStageCard({
               Отбележи като платено
             </button>
           ) : null}
-          {payment.status === "paid" || payment.status === "partially_paid" ? (
+          {actions.recordPayments && (payment.status === "paid" || payment.status === "partially_paid") ? (
             <button
               type="button"
               onClick={() => setRevertOpen(true)}
@@ -555,7 +582,7 @@ export function PaymentStageCard({
       ) : null}
 
       {/* „Наблюдаващ": attaching bank documents is their one write action. */}
-      {!canManage && !cancelled ? (
+      {actions.attach && !actions.recordPayments && !cancelled ? (
         <div className="mt-auto pt-2">
           <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-bold text-brand hover:underline">
             <input

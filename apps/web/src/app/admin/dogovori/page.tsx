@@ -1,15 +1,17 @@
 import Link from "next/link";
 import { auth } from "@/auth";
-import { ContractFilters, NumberingSettings, PaymentStatusBadge } from "@/components/admin/contracts";
-import { isAdmin } from "@/lib/admin";
-import { getNumbering } from "@/queries/contracts";
+import { ContractFilters, NoticeSentButton, NumberingSettings, PaymentStatusBadge } from "@/components/admin/contracts";
+import { can } from "@/lib/admin";
+import { getNumbering, listNoticesToSend } from "@/queries/contracts";
 import {
   CONTRACT_MARKET_META,
   CONTRACT_STATUS_META,
   PAYMENT_STAGE_META,
   PAYMENT_STAGES,
+  stageLabel,
   type ContractMarket,
   type ContractStatus,
+  type PaymentStage,
 } from "@/constants/contracts";
 import { formatDbAmount } from "@/lib/money";
 import { listContracts } from "@/queries/contracts";
@@ -18,7 +20,8 @@ import { listContracts } from "@/queries/contracts";
  * /admin/dogovori — the mediation-contracts register (spec §4/§11): one row per
  * contract with №, client, car, total and the four stage-status chips (the old
  * workoffice's green stage dropdowns, as statuses). Filters ride the URL; the
- * layout gates the route to admins.
+ * layout gates the route to the back office, and listContracts shows only the
+ * contracts the user may see.
  */
 export default async function AdminContractsPage({
   searchParams,
@@ -28,9 +31,13 @@ export default async function AdminContractsPage({
   const sp = await searchParams;
   const page = Math.max(1, Number(sp.page) || 1);
   const { rows, total, pageCount } = await listContracts({ q: sp.q, status: sp.status, page });
-  // Numbering is an admin-only setting — an observer never sees or edits it.
-  const admin = isAdmin(await auth());
-  const numbering = admin ? await getNumbering("contract") : null;
+  const session = await auth();
+  // Numbering belongs to `contracts.edit` — an observer never sees or edits it.
+  // The „за изпращане" list is the work queue of whoever forwards notices.
+  const [numbering, toSend] = await Promise.all([
+    can(session, "contracts.edit") ? getNumbering("contract") : null,
+    can(session, "notices.markSent") ? listNoticesToSend() : [],
+  ]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -39,15 +46,45 @@ export default async function AdminContractsPage({
           <h1 className="mb-1 text-2xl font-black tracking-tight text-ink">Договори</h1>
           <p className="text-sm text-muted">Договори за посредничество — общо {total}.</p>
         </div>
-        <Link
-          href="/admin/dogovori/nov"
-          className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-6 text-sm font-extrabold text-white transition-opacity hover:opacity-90"
-        >
-          + Нов договор
-        </Link>
+        {can(session, "contracts.create") ? (
+          <Link
+            href="/admin/dogovori/nov"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-6 text-sm font-extrabold text-white transition-opacity hover:opacity-90"
+          >
+            + Нов договор
+          </Link>
+        ) : null}
       </div>
 
       {numbering ? <NumberingSettings numbering={numbering} /> : null}
+
+      {toSend.length > 0 ? (
+        <section className="flex flex-col gap-2 rounded-xl border border-amber-300 bg-amber-50 p-4">
+          <h2 className="text-sm font-black text-amber-900">Известия за изпращане към клиента ({toSend.length})</h2>
+          <ul className="flex flex-col gap-2 text-sm">
+            {toSend.map((n) => (
+              <li key={n.documentId} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <Link href={`/admin/dogovori/${n.contractId}`} className="font-bold text-brand hover:underline">
+                  Договор № {n.contractNumber}
+                </Link>
+                <span className="text-ink">
+                  {n.clientName} · {stageLabel(n.market as ContractMarket, n.stage as PaymentStage)} · версия {n.version}{" "}
+                  от {n.createdAt.toLocaleDateString("bg-BG", { timeZone: "Europe/Sofia" })}
+                </span>
+                <a
+                  href={`/api/payment-document/${n.documentId}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-brand hover:underline"
+                >
+                  PDF ⬇
+                </a>
+                <NoticeSentButton documentId={n.documentId} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <ContractFilters q={sp.q} status={sp.status} />
 

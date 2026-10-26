@@ -2,7 +2,7 @@
 
 import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { getBackOfficeSession } from "@/lib/admin";
+import { getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
 import { centsToDb, parseAmountToCents } from "@/lib/money";
 import { createDepositSchema } from "@/schemas/deposit.schema";
@@ -13,7 +13,7 @@ function todaySofia(): string {
 }
 
 /**
- * Admin-only: create a deposit contract (spec §14). One transaction: resolve or
+ * Needs `contracts.create`: create a deposit contract (spec §14). One transaction: resolve or
  * create the client, mint the number from the INDEPENDENT 'deposit' series
  * ("Депозит № 2026-047"), insert the row with a frozen client snapshot in
  * status 'draft', and append the audit events. The lifecycle then runs through
@@ -21,8 +21,8 @@ function todaySofia(): string {
  */
 export async function createDeposit(input: unknown): Promise<ActionResult<{ id: number; number: string }>> {
   // Creating is allowed for „Наблюдаващ" too; the status lifecycle
-  // (update-deposit-status) stays admin-only.
-  const session = await getBackOfficeSession();
+  // (update-deposit-status) needs `deposits.manage`.
+  const session = await getSessionWith("contracts.create");
   if (!session) return { success: false, error: "Нямате достъп до тази операция." };
 
   const parsed = createDepositSchema.safeParse(input);
