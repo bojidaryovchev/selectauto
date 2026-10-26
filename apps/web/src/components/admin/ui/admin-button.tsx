@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export type AdminButtonVariant = "primary" | "secondary" | "danger" | "positive" | "ghost";
+export type AdminButtonVariant = "primary" | "secondary" | "danger" | "positive" | "success" | "ghost";
 export type AdminButtonSize = "md" | "lg";
 
 const VARIANTS: Record<AdminButtonVariant, string> = {
@@ -8,6 +8,7 @@ const VARIANTS: Record<AdminButtonVariant, string> = {
   secondary: "border border-line bg-white text-ink hover:bg-neutral-50",
   danger: "border border-[#f3c4bf] bg-[#fdecea] text-[#b3261e] hover:bg-[#fbdcd8]",
   positive: "border border-emerald-600 bg-white text-emerald-700 hover:bg-emerald-50",
+  success: "bg-emerald-600 text-white hover:bg-emerald-700",
   ghost: "text-brand hover:bg-brand/10",
 };
 

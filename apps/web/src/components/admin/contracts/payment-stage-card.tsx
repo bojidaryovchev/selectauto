@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { ADMIN_HINT, ADMIN_INPUT, ADMIN_SELECT, AdminBanner, AdminButton } from "@/components/admin/ui";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import {
   DEFAULT_PAYMENT_TERM_DAYS,
@@ -24,6 +23,8 @@ import {
 import type { ContractPaymentWithRecipient, GeneratedDocumentRow, PaymentAttachmentRow } from "@/queries/contracts";
 import type { RecipientRow } from "@/queries/recipients";
 import type { NoticeSnapshot } from "@/types/notice-snapshot.type";
+import { useRouter } from "next/navigation";
+import { useId, useMemo, useRef, useState } from "react";
 import { NoticeSentButton } from "./notice-sent-button";
 import { PaymentStatusBadge } from "./payment-status-badge";
 
@@ -36,9 +37,11 @@ import { PaymentStatusBadge } from "./payment-status-badge";
  */
 type Panel = "none" | "generate" | "preview" | "paid";
 
-const INPUT =
-  "w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-brand";
 const LABEL = "text-xs font-semibold text-ink";
+
+// The proof-of-payment picker's own button, sized like the other controls.
+const FILE_INPUT =
+  "w-full text-xs text-muted file:mr-2 file:min-h-10 file:cursor-pointer file:rounded-full file:border-0 file:bg-neutral-200 file:px-4 file:text-xs file:font-bold file:text-ink";
 
 function todayIso(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Sofia" }).format(new Date());
@@ -87,6 +90,8 @@ export function PaymentStageCard({
   actions: { issueNotices: boolean; recordPayments: boolean; attach: boolean; markSent: boolean };
 }) {
   const router = useRouter();
+  const uid = useId();
+  const fieldId = (name: string) => `${uid}-${name}`;
   const stage = payment.stage as PaymentStage;
   const stageMeta = PAYMENT_STAGE_META[stage];
   const heading = stageLabel(contract.market as ContractMarket, stage);
@@ -141,7 +146,11 @@ export function PaymentStageCard({
   // „За изпращане" (owner, 26.10.2026): only the newest version can be waiting
   // to go to the client, and only while the stage still expects a payment.
   const toSendId =
-    documents[0] && !documents[0].clientSentAt && !cancelled && payment.status !== "paid" && payment.status !== "cancelled"
+    documents[0] &&
+    !documents[0].clientSentAt &&
+    !cancelled &&
+    payment.status !== "paid" &&
+    payment.status !== "cancelled"
       ? documents[0].id
       : null;
 
@@ -290,8 +299,8 @@ export function PaymentStageCard({
 
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-line bg-white p-4">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="font-black text-ink">{heading}</h3>
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="min-w-0 font-black text-ink">{heading}</h3>
         <PaymentStatusBadge status={payment.status} />
       </div>
       <p className="text-xs text-muted">{stageMeta?.description}</p>
@@ -307,7 +316,7 @@ export function PaymentStageCard({
         {payment.basis ? (
           <div>
             <dt className="inline font-semibold text-muted">Основание: </dt>
-            <dd className="inline text-ink">{payment.basis}</dd>
+            <dd className="inline wrap-anywhere text-ink">{payment.basis}</dd>
           </div>
         ) : null}
         {payment.dueDate ? (
@@ -338,7 +347,7 @@ export function PaymentStageCard({
         {payment.note ? (
           <div>
             <dt className="inline font-semibold text-muted">Бележка: </dt>
-            <dd className="inline text-ink">{payment.note}</dd>
+            <dd className="inline wrap-anywhere text-ink">{payment.note}</dd>
           </div>
         ) : null}
       </dl>
@@ -346,14 +355,14 @@ export function PaymentStageCard({
       {/* Versions */}
       {versionCount > 0 ? (
         <div className="flex flex-col gap-1 rounded-lg bg-neutral-50 p-2">
-          <p className="text-xs font-bold uppercase tracking-wide text-muted">Известия</p>
+          <p className="text-xs font-bold tracking-wide text-muted uppercase">Известия</p>
           {documents.map((d) => (
             <div key={d.id} className="flex flex-col gap-1">
               <a
                 href={`/api/payment-document/${d.id}`}
                 target="_blank"
                 rel="noreferrer"
-                className="text-sm font-semibold text-brand hover:underline"
+                className="flex min-h-10 items-center text-sm font-semibold text-brand hover:underline"
               >
                 Версия {d.version} — {formatSofiaDateTime(d.createdAt)} ⬇
               </a>
@@ -365,9 +374,7 @@ export function PaymentStageCard({
                   {actions.markSent ? <NoticeSentButton documentId={d.id} /> : null}
                 </div>
               ) : d.clientSentAt && d.clientSentBy ? (
-                <span className="text-xs text-muted">
-                  Изпратено на клиента — {formatSofiaDateTime(d.clientSentAt)}
-                </span>
+                <span className="text-xs text-muted">Изпратено на клиента — {formatSofiaDateTime(d.clientSentAt)}</span>
               ) : null}
             </div>
           ))}
@@ -377,15 +384,14 @@ export function PaymentStageCard({
       {/* Прикачени платежни документи (§4.3) */}
       {attachments.length > 0 ? (
         <div className="flex flex-col gap-1 rounded-lg bg-neutral-50 p-2">
-          <p className="text-xs font-bold uppercase tracking-wide text-muted">Прикачени документи</p>
+          <p className="text-xs font-bold tracking-wide text-muted uppercase">Прикачени документи</p>
           {attachments.map((a) => (
             <a
               key={a.id}
               href={`/api/payment-attachment/${a.id}`}
               target="_blank"
               rel="noreferrer"
-              className="truncate text-sm font-semibold text-brand hover:underline"
-              title={a.filename}
+              className="flex min-h-10 items-center text-sm font-semibold break-all text-brand hover:underline"
             >
               {a.filename} ⬇
             </a>
@@ -393,9 +399,7 @@ export function PaymentStageCard({
         </div>
       ) : null}
 
-      {error && panel !== "generate" ? (
-        <p className="rounded-lg bg-[#fdecea] px-3 py-2 text-xs font-semibold text-[#b3261e]">{error}</p>
-      ) : null}
+      {error && panel !== "generate" ? <AdminBanner tone="error">{error}</AdminBanner> : null}
 
       {/* ── Generate panel ── */}
       {panel === "generate" ? (
@@ -406,11 +410,14 @@ export function PaymentStageCard({
             </p>
           ) : (
             <div className="flex flex-col gap-1">
-              <label className={LABEL}>Получател</label>
+              <label htmlFor={fieldId("recipient")} className={LABEL}>
+                Получател
+              </label>
               <select
+                id={fieldId("recipient")}
                 value={recipientId ?? ""}
                 onChange={(e) => setRecipientId(e.target.value ? Number(e.target.value) : undefined)}
-                className={INPUT}
+                className={ADMIN_SELECT}
               >
                 <option value="">— изберете —</option>
                 {allowed.map((r) => (
@@ -423,31 +430,35 @@ export function PaymentStageCard({
           )}
           {needsRate ? (
             <div className="flex flex-col gap-1">
-              <label className={LABEL}>Курс USD/EUR *</label>
+              <label htmlFor={fieldId("rate")} className={LABEL}>
+                Курс USD/EUR *
+              </label>
               <input
+                id={fieldId("rate")}
                 type="text"
                 inputMode="decimal"
                 value={rate}
                 onChange={(e) => setRate(e.target.value)}
                 placeholder="напр. 0.86"
-                className={INPUT}
+                className={ADMIN_INPUT}
               />
-              <p className="text-xs text-muted">Евро се изчисляват автоматично — виждате ги в прегледа.</p>
+              <p className={ADMIN_HINT}>Евро се изчисляват автоматично — виждате ги в прегледа.</p>
             </div>
           ) : null}
           <div className="flex flex-col gap-1">
-            <label className={LABEL}>
+            <label htmlFor={fieldId("amount")} className={LABEL}>
               Сума по етапа ({lineCurrency}){amountRequired ? " *" : " — по избор"}
             </label>
             <input
+              id={fieldId("amount")}
               type="text"
               inputMode="decimal"
               value={amountOverride}
               onChange={(e) => setAmountOverride(e.target.value)}
               placeholder={amountRequired ? `сума в ${lineCurrency}` : formatCents(lineCents)}
-              className={INPUT}
+              className={ADMIN_INPUT}
             />
-            <p className="text-xs text-muted">
+            <p className={ADMIN_HINT}>
               {amountRequired
                 ? `Плащанията към ${chosen?.name} са в евро — въведете реалната сума по фактурата им.`
                 : `Празно = сумата от договора (${formatCents(lineCents)} ${lineCurrency}). Попълва се, когато реалната сума се различава.`}
@@ -458,28 +469,41 @@ export function PaymentStageCard({
             </p>
           </div>
           <div className="flex flex-col gap-1">
-            <label className={LABEL}>Основание</label>
-            <input type="text" value={basis} onChange={(e) => setBasis(e.target.value)} className={INPUT} />
+            <label htmlFor={fieldId("basis")} className={LABEL}>
+              Основание
+            </label>
+            <input
+              id={fieldId("basis")}
+              type="text"
+              value={basis}
+              onChange={(e) => setBasis(e.target.value)}
+              className={ADMIN_INPUT}
+            />
           </div>
           <div className="flex flex-col gap-1">
-            <label className={LABEL}>Падеж (по подразбиране 10 дни)</label>
-            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={INPUT} />
+            <label htmlFor={fieldId("due")} className={LABEL}>
+              Падеж (по подразбиране 10 дни)
+            </label>
+            <input
+              id={fieldId("due")}
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className={ADMIN_INPUT}
+            />
           </div>
-          {error ? (
-            <p className="rounded-lg bg-[#fdecea] px-3 py-2 text-xs font-semibold text-[#b3261e]">{error}</p>
-          ) : null}
-          <div className="flex gap-2">
-            <button
-              type="button"
+          {error ? <AdminBanner tone="error">{error}</AdminBanner> : null}
+          <div className="flex flex-wrap gap-2">
+            <AdminButton
+              variant="primary"
               disabled={busy || !chosen || (needsRate && !rateValid) || (amountRequired && !amountOverride.trim())}
               onClick={() => void onPreview()}
-              className="rounded-full bg-brand px-4 py-1.5 text-sm font-extrabold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               {busy ? "Изчисляване…" : "Преглед →"}
-            </button>
-            <button type="button" onClick={resetPanels} className="rounded-full px-4 py-1.5 text-sm font-semibold text-muted">
+            </AdminButton>
+            <AdminButton variant="ghost" onClick={resetPanels}>
               Отказ
-            </button>
+            </AdminButton>
           </div>
         </div>
       ) : null}
@@ -506,7 +530,7 @@ export function PaymentStageCard({
             {preview.lines.map((line, i) => (
               <li key={i} className="flex flex-wrap items-baseline justify-between gap-x-3">
                 <span className="min-w-0 text-ink">{line.description}</span>
-                <span className="whitespace-nowrap font-semibold text-ink">
+                <span className="font-semibold whitespace-nowrap text-ink">
                   {formatCents(line.amountCents)} {preview.currency}
                   {preview.showRateColumns && preview.usdEurRate !== undefined
                     ? ` × ${preview.usdEurRate} = ${formatCents(line.amountEurCents ?? 0)} EUR`
@@ -525,80 +549,94 @@ export function PaymentStageCard({
             </div>
           </dl>
           {versionCount > 0 ? (
-            <p className="rounded-lg bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-800">
-              Вече има {versionCount} генерирана(и) версия(и) — потвърждението ще създаде версия {versionCount + 1},
-              без да изтрива старите.
-            </p>
+            <AdminBanner tone="warning">
+              Вече има {versionCount} генерирана(и) версия(и) — потвърждението ще създаде версия {versionCount + 1}, без
+              да изтрива старите.
+            </AdminBanner>
           ) : null}
-          <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={onGenerateConfirm}
-              className="rounded-full bg-brand px-4 py-1.5 text-sm font-extrabold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-            >
+          <div className="flex flex-wrap gap-2">
+            <AdminButton variant="primary" disabled={busy} onClick={onGenerateConfirm}>
               {busy ? "Генериране…" : "Потвърди и генерирай PDF"}
-            </button>
-            <button
-              type="button"
+            </AdminButton>
+            <AdminButton
+              variant="ghost"
               onClick={() => {
                 setPreview(null);
                 setPanel("generate");
               }}
-              className="rounded-full px-4 py-1.5 text-sm font-semibold text-muted"
             >
               ← Назад
-            </button>
+            </AdminButton>
           </div>
         </div>
       ) : null}
 
       {/* ── Mark-paid panel ── */}
       {panel === "paid" ? (
-        <form onSubmit={onMarkPaid} className="flex flex-col gap-2 rounded-lg border border-emerald-300 bg-emerald-50 p-3">
+        <form
+          onSubmit={onMarkPaid}
+          className="flex flex-col gap-2 rounded-lg border border-emerald-300 bg-emerald-50 p-3"
+        >
           <div className="flex flex-col gap-1">
-            <label className={LABEL}>Реално платена сума ({payment.currency})</label>
+            <label htmlFor={fieldId("paid")} className={LABEL}>
+              Реално платена сума ({payment.currency})
+            </label>
             <input
+              id={fieldId("paid")}
               type="text"
+              inputMode="decimal"
               value={paidAmount}
               onChange={(e) => setPaidAmount(e.target.value)}
               placeholder={formatCents(remainingCents)}
-              className={INPUT}
+              className={ADMIN_INPUT}
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className={LABEL}>Дата на плащане</label>
-            <input type="date" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} className={INPUT} />
+            <label htmlFor={fieldId("paid-at")} className={LABEL}>
+              Дата на плащане
+            </label>
+            <input
+              id={fieldId("paid-at")}
+              type="date"
+              value={paidAt}
+              onChange={(e) => setPaidAt(e.target.value)}
+              className={ADMIN_INPUT}
+            />
           </div>
           <div className="flex flex-col gap-1">
-            <label className={LABEL}>Бележка</label>
-            <input type="text" value={note} onChange={(e) => setNote(e.target.value)} className={INPUT} />
+            <label htmlFor={fieldId("note")} className={LABEL}>
+              Бележка
+            </label>
+            <input
+              id={fieldId("note")}
+              type="text"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              className={ADMIN_INPUT}
+            />
           </div>
           {actions.attach ? (
             <div className="flex flex-col gap-1">
-              <label className={LABEL}>Платежен документ (PDF/снимка, до 8 MB)</label>
+              <label htmlFor={fieldId("proof")} className={LABEL}>
+                Платежен документ (PDF/снимка, до 8 MB)
+              </label>
               <input
+                id={fieldId("proof")}
                 ref={fileRef}
                 type="file"
                 accept="application/pdf,image/jpeg,image/png,image/webp"
-                className="text-xs text-muted file:mr-2 file:rounded-full file:border-0 file:bg-neutral-200 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-ink"
+                className={FILE_INPUT}
               />
             </div>
           ) : null}
-          {error ? (
-            <p className="rounded-lg bg-[#fdecea] px-3 py-2 text-xs font-semibold text-[#b3261e]">{error}</p>
-          ) : null}
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={busy}
-              className="rounded-full bg-emerald-600 px-4 py-1.5 text-sm font-extrabold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-            >
+          {error ? <AdminBanner tone="error">{error}</AdminBanner> : null}
+          <div className="flex flex-wrap gap-2">
+            <AdminButton type="submit" variant="success" disabled={busy}>
               {busy ? "Запазване…" : "Запази плащането"}
-            </button>
-            <button type="button" onClick={resetPanels} className="rounded-full px-4 py-1.5 text-sm font-semibold text-muted">
+            </AdminButton>
+            <AdminButton variant="ghost" onClick={resetPanels}>
               Отказ
-            </button>
+            </AdminButton>
           </div>
         </form>
       ) : null}
@@ -607,37 +645,31 @@ export function PaymentStageCard({
       {panel === "none" && !cancelled && (actions.issueNotices || actions.recordPayments) ? (
         <div className="mt-auto flex flex-wrap gap-2 pt-2">
           {actions.issueNotices ? (
-            <button
-              type="button"
+            <AdminButton
+              variant="primary"
               onClick={() => {
                 setPanel("generate");
                 setError(null);
               }}
-              className="rounded-full bg-brand px-4 py-1.5 text-sm font-extrabold text-white transition-opacity hover:opacity-90"
             >
               Генерирай известие
-            </button>
+            </AdminButton>
           ) : null}
           {actions.recordPayments && payment.status !== "paid" ? (
-            <button
-              type="button"
+            <AdminButton
+              variant="positive"
               onClick={() => {
                 setPanel("paid");
                 setError(null);
               }}
-              className="rounded-full border border-emerald-600 px-4 py-1.5 text-sm font-bold text-emerald-700 transition-colors hover:bg-emerald-50"
             >
               Отбележи като платено
-            </button>
+            </AdminButton>
           ) : null}
           {actions.recordPayments && (payment.status === "paid" || payment.status === "partially_paid") ? (
-            <button
-              type="button"
-              onClick={() => setRevertOpen(true)}
-              className="rounded-full px-4 py-1.5 text-sm font-semibold text-muted hover:text-ink"
-            >
+            <AdminButton variant="ghost" onClick={() => setRevertOpen(true)}>
               Върни статус
-            </button>
+            </AdminButton>
           ) : null}
         </div>
       ) : null}
@@ -645,14 +677,15 @@ export function PaymentStageCard({
       {/* „Наблюдаващ": attaching bank documents is their one write action. */}
       {actions.attach && !actions.recordPayments && !cancelled ? (
         <div className="mt-auto pt-2">
-          <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-bold text-brand hover:underline">
+          {/* Visually hidden, not display:none, so the keyboard can still reach the input. */}
+          <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-full px-1 text-sm font-bold text-brand hover:underline has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand">
             <input
               ref={attachOnlyRef}
               type="file"
               accept="application/pdf,image/jpeg,image/png,image/webp"
               disabled={busy}
               onChange={(e) => void onAttachOnly(e)}
-              className="hidden"
+              className="sr-only"
             />
             {busy ? "Качване…" : "＋ Прикачи платежен документ"}
           </label>

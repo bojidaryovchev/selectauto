@@ -1,15 +1,22 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import {
+  ADMIN_HINT,
+  ADMIN_INPUT,
+  ADMIN_LABEL,
+  ADMIN_SELECT,
+  AdminBanner,
+  AdminButton,
+  AdminCard,
+} from "@/components/admin/ui";
 import {
   CLIENT_KIND_META,
-  type ContractAmountKey,
   CONTRACT_MARKET_META,
   CONTRACT_MARKETS,
   CONTRACT_STATUS_META,
   CONTRACT_STATUSES,
   type ClientKind,
+  type ContractAmountKey,
   type ContractMarket,
   type ContractStatus,
 } from "@/constants/contracts";
@@ -18,19 +25,17 @@ import { createContract, updateContract } from "@/mutations/contracts";
 import type { ClientRow } from "@/queries/clients";
 import type { ContractDetail } from "@/queries/contracts";
 import type { AvailableDepositRow } from "@/queries/deposits";
+import { useRouter } from "next/navigation";
+import { useId, useMemo, useState } from "react";
 
 /**
  * The mediation-contract form (spec §3): creation wizard on /admin/dogovori/nov
- * (client + car + the five points, live total, optional deposit deduction) and
+ * (client + car + the market's пера, live total, optional deposit deduction) and
  * the edit form on the detail page (car/amounts/status only — client and
  * deposit are frozen at creation). Controlled inputs like the other admin
  * forms; the zod schema re-validates server-side.
  */
 type Status = { kind: "idle" } | { kind: "error"; message: string };
-
-const INPUT =
-  "w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-brand";
-const LABEL = "text-sm font-semibold text-ink";
 
 function amountCents(v: string): number {
   if (!v.trim()) return 0;
@@ -51,6 +56,8 @@ export function ContractForm({
 }) {
   const router = useRouter();
   const isEdit = Boolean(contract);
+  const uid = useId();
+  const fid = (name: string) => `${uid}-${name}`;
 
   // ── Contract head ──────────────────────────────────────────────────────────
   // NB: the `as` cast can't be trusted for a default — read it defensively so an
@@ -228,116 +235,128 @@ export function ContractForm({
     }
   }
 
+  // A choice pill: a real radio, visually hidden (not display:none, so the
+  // keyboard and screen readers still reach it), with its label as the pill.
+  const choiceClass = (active: boolean) =>
+    `flex min-h-10 cursor-pointer items-center rounded-full border px-4 text-sm font-semibold transition-colors has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand ${
+      active ? "border-brand bg-brand/10 text-brand" : "border-line text-muted hover:border-brand/50"
+    }`;
+
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-8">
+    <form onSubmit={onSubmit} className="@container flex flex-col gap-6">
       {/* ── 1. Тип договор ── */}
-      <section className="flex flex-col gap-3 rounded-xl border border-line bg-white p-5">
-        <h2 className="text-lg font-black text-ink">1. Тип договор</h2>
+      <AdminCard className="flex flex-col gap-3">
+        <h2 className="text-lg font-black text-ink">{isEdit ? "Тип договор" : "1. Тип договор"}</h2>
         {isEdit ? (
           <p className="text-sm text-muted">
             {CONTRACT_MARKET_META[market].label} — валута {currency} (типът не се променя след създаване)
           </p>
         ) : (
-          <div className="flex flex-wrap gap-3">
+          <fieldset className="flex min-w-0 flex-wrap gap-2">
+            <legend className="sr-only">Тип договор</legend>
             {CONTRACT_MARKETS.map((m) => (
-              <label
-                key={m}
-                className={`flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
-                  market === m ? "border-brand bg-brand/10 text-brand" : "border-line text-muted hover:border-brand/50"
-                }`}
-              >
+              <label key={m} className={choiceClass(market === m)}>
                 <input
                   type="radio"
                   name="market"
                   checked={market === m}
                   onChange={() => setMarket(m)}
-                  className="hidden"
+                  className="sr-only"
                 />
                 {CONTRACT_MARKET_META[m].label} ({CONTRACT_MARKET_META[m].currency})
               </label>
             ))}
-          </div>
+          </fieldset>
         )}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="flex flex-col gap-1">
-            <label className={LABEL}>Дата на договора</label>
+        <div className="grid gap-4 @lg:grid-cols-2">
+          <Field
+            id={fid("date")}
+            label="Дата на договора"
+            hint={isEdit ? undefined : "Оставете празно за днешна дата."}
+          >
             <input
+              id={fid("date")}
               type="date"
               value={contractDate}
               onChange={(e) => setContractDate(e.target.value)}
-              className={INPUT}
+              className={ADMIN_INPUT}
             />
-            {!isEdit ? <p className="text-xs text-muted">Оставете празно за днешна дата.</p> : null}
-          </div>
+          </Field>
           {isEdit ? (
-            <div className="flex flex-col gap-1">
-              <label className={LABEL}>Статус</label>
-              <select value={status} onChange={(e) => setStatus(e.target.value as ContractStatus)} className={INPUT}>
+            <Field id={fid("status")} label="Статус">
+              <select
+                id={fid("status")}
+                value={status}
+                onChange={(e) => setStatus(e.target.value as ContractStatus)}
+                className={ADMIN_SELECT}
+              >
                 {CONTRACT_STATUSES.map((s) => (
                   <option key={s} value={s}>
                     {CONTRACT_STATUS_META[s].label}
                   </option>
                 ))}
               </select>
-            </div>
+            </Field>
           ) : null}
         </div>
-      </section>
+      </AdminCard>
 
       {/* ── 2. Клиент (create only) ── */}
       {isEdit ? null : (
-        <section className="flex flex-col gap-4 rounded-xl border border-line bg-white p-5">
+        <AdminCard className="flex flex-col gap-4">
           <h2 className="text-lg font-black text-ink">2. Клиент</h2>
-          <div className="flex flex-wrap gap-3">
-            <label
-              className={`flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold ${
-                clientMode === "existing" ? "border-brand bg-brand/10 text-brand" : "border-line text-muted"
-              }`}
-            >
+          <fieldset className="flex min-w-0 flex-wrap gap-2">
+            <legend className="sr-only">Клиент</legend>
+            <label className={choiceClass(clientMode === "existing")}>
               <input
                 type="radio"
+                name="clientMode"
                 checked={clientMode === "existing"}
                 onChange={() => setClientMode("existing")}
-                className="hidden"
+                className="sr-only"
               />
               Съществуващ клиент
             </label>
-            <label
-              className={`flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold ${
-                clientMode === "new" ? "border-brand bg-brand/10 text-brand" : "border-line text-muted"
-              }`}
-            >
-              <input type="radio" checked={clientMode === "new"} onChange={() => setClientMode("new")} className="hidden" />
+            <label className={choiceClass(clientMode === "new")}>
+              <input
+                type="radio"
+                name="clientMode"
+                checked={clientMode === "new"}
+                onChange={() => setClientMode("new")}
+                className="sr-only"
+              />
               Нов клиент
             </label>
-          </div>
+          </fieldset>
 
           {clientMode === "existing" ? (
-            <div className="flex flex-col gap-1">
-              <label className={LABEL}>Клиент</label>
-              <select
-                value={clientId ?? ""}
-                onChange={(e) => {
-                  setClientId(e.target.value ? Number(e.target.value) : undefined);
-                  setDepositContractId(undefined);
-                  setDepositDeductionAmount("");
-                }}
-                className={INPUT}
-              >
-                <option value="">— изберете клиент —</option>
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} {c.egn ? `(ЕГН ${c.egn})` : c.eik ? `(ЕИК ${c.eik})` : ""}
-                  </option>
-                ))}
-              </select>
+            <div className="flex flex-col gap-3">
+              <Field id={fid("client")} label="Клиент">
+                <select
+                  id={fid("client")}
+                  value={clientId ?? ""}
+                  onChange={(e) => {
+                    setClientId(e.target.value ? Number(e.target.value) : undefined);
+                    setDepositContractId(undefined);
+                    setDepositDeductionAmount("");
+                  }}
+                  className={ADMIN_SELECT}
+                >
+                  <option value="">— изберете клиент —</option>
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} {c.egn ? `(ЕГН ${c.egn})` : c.eik ? `(ЕИК ${c.eik})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </Field>
               {clientDeposits.length > 0 ? (
-                <div className="mt-3 flex flex-col gap-2 rounded-lg border border-brand/40 bg-brand/5 p-3">
+                <div className="flex flex-col gap-1 rounded-lg border border-brand/40 bg-brand/5 p-3">
                   <p className="text-sm font-semibold text-ink">
                     Клиентът има платен депозит — да се приспадне от плащане „Кола“?
                   </p>
                   {clientDeposits.map((d) => (
-                    <label key={d.id} className="flex items-center gap-2 text-sm text-ink">
+                    <label key={d.id} className="flex min-h-10 cursor-pointer items-center gap-3 text-sm text-ink">
                       <input
                         type="checkbox"
                         checked={depositContractId === d.id}
@@ -345,39 +364,39 @@ export function ContractForm({
                           setDepositContractId(e.target.checked ? d.id : undefined);
                           setDepositDeductionAmount("");
                         }}
-                        className="size-4 accent-brand"
+                        className="size-5 shrink-0 accent-brand"
                       />
                       Депозит № {d.number} — {formatDbAmount(d.depositAmount)} {d.budgetCurrency}
                     </label>
                   ))}
                   {selectedDeposit && depositCrossCurrency ? (
-                    <div className="flex flex-col gap-1">
-                      <label className={LABEL}>Сума за приспадане в {currency} *</label>
+                    <Field
+                      id={fid("deduction")}
+                      label={`Сума за приспадане в ${currency} *`}
+                      hint={`Депозитът е в ${depositCurrency}, а договорът — в ${currency}. Въведете равностойността, която се приспада от Точка 1.`}
+                    >
                       <input
+                        id={fid("deduction")}
                         type="text"
                         inputMode="decimal"
                         value={depositDeductionAmount}
                         onChange={(e) => setDepositDeductionAmount(e.target.value)}
                         placeholder={`равностойност на ${formatDbAmount(selectedDeposit.depositAmount)} ${depositCurrency}`}
-                        className={INPUT}
+                        className={ADMIN_INPUT}
                       />
-                      <p className="text-xs text-muted">
-                        Депозитът е в {depositCurrency}, а договорът — в {currency}. Въведете равностойността, която се
-                        приспада от Точка 1.
-                      </p>
-                    </div>
+                    </Field>
                   ) : null}
                 </div>
               ) : null}
             </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="flex flex-col gap-1">
-                <label className={LABEL}>Тип клиент</label>
+            <div className="grid gap-4 @lg:grid-cols-2">
+              <Field id={fid("kind")} label="Тип клиент">
                 <select
+                  id={fid("kind")}
                   value={clientKind}
                   onChange={(e) => setClientKind(e.target.value as ClientKind)}
-                  className={INPUT}
+                  className={ADMIN_SELECT}
                 >
                   {(["individual", "company"] as const).map((k) => (
                     <option key={k} value={k}>
@@ -385,131 +404,207 @@ export function ContractForm({
                     </option>
                   ))}
                 </select>
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className={LABEL}>{clientKind === "individual" ? "Три имена *" : "Име на фирмата *"}</label>
-                <input type="text" value={clientName} onChange={(e) => setClientName(e.target.value)} className={INPUT} />
-              </div>
+              </Field>
+              <Field id={fid("name")} label={clientKind === "individual" ? "Три имена *" : "Име на фирмата *"}>
+                <input
+                  id={fid("name")}
+                  type="text"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  className={ADMIN_INPUT}
+                />
+              </Field>
               {clientKind === "individual" ? (
-                <div className="flex flex-col gap-1">
-                  <label className={LABEL}>ЕГН *</label>
-                  <input type="text" value={clientEgn} onChange={(e) => setClientEgn(e.target.value)} className={INPUT} />
-                </div>
+                <Field id={fid("egn")} label="ЕГН *">
+                  <input
+                    id={fid("egn")}
+                    type="text"
+                    inputMode="numeric"
+                    value={clientEgn}
+                    onChange={(e) => setClientEgn(e.target.value)}
+                    className={ADMIN_INPUT}
+                  />
+                </Field>
               ) : (
                 <>
-                  <div className="flex flex-col gap-1">
-                    <label className={LABEL}>ЕИК *</label>
-                    <input type="text" value={clientEik} onChange={(e) => setClientEik(e.target.value)} className={INPUT} />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className={LABEL}>ДДС номер</label>
-                    <input type="text" value={clientVat} onChange={(e) => setClientVat(e.target.value)} className={INPUT} />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className={LABEL}>Представител</label>
+                  <Field id={fid("eik")} label="ЕИК *">
                     <input
+                      id={fid("eik")}
+                      type="text"
+                      inputMode="numeric"
+                      value={clientEik}
+                      onChange={(e) => setClientEik(e.target.value)}
+                      className={ADMIN_INPUT}
+                    />
+                  </Field>
+                  <Field id={fid("vat")} label="ДДС номер">
+                    <input
+                      id={fid("vat")}
+                      type="text"
+                      autoCapitalize="characters"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      value={clientVat}
+                      onChange={(e) => setClientVat(e.target.value)}
+                      className={ADMIN_INPUT}
+                    />
+                  </Field>
+                  <Field id={fid("representative")} label="Представител">
+                    <input
+                      id={fid("representative")}
                       type="text"
                       value={clientRepresentative}
                       onChange={(e) => setClientRepresentative(e.target.value)}
-                      className={INPUT}
+                      className={ADMIN_INPUT}
                     />
-                  </div>
+                  </Field>
                 </>
               )}
-              <div className="flex flex-col gap-1">
-                <label className={LABEL}>{clientKind === "individual" ? "Адрес" : "Адрес на управление"}</label>
-                <input type="text" value={clientAddress} onChange={(e) => setClientAddress(e.target.value)} className={INPUT} />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className={LABEL}>Телефон</label>
-                <input type="text" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} className={INPUT} />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className={LABEL}>Имейл</label>
-                <input type="text" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} className={INPUT} />
-              </div>
+              <Field id={fid("address")} label={clientKind === "individual" ? "Адрес" : "Адрес на управление"}>
+                <input
+                  id={fid("address")}
+                  type="text"
+                  value={clientAddress}
+                  onChange={(e) => setClientAddress(e.target.value)}
+                  className={ADMIN_INPUT}
+                />
+              </Field>
+              <Field id={fid("phone")} label="Телефон">
+                <input
+                  id={fid("phone")}
+                  type="text"
+                  inputMode="tel"
+                  value={clientPhone}
+                  onChange={(e) => setClientPhone(e.target.value)}
+                  className={ADMIN_INPUT}
+                />
+              </Field>
+              <Field id={fid("email")} label="Имейл">
+                <input
+                  id={fid("email")}
+                  type="text"
+                  inputMode="email"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  value={clientEmail}
+                  onChange={(e) => setClientEmail(e.target.value)}
+                  className={ADMIN_INPUT}
+                />
+              </Field>
             </div>
           )}
-        </section>
+        </AdminCard>
       )}
 
       {/* ── 3. Автомобил ── */}
-      <section className="flex flex-col gap-4 rounded-xl border border-line bg-white p-5">
+      <AdminCard className="flex flex-col gap-4">
         <h2 className="text-lg font-black text-ink">{isEdit ? "Автомобил" : "3. Автомобил"}</h2>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="flex flex-col gap-1">
-            <label className={LABEL}>Година *</label>
-            <input type="number" value={carYear} onChange={(e) => setCarYear(e.target.value)} className={INPUT} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className={LABEL}>Марка *</label>
-            <input type="text" value={carMake} onChange={(e) => setCarMake(e.target.value)} className={INPUT} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className={LABEL}>Модел *</label>
-            <input type="text" value={carModel} onChange={(e) => setCarModel(e.target.value)} className={INPUT} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className={LABEL}>VIN</label>
-            <input type="text" value={vin} onChange={(e) => setVin(e.target.value)} maxLength={17} className={INPUT} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className={LABEL}>Държава / пазар на покупка</label>
+        <div className="grid gap-4 @lg:grid-cols-2 @3xl:grid-cols-3">
+          <Field id={fid("year")} label="Година *">
             <input
+              id={fid("year")}
+              type="number"
+              inputMode="numeric"
+              value={carYear}
+              onChange={(e) => setCarYear(e.target.value)}
+              className={ADMIN_INPUT}
+            />
+          </Field>
+          <Field id={fid("make")} label="Марка *">
+            <input
+              id={fid("make")}
+              type="text"
+              value={carMake}
+              onChange={(e) => setCarMake(e.target.value)}
+              className={ADMIN_INPUT}
+            />
+          </Field>
+          <Field id={fid("model")} label="Модел *">
+            <input
+              id={fid("model")}
+              type="text"
+              value={carModel}
+              onChange={(e) => setCarModel(e.target.value)}
+              className={ADMIN_INPUT}
+            />
+          </Field>
+          <Field id={fid("vin")} label="VIN">
+            <input
+              id={fid("vin")}
+              type="text"
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              value={vin}
+              onChange={(e) => setVin(e.target.value)}
+              maxLength={17}
+              className={ADMIN_INPUT}
+            />
+          </Field>
+          <Field id={fid("purchase-market")} label="Държава / пазар на покупка">
+            <input
+              id={fid("purchase-market")}
               type="text"
               value={purchaseMarket}
               onChange={(e) => setPurchaseMarket(e.target.value)}
               placeholder="напр. САЩ"
-              className={INPUT}
+              className={ADMIN_INPUT}
             />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className={LABEL}>Търг / платформа</label>
+          </Field>
+          <Field id={fid("auction")} label="Търг / платформа">
             <input
+              id={fid("auction")}
               type="text"
               value={auctionPlatform}
               onChange={(e) => setAuctionPlatform(e.target.value)}
               placeholder="напр. Copart 46274725"
-              className={INPUT}
+              className={ADMIN_INPUT}
             />
-          </div>
+          </Field>
         </div>
-      </section>
+      </AdminCard>
 
       {/* ── 4. Финансови точки ── */}
-      <section className="flex flex-col gap-4 rounded-xl border border-line bg-white p-5">
-        <h2 className="text-lg font-black text-ink">{isEdit ? "Финансови точки" : "4. Финансови точки"} ({currency})</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
+      <AdminCard className="flex flex-col gap-4">
+        <h2 className="text-lg font-black text-ink">
+          {isEdit ? "Финансови точки" : "4. Финансови точки"} ({currency})
+        </h2>
+        <div className="grid gap-4 @lg:grid-cols-2">
           {/* The пера come from the market definition: 5 for САЩ/Корея, 4 for
               Канада (перо 1 in CAD + курс), 3 for Европа. */}
           {marketMeta.points.map((point) =>
             point.foreignCurrency ? (
-              <div key={point.key} className="flex flex-col gap-1 sm:col-span-2">
-                <label className={LABEL}>
+              <div key={point.key} className="flex min-w-0 flex-col gap-1 @lg:col-span-2">
+                <p className={ADMIN_LABEL}>
                   {point.label} — в {point.foreignCurrency}
-                </label>
-                <div className="grid gap-3 sm:grid-cols-3">
+                </p>
+                <div className="grid gap-3 @lg:grid-cols-3">
                   <input
                     type="text"
+                    inputMode="decimal"
+                    aria-label={`Сума в ${point.foreignCurrency}`}
                     value={amountCarForeign}
                     onChange={(e) => setAmountCarForeign(e.target.value)}
                     placeholder={`0.00 ${point.foreignCurrency}`}
-                    className={INPUT}
+                    className={ADMIN_INPUT}
                   />
                   <input
                     type="text"
+                    inputMode="decimal"
+                    aria-label={`Курс ${point.foreignCurrency}/EUR`}
                     value={foreignRate}
                     onChange={(e) => setForeignRate(e.target.value)}
                     placeholder={`курс ${point.foreignCurrency}/EUR`}
-                    className={INPUT}
+                    className={ADMIN_INPUT}
                   />
-                  <p className="flex items-center rounded-lg bg-neutral-50 px-3 py-2 text-sm font-semibold text-ink">
+                  <p className="flex min-h-11 items-center rounded-lg bg-neutral-50 px-3 text-sm font-semibold text-ink">
                     = {formatCents(derivedCarCents)} EUR
                   </p>
                 </div>
-                <p className="text-xs text-muted">
-                  Плащането се превежда в {point.foreignCurrency}; евровата равностойност се изчислява по този курс и
-                  се записва в договора.
+                <p className={ADMIN_HINT}>
+                  Плащането се превежда в {point.foreignCurrency}; евровата равностойност се изчислява по този курс и се
+                  записва в договора.
                 </p>
                 {selectedDeposit ? (
                   <p className="text-xs font-semibold text-brand">
@@ -518,53 +613,82 @@ export function ContractForm({
                 ) : null}
               </div>
             ) : (
-              <div key={point.key} className="flex flex-col gap-1">
-                <label className={LABEL}>{point.label}</label>
+              <Field
+                key={point.key}
+                id={fid(point.key)}
+                label={point.label}
+                hint={
+                  point.key === "amountCar" && selectedDeposit ? (
+                    <span className="font-semibold text-brand">
+                      − Депозит № {selectedDeposit.number} ({depositNote}) ще се приспадне от това плащане.
+                    </span>
+                  ) : undefined
+                }
+              >
                 <input
+                  id={fid(point.key)}
                   type="text"
+                  inputMode="decimal"
                   value={valueByKey[point.key]}
                   onChange={(e) => setterByKey[point.key](e.target.value)}
                   placeholder="0.00"
-                  className={INPUT}
+                  className={ADMIN_INPUT}
                 />
-                {point.key === "amountCar" && selectedDeposit ? (
-                  <p className="text-xs font-semibold text-brand">
-                    − Депозит № {selectedDeposit.number} ({depositNote}) ще се приспадне от това плащане.
-                  </p>
-                ) : null}
-              </div>
+              </Field>
             ),
           )}
-          <div className="flex flex-col gap-1">
-            <label className={LABEL}>Основание за плащане</label>
+          <Field id={fid("basis")} label="Основание за плащане">
             <input
+              id={fid("basis")}
               type="text"
               value={paymentBasis}
               onChange={(e) => setPaymentBasis(e.target.value)}
               placeholder="автоматично: Договор № …"
-              className={INPUT}
+              className={ADMIN_INPUT}
             />
-          </div>
+          </Field>
         </div>
-        <div className="rounded-lg bg-neutral-50 px-4 py-3 text-sm">
-          <span className="font-semibold text-muted">Обща сума: </span>
-          <span className="text-lg font-black text-ink">
-            {formatCents(totalCents)} {currency}
-          </span>
+      </AdminCard>
+
+      {/* Sticky: on a phone the total and the save button stay in reach while the
+          пера are typed, and a server error shows where the eye already is. */}
+      <div className="sticky bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-10 flex flex-col gap-3 rounded-xl border border-line bg-white/95 p-3 shadow-card backdrop-blur-sm">
+        {statusMsg.kind === "error" ? <AdminBanner tone="error">{statusMsg.message}</AdminBanner> : null}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm">
+            <span className="font-semibold text-muted">Обща сума: </span>
+            <span className="text-lg font-black whitespace-nowrap text-ink">
+              {formatCents(totalCents)} {currency}
+            </span>
+          </p>
+          <AdminButton type="submit" variant="primary" size="lg" disabled={busy}>
+            {busy ? "Запазване…" : isEdit ? "Запази промените" : "Създай договор"}
+          </AdminButton>
         </div>
-      </section>
-
-      {statusMsg.kind === "error" ? (
-        <p className="rounded-lg bg-[#fdecea] px-3 py-2 text-sm font-semibold text-[#b3261e]">{statusMsg.message}</p>
-      ) : null}
-
-      <button
-        type="submit"
-        disabled={busy}
-        className="inline-flex min-h-11 items-center justify-center self-start rounded-full bg-brand px-8 text-sm font-extrabold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-      >
-        {busy ? "Запазване…" : isEdit ? "Запази промените" : "Създай договор"}
-      </button>
+      </div>
     </form>
+  );
+}
+
+/** A labelled control with an optional hint line below it. */
+function Field({
+  id,
+  label,
+  hint,
+  children,
+}: {
+  id: string;
+  label: React.ReactNode;
+  hint?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1">
+      <label htmlFor={id} className={ADMIN_LABEL}>
+        {label}
+      </label>
+      {children}
+      {hint ? <p className={ADMIN_HINT}>{hint}</p> : null}
+    </div>
   );
 }

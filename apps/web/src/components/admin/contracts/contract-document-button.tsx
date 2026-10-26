@@ -1,11 +1,12 @@
 "use client";
 
+import { AdminBanner, AdminButton, adminButtonClass } from "@/components/admin/ui";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { formatSofiaDate } from "@/lib/sofia-time";
+import { generateContractDocument } from "@/mutations/contracts";
+import type { GeneratedDocumentRow } from "@/queries/contracts";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ConfirmDialog } from "@/components/common/confirm-dialog";
-import { generateContractDocument } from "@/mutations/contracts";
-import { formatSofiaDate } from "@/lib/sofia-time";
-import type { GeneratedDocumentRow } from "@/queries/contracts";
 
 /**
  * „Генерирай договор" on the contract detail — renders the contract document
@@ -48,29 +49,26 @@ export function ContractDocumentButton({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
+        <AdminButton
+          variant="primary"
           disabled={busy}
           onClick={() => (documents.length > 0 ? setConfirmOpen(true) : void run())}
-          className="inline-flex min-h-10 items-center justify-center rounded-full bg-brand px-5 text-sm font-extrabold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
         >
           {busy ? "Генериране…" : documents.length > 0 ? "Генерирай нова версия" : "Генерирай договор (PDF)"}
-        </button>
+        </AdminButton>
         {documents.map((d) => (
           <a
             key={d.id}
             href={`/api/payment-document/${d.id}`}
             target="_blank"
             rel="noreferrer"
-            className="text-sm font-semibold text-brand hover:underline"
+            className={adminButtonClass("ghost")}
           >
             Версия {d.version} ({formatSofiaDate(d.createdAt)}) ⬇
           </a>
         ))}
       </div>
-      {error ? (
-        <p className="rounded-lg bg-[#fdecea] px-3 py-2 text-xs font-semibold text-[#b3261e]">{error}</p>
-      ) : null}
+      {error ? <AdminBanner tone="error">{error}</AdminBanner> : null}
 
       <ConfirmDialog
         isOpen={confirmOpen}
