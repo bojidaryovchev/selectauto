@@ -85,10 +85,13 @@ export async function applyDeindex(
       const ids = matches.map((m) => m.id);
       if (ids.length === 0) return [];
 
-      // One ACTIVE request per VIN (partial unique index). A repeat request for
-      // an already-de-indexed VIN updates the existing row rather than failing.
+      // One ACTIVE request per VIN (partial unique index, migration 0043). A
+      // repeat request for an already-de-indexed VIN updates that row: what was
+      // filled in now replaces what was there, and a blank field keeps the old
+      // value. (It used to do nothing, dropping the new request's details.)
+      const r = schema.carDeindexRequests;
       await tx
-        .insert(schema.carDeindexRequests)
+        .insert(r)
         .values({
           vinNormalized: vin,
           requesterName: input.requesterName?.trim() || null,
@@ -99,7 +102,18 @@ export async function applyDeindex(
           notes: input.notes?.trim() || null,
           createdBy: session.user?.id ?? null,
         })
-        .onConflictDoNothing();
+        .onConflictDoUpdate({
+          target: r.vinNormalized,
+          targetWhere: isNull(r.revokedAt),
+          set: {
+            requesterName: sql`coalesce(excluded.requester_name, ${r.requesterName})`,
+            requesterContact: sql`coalesce(excluded.requester_contact, ${r.requesterContact})`,
+            proofNote: sql`coalesce(excluded.proof_note, ${r.proofNote})`,
+            feeAmount: sql`coalesce(excluded.fee_amount, ${r.feeAmount})`,
+            paidAt: sql`coalesce(excluded.paid_at, ${r.paidAt})`,
+            notes: sql`coalesce(excluded.notes, ${r.notes})`,
+          },
+        });
 
       await tx
         .update(schema.cars)
@@ -154,8 +168,9 @@ export async function applyDeindex(
  * the request revoked (soft — the history of a paid service is kept).
  *
  * NOTE the asymmetry, which the UI must state plainly: this restores OUR site
- * immediately, but it does not lift a Bing block (that needs an explicit
- * RemoveBlockedUrl call) and Google re-crawls on its own schedule.
+ * immediately, but search engines see it only when they re-crawl the pages —
+ * each on its own schedule. (No search-engine block is ever placed: applying
+ * only notifies IndexNow of the 410s.)
  */
 export async function revokeDeindex(vinInput: string): Promise<ActionResult<{ carIds: number[] }>> {
   const session = await getAdminSession();
