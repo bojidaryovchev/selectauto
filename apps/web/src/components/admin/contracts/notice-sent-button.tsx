@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { AdminButton } from "@/components/admin/ui";
 import { markNoticeSent } from "@/mutations/contracts";
 
 /**
@@ -35,15 +36,14 @@ export function NoticeSentButton({ documentId }: { documentId: number }) {
 
   return (
     <span className="inline-flex flex-wrap items-center gap-2">
-      <button
-        type="button"
-        disabled={busy}
-        onClick={() => void onClick()}
-        className="rounded-full border border-emerald-600 px-3 py-1 text-xs font-bold text-emerald-700 transition-colors hover:bg-emerald-50 disabled:opacity-60"
-      >
+      <AdminButton variant="positive" disabled={busy} onClick={() => void onClick()}>
         {busy ? "Запазване…" : "Отбележи като изпратено"}
-      </button>
-      {error ? <span className="text-xs font-semibold text-[#b3261e]">{error}</span> : null}
+      </AdminButton>
+      {error ? (
+        <span role="alert" className="text-xs font-semibold text-[#b3261e]">
+          {error}
+        </span>
+      ) : null}
     </span>
   );
 }

@@ -1,8 +1,10 @@
 export { ContractAdminTools } from "./contract-admin-tools";
 export { ContractDocumentButton } from "./contract-document-button";
 export { ContractFilters } from "./contract-filters";
-export { NoticeSentButton } from "./notice-sent-button";
-export { NumberingSettings } from "./numbering-settings";
 export { ContractForm } from "./contract-form";
+export { ContractList } from "./contract-list";
+export { NoticeSentButton } from "./notice-sent-button";
+export { NoticesToSend } from "./notices-to-send";
+export { NumberingSettings } from "./numbering-settings";
 export { PaymentStageCard } from "./payment-stage-card";
 export { PaymentStatusBadge } from "./payment-status-badge";

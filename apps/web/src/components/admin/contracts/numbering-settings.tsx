@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ADMIN_CONTROL, ADMIN_HINT, ADMIN_LABEL, AdminBanner, AdminButton } from "@/components/admin/ui";
 import { setNextNumber } from "@/mutations/contracts";
 import type { NumberingRow } from "@/queries/contracts";
 
@@ -41,61 +42,49 @@ export function NumberingSettings({ numbering }: { numbering: NumberingRow }) {
     }
   }
 
+  const inputId = `next-number-${numbering.series}`;
+
   return (
-    <div className="rounded-xl border border-line bg-white px-4 py-3 text-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-muted">
+    <div className="rounded-xl border border-line bg-white px-4 py-2 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <p className="py-1 text-muted">
           Следващ номер: <span className="font-bold text-ink">{numbering.nextNumber}</span>
           {numbering.highestUsed ? (
             <span className="ml-2 text-xs">(последен използван: {numbering.highestUsed})</span>
           ) : null}
         </p>
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="rounded-full px-3 py-1 text-sm font-semibold text-brand transition-colors hover:bg-brand/10"
-        >
+        <AdminButton variant="ghost" aria-expanded={open} onClick={() => setOpen((v) => !v)} className="-mr-2">
           {open ? "Затвори" : "Промени номерацията"}
-        </button>
+        </AdminButton>
       </div>
 
       {open ? (
-        <form onSubmit={onSave} className="mt-3 flex flex-col gap-2 border-t border-line pt-3">
-          <label className="text-xs font-semibold text-ink">
+        <form onSubmit={onSave} className="my-2 flex flex-col gap-2 border-t border-line pt-3">
+          <label htmlFor={inputId} className={ADMIN_LABEL}>
             Номер на следващия {label} за {numbering.year} г.
           </label>
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-semibold text-muted">{numbering.year}-</span>
             <input
+              id={inputId}
               type="number"
+              inputMode="numeric"
               min={1}
               max={99999}
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              className="w-28 rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-brand"
+              className={`${ADMIN_CONTROL} w-28`}
             />
             <span className="text-sm text-muted">→ {preview}</span>
-            <button
-              type="submit"
-              disabled={busy}
-              className="rounded-full bg-brand px-4 py-1.5 text-sm font-extrabold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-            >
+            <AdminButton type="submit" variant="primary" disabled={busy}>
               {busy ? "Запазване…" : "Запази"}
-            </button>
+            </AdminButton>
           </div>
-          <p className="text-xs text-muted">
+          <p className={ADMIN_HINT}>
             Използва се, когато номерацията трябва да продължи от определено място — например след договор, издаден на
             хартия. Вече използван номер не се приема; заетите номера се прескачат автоматично при създаване.
           </p>
-          {status ? (
-            <p
-              className={`rounded-lg px-3 py-2 text-xs font-semibold ${
-                status.kind === "ok" ? "bg-[#e8f5ec] text-[#1d6b35]" : "bg-[#fdecea] text-[#b3261e]"
-              }`}
-            >
-              {status.message}
-            </p>
-          ) : null}
+          {status ? <AdminBanner tone={status.kind === "ok" ? "success" : "error"}>{status.message}</AdminBanner> : null}
         </form>
       ) : null}
     </div>
