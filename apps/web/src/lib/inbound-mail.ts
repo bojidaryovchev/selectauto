@@ -213,7 +213,9 @@ export function shouldForward(data: InboundEmailInput): boolean {
  * here would bury real customer mail under duplicate rows. They are still
  * FORWARDED, because as a "new lead" alert in a human mailbox they are useful.
  */
-const NON_CONVERSATION_SENDERS = (process.env.MAIL_IGNORE_SENDERS ?? "noreply@selectauto.bg")
+// `||`, not `??`: .env.example ships `MAIL_IGNORE_SENDERS=` (empty), and an empty
+// string under `??` switched the filter off — the robots were filed again.
+const NON_CONVERSATION_SENDERS = (process.env.MAIL_IGNORE_SENDERS || "noreply@selectauto.bg")
   .split(",")
   .map((entry) => entry.trim().toLowerCase())
   .filter(Boolean);
