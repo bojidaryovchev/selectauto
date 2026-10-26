@@ -1,15 +1,16 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { ADMIN_CONTROL, AdminButton } from "@/components/admin/ui";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { DEPOSIT_STATUS_META, DEPOSIT_STATUSES, type DepositStatus } from "@/constants/contracts";
 import { deleteDeposit, updateDepositStatus } from "@/mutations/deposits";
+import { useRouter } from "next/navigation";
+import { useId, useState } from "react";
 
 /**
  * Status changer for one deposit row (spec §14). 'used' is missing from the
  * options on purpose — only contract creation sets it (automatic deduction);
- * a used deposit shows read-only.
+ * a used deposit has nothing to change, so nothing is rendered for it.
  */
 export function DepositRowActions({
   depositId,
@@ -21,6 +22,7 @@ export function DepositRowActions({
   status: string;
 }) {
   const router = useRouter();
+  const selectId = useId();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -40,9 +42,7 @@ export function DepositRowActions({
     }
   }
 
-  if (status === "used") {
-    return <span className="text-xs text-muted">—</span>;
-  }
+  if (status === "used") return null;
 
   async function onChange(next: string) {
     if (next === status) return;
@@ -63,12 +63,16 @@ export function DepositRowActions({
   }
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col items-start gap-2">
+      <label htmlFor={selectId} className="sr-only">
+        Статус на депозит № {number}
+      </label>
       <select
+        id={selectId}
         value={status}
         disabled={busy}
         onChange={(e) => void onChange(e.target.value)}
-        className="rounded-lg border border-line bg-white px-2 py-1.5 text-xs font-semibold text-ink outline-none focus:border-brand disabled:opacity-60"
+        className={`${ADMIN_CONTROL} w-52 max-w-full pr-8 font-semibold`}
       >
         {DEPOSIT_STATUSES.filter((s) => s !== "used").map((s) => (
           <option key={s} value={s}>
@@ -78,16 +82,15 @@ export function DepositRowActions({
       </select>
       {/* An anulled deposit can be cleared out of the list entirely. */}
       {status === "cancelled" ? (
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => setConfirmDelete(true)}
-          className="self-start text-xs font-bold text-[#c0392b] hover:underline disabled:opacity-50"
-        >
+        <AdminButton variant="danger" disabled={busy} onClick={() => setConfirmDelete(true)}>
           Изтрий
-        </button>
+        </AdminButton>
       ) : null}
-      {error ? <span className="text-xs font-semibold text-[#b3261e]">{error}</span> : null}
+      {error ? (
+        <span role="alert" className="text-xs font-semibold text-[#b3261e]">
+          {error}
+        </span>
+      ) : null}
 
       <ConfirmDialog
         isOpen={confirmDelete}

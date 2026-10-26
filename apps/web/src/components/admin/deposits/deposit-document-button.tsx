@@ -1,9 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { AdminButton } from "@/components/admin/ui";
+import { formatSofiaDate } from "@/lib/sofia-time";
 import { generateDepositDocument } from "@/mutations/deposits";
 import type { DepositDocumentRow } from "@/queries/deposits";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 /**
  * „Разпечатай договор" for one deposit row (spec §14). Generating appends a new
@@ -41,26 +43,25 @@ export function DepositDocumentButton({
 
   return (
     <div className="flex flex-col items-start gap-1">
-      <button
-        type="button"
-        disabled={busy}
-        onClick={() => void run()}
-        className="whitespace-nowrap rounded-full bg-brand px-3 py-1.5 text-xs font-extrabold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-      >
+      <AdminButton variant="primary" disabled={busy} onClick={() => void run()} className="whitespace-nowrap">
         {busy ? "Генериране…" : documents.length > 0 ? "Нова версия" : "Договор (PDF)"}
-      </button>
+      </AdminButton>
       {documents.map((d) => (
         <a
           key={d.id}
           href={`/api/payment-document/${d.id}`}
           target="_blank"
           rel="noreferrer"
-          className="whitespace-nowrap text-xs font-semibold text-brand hover:underline"
+          className="inline-flex min-h-10 items-center text-sm font-semibold whitespace-nowrap text-brand hover:underline"
         >
-          в.{d.version} ({d.createdAt.toLocaleDateString("bg-BG")}) ⬇
+          в.{d.version} ({formatSofiaDate(d.createdAt)}) ⬇
         </a>
       ))}
-      {error ? <span className="text-xs font-semibold text-[#b3261e]">{error}</span> : null}
+      {error ? (
+        <span role="alert" className="text-xs font-semibold text-[#b3261e]">
+          {error}
+        </span>
+      ) : null}
     </div>
   );
 }
