@@ -319,14 +319,23 @@ export function MobilebgPublisher() {
   function confirmPublish() {
     setConfirming(false);
     if (!preview) return;
+    const carId = preview.source.carId;
     setError(null);
     run(async () => {
-      const res = await publishCarToMobilebg({
-        carId: preview.source.carId,
-        overrides: overrides(),
-      });
+      const res = await publishCarToMobilebg({ carId, overrides: overrides() });
       if (!res.success) {
         setError(res.error);
+        // A failure can change the stored advert — an id mobile.bg no longer
+        // has is cleared — and the button and the dialog must say „new advert"
+        // from then on. Re-read without `load`, which would clear the error;
+        // a re-read that fails must not replace it either.
+        try {
+          const fresh = await previewAdvertAction(carId, overrides());
+          if (fresh.success) setPreview(fresh.data);
+        } catch {
+          // The error above stays; „Преизчисли" re-reads.
+        }
+        router.refresh();
         return;
       }
       const skipped =
@@ -335,7 +344,7 @@ export function MobilebgPublisher() {
         text: `${res.data.edited ? "Обявата е коригирана" : "Обявата е публикувана"}: ID ${res.data.ida}, ${res.data.pictureCount} снимки.${skipped}`,
         url: advertUrl(res.data.ida),
       });
-      load(preview.source.carId);
+      load(carId);
       router.refresh();
     }, "Връзката прекъсна, докато обявата се изпращаше — проверете „Обяви“ по-долу, преди да опитате отново.");
   }

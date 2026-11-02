@@ -8,12 +8,14 @@ import {
   MobilebgError,
   addPictures,
   countAdvertPictures,
+  isAdvertGone,
   isConfigured,
   logout,
   publishAdvert,
 } from "@/lib/mobilebg/client";
 import type { MobilebgOverrides } from "@/lib/mobilebg/map-car";
 import { preparePictures } from "@/lib/mobilebg/pictures";
+import { markAdvertDeleted } from "@/lib/mobilebg/withdraw";
 import { getMobilebgPreview } from "@/queries/mobilebg/get-advert-preview.query";
 import type { ActionResult } from "@/types/action-result.type";
 
@@ -64,6 +66,11 @@ import type { ActionResult } from "@/types/action-result.type";
  *     and an advert already holding 17 answers „No picts data", so re-adding them
  *     on every correction failed each one after its price had gone live (seen
  *     24.09.2026). Photos are added only when the advert has none.
+ *
+ *  8. **An edit of an advert mobile.bg no longer has stops.** Deleted in their
+ *     panel, it answers „Wrong ida": the stored id is cleared and the admin told,
+ *     and the next press creates a NEW advert through its own confirmation —
+ *     never silently, since that one is billed.
  */
 
 export type PublishAdvertInput = {
@@ -201,6 +208,22 @@ export async function publishCarToMobilebg(
     if (existingPictures > 0) pictureCount = existingPictures;
     else await addPictures(ida, picts);
   } catch (error) {
+    // 8. The correction hit an advert deleted on mobile.bg's side.
+    if (existingIda && !ida && isAdvertGone(error)) {
+      console.error("[mobilebg] edit of an advert gone at mobile.bg", { ...logFields, ida: existingIda });
+      await markAdvertDeleted(carId, existingIda, {
+        actorId: session.user?.id ?? null,
+        reason: "Обявата е изтрита в mobile.bg (установено при корекция).",
+        alreadyGone: true,
+      });
+      await logout();
+      revalidatePath("/admin/mobile-bg");
+      return {
+        success: false,
+        error: `Обява ${existingIda} вече не съществува в mobile.bg — изтрита е там и тук също е отбелязана като изтрита. Натиснете „Публикувай в mobile.bg“, за да създадете нова обява.`,
+      };
+    }
+
     let message =
       error instanceof MobilebgError ? `${error.status}: ${error.message}` : String(error);
     // Name the rejected fields, with mobile.bg's own label where it has one.

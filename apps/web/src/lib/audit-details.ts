@@ -55,6 +55,7 @@ const KEY_LABELS: Record<string, string> = {
   series: "Серия",
   nextNumber: "Следващ №",
   ida: "Обява в mobile.bg №",
+  goneAtMobilebg: "Вече изтрита в mobile.bg",
   priceEur: "Цена (EUR)",
   computedPriceEur: "Изчислена цена (EUR)",
   markupPct: "Надценка (%)",

@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getDb, schema } from "@/lib/db";
-import { MobilebgError, deleteAdvert, isConfigured, logout } from "@/lib/mobilebg/client";
+import { MobilebgError, deleteAdvert, isAdvertGone, isConfigured, logout } from "@/lib/mobilebg/client";
 import { and, eq, inArray, isNotNull, ne } from "drizzle-orm";
 
 /**
@@ -18,9 +18,46 @@ import { and, eq, inArray, isNotNull, ne } from "drizzle-orm";
  * that this car was advertised. Its `ida` is cleared — mobile.bg has released
  * it, and leaving it in place would make the next publish send a stale id to
  * `advertpub`, which either fails or, worse, edits something else.
+ *
+ * An advert already deleted on mobile.bg's side (by hand in their dealer panel)
+ * answers „Wrong ida". That is the outcome „Изтрий" wanted, so it is recorded
+ * as deleted too — it used to be stored as an error, and the row stayed „live"
+ * in the register and in the count of billed adverts.
  */
 
-export type WithdrawOutcome = { ok: true } | { ok: false; error: string };
+export type WithdrawOutcome = { ok: true; alreadyGone: boolean } | { ok: false; error: string };
+
+/**
+ * Record that an advert is no longer on mobile.bg, with its audit row. Matches
+ * on the id we acted on, so a publish that has since replaced it is left alone;
+ * returns whether the row was changed.
+ */
+export async function markAdvertDeleted(
+  carId: number,
+  ida: string,
+  opts: { actorId: string | null; reason?: string; alreadyGone?: boolean },
+): Promise<boolean> {
+  const db = getDb();
+  const a = schema.mobilebgAdverts;
+  const updated = await db
+    .update(a)
+    .set({ status: "deleted", ida: null, payloadHash: null, lastError: null, updatedAt: new Date() })
+    .where(and(eq(a.carId, carId), eq(a.ida, ida)))
+    .returning({ carId: a.carId });
+  if (updated.length === 0) return false;
+  await db.insert(schema.contractEvents).values({
+    entity: "mobilebg_advert",
+    entityId: carId,
+    action: "deleted",
+    actorId: opts.actorId,
+    data: {
+      ida,
+      ...(opts.reason ? { reason: opts.reason } : {}),
+      ...(opts.alreadyGone ? { goneAtMobilebg: true } : {}),
+    },
+  });
+  return true;
+}
 
 /** Delete one advert and record it. Leaves the mobile.bg token to the caller's `logout()`. */
 export async function withdrawAdvert(
@@ -28,32 +65,34 @@ export async function withdrawAdvert(
   ida: string,
   opts: { actorId: string | null; reason?: string },
 ): Promise<WithdrawOutcome> {
-  const db = getDb();
+  let alreadyGone = false;
   try {
     await deleteAdvert(ida);
   } catch (error) {
-    const message = error instanceof MobilebgError ? `${error.status}: ${error.message}` : String(error);
-    console.error("[mobilebg] delete failed", { carId, ida, reason: opts.reason ?? null, message });
-    await db
-      .update(schema.mobilebgAdverts)
-      .set({ lastError: message, updatedAt: new Date() })
-      .where(eq(schema.mobilebgAdverts.carId, carId));
-    return { ok: false, error: message };
+    if (isAdvertGone(error)) {
+      alreadyGone = true;
+    } else {
+      const message = error instanceof MobilebgError ? `${error.status}: ${error.message}` : String(error);
+      console.error("[mobilebg] delete failed", { carId, ida, reason: opts.reason ?? null, message });
+      await getDb()
+        .update(schema.mobilebgAdverts)
+        .set({ lastError: message, updatedAt: new Date() })
+        .where(eq(schema.mobilebgAdverts.carId, carId));
+      return { ok: false, error: message };
+    }
   }
 
-  await db
-    .update(schema.mobilebgAdverts)
-    .set({ status: "deleted", ida: null, payloadHash: null, lastError: null, updatedAt: new Date() })
-    .where(eq(schema.mobilebgAdverts.carId, carId));
-  await db.insert(schema.contractEvents).values({
-    entity: "mobilebg_advert",
-    entityId: carId,
-    action: "deleted",
+  await markAdvertDeleted(carId, ida, {
     actorId: opts.actorId,
-    data: opts.reason ? { ida, reason: opts.reason } : { ida },
+    reason: alreadyGone ? "Обявата вече е била изтрита в mobile.bg." : opts.reason,
+    alreadyGone,
   });
-  console.log("[mobilebg] advert deleted", { carId, ida, reason: opts.reason ?? null });
-  return { ok: true };
+  console.log(alreadyGone ? "[mobilebg] advert was already gone" : "[mobilebg] advert deleted", {
+    carId,
+    ida,
+    reason: opts.reason ?? null,
+  });
+  return { ok: true, alreadyGone };
 }
 
 export type WithdrawSummary = {

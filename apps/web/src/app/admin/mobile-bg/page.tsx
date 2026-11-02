@@ -1,4 +1,9 @@
-import { MobilebgAdvertList, MobilebgMappingDesk, MobilebgPublisher } from "@/components/admin/mobilebg";
+import {
+  MobilebgAdvertList,
+  MobilebgMappingDesk,
+  MobilebgPublisher,
+  MobilebgReconcile,
+} from "@/components/admin/mobilebg";
 import { AdminBanner, AdminPageHeader, AdminPagination, adminChipClass } from "@/components/admin/ui";
 import { ADMIN_PAGE_SIZE } from "@/constants/admin";
 import { requirePageWith } from "@/lib/admin";
@@ -67,6 +72,7 @@ export default async function AdminMobilebgPage({
           Обяви <span className="text-sm font-semibold text-muted">({total})</span>
         </h2>
         <div className="flex flex-col gap-4">
+          {isConfigured() && <MobilebgReconcile />}
           {endedLive > 0 || filter === "ended" ? (
             <div className="flex flex-col gap-2">
               {endedLive > 0 ? (
@@ -76,6 +82,7 @@ export default async function AdminMobilebgPage({
                     ? "обява е за кола, която вече не се предлага в сайта"
                     : "обяви са за коли, които вече не се предлагат в сайта"}{" "}
                   (търгът е приключил или колата е скрита). mobile.bg ги таксува всяка седмица, докато не бъдат изтрити.
+                  Изтритите направо в mobile.bg се изчистват оттук със „Сверка с mobile.bg“.
                 </AdminBanner>
               ) : null}
               <nav aria-label="Филтър на обявите" className="flex flex-wrap gap-2">

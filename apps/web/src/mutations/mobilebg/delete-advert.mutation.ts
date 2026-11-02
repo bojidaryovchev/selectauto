@@ -12,8 +12,12 @@ import { revalidatePath } from "next/cache";
  * Remove one advert from mobile.bg — „Изтрий" in the register. The deletion
  * itself (and why the row is kept, marked `deleted`) is `withdrawAdvert`, shared
  * with the de-index desk, which withdraws the adverts of the cars it hides.
+ * `alreadyGone`: mobile.bg no longer had it (deleted in their panel), so only
+ * the register changed.
  */
-export async function deleteMobilebgAdvert(carId: number): Promise<ActionResult<{ carId: number }>> {
+export async function deleteMobilebgAdvert(
+  carId: number,
+): Promise<ActionResult<{ carId: number; alreadyGone: boolean }>> {
   const session = await getSessionWith("mobilebg.publish");
   if (!session) return { success: false, error: "Нямате достъп до тази операция." };
 
@@ -38,5 +42,5 @@ export async function deleteMobilebgAdvert(carId: number): Promise<ActionResult<
   if (!outcome.ok) return { success: false, error: `Изтриването се провали — ${outcome.error}` };
 
   revalidatePath("/admin/mobile-bg");
-  return { success: true, data: { carId } };
+  return { success: true, data: { carId, alreadyGone: outcome.alreadyGone } };
 }

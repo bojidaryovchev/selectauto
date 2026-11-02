@@ -4,6 +4,7 @@ export {
   type PublishAdvertResult,
 } from "./publish-advert.mutation";
 export { deleteMobilebgAdvert } from "./delete-advert.mutation";
+export { reconcileMobilebgAdverts, type ReconcileResult } from "./reconcile-adverts.mutation";
 export {
   deleteMobilebgBrandMapping,
   deleteMobilebgModelMapping,

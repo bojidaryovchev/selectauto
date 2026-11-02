@@ -70,6 +70,7 @@ export function MobilebgAdvertList({ rows }: { rows: MobilebgAdvertRow[] }) {
   const router = useRouter();
   const [target, setTarget] = useState<MobilebgAdvertRow | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   /**
@@ -88,15 +89,20 @@ export function MobilebgAdvertList({ rows }: { rows: MobilebgAdvertRow[] }) {
   }
 
   function confirmDelete() {
+    const ida = target?.ida;
     const carId = target?.carId;
     setTarget(null);
     if (carId === undefined) return;
     setError(null);
+    setNotice(null);
     run(async () => {
       const res = await deleteMobilebgAdvert(carId);
       if (!res.success) {
         setError(res.error);
         return;
+      }
+      if (res.data.alreadyGone) {
+        setNotice(`Обява ${ida ?? ""} вече беше изтрита в mobile.bg — тук също е отбелязана като изтрита.`);
       }
       router.refresh();
     });
@@ -116,6 +122,7 @@ export function MobilebgAdvertList({ rows }: { rows: MobilebgAdvertRow[] }) {
   return (
     <div className="flex flex-col gap-3">
       {error && <AdminBanner tone="error">{error}</AdminBanner>}
+      {notice && <AdminBanner tone="info">{notice}</AdminBanner>}
 
       <div className="@container">
         <ul className="m-0 grid list-none gap-2 p-0 @xl:grid-cols-2 @4xl:hidden">

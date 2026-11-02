@@ -59,6 +59,17 @@ export class MobilebgError extends Error {
   }
 }
 
+/**
+ * mobile.bg's answer for an advert id the account no longer holds: the advert
+ * was deleted on their side (by hand in the dealer panel, or by mobile.bg), and
+ * our register never heard of it. Not "Invalid ida", which is a malformed id.
+ * Seen on 38 „Изтрий" calls by 28.10.2026 — every one for an advert whose public
+ * page was already a 404, while deletes of live adverts went through.
+ */
+export function isAdvertGone(error: unknown): boolean {
+  return error instanceof MobilebgError && error.status === "error" && error.message === "Wrong ida";
+}
+
 type ApiResponse = Record<string, unknown> & { status?: unknown; msg?: unknown };
 
 /**
@@ -243,10 +254,31 @@ export async function countAdvertPictures(ida: string): Promise<number> {
   return Array.isArray(advert.picts) ? advert.picts.length : 0;
 }
 
-/** Every advert id on the account, with its publish time. */
-export async function listRemoteAdverts(): Promise<ApiResponse> {
+/**
+ * The id of every advert on the account right now (`/adverts`, documented as
+ * `{"status":"success list","adverts":[{"ida":"…","pubtime":"…"}]}`).
+ *
+ * A reply of any other shape THROWS rather than yielding an empty or partial
+ * set: callers treat an id missing from this set as deleted, so a misread list
+ * would write live, billed adverts off. The same goes for an id sent as a JSON
+ * number — 17 digits are past what a double holds exactly, so it could never
+ * match the string we stored.
+ */
+export async function listAccountAdvertIds(): Promise<Set<string>> {
   const token = await getToken();
-  return call(`/adverts/${token}/?pretty=1`);
+  const res = await call(`/adverts/${token}/`);
+  if (!Array.isArray(res.adverts)) {
+    throw new MobilebgError("/adverts", "unexpected", "mobile.bg не върна списък с обяви.");
+  }
+  const ids = new Set<string>();
+  for (const entry of res.adverts as unknown[]) {
+    const ida = entry && typeof entry === "object" ? (entry as Record<string, unknown>).ida : undefined;
+    if (typeof ida !== "string" || !/^\d+$/.test(ida)) {
+      throw new MobilebgError("/adverts", "unexpected", `Неочакван запис в списъка на mobile.bg: ${JSON.stringify(entry)}`);
+    }
+    ids.add(ida);
+  }
+  return ids;
 }
 
 /**
