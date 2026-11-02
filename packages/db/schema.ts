@@ -989,6 +989,12 @@ export const generatedDocuments = pgTable(
      */
     clientSentAt: timestamp("client_sent_at", { withTimezone: true }),
     clientSentBy: text("client_sent_by"),
+    /**
+     * Payment notices only (migration 0049): the operator's own note on this
+     * version — what was added to the sum and why. Internal: not in `snapshot`,
+     * so the PDF never prints it.
+     */
+    note: text("note"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [

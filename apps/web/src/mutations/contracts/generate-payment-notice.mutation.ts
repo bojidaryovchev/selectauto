@@ -10,7 +10,10 @@ import { isDocumentStorageConfigured, putDocument } from "@/lib/s3";
 import { renderPaymentNoticePdf } from "@/pdf/render";
 import type { ActionResult } from "@/types/action-result.type";
 
-export type GeneratePaymentNoticeInput = PaymentNoticeInput;
+export type GeneratePaymentNoticeInput = PaymentNoticeInput & {
+  /** The operator's own note on this version — kept off the PDF. */
+  note?: string;
+};
 
 /**
  * Needs `notices.generate`: generate a payment notice for one stage (spec §6).
@@ -23,6 +26,10 @@ export type GeneratePaymentNoticeInput = PaymentNoticeInput;
  * recipient/основание/падеж on the payment, flips 'not_requested' →
  * 'awaiting_payment' (§6.4), and appends the audit event. The PDF is rendered
  * from the frozen snapshot, so any version can be rendered again for download.
+ *
+ * The note (owner, 02.11.2026 — what was added to the sum, „+519 EUR SSANCAR")
+ * is stored on the version and in the audit event, never in the snapshot: the
+ * PDF goes to the client.
  */
 export async function generatePaymentNotice(
   input: GeneratePaymentNoticeInput,
@@ -37,6 +44,7 @@ export async function generatePaymentNotice(
     if (!prepared.ok) return { success: false, error: prepared.error };
     const { snapshot, contract, payment, recipient, usdEurRate, overrideCents, basis, dueDate } = prepared.notice;
     const paymentId = payment.id;
+    const note = input?.note?.trim() || null;
     const p = schema.contractPayments;
 
     const actorId = session.user?.id ?? null;
@@ -65,6 +73,7 @@ export async function generatePaymentNotice(
                 amountEur: centsToDb(snapshot.totalCents),
               }
             : {}),
+          note,
           generatedBy: actorId,
         })
         .returning({ id: g.id, version: g.version });
@@ -96,6 +105,7 @@ export async function generatePaymentNotice(
           currency: snapshot.totalCurrencyLabel,
           ...(usdEurRate ? { usdEurRate } : {}),
           ...(overrideCents != null ? { typedAmount: centsToDb(overrideCents), typedCurrency: snapshot.currency } : {}),
+          ...(note ? { note } : {}),
         },
       });
 

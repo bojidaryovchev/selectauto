@@ -120,6 +120,9 @@ export function PaymentStageCard({
     payment.dueDate && payment.dueDate >= todayIso() ? payment.dueDate : defaultDueDate(),
   );
   const [preview, setPreview] = useState<NoticeSnapshot | null>(null);
+  // The operator's own note on the notice (owner, 02.11.2026) — what was added
+  // to the sum and why. Kept on the version, never printed on the PDF.
+  const [noticeNote, setNoticeNote] = useState("");
   const [paidAmount, setPaidAmount] = useState("");
   const [paidAt, setPaidAt] = useState(todayIso());
   const [note, setNote] = useState("");
@@ -200,9 +203,10 @@ export function PaymentStageCard({
     setBusy(true);
     setError(null);
     try {
-      const result = await generatePaymentNotice(noticeInput(chosen));
+      const result = await generatePaymentNotice({ ...noticeInput(chosen), note: noticeNote });
       if (result.success) {
         resetPanels();
+        setNoticeNote("");
         router.refresh();
         window.open(`/api/payment-document/${result.data.documentId}`, "_blank");
       } else {
@@ -389,6 +393,12 @@ export function PaymentStageCard({
               >
                 Версия {d.version} — {formatSofiaDateTime(d.createdAt)} ⬇
               </a>
+              {d.note ? (
+                <p className="text-xs wrap-anywhere text-ink">
+                  <span className="font-semibold text-muted">Бележка: </span>
+                  {d.note}
+                </p>
+              ) : null}
               {d.id === toSendId ? (
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800 ring-1 ring-amber-200">
@@ -516,6 +526,20 @@ export function PaymentStageCard({
               className={ADMIN_INPUT}
             />
           </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor={fieldId("notice-note")} className={LABEL}>
+              Бележка — по избор
+            </label>
+            <input
+              id={fieldId("notice-note")}
+              type="text"
+              value={noticeNote}
+              onChange={(e) => setNoticeNote(e.target.value)}
+              placeholder="напр. +519 EUR SSANCAR"
+              className={ADMIN_INPUT}
+            />
+            <p className={ADMIN_HINT}>Само за вас — вижда се тук и в историята, не се печата в известието.</p>
+          </div>
           {error ? <AdminBanner tone="error">{error}</AdminBanner> : null}
           <div className="flex flex-wrap gap-2">
             <AdminButton
@@ -571,6 +595,12 @@ export function PaymentStageCard({
               <dt className="inline text-muted">Основание: </dt>
               <dd className="inline font-semibold text-ink">{preview.basis}</dd>
             </div>
+            {noticeNote.trim() ? (
+              <div>
+                <dt className="inline text-muted">Бележка (не се печата): </dt>
+                <dd className="inline wrap-anywhere text-ink">{noticeNote.trim()}</dd>
+              </div>
+            ) : null}
           </dl>
           {versionCount > 0 ? (
             <AdminBanner tone="warning">

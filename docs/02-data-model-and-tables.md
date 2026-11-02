@@ -600,6 +600,7 @@ safe. **Append-only and hand-run** (`pnpm migrate`) — not applied on deploy.
 | `0046_recompute_excludes_deindexed.sql` | Both recompute functions exclude de-indexed cars, so a de-index removes the car from the whole site. |
 | `0047_mobilebg_publishing.sql` | mobile.bg publishing: `mobilebg_adverts`, `mobilebg_brand_map`, `mobilebg_model_map`. |
 | `0048_notice_sent_to_client.sql` | `generated_documents.client_sent_at` / `client_sent_by` — a payment notice marked as sent to the client („За изпращане към клиента"). |
+| `0049_notice_note.sql` | `generated_documents.note` — the operator's internal note on a payment-notice version (never printed on the PDF). |
 
 > Operational procedures (backfill, reseed, drift sweep, resume) →
 > [07-operations-runbook.md](07-operations-runbook.md).

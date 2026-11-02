@@ -19,6 +19,7 @@ export type GeneratedDocumentRow = Pick<
   | "amountEur"
   | "clientSentAt"
   | "clientSentBy"
+  | "note"
   | "createdAt"
 >;
 
@@ -88,6 +89,7 @@ export async function getContract(id: number): Promise<ContractDetail | null> {
         amountEur: g.amountEur,
         clientSentAt: g.clientSentAt,
         clientSentBy: g.clientSentBy,
+        note: g.note,
         createdAt: g.createdAt,
       })
       .from(g)
