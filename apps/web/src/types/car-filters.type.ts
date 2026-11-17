@@ -80,6 +80,8 @@ export type FacetOption = {
   label: string;
   /** Optional count (cars matching) — shown when available. */
   count?: number;
+  /** The make's logo URL (brands only), for its plate in the Марка list; null without one. */
+  logo?: string | null;
 };
 
 /**

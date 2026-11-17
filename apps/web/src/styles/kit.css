@@ -436,3 +436,30 @@
   .sa-bar small{font-size:12px;font-weight:600;color:var(--color-tx3);white-space:nowrap}
   .sa-bar b{font:700 18px/1.15 var(--font-display);white-space:nowrap}
 }
+
+/*
+  App-only rules: what the static boards can't show. Kept apart from the ported kit above.
+  - Motion: spinners turn and skeletons shimmer, except under prefers-reduced-motion (README, motion).
+  - Base UI's state attributes (the Combobox in components/common/combobox.tsx) map onto the kit's state classes.
+  - The switch's hidden checkbox drives its look and shows the focus ring.
+*/
+@layer components {
+  @media (prefers-reduced-motion:no-preference){
+    .sa-spin{animation:sa-spin .8s linear infinite}
+    .sa-sk::after{animation:sa-shimmer 1.6s ease-in-out infinite}
+    .sa-combo>svg{transition:transform .15s ease-out}
+  }
+  .sa-combo[data-popup-open]>svg{transform:rotate(180deg)}
+  .sa-combo[data-popup-open]{border-color:var(--color-or);box-shadow:0 0 0 3px var(--color-or-ring)}
+  .sa-combo[data-disabled]{opacity:.55;border-style:dashed;cursor:not-allowed}
+  .sa-combo[data-placeholder]>span{color:var(--color-tx3)}
+  .sa-opt[data-highlighted]{background:var(--color-s2)}
+  .sa-opt[data-selected]{color:var(--color-ortx)}
+  .sa-opt[data-disabled]{color:var(--color-tx3);cursor:not-allowed;opacity:.6}
+  .sa-opt[data-disabled]:hover{background:transparent}
+  .sa-sw:has(input:checked) .sa-sw__t{background:var(--color-or);box-shadow:none}
+  .sa-sw:has(input:checked) .sa-sw__t::after{transform:translateX(18px);background:var(--color-bg)}
+  .sa-sw:has(input:focus-visible) .sa-sw__t{outline:2px solid var(--color-ortx);outline-offset:2px}
+}
+@keyframes sa-spin{to{transform:rotate(360deg)}}
+@keyframes sa-shimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}

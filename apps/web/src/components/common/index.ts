@@ -9,6 +9,7 @@ export { ExpandableSection } from "./expandable-section";
 export { IconButton } from "./icon-button";
 export { LinkButton } from "./link-button";
 export { Logo } from "./logo";
+export { MakePlate, type PlateSize } from "./make-plate";
 export { Reveal } from "./reveal";
 export { Ripple } from "./ripple";
 export { SectionHeader } from "./section-header";

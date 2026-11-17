@@ -1,9 +1,17 @@
 "use client";
 
-import type { ComponentType } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Button, Combobox } from "@/components/common";
-import { FlagCaIcon, FlagKrIcon, FlagUsIcon } from "@/components/icons";
+import type { ComponentType, ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { Button, Combobox, IconButton } from "@/components/common";
+import {
+  CloseIcon,
+  FlagCaIcon,
+  FlagKrIcon,
+  FlagUsIcon,
+  GlobeIcon,
+  SearchIcon,
+  SlidersHorizontalIcon,
+} from "@/components/icons";
 import { useFilterNav } from "@/contexts/filter-nav-context";
 import { serializeCarFilters } from "@/lib/car-filters";
 import type { CarFilters, FacetOptions } from "@/types/car-filters.type";
@@ -37,46 +45,62 @@ const AUCTION_WINDOWS: { value: CarFilters["auctionWindow"]; label: string }[] =
 /** Text inputs apply after the user stops typing (the rest apply instantly). */
 const TEXT_DEBOUNCE_MS = 1500;
 
-const inputCls =
-  "h-11 w-full rounded-[10px] border border-[#ddd] bg-white px-3.5 text-sm font-medium text-ink outline-none transition placeholder:text-[#bbb] focus:border-brand focus:ring-2 focus:ring-brand/15";
-const labelCls = "mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted";
+/** Phones get the sheet; from this width up the console shows (Tailwind's `sm`). */
+const CONSOLE_QUERY = "(min-width: 640px)";
+
+/** The spinning earth for „Всички"; a still globe under reduced motion (README, motion). */
+function EarthIcon() {
+  return (
+    <>
+      {/* Animated WebP through a plain <img>: Next's optimizer would strip the animation. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/icons/earth-spinning.webp" alt="" width={48} height={48} className="is-globe size-5 rounded-full motion-reduce:hidden" />
+      <GlobeIcon className="hidden size-5 motion-reduce:block" />
+    </>
+  );
+}
+
+/** The number of applied filters, on „Изчистете филтрите" and „Филтри". */
+function CountBadge({ n }: { n: number }) {
+  return n > 0 ? <span className="sa-btn__n">{n}</span> : null;
+}
 
 /**
- * Pill / chip styling for the segmented scope controls (market + auction window).
- * These used to be a fixed `inline-flex overflow-hidden` bar that clipped its
- * later options on narrow phones; wrapping pills (`flex flex-wrap gap-2`) grow to
- * as many rows as they need without ever cutting a label off.
- */
-const pillBase =
-  "inline-flex items-center gap-1.5 rounded-full border px-4 py-2.5 text-sm font-bold transition";
-const pillActive = "border-brand bg-brand text-white";
-const pillIdle = "border-[#ddd] bg-white text-ink hover:border-[#bbb] hover:bg-[#f6f6f6]";
-
-/**
- * The catalog filter bar. **No submit button** — filters apply automatically:
- *  - Dropdowns, the market/auction pill controls, and the status/buy-now toggles
- *    apply **instantly** on change.
- *  - The text inputs (year from/to, price from/to, lot/VIN) apply after a
- *    ~1.5s **debounce** (so we don't navigate on every keystroke).
+ * The catalog filters (boards `ct-catalog` and its states, `ct-sheet`, `ct-tablet`; parity check
+ * docs/design/parity/vsichki-avtomobili.md). **No submit button** — filters apply automatically:
+ *  - Dropdowns, the market and auction controls, the Buy Now switch and the Активни / Приключили tab apply
+ *    **instantly** on change.
+ *  - The text inputs (lot № / VIN, price from/to, year from/to) apply after a ~1.5 s **debounce**, so we don't
+ *    navigate on every keystroke. An instant change made meanwhile takes the typed text with it and cancels the
+ *    delayed apply, which would otherwise undo it.
  *
- * Applying = a soft `router.replace` (via `useFilterNav().navigate`) with the
- * serialized filters in the URL (replace, not push, so rapid changes don't flood
- * browser history). The page re-renders SSR for the new filters and `AllCarsGrid`
- * resets via its key. Because that navigation is a React transition — which keeps
- * the old grid on screen and suppresses the Suspense skeleton — the provider's
- * `pending` flag drives the visible feedback (dimmed grid + indicator); the
- * debounced text inputs additionally flag `setSoftPending` on keystroke so the
- * gap before the debounce fires isn't dead. `current` seeds the controls from the
- * URL-parsed filters.
+ * Applying = a soft `router.replace` (via `useFilterNav().navigate`) with the serialized filters in the URL
+ * (replace, not push, so rapid changes don't flood browser history). The page re-renders on the server for the
+ * new filters and `AllCarsGrid` resets via its key. Because that navigation is a React transition — which keeps
+ * the old grid on screen and suppresses the Suspense skeleton — the provider's `pending` flag drives the visible
+ * feedback (frosted cards, the spinner beside the count); the debounced text inputs flag `setSoftPending` on
+ * keystroke so the gap before the debounce fires isn't dead. `current` seeds the controls from the URL.
  *
- * Layout (top → bottom): mode toggle + clear · lot/VIN lookup · primary filters
- * (make/model/type + price/year) · scope (market/buy-now/auction) · secondary
- * attributes (fuel/drive/condition/colour). The secondary block collapses behind
- * an "Още филтри" toggle on phones (`lg` and up it's always expanded) so the
- * results grid sits higher on small screens.
+ * Layout:
+ *  - **Tablet and desktop:** one console above the results. Head row: the tab, the lot / VIN search, „Изчистете
+ *    филтрите" with the count of applied filters. Then Марка, Модел, Тип and the four numbers (one row from 1440 px,
+ *    two below), then Пазар, Само с Buy Now and Търг, then Гориво, Задвижване, Състояние and Цвят.
+ *  - **Phone:** the tab stays on the page, and the rest folds into „Филтри", a full-height sheet whose bottom button
+ *    shows the result count and closes it. Filters still apply as they change (decision 5).
+ *
+ * The tab is not a filter: the badge doesn't count it and clearing keeps it.
  */
-export function CarFilterBar({ facets, current }: { facets: FacetOptions; current: CarFilters }) {
-  const { navigate, setSoftPending } = useFilterNav();
+export function CarFilterBar({
+  facets,
+  current,
+  count,
+}: {
+  facets: FacetOptions;
+  current: CarFilters;
+  /** Cars matching the current URL, for the sheet's button; null for a lot / VIN search, which has no count. */
+  count: number | null;
+}) {
+  const { navigate, setSoftPending, pending, registerReset } = useFilterNav();
   // `draft` mirrors the controls (so typing is responsive); the URL is the
   // source of truth and is updated instantly or debounced per control.
   const [draft, setDraft] = useState<CarFilters>(current);
@@ -113,31 +137,50 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
     return next;
   };
 
-  /** Instant: update the control AND navigate now. */
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelDebounce = () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = null;
+  };
+  useEffect(() => () => void (debounceRef.current && clearTimeout(debounceRef.current)), []);
+
+  /** Instant: update the control AND navigate now. The draft already holds any text still waiting to apply, so the
+   *  pending debounce is cancelled: firing later with the filters of its keystroke, it would undo this change. */
   const setInstant = <K extends keyof CarFilters>(key: K, value: CarFilters[K]) => {
+    cancelDebounce();
     const next = withChange(draft, key, value);
     setDraft(next);
     apply(next);
   };
 
   /** Debounced: update the control now, navigate after the user stops typing. */
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const setDebounced = <K extends keyof CarFilters>(key: K, value: CarFilters[K]) => {
     const next = withChange(draft, key, value);
     setDraft(next);
     // Flag pending NOW so the grid dims during the debounce window (the nav only
     // fires when the user stops typing); `navigate` clears it as it takes over.
     setSoftPending();
-    if (debounceRef.current) clearTimeout(debounceRef.current);
+    cancelDebounce();
     debounceRef.current = setTimeout(() => apply(next), TEXT_DEBOUNCE_MS);
   };
-  useEffect(() => () => void (debounceRef.current && clearTimeout(debounceRef.current)), []);
 
+  /** Clears every filter but keeps the tab: the tab is not a filter (the badge doesn't count it either). */
   const onReset = () => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    setDraft({});
-    navigate("?");
+    cancelDebounce();
+    const next: CarFilters = draft.status === "past" ? { status: "past" } : {};
+    setDraft(next);
+    apply(next);
   };
+
+  // The empty results offer „Изчистете филтрите" too (board `ct-empty`); they reach this reset through the context.
+  const resetRef = useRef(onReset);
+  useEffect(() => {
+    resetRef.current = onReset;
+  });
+  useEffect(() => {
+    registerReset(() => resetRef.current());
+    return () => registerReset(null);
+  }, [registerReset]);
 
   const numOrUndef = (v: string): number | undefined => {
     const n = Number(v);
@@ -146,270 +189,412 @@ export function CarFilterBar({ facets, current }: { facets: FacetOptions; curren
 
   const isPast = draft.status === "past";
 
-  // Applied-filter count for the Clear badge. Every set key in `draft` is a live
-  // filter — `withChange` strips undefined/empty/NaN keys, so a plain key count
-  // is exact (brand+model, priceMin+priceMax, etc. each count once).
-  const appliedCount = Object.keys(draft).length;
+  // Applied filters for the badges. Every set key in `draft` is a live filter except the tab — `withChange` strips
+  // undefined/empty/NaN keys, so a plain key count is exact (brand+model, priceMin+priceMax, etc. each count once).
+  const appliedCount = Object.keys(draft).filter((k) => k !== "status").length;
 
-  return (
-    <div className="rounded-2xl border border-line bg-white p-5 shadow-sm max-md:p-4">
-      {/* ── Mode toggle (Active vs Past) + Clear ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex overflow-hidden rounded-[10px] border border-[#ddd]">
-          <Button
-            onClick={() => setInstant("status", undefined)}
-            className={`px-5 py-2.5 text-sm font-bold transition ${!isPast ? "bg-brand text-white" : "bg-white text-ink hover:bg-[#f6f6f6]"}`}
-          >
-            Активни
-          </Button>
-          <Button
-            onClick={() => setInstant("status", "past")}
-            className={`px-5 py-2.5 text-sm font-bold transition ${isPast ? "bg-brand text-white" : "bg-white text-ink hover:bg-[#f6f6f6]"}`}
-          >
-            Приключили
-          </Button>
-        </div>
-        <Button
-          onClick={onReset}
-          disabled={appliedCount === 0}
-          className="inline-flex h-10 items-center gap-2 rounded-[10px] border border-[#ddd] px-5 text-sm font-semibold text-muted transition hover:border-[#bbb] hover:text-ink disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-[#ddd] disabled:hover:text-muted"
+  // ── The phone sheet ──
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const openerRef = useRef<HTMLButtonElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const sheetTitleId = useId();
+  const closeSheet = () => {
+    setSheetOpen(false);
+    openerRef.current?.focus();
+  };
+  const closeSheetRef = useRef(closeSheet);
+  useEffect(() => {
+    closeSheetRef.current = closeSheet;
+  });
+  useEffect(() => {
+    if (!sheetOpen) return;
+    document.body.style.overflow = "hidden";
+    sheetRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeSheetRef.current();
+    };
+    // The sheet exists on phones only: a wider window (a turned tablet) closes it rather than leave the page locked.
+    const wide = window.matchMedia(CONSOLE_QUERY);
+    const onWide = () => {
+      if (wide.matches) setSheetOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    wide.addEventListener("change", onWide);
+    return () => {
+      document.body.style.overflow = "";
+      document.removeEventListener("keydown", onKey);
+      wide.removeEventListener("change", onWide);
+    };
+  }, [sheetOpen]);
+
+  // ── The controls, shared by the console and the sheet ──
+
+  const modeSwitch = (wide: boolean) => (
+    <div className="sa-seg" role="group">
+      {(
+        [
+          [undefined, "Активни"],
+          ["past", "Приключили"],
+        ] as const
+      ).map(([value, label]) => (
+        <button
+          key={label}
+          type="button"
+          aria-pressed={draft.status === value}
+          onClick={() => setInstant("status", value)}
+          className={wide ? undefined : "flex-[1_1_0]"}
         >
-          Изчисти филтрите
-          {appliedCount > 0 ? (
-            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-xs font-bold leading-none text-white">
-              {appliedCount}
-            </span>
-          ) : null}
-        </Button>
-      </div>
+          {label}
+        </button>
+      ))}
+    </div>
+  );
 
-      {/* ── Lot № / VIN lookup — a direct find, kept apart from the browse filters
-          (debounced). ── */}
-      <div className="mt-5">
-        <label className={labelCls}>Търсене по лот № / VIN</label>
+  const searchField = (className = "") => (
+    <label className={`sa-fld ${className}`}>
+      <span className="sa-lbl">Търсене по лот № / VIN</span>
+      <span className="sa-inw">
+        <SearchIcon />
         <input
-          className={`${inputCls} lg:max-w-md`}
+          className="sa-in font-mono placeholder:font-sans"
           type="text"
-          placeholder="Въведи лот номер или VIN…"
+          placeholder="Въведете лот номер или VIN…"
           value={draft.search ?? ""}
           onChange={(e) => setDebounced("search", e.target.value || undefined)}
         />
-      </div>
+      </span>
+    </label>
+  );
 
-      {/* ── Primary filters (always visible): make/model/type + price/year ── */}
-      <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div>
-          <label className={labelCls}>Марка</label>
-          <Combobox
-            aria-label="Марка"
-            options={[{ value: "", label: "Всички марки" }, ...facets.brands.map((b) => ({ value: b.value, label: b.label }))]}
-            value={draft.brand != null ? String(draft.brand) : ""}
-            onValueChange={(v) => setInstant("brand", v ? Number(v) : undefined)}
-            searchPlaceholder="Търсене на марка…"
-          />
-        </div>
-        <div>
-          <label className={labelCls}>Модел</label>
-          <Combobox
-            aria-label="Модел"
-            options={[
-              { value: "", label: draft.brand === undefined ? "Първо избери марка" : "Всички модели" },
-              ...models.map((m) => ({ value: m.value, label: m.label })),
-            ]}
-            value={draft.model != null ? String(draft.model) : ""}
-            disabled={draft.brand === undefined}
-            onValueChange={(v) => setInstant("model", v ? Number(v) : undefined)}
-            searchPlaceholder="Търсене на модел…"
-          />
-        </div>
-        <div>
-          <label className={labelCls}>Тип</label>
-          <Combobox
-            aria-label="Тип"
-            // Zero in the current (filtered) subset → disable so the user can't pick a
-            // dead-end combo; never disable the active selection itself.
-            options={[
-              { value: "", label: "Всички типове" },
-              ...facets.types.map((t) => ({
-                value: t.value,
-                label: t.label,
-                count: t.count,
-                disabled: t.count === 0 && t.value !== draft.type,
-              })),
-            ]}
-            value={draft.type ?? ""}
-            onValueChange={(v) => setInstant("type", v || undefined)}
-          />
+  const comboField = (label: string, control: ReactNode, className = "") => (
+    <div className={`sa-fld ${className}`}>
+      <span className="sa-lbl">{label}</span>
+      {control}
+    </div>
+  );
+
+  const makeField = (className = "") =>
+    comboField(
+      "Марка",
+      <Combobox
+        look="kit"
+        plates
+        aria-label="Марка"
+        options={[
+          { value: "", label: "Всички марки" },
+          ...facets.brands.map((b) => ({ value: b.value, label: b.label, logo: b.logo ?? null })),
+        ]}
+        value={draft.brand != null ? String(draft.brand) : ""}
+        onValueChange={(v) => setInstant("brand", v ? Number(v) : undefined)}
+        searchPlaceholder="Търсене на марка…"
+      />,
+      className,
+    );
+
+  const modelField = (className = "") =>
+    comboField(
+      "Модел",
+      <Combobox
+        look="kit"
+        aria-label="Модел"
+        options={[
+          { value: "", label: draft.brand === undefined ? "Първо изберете марка" : "Всички модели" },
+          ...models.map((m) => ({ value: m.value, label: m.label })),
+        ]}
+        value={draft.model != null ? String(draft.model) : ""}
+        disabled={draft.brand === undefined}
+        onValueChange={(v) => setInstant("model", v ? Number(v) : undefined)}
+        searchPlaceholder="Търсене на модел…"
+      />,
+      className,
+    );
+
+  const typeField = (className = "") =>
+    comboField(
+      "Тип",
+      <Combobox
+        look="kit"
+        aria-label="Тип"
+        // Zero in the current (filtered) subset → disable so the user can't pick a
+        // dead-end combo; never disable the active selection itself.
+        options={[
+          { value: "", label: "Всички типове" },
+          ...facets.types.map((t) => ({
+            value: t.value,
+            label: t.label,
+            count: t.count,
+            disabled: t.count === 0 && t.value !== draft.type,
+          })),
+        ]}
+        value={draft.type ?? ""}
+        onValueChange={(v) => setInstant("type", v || undefined)}
+      />,
+      className,
+    );
+
+  const numberField = (
+    label: string,
+    key: "priceMin" | "priceMax" | "yearFrom" | "yearTo",
+    placeholder: string,
+    className = "",
+  ) => (
+    <label className={`sa-fld ${className}`}>
+      <span className="sa-lbl">{label}</span>
+      <input
+        className="sa-in"
+        type="number"
+        inputMode="numeric"
+        placeholder={placeholder}
+        value={draft[key] ?? ""}
+        onChange={(e) => setDebounced(key, numOrUndef(e.target.value))}
+      />
+    </label>
+  );
+
+  /** Пазар: a segmented control in the console, 2×2 chips in the sheet. */
+  const marketField = (inSheet: boolean) => (
+    <div className="sa-fld">
+      <span className="sa-lbl">Пазар</span>
+      <div className={inSheet ? "sa-chips grid grid-cols-2" : "sa-seg"} role="group" aria-label="Пазар">
+        {MARKETS.map((m) => {
+          const Icon = m.Icon;
+          return (
+            <button
+              key={m.label}
+              type="button"
+              aria-pressed={draft.market === m.value}
+              onClick={() => setInstant("market", m.value)}
+              className={inSheet ? "sa-chip justify-center" : undefined}
+            >
+              {/* In a chip the kit sizes icons 16 px; a flag keeps its 3:2 there, as the board draws it. */}
+              {Icon ? <Icon className={inSheet ? "sa-flag h-3.5 w-5.25" : "sa-flag"} /> : <EarthIcon />}
+              {m.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const buyNowSwitch = (className = "") => (
+    <label className={`sa-sw ${className}`}>
+      <input
+        type="checkbox"
+        checked={draft.channel === "buy-now"}
+        onChange={(e) => setInstant("channel", e.target.checked ? "buy-now" : undefined)}
+      />
+      <span className="sa-sw__t" aria-hidden="true" />
+      Само с Buy Now
+    </label>
+  );
+
+  // Auction-timing window (instant) — ACTIVE view only. Hidden on the past tab, where every lot has concluded and a
+  // future-date window is moot.
+  const auctionField = () =>
+    isPast ? null : (
+      <div className="sa-fld">
+        <span className="sa-lbl">Търг</span>
+        <div className="sa-chips" role="group" aria-label="Търг">
+          {AUCTION_WINDOWS.map((w) => (
+            <button
+              key={w.label}
+              type="button"
+              className="sa-chip"
+              aria-pressed={draft.auctionWindow === w.value}
+              onClick={() => setInstant("auctionWindow", w.value)}
+            >
+              {w.label}
+            </button>
+          ))}
         </div>
       </div>
+    );
 
-      {/* Price + year ranges — debounced */}
-      <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div>
-          <label className={labelCls}>Цена от ($)</label>
-          <input
-            className={inputCls}
-            type="number"
-            inputMode="numeric"
-            placeholder="0"
-            value={draft.priceMin ?? ""}
-            onChange={(e) => setDebounced("priceMin", numOrUndef(e.target.value))}
-          />
-        </div>
-        <div>
-          <label className={labelCls}>Цена до ($)</label>
-          <input
-            className={inputCls}
-            type="number"
-            inputMode="numeric"
-            placeholder="∞"
-            value={draft.priceMax ?? ""}
-            onChange={(e) => setDebounced("priceMax", numOrUndef(e.target.value))}
-          />
-        </div>
-        <div>
-          <label className={labelCls}>Година от</label>
-          <input
-            className={inputCls}
-            type="number"
-            inputMode="numeric"
-            placeholder="1990"
-            value={draft.yearFrom ?? ""}
-            onChange={(e) => setDebounced("yearFrom", numOrUndef(e.target.value))}
-          />
-        </div>
-        <div>
-          <label className={labelCls}>Година до</label>
-          <input
-            className={inputCls}
-            type="number"
-            inputMode="numeric"
-            placeholder="2027"
-            value={draft.yearTo ?? ""}
-            onChange={(e) => setDebounced("yearTo", numOrUndef(e.target.value))}
-          />
-        </div>
-      </div>
+  const secondaryFields = () => (
+    <>
+      {comboField(
+        "Гориво",
+        <Combobox
+          look="kit"
+          aria-label="Гориво"
+          // Zero in the current (filtered) subset → disable; never the active one.
+          options={[
+            { value: "", label: "Всички" },
+            ...facets.fuels.map((f) => ({
+              value: f.value,
+              label: f.label,
+              count: f.count,
+              disabled: f.count === 0 && f.value !== draft.fuel,
+            })),
+          ]}
+          value={draft.fuel ?? ""}
+          onValueChange={(v) => setInstant("fuel", v || undefined)}
+        />,
+      )}
+      {comboField(
+        "Задвижване",
+        <Combobox
+          look="kit"
+          aria-label="Задвижване"
+          options={[{ value: "", label: "Всички" }, ...facets.drives.map((d) => ({ value: d.value, label: d.label }))]}
+          value={draft.drive ?? ""}
+          onValueChange={(v) => setInstant("drive", v || undefined)}
+        />,
+      )}
+      {comboField(
+        "Състояние",
+        <Combobox
+          look="kit"
+          aria-label="Състояние"
+          // Zero in the current (filtered) subset → disable; never the active one.
+          options={[
+            { value: "", label: "Всички състояния" },
+            ...facets.conditions.map((c) => ({
+              value: c.value,
+              label: c.label,
+              count: c.count,
+              disabled: c.count === 0 && c.value !== draft.condition,
+            })),
+          ]}
+          value={draft.condition ?? ""}
+          onValueChange={(v) => setInstant("condition", v || undefined)}
+        />,
+      )}
+      {comboField(
+        "Цвят",
+        <Combobox
+          look="kit"
+          aria-label="Цвят"
+          options={[{ value: "", label: "Всички цветове" }, ...facets.colors.map((c) => ({ value: c.value, label: c.label }))]}
+          value={draft.color ?? ""}
+          onValueChange={(v) => setInstant("color", v || undefined)}
+        />,
+      )}
+    </>
+  );
 
-      {/* ── Scope: market + buy-now (instant) ── */}
-      <div className="mt-5 flex flex-wrap items-end gap-x-6 gap-y-4">
-        <div>
-          <label className={labelCls}>Пазар</label>
-          <div className="flex flex-wrap gap-2">
-            {MARKETS.map((m) => {
-              const active = draft.market === m.value;
-              const Icon = m.Icon;
-              return (
-                <Button
-                  key={m.label}
-                  onClick={() => setInstant("market", m.value)}
-                  className={`${pillBase} ${active ? pillActive : pillIdle}`}
-                >
-                  {Icon ? (
-                    <Icon className="h-3.5 w-5.25 overflow-hidden rounded-xs shadow-[0_0_0_1px_rgba(0,0,0,0.08)]" />
-                  ) : (
-                    // Animated earth (animated WebP — rendered via <img>; Next's
-                    // optimizer would strip the animation, so a plain <img> is used).
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src="/icons/earth-spinning.webp" alt="" width={48} height={48} className="size-5" />
-                  )}
-                  {m.label}
-                </Button>
-              );
-            })}
+  // The sheet's bottom button: the live count („Вижте 1 автомобил"), a spinner in its place while the results update,
+  // „Вижте резултатите" for a lot / VIN search, which has no count.
+  const sheetButtonLabel =
+    count === null ? (
+      "Вижте резултатите"
+    ) : pending ? (
+      <>
+        Вижте
+        <span className="sa-spin" aria-hidden="true" />
+        автомобила
+      </>
+    ) : count === 1 ? (
+      "Вижте 1 автомобил"
+    ) : (
+      `Вижте ${count.toLocaleString("bg-BG")} автомобила`
+    );
+
+  return (
+    <>
+      {/* ── Tablet and desktop: the console ── */}
+      <div className="hidden rounded-lg border border-hair bg-s1 sm:block">
+        <div className="flex flex-wrap items-end gap-x-5 gap-y-3.5 border-b border-hair px-[clamp(16px,1.6vw,24px)] py-4">
+          {modeSwitch(true)}
+          {searchField("order-3 basis-full lg:order-0 lg:max-w-130 lg:flex-[1_1_320px]")}
+          <Button variant="sec" className="ml-auto" disabled={appliedCount === 0} onClick={onReset}>
+            Изчистете филтрите
+            <CountBadge n={appliedCount} />
+          </Button>
+        </div>
+
+        <div className="flex flex-col gap-5 px-[clamp(16px,1.6vw,24px)] pt-5 pb-6">
+          <div className="grid grid-cols-12 gap-4 min-[90rem]:grid-cols-[repeat(3,minmax(0,2.4fr))_repeat(4,minmax(0,1fr))]">
+            {makeField("col-span-6 lg:col-span-4 min-[90rem]:col-span-1")}
+            {modelField("col-span-6 lg:col-span-4 min-[90rem]:col-span-1")}
+            {typeField("col-span-4 min-[90rem]:col-span-1")}
+            {numberField("Цена от ($)", "priceMin", "0", "col-span-2 lg:col-span-3 min-[90rem]:col-span-1")}
+            {numberField("Цена до ($)", "priceMax", "∞", "col-span-2 lg:col-span-3 min-[90rem]:col-span-1")}
+            {numberField("Година от", "yearFrom", "1990", "col-span-2 lg:col-span-3 min-[90rem]:col-span-1")}
+            {numberField("Година до", "yearTo", "2027", "col-span-2 lg:col-span-3 min-[90rem]:col-span-1")}
           </div>
-        </div>
 
-        <label className="flex h-11 cursor-pointer items-center gap-2.5 text-sm font-semibold text-ink">
-          <input
-            type="checkbox"
-            className="size-5 accent-brand"
-            checked={draft.channel === "buy-now"}
-            onChange={(e) => setInstant("channel", e.target.checked ? "buy-now" : undefined)}
-          />
-          Само с Buy Now
-        </label>
+          <div className="flex flex-wrap items-end gap-x-7 gap-y-4">
+            {marketField(false)}
+            {buyNowSwitch("h-12")}
+            {auctionField()}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 border-t border-hair pt-5 lg:grid-cols-4">{secondaryFields()}</div>
+        </div>
       </div>
 
-      {/* Auction-timing window (instant) — ACTIVE view only. Hidden on the past
-          tab, where every lot has concluded and a future-date window is moot. */}
-      {!isPast ? (
-        <div className="mt-4">
-          <label className={labelCls}>Търг</label>
-          <div className="flex flex-wrap gap-2">
-            {AUCTION_WINDOWS.map((w) => {
-              const active = draft.auctionWindow === w.value;
-              return (
-                <Button
-                  key={w.label}
-                  onClick={() => setInstant("auctionWindow", w.value)}
-                  className={`${pillBase} ${active ? pillActive : pillIdle}`}
-                >
-                  {w.label}
-                </Button>
-              );
-            })}
+      {/* ── Phone: the tab and „Филтри" ── */}
+      <div className="flex flex-col gap-2.5 sm:hidden">
+        {modeSwitch(false)}
+        <Button
+          ref={openerRef}
+          variant="sec"
+          block
+          aria-haspopup="dialog"
+          aria-expanded={sheetOpen}
+          onClick={() => setSheetOpen(true)}
+        >
+          <SlidersHorizontalIcon />
+          Филтри
+          <CountBadge n={appliedCount} />
+        </Button>
+      </div>
+
+      {/* ── Phone: the sheet. Filters apply as they change; the bottom button only closes it. ── */}
+      {sheetOpen ? (
+        <div className="fixed inset-0 z-10045 sm:hidden">
+          <div className="sa-scrim" onClick={closeSheet} />
+          <div
+            ref={sheetRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={sheetTitleId}
+            tabIndex={-1}
+            className="sa-sheet top-3.5 max-h-none outline-none"
+          >
+            <div className="flex flex-none items-center gap-1.5 border-b border-hair pt-1.5 pr-2 pb-2.5 pl-4">
+              <h2 id={sheetTitleId} className="mr-auto font-display text-lg leading-[1.2] font-bold tracking-[-0.01em]">
+                Филтри
+              </h2>
+              <Button variant="txt" size="md" disabled={appliedCount === 0} onClick={onReset}>
+                Изчистете филтрите
+                <CountBadge n={appliedCount} />
+              </Button>
+              <IconButton label="Затворете" variant="ghost" onClick={closeSheet}>
+                <CloseIcon />
+              </IconButton>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+              <div className="flex flex-col gap-4 p-4">
+                {searchField()}
+                {makeField()}
+                {modelField()}
+                {typeField()}
+                <div className="grid grid-cols-2 gap-3">
+                  {numberField("Цена от ($)", "priceMin", "0")}
+                  {numberField("Цена до ($)", "priceMax", "∞")}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {numberField("Година от", "yearFrom", "1990")}
+                  {numberField("Година до", "yearTo", "2027")}
+                </div>
+                {marketField(true)}
+                {buyNowSwitch()}
+                {auctionField()}
+                {secondaryFields()}
+              </div>
+            </div>
+
+            <div className="flex-none border-t border-hair2 bg-s1 px-4 pt-3 pb-[calc(16px+env(safe-area-inset-bottom))]">
+              <Button variant="pri" block aria-busy={pending || undefined} onClick={closeSheet}>
+                {sheetButtonLabel}
+              </Button>
+            </div>
           </div>
         </div>
       ) : null}
-
-      {/* ── Secondary attributes — always visible (separated by a divider) ── */}
-      <div className="mt-5 grid grid-cols-1 gap-4 border-t border-line pt-5 sm:grid-cols-2 lg:grid-cols-4">
-        <div>
-          <label className={labelCls}>Гориво</label>
-          <Combobox
-            aria-label="Гориво"
-            // Zero in the current (filtered) subset → disable; never the active one.
-            options={[
-              { value: "", label: "Всички" },
-              ...facets.fuels.map((f) => ({
-                value: f.value,
-                label: f.label,
-                count: f.count,
-                disabled: f.count === 0 && f.value !== draft.fuel,
-              })),
-            ]}
-            value={draft.fuel ?? ""}
-            onValueChange={(v) => setInstant("fuel", v || undefined)}
-          />
-        </div>
-        <div>
-          <label className={labelCls}>Задвижване</label>
-          <Combobox
-            aria-label="Задвижване"
-            options={[{ value: "", label: "Всички" }, ...facets.drives.map((d) => ({ value: d.value, label: d.label }))]}
-            value={draft.drive ?? ""}
-            onValueChange={(v) => setInstant("drive", v || undefined)}
-          />
-        </div>
-        <div>
-          <label className={labelCls}>Състояние</label>
-          <Combobox
-            aria-label="Състояние"
-            // Zero in the current (filtered) subset → disable; never the active one.
-            options={[
-              { value: "", label: "Всички състояния" },
-              ...facets.conditions.map((c) => ({
-                value: c.value,
-                label: c.label,
-                count: c.count,
-                disabled: c.count === 0 && c.value !== draft.condition,
-              })),
-            ]}
-            value={draft.condition ?? ""}
-            onValueChange={(v) => setInstant("condition", v || undefined)}
-          />
-        </div>
-        <div>
-          <label className={labelCls}>Цвят</label>
-          <Combobox
-            aria-label="Цвят"
-            options={[{ value: "", label: "Всички цветове" }, ...facets.colors.map((c) => ({ value: c.value, label: c.label }))]}
-            value={draft.color ?? ""}
-            onValueChange={(v) => setInstant("color", v || undefined)}
-          />
-        </div>
-      </div>
-    </div>
+    </>
   );
 }

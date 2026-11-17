@@ -17,13 +17,12 @@ import type { CarFilters, FacetOption, FacetOptions } from "@/types/car-filters.
 const cf = schema.carListingFacets;
 
 /**
- * Which projection the facets describe. The catalog filter bar is shown on both
- * the active and past views; today it reflects the ACTIVE catalog regardless (the
- * page calls getCarFacets() with no args), so we read the 'active' summary rows.
- * The summary table also holds 'past' rows, so a status-aware facet bar is a
- * one-line change here if ever wanted.
+ * Which projection the facets describe: the summary table holds rows for both the
+ * active catalog and the past (archived) one, under the same dimensions. The filter
+ * bar on the Приключили tab reads the 'past' rows, so its makes, models and counts
+ * describe the sold cars it filters (until 18.11.2026 it showed the active ones).
  */
-const FACET_TABLE_KIND = "active";
+type FacetTableKind = "active" | "past";
 
 /**
  * Year-facet clamp window. The data carries junk years (0, 206, 1900, …) that
@@ -135,7 +134,7 @@ export async function getCarFacets(filters: CarFilters = {}): Promise<FacetOptio
     // selective filter is present — the live leave-one-out counts, computed
     // concurrently (they're independent reads).
     const [base, live] = await Promise.all([
-      computeCarFacets(),
+      computeCarFacets(filters.status === "past" ? "past" : "active"),
       hasSelectiveFilter(filters) ? computeLiveFacetCounts(filters) : Promise.resolve(null),
     ]);
     return live ? overlayCounts(base, live) : base;
@@ -149,10 +148,10 @@ export async function getCarFacets(filters: CarFilters = {}): Promise<FacetOptio
 }
 
 /**
- * The GLOBAL facet base — same result for every visitor (no arguments → a single
- * cache key), so it's `"use cache: remote"` + `cacheLife("hours")`: at most ~one
- * re-run of the 9 concurrent summary reads per hour per region instead of on
- * every catalog request. The catalog route is dynamic (reads searchParams), so
+ * The GLOBAL facet base — same result for every visitor (its one argument, the
+ * tab, gives two cache keys), so it's `"use cache: remote"` + `cacheLife("hours")`:
+ * at most ~one re-run of the 9 concurrent summary reads per hour per region and
+ * tab instead of on every catalog request. The catalog route is dynamic (reads searchParams), so
  * this is RUNTIME caching — `remote` stores it in the Vercel Runtime Cache
  * (durable, shared across all instances in the region; Vercel provides the
  * handler automatically under `cacheComponents`, no self-managed store — see
@@ -162,7 +161,7 @@ export async function getCarFacets(filters: CarFilters = {}): Promise<FacetOptio
  * cached — a failed run falls through to `getCarFacets`'s catch and the next
  * request retries.
  */
-async function computeCarFacets(): Promise<FacetOptions> {
+async function computeCarFacets(tk: FacetTableKind): Promise<FacetOptions> {
   "use cache: remote";
   cacheTag(CACHE_TAGS.cars);
   cacheLife("hours");
@@ -176,12 +175,15 @@ async function computeCarFacets(): Promise<FacetOptions> {
   // index scan, so firing them concurrently has no contention (unlike the old 8
   // full-projection aggregates). Intermediate row shapes match the old query, so
   // the label/ordering/grouping logic below is unchanged.
-  const tk = FACET_TABLE_KIND;
   const [brandRows, modelRows, colorRows, driveRows, fuelRows, condRows, yearRows, vtRows, btRows] = await Promise.all([
-    // Brands that appear in the catalog, with their display name (summary id →
-    // manufacturers; the join drops ids with no manufacturers row, as before).
+    // Brands that appear in the catalog, with their display name and logo (summary
+    // id → manufacturers; the join drops ids with no manufacturers row, as before).
     db
-      .select({ value: schema.manufacturers.externalId, label: schema.manufacturers.name })
+      .select({
+        value: schema.manufacturers.externalId,
+        label: schema.manufacturers.name,
+        logo: schema.manufacturers.imageUrl,
+      })
       .from(cf)
       .innerJoin(schema.manufacturers, sql`${schema.manufacturers.externalId}::text = ${cf.val}`)
       .where(and(eq(cf.tableKind, tk), eq(cf.dim, "brand")))
@@ -242,7 +244,7 @@ async function computeCarFacets(): Promise<FacetOptions> {
 
   const brands = brandRows
     .filter((r) => r.value != null)
-    .map((r) => ({ value: String(r.value), label: r.label ?? `#${r.value}` }));
+    .map((r) => ({ value: String(r.value), label: r.label ?? `#${r.value}`, logo: r.logo || null }));
 
   const modelsByBrand: FacetOptions["modelsByBrand"] = {};
   for (const r of modelRows) {

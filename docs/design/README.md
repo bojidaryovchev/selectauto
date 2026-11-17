@@ -181,8 +181,9 @@ Sizes with an arrow grow with the window, as the boards' do (the kit's `cqi` bec
   поискване". No stock images.
 - **Make logos** sit on `bg-plate` in their own colours. A make without a logo shows its first two letters.
 - **The 3D particle car** is the home hero and the only glow.
-- **Motion** lasts 150–300 ms, ease-out. The countdown ticks every second and turns `ortx` under 24 hours. Under
-  `prefers-reduced-motion` nothing moves, but every state still changes.
+- **Motion** lasts 150–300 ms, ease-out. The countdown ticks every second and turns `ortx` under 24 hours. Spinners
+  turn and skeletons shimmer (the boards draw them still). Under `prefers-reduced-motion` nothing moves, but every
+  state still changes: the catalog's spinning globe becomes a still one.
 - **Icons** are Lucide's drawings at stroke 1.8 and 20–24 px, beside a word, or with an `aria-label` when alone. Each is
   a component in `components/icons`, like the brand glyphs already there.
 
@@ -204,6 +205,13 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
 - **Bars** hide on scroll down and return on scroll up. A sticky action bar hides while what it jumps to is on screen.
 - **Toasts** sit bottom right on desktop and above the bottom tabs on a phone, close with ✕ and pause while hovered or
   focused. The admin keeps its inline feedback beside the control.
+- **Dropdowns** (`combobox.tsx`, Base UI's Combobox): `look="kit"` gives the field and list of the boards (`ct-dd-*`),
+  with a search field above 8 options, counts on the right, a tick on the chosen row and, with `plates`, make plates.
+  Without it the old light look stays until each page that uses one is rebuilt. Base UI's state attributes
+  (`data-popup-open`, `data-highlighted`, `data-selected`, `data-disabled`) map onto the kit's states in `kit.css`.
+- **Make plates** (`make-plate.tsx`): the logo on a light plate, or two letters without one; sizes xs to xl.
+- **The catalog's filters** sit in one console above the results on tablets and desktops, and in a full-height sheet on
+  phones, behind „Филтри" (decision 5). They apply as they change; the tab Активни / Приключили is not a filter.
 - **Carousels** keep advancing on their own, pause on hover and focus, and have a pause button („Спрете превъртането").
 - The rest of the interaction rules are on the boards of each screen; [boards.md](boards.md) finds them.
 
@@ -221,6 +229,8 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
 - **The shell is rebuilt** (17–18 November): the page ground is night, the header, phone top bar, bottom tabs, drawer,
   footer, Viber popup, back-to-top and notifications follow their boards, and the focus ring and the dark colour scheme
   are global. Pages not rebuilt yet look broken on the dark ground until their turn.
+- **Rebuilt so far:** the car card and the confirm dialog, then the catalog, `/vsichki-avtomobili`. Each has its parity
+  file in [parity/](parity/README.md).
 - **Montserrat** still loads, only for the /proces particle title. Remove it when /proces is rebuilt.
 - **Fonts:** four font files are preloaded once Montserrat goes (Manrope and Unbounded, Latin and Cyrillic), against two
   today. Measure LCP on a phone after the shell's rebuild.

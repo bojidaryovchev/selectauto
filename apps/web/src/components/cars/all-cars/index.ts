@@ -4,3 +4,5 @@ export { CarCardImage } from "./car-card-image";
 export { CarFilterBar } from "./car-filter-bar";
 export { AuctionCountdown } from "./auction-countdown";
 export { CarGridSkeleton } from "./car-grid-skeleton";
+export { CatalogSkeleton } from "./catalog-skeleton";
+export { ResultsHeading } from "./results-heading";

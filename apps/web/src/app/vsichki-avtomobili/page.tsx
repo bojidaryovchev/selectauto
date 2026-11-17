@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Container } from "@/components/common";
-import { AllCarsGrid, CarFilterBar, CarGridSkeleton } from "@/components/cars/all-cars";
+import { AllCarsGrid, CarFilterBar, CarGridSkeleton, ResultsHeading } from "@/components/cars/all-cars";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { FilterNavProvider } from "@/contexts/filter-nav-context";
 import { SITE_URL } from "@/constants";
@@ -35,7 +34,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
     };
   }
   const description =
-    "Разгледай всички автомобили от Copart, IAAI и Encar, които можем да внесем за теб — с филтри по марка, модел, цвят, година и цена. Buy Now и аукционни оферти на едно място.";
+    "Разгледайте всички автомобили от Copart, IAAI и Encar, които можем да внесем за вас — с филтри по марка, модел, цвят, година и цена. Buy Now и аукционни оферти на едно място.";
   return {
     title: "Всички автомобили | SelectAuto",
     description,
@@ -51,7 +50,8 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
 }
 
 /**
- * /vsichki-avtomobili — the all-cars catalog. SSR renders the filter bar + the
+ * /vsichki-avtomobili — the all-cars catalog (boards `ct-*`; parity check
+ * docs/design/parity/vsichki-avtomobili.md). SSR renders the filter bar + the
  * first page of cars (good LCP + SEO): the grid serves the seeded cars as a
  * plain static grid for SSR/first paint — real card markup + links for crawlers,
  * since the virtualizer itself renders zero rows server-side — then virtualizes
@@ -114,7 +114,7 @@ export default async function AllCarsPage({ searchParams }: { searchParams: Prom
   return (
     <>
       <SiteHeader />
-      <main className="flex-1 bg-[#fafafa] pt-(--header-h) text-ink">
+      <main className="flex-1 pt-(--header-h)">
         {catalogJsonLd?.map((node, i) => (
           <script
             key={i}
@@ -122,49 +122,41 @@ export default async function AllCarsPage({ searchParams }: { searchParams: Prom
             dangerouslySetInnerHTML={{ __html: JSON.stringify(node) }}
           />
         ))}
-        <Container>
-          <div className="py-10 max-md:py-7">
-            <h1 className="mb-2 text-4xl font-black uppercase tracking-tight text-ink max-md:text-3xl">
-              {isPast ? "Приключили търгове" : "Всички автомобили"}
-            </h1>
+        <section className="sa-wrap pt-[clamp(24px,3vw,48px)] pb-[clamp(56px,6vw,96px)]">
+          <div className="mb-[clamp(18px,2vw,28px)] flex flex-col gap-2.5">
+            <h1 className="type-h1">{isPast ? "Приключили търгове" : "Всички автомобили"}</h1>
             {isPast ? (
-              <p className="mb-6 max-w-2xl text-sm text-muted">
+              <p className="sa-lead">
                 Реализирани цени от приключили търгове — за справка. Тези автомобили вече не са активни.
               </p>
             ) : null}
-
-            {/* Shares one pending state across the filter bar and the grid: a
-                filter change is a soft (transition) navigation that keeps the old
-                grid on screen and suppresses the Suspense skeleton, so the
-                provider surfaces the in-flight state as a dimmed grid + indicator
-                instead of a silent freeze-then-swap. */}
-            <FilterNavProvider>
-              <CarFilterBar facets={facets} current={filters} />
-
-              {/* The results line is the h2 the car cards' h3 titles sit under
-                  (the outline would otherwise jump from the h1 to h3). Base styles
-                  make headings inherit size and weight, so it looks the same. */}
-              {isSearch ? (
-                <h2 className="mb-4 mt-6 text-sm text-muted">Резултати от търсенето</h2>
-              ) : (
-                <h2 className="mb-4 mt-6 text-sm text-muted">
-                  {isPast ? "Намерени резултати: " : "Намерени автомобили: "}
-                  <strong className="text-ink">{count.count.toLocaleString("bg-BG").replace(/ /g, " ")}</strong>
-                </h2>
-              )}
-
-              <Suspense fallback={<CarGridSkeleton count={12} />}>
-                <AllCarsGrid
-                  key={filtersKey}
-                  initialPage={firstPage}
-                  initialAnchor={initialAnchor}
-                  filters={filters}
-                  aboveCount={aboveCount}
-                />
-              </Suspense>
-            </FilterNavProvider>
           </div>
-        </Container>
+
+          {/* Shares one pending state across the filter bar, the results line and
+              the grid: a filter change is a soft (transition) navigation that
+              keeps the old grid on screen and suppresses the Suspense skeleton,
+              so the provider surfaces the in-flight state as frosted cards and a
+              spinner beside the count instead of a silent freeze-then-swap. */}
+          <FilterNavProvider>
+            <CarFilterBar facets={facets} current={filters} count={isSearch ? null : count.count} />
+
+            {/* The results line is the h2 the car cards' h3 titles sit under. */}
+            <ResultsHeading
+              mode={isSearch ? "search" : isPast ? "past" : "active"}
+              countLabel={count.count.toLocaleString("bg-BG")}
+            />
+
+            <Suspense fallback={<CarGridSkeleton count={12} />}>
+              <AllCarsGrid
+                key={filtersKey}
+                initialPage={firstPage}
+                initialAnchor={initialAnchor}
+                filters={filters}
+                aboveCount={aboveCount}
+              />
+            </Suspense>
+          </FilterNavProvider>
+        </section>
       </main>
       <SiteFooter />
     </>

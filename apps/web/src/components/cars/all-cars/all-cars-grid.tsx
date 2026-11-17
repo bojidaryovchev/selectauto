@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useWindowVirtualizer, windowScroll } from "@tanstack/react-virtual";
+import { Button } from "@/components/common";
+import { AlertIcon, RefreshCwIcon, SearchIcon } from "@/components/icons";
 import { AuctionCard } from "@/components/cars/all-cars/auction-card";
 import { CardGlass } from "@/components/cars/all-cars/card-glass";
 import { SkeletonCard } from "@/components/cars/all-cars/car-grid-skeleton";
@@ -12,19 +14,29 @@ import { loadMoreCars, loadPrevCars } from "@/mutations/cars";
 import type { CarFilters, CarsPage } from "@/types/car-filters.type";
 import type { CarView } from "@/types/car.type";
 
-/** Column count per breakpoint — kept in sync with the grid's CSS breakpoints. */
-function columnsForWidth(width: number): number {
-  if (width >= 1280) return 4; // xl
-  if (width >= 1024) return 3; // lg
-  if (width >= 560) return 2; // min-[560px]
-  return 1;
-}
+// Cold-start row height until the first real measurement lands (about 640–760 px,
+// with the column width). Cards are DETERMINISTIC-height (see AuctionCard), so a
+// single measured row makes the estimate exact for every row.
+const ESTIMATED_ROW_HEIGHT = 700;
 
-const ROW_GAP = 20; // px, matches gap-5
-// Cold-start row height until the first real measurement lands (~714–741px per
-// breakpoint). Cards are DETERMINISTIC-height (see AuctionCard), so a single
-// measured row makes the estimate exact for every row.
-const ESTIMATED_ROW_HEIGHT = 715;
+/** The failed-load row (boards `ct-err-d`, `ct-err-p`): the message and a retry button, across the grid. */
+function LoadError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div
+      role="alert"
+      className="flex items-center gap-3.5 rounded-lg border border-neg/32 bg-neg-w px-[clamp(16px,1.6vw,24px)] py-4 max-sm:flex-wrap"
+    >
+      <AlertIcon className="size-5.5 flex-none text-neg" />
+      <p className="min-w-0 flex-1 text-[15px] leading-[1.45] font-bold text-tx max-sm:basis-[calc(100%-36px)]">
+        Възникна грешка. Опитайте отново.
+      </p>
+      <Button variant="sec" size="md" onClick={onRetry} className="max-sm:w-full">
+        <RefreshCwIcon />
+        Опитайте отново
+      </Button>
+    </div>
+  );
+}
 
 /**
  * Write the `?after=<sortId>` scroll page-pointer into the URL WITHOUT touching
@@ -143,7 +155,8 @@ export function AllCarsGrid({
   // While a filter navigation is in flight the committed (still-visible) grid is
   // the PREVIOUS filter's results — dim + disable it so the stale cars read as
   // "updating" rather than current. Safe with no provider (hub pages): false.
-  const { pending } = useFilterNav();
+  // `reset` (null on the hubs, which have no filters) backs the empty state's button.
+  const { pending, reset } = useFilterNav();
 
   const [cars, setCars] = useState<CarView[]>(initialPage.cars);
   const [bottomCursor, setBottomCursor] = useState<string | null>(initialPage.nextCursor);
@@ -153,6 +166,10 @@ export function AllCarsGrid({
   const [startCar, setStartCar] = useState(aboveCount);
   const bottomDone = bottomCursor === null;
   const topDone = topCursor === null;
+  // A page that failed to load (boards `ct-err-d`, `ct-err-p`). While set, that edge stops loading on its own and
+  // shows the message with a retry button instead; until 2026-11 a failure was silent and retried on the next scroll.
+  const [bottomError, setBottomError] = useState(false);
+  const [topError, setTopError] = useState(false);
 
   // Synchronous re-entry locks for the loaders (refs, not state: re-entry
   // safety needs no render, and the edge-trigger effect must not set state
@@ -160,14 +177,22 @@ export function AllCarsGrid({
   const appendingRef = useRef(false);
   const prependingRef = useRef(false);
 
-  // Responsive column count + scroll offset from the container (tracked in state
-  // so they're never read off the ref during render). `measured` flips true once
-  // the container has been laid out — it gates the swap from the static SSR grid
-  // to the virtualized one, and the deep-link anchor scroll waits for it so the
-  // row index is computed against the REAL column count and a settled
+  // Responsive column count, gap + scroll offset from the container (tracked in
+  // state so they're never read off the ref during render). `measured` flips true
+  // once the container has been laid out — it gates the swap from the static SSR
+  // grid to the virtualized one, and the deep-link anchor scroll waits for it so
+  // the row index is computed against the REAL column count and a settled
   // `scrollMargin`.
+  //
+  // The columns and the gap come from the CSS itself: an empty, zero-height
+  // `.sa-grid` probe lays out the kit's `repeat(auto-fill, minmax(280px, 1fr))`
+  // tracks and its fluid gap at the container's width, and the virtual rows copy
+  // its track count and gap. The static first-paint grid uses the same class, so
+  // the swap can't change the layout.
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const probeRef = useRef<HTMLDivElement | null>(null);
   const [columns, setColumns] = useState(1);
+  const [gap, setGap] = useState(16);
   const [scrollMargin, setScrollMargin] = useState(0);
   const [headerOffset, setHeaderOffset] = useState(0);
   const [measured, setMeasured] = useState(false);
@@ -175,7 +200,12 @@ export function AllCarsGrid({
     const el = containerRef.current;
     if (!el) return;
     const update = () => {
-      setColumns(columnsForWidth(el.clientWidth));
+      const probe = probeRef.current;
+      if (probe) {
+        const style = getComputedStyle(probe);
+        setColumns(Math.max(1, style.gridTemplateColumns.split(" ").filter(Boolean).length));
+        setGap(Number.parseFloat(style.rowGap) || 16);
+      }
       setScrollMargin(el.offsetTop);
       // The fixed header's real height (published to --header-h by SiteHeader).
       // The header ignores teleport-sized programmatic jumps (its scroll handler
@@ -316,12 +346,13 @@ export function AllCarsGrid({
   // `?after=` deep links, but since depth is now only reachable by scrolling, every
   // pointer is written shallow, so that reserve stays small too. The MAX_SIZER_PX
   // clamp is kept purely as a safety net against a pathologically deep stale link.
+  // A failed next page drops the teaser too: the message takes its place and the footer follows (board `ct-err-p`).
   const loadedEnd = startCar + cars.length;
-  const totalCells = bottomDone ? loadedEnd : loadedEnd + CARS_PAGE_SIZE;
+  const totalCells = bottomDone || bottomError ? loadedEnd : loadedEnd + CARS_PAGE_SIZE;
   const MAX_SIZER_PX = 30_000_000;
   const rowCount = Math.max(
     1,
-    Math.min(Math.ceil(totalCells / columns), Math.floor(MAX_SIZER_PX / (ESTIMATED_ROW_HEIGHT + ROW_GAP))),
+    Math.min(Math.ceil(totalCells / columns), Math.floor(MAX_SIZER_PX / (ESTIMATED_ROW_HEIGHT + gap))),
   );
 
   // Uniform row height: starts at the estimate, locked to the real value by the
@@ -341,7 +372,7 @@ export function AllCarsGrid({
     count: rowCount,
     estimateSize: () => estimateRef.current,
     overscan: 3,
-    gap: ROW_GAP,
+    gap,
     scrollMargin,
     scrollPaddingStart: headerOffset,
     // The core RE-ASSERTS its cached scroll offset whenever it (re)attaches the
@@ -369,7 +400,8 @@ export function AllCarsGrid({
         if (fresh.length > 0) setCars((prev) => [...prev, ...fresh]);
         setBottomCursor(next.nextCursor);
       } catch {
-        // Network hiccup — cursor unchanged, the next edge-trigger retries.
+        // Cursor unchanged: the message offers a retry (board `ct-err-p`).
+        setBottomError(true);
       } finally {
         appendingRef.current = false;
       }
@@ -402,7 +434,8 @@ export function AllCarsGrid({
         }
         setTopCursor(overflowed || walkedOut ? null : (page.prevCursor ?? null));
       } catch {
-        // Network hiccup — cursor unchanged, the next edge-trigger retries.
+        // Cursor unchanged: the message offers a retry (board `ct-err-d`).
+        setTopError(true);
       } finally {
         prependingRef.current = false;
       }
@@ -489,14 +522,27 @@ export function AllCarsGrid({
     if (!first || !last) return;
     // Unloaded cells at/above the rendered top → fill upward (once the anchor
     // jump has settled, so the initial top-of-space render doesn't fetch).
-    if (anchorSettled && !topDone && !prependingRef.current && first.index * columns < startCar) {
+    // A failed edge waits for its retry button.
+    if (anchorSettled && !topDone && !topError && !prependingRef.current && first.index * columns < startCar) {
       loadPrev();
     }
     // Rendered range within ~3 rows of the loaded end → extend downward.
-    if (!bottomDone && !appendingRef.current && (last.index + 3) * columns >= loadedEnd) {
+    if (!bottomDone && !bottomError && !appendingRef.current && (last.index + 3) * columns >= loadedEnd) {
       loadMore();
     }
-  }, [items, columns, startCar, loadedEnd, topDone, bottomDone, anchorSettled, loadPrev, loadMore]);
+  }, [items, columns, startCar, loadedEnd, topDone, bottomDone, topError, bottomError, anchorSettled, loadPrev, loadMore]);
+
+  const retryBottom = () => {
+    setBottomError(false);
+    loadMore();
+  };
+  const retryTop = () => {
+    setTopError(false);
+    loadPrev();
+  };
+  // The upward failure shows in the reserved row right above the loaded window, next to the loaded cards, so
+  // nothing above moves (board `ct-err-d`). With no whole reserved row above the window, it shows above the grid.
+  const topErrorRow = topError ? Math.floor(startCar / columns) - 1 : null;
 
   // ── URL page-pointer: rewrite `?after=` to the sort_id of the card at the
   // VISUAL top (below the fixed-header line — the mirror of the restore's
@@ -540,13 +586,22 @@ export function AllCarsGrid({
   // per-card frosted glass (CardGlass) is the visible cue; see below.
   const frozen = pending ? ("none" as const) : undefined;
 
-  if (totalCells === 0) {
+  if (totalCells === 0 && !bottomError) {
+    // No results (boards `ct-empty`, `ct-search-none`). The reset is the filter bar's own, through the context.
     return (
       <div
         style={{ pointerEvents: frozen }}
-        className="rounded-2xl border border-line bg-white px-6 py-16 text-center text-base text-muted"
+        className="sa-empty rounded-lg border border-hair bg-s1 px-5 py-[clamp(40px,5vw,72px)]"
       >
-        Няма налични коли по избраните филтри.
+        <span className="sa-empty__ic">
+          <SearchIcon />
+        </span>
+        <h3>Няма налични коли по избраните филтри.</h3>
+        {reset ? (
+          <Button variant="sec" size="md" onClick={reset}>
+            Изчистете филтрите
+          </Button>
+        ) : null}
       </div>
     );
   }
@@ -555,6 +610,13 @@ export function AllCarsGrid({
     // overflow-anchor: none — the browser's native scroll anchoring must not
     // react to skeleton→card swaps or row mounts; positions are already fixed.
     <div ref={containerRef} style={{ overflowAnchor: "none", pointerEvents: frozen }}>
+      {/* Lays out the kit grid's columns and gap at this width, for the virtual rows to copy (see above). */}
+      <div ref={probeRef} aria-hidden="true" className="sa-grid h-0 overflow-hidden" />
+      {topErrorRow !== null && topErrorRow < 0 ? (
+        <div className="mb-4">
+          <LoadError onRetry={retryTop} />
+        </div>
+      ) : null}
       {!measured ? (
         // SSR + first client paint: a plain, CSS-responsive grid of the seeded
         // cars. This static HTML is what crawlers index (real card markup +
@@ -563,7 +625,7 @@ export function AllCarsGrid({
         // virtualized branch once the container is measured after mount (the two
         // paint identically at the top; `measured` is false for the first client
         // render too, so hydration matches).
-        <div className="grid grid-cols-1 gap-5 min-[560px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="sa-grid">
           {cars.map((car, i) => (
             <CardGlass key={car.id ?? i} pending={pending}>
               {/* Eager-load the first two cards: the LCP candidate is in the
@@ -583,6 +645,36 @@ export function AllCarsGrid({
               cells.push(g >= startCar && g < loadedEnd ? cars[g - startCar] : null);
             }
             const hasLoadedCard = cells.some((cell) => cell !== null);
+            if (virtualRow.index === topErrorRow) {
+              // The reserved row above the loaded window carries the upward failure at its foot, next to the loaded
+              // cards; its placeholders keep the rest of the row, cut off at the top (see above). Same height, so
+              // nothing moves.
+              return (
+                <div
+                  key={virtualRow.key}
+                  data-index={virtualRow.index}
+                  className="flex flex-col justify-end"
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: virtualRow.size,
+                    gap,
+                    transform: `translateY(${virtualRow.start - scrollMargin}px)`,
+                  }}
+                >
+                  <div className="flex min-h-0 flex-1 flex-col justify-end overflow-hidden" aria-hidden="true">
+                    <div className="grid flex-none" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`, gap }}>
+                      {Array.from({ length: columns }, (_, i) => (
+                        <SkeletonCard key={`e-${virtualRow.index}-${i}`} />
+                      ))}
+                    </div>
+                  </div>
+                  <LoadError onRetry={retryTop} />
+                </div>
+              );
+            }
             return (
               <div
                 key={virtualRow.key}
@@ -600,10 +692,7 @@ export function AllCarsGrid({
                   transform: `translateY(${virtualRow.start - scrollMargin}px)`,
                 }}
               >
-                <div
-                  className="grid gap-5"
-                  style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
-                >
+                <div className="grid" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`, gap }}>
                   {cells.map((car, i) =>
                     car ? (
                       <CardGlass key={car.id ?? `${virtualRow.index}-${i}`} pending={pending}>
@@ -622,6 +711,11 @@ export function AllCarsGrid({
           })}
         </div>
       )}
+      {bottomError ? (
+        <div className="mt-[clamp(16px,1.6vw,24px)]">
+          <LoadError onRetry={retryBottom} />
+        </div>
+      ) : null}
     </div>
   );
 }

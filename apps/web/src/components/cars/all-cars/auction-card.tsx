@@ -1,9 +1,8 @@
 import { memo } from "react";
 import Link from "next/link";
-import { LinkButton } from "@/components/common";
+import { LinkButton, MakePlate } from "@/components/common";
 import { CameraIcon, PhoneIcon, ViberIcon } from "@/components/icons";
 import { FavoriteButton } from "@/components/cars/favorite-button";
-import { MakePlate } from "@/components/cars/make-plate";
 import { AuctionCountdown } from "@/components/cars/all-cars/auction-countdown";
 import { StatusValue } from "@/components/cars/all-cars/status-value";
 import { CarCardImage } from "@/components/cars/all-cars/car-card-image";

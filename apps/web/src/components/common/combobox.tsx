@@ -1,20 +1,24 @@
 "use client";
 
 import { Combobox as BaseCombobox } from "@base-ui/react/combobox";
-import { CheckIcon, ChevronDownIcon } from "@/components/icons";
+import { CheckIcon, ChevronDownIcon, SearchIcon } from "@/components/icons";
+import { MakePlate } from "./make-plate";
 
 /**
  * One option in a {@link Combobox}. `value` is the string sent back to the caller
  * (ids are stringified — the caller converts numeric ids itself, mirroring the old
- * native-`<select>` `numOrUndef` pattern). `count`, when present, is appended to the
- * item label as ` (N)`. `disabled` greys the row and blocks selection — used by the
- * catalog facets to disable dead-end (zero-count) combinations.
+ * native-`<select>` `numOrUndef` pattern). `count`, when present, is shown with the
+ * item: ` (N)` after the label in the legacy look, right-aligned and grouped as bg-BG
+ * writes it in the kit look. `disabled` greys the row and blocks selection — used by
+ * the catalog facets to disable dead-end (zero-count) combinations. `logo` is a make's
+ * logo, for its plate when the combobox shows `plates`.
  */
 export type ComboboxOption = {
   value: string;
   label: string;
   count?: number;
   disabled?: boolean;
+  logo?: string | null;
 };
 
 interface ComboboxProps {
@@ -45,11 +49,19 @@ interface ComboboxProps {
    * The field's name for assistive tech — pass the visible label's text. The
    * trigger is a `role="combobox"` button, and a combobox does not take its name
    * from its content: that content is the current VALUE ("Всички марки"), so
-   * without this a screen reader announces an unnamed control.
+   * without this a screen reader announces an unnamed control. The kit look also
+   * names the list with it.
    */
   "aria-label"?: string;
   /** Extra classes merged onto the trigger button (project convention: string append, caller wins). */
   className?: string;
+  /**
+   * `"kit"` is the „Нощно шосе" look (the boards' `sa-combo` field and `sa-pop` list; board `ct-dd-*`).
+   * `"legacy"`, the default until every page that uses a combobox is rebuilt, is the old light look.
+   */
+  look?: "legacy" | "kit";
+  /** Kit look only: each option but the „Всички …" row (`value: ""`) shows its make plate, and so does the field. */
+  plates?: boolean;
 }
 
 const triggerCls =
@@ -67,6 +79,9 @@ const itemCls =
  * `document.body` at the modal z-layer so it clears the sticky header. Works in
  * string-space; callers keep full control of any "Всички …" reset row and numeric-id
  * conversion, so it drops in wherever a native `<select>` was.
+ *
+ * In the kit look the list opens under the field, aligned to its start and at least 300 px wide, and above the
+ * field when there's no room below (Base UI flips it); the chosen row is orange with a tick.
  */
 export function Combobox({
   options,
@@ -81,9 +96,12 @@ export function Combobox({
   id,
   "aria-label": ariaLabel,
   className = "",
+  look = "legacy",
+  plates = false,
 }: ComboboxProps) {
   const selected = options.find((o) => o.value === value) ?? null;
   const searchable = options.length > searchThreshold;
+  const kit = look === "kit";
 
   return (
     <BaseCombobox.Root
@@ -109,50 +127,107 @@ export function Combobox({
       name={name}
       autoHighlight
     >
-      <BaseCombobox.Trigger id={id} aria-label={ariaLabel} className={`${triggerCls} ${className}`}>
-        <span className="min-w-0 flex-1 truncate data-placeholder:text-[#999]">
-          <BaseCombobox.Value placeholder={placeholder} />
-        </span>
-        <BaseCombobox.Icon className="pointer-events-none flex shrink-0 text-[#999] transition-transform duration-150 data-popup-open:rotate-180">
-          <ChevronDownIcon className="size-3" />
-        </BaseCombobox.Icon>
-      </BaseCombobox.Trigger>
-
-      <BaseCombobox.Portal>
-        <BaseCombobox.Positioner sideOffset={4} className="z-99999">
-          <BaseCombobox.Popup className={popupCls}>
-            {searchable ? (
-              <div className="border-b border-line p-1.5">
-                <BaseCombobox.Input
-                  placeholder={searchPlaceholder}
-                  className="h-9 w-full rounded-lg border border-[#ddd] bg-white px-3 text-sm font-medium text-ink outline-none focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand/15"
-                />
-              </div>
-            ) : null}
-
-            {/* Empty must stay mounted (aria-live status region) — Base UI nulls only its
-                children when the list has matches. Keep padding on the inner node so the
-                container collapses to 0 height instead of reserving a blank gap. */}
-            <BaseCombobox.Empty>
-              <div className="px-3.5 py-3 text-sm text-muted">{emptyText}</div>
-            </BaseCombobox.Empty>
-
-            <BaseCombobox.List>
-              {(item: ComboboxOption) => (
-                <BaseCombobox.Item key={item.value} value={item} disabled={item.disabled} className={itemCls}>
-                  <span className="min-w-0 flex-1 truncate">
-                    {item.label}
-                    {item.count !== undefined ? ` (${item.count})` : ""}
-                  </span>
-                  <BaseCombobox.ItemIndicator className="flex shrink-0 text-brand">
-                    <CheckIcon className="size-4" />
-                  </BaseCombobox.ItemIndicator>
-                </BaseCombobox.Item>
+      {kit ? (
+        <>
+          <BaseCombobox.Trigger id={id} aria-label={ariaLabel} className={`sa-combo ${className}`}>
+            <BaseCombobox.Value>
+              {(current: ComboboxOption | null) => (
+                <>
+                  {plates && current && current.value !== "" ? (
+                    <MakePlate name={current.label} logo={current.logo ?? null} size="xs" />
+                  ) : null}
+                  <span>{current?.label ?? placeholder}</span>
+                </>
               )}
-            </BaseCombobox.List>
-          </BaseCombobox.Popup>
-        </BaseCombobox.Positioner>
-      </BaseCombobox.Portal>
+            </BaseCombobox.Value>
+            <ChevronDownIcon />
+          </BaseCombobox.Trigger>
+
+          <BaseCombobox.Portal>
+            <BaseCombobox.Positioner sideOffset={6} align="start" className="z-99999">
+              <BaseCombobox.Popup className="sa-pop max-h-(--available-height) w-[max(var(--anchor-width),300px)] max-w-(--available-width) outline-none">
+                {searchable ? (
+                  <span className="sa-inw">
+                    <SearchIcon />
+                    <BaseCombobox.Input placeholder={searchPlaceholder} className="sa-in sa-in--sm" />
+                  </span>
+                ) : null}
+
+                {/* Empty must stay mounted (an aria-live status region): Base UI renders its children only while
+                    nothing matches, so the padding lives on the inner node. */}
+                <BaseCombobox.Empty>
+                  <div className="sa-pop__empty">{emptyText}</div>
+                </BaseCombobox.Empty>
+
+                <BaseCombobox.List
+                  aria-label={ariaLabel}
+                  className="sa-pop__list min-h-0 overscroll-contain empty:hidden"
+                >
+                  {(item: ComboboxOption) => (
+                    <BaseCombobox.Item key={item.value} value={item} disabled={item.disabled} className="sa-opt">
+                      {plates && item.value !== "" ? (
+                        <MakePlate name={item.label} logo={item.logo ?? null} />
+                      ) : null}
+                      <span>{item.label}</span>
+                      {item.count !== undefined ? <small>{item.count.toLocaleString("bg-BG")}</small> : null}
+                      <BaseCombobox.ItemIndicator className="flex flex-none [&_svg]:size-4.5">
+                        <CheckIcon />
+                      </BaseCombobox.ItemIndicator>
+                    </BaseCombobox.Item>
+                  )}
+                </BaseCombobox.List>
+              </BaseCombobox.Popup>
+            </BaseCombobox.Positioner>
+          </BaseCombobox.Portal>
+        </>
+      ) : (
+        <>
+          <BaseCombobox.Trigger id={id} aria-label={ariaLabel} className={`${triggerCls} ${className}`}>
+            <span className="min-w-0 flex-1 truncate data-placeholder:text-[#999]">
+              <BaseCombobox.Value placeholder={placeholder} />
+            </span>
+            <BaseCombobox.Icon className="pointer-events-none flex shrink-0 text-[#999] transition-transform duration-150 data-popup-open:rotate-180">
+              <ChevronDownIcon className="size-3" />
+            </BaseCombobox.Icon>
+          </BaseCombobox.Trigger>
+
+          <BaseCombobox.Portal>
+            <BaseCombobox.Positioner sideOffset={4} className="z-99999">
+              <BaseCombobox.Popup className={popupCls}>
+                {searchable ? (
+                  <div className="border-b border-line p-1.5">
+                    <BaseCombobox.Input
+                      placeholder={searchPlaceholder}
+                      className="h-9 w-full rounded-lg border border-[#ddd] bg-white px-3 text-sm font-medium text-ink outline-none focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand/15"
+                    />
+                  </div>
+                ) : null}
+
+                {/* Empty must stay mounted (aria-live status region) — Base UI nulls only its
+                    children when the list has matches. Keep padding on the inner node so the
+                    container collapses to 0 height instead of reserving a blank gap. */}
+                <BaseCombobox.Empty>
+                  <div className="px-3.5 py-3 text-sm text-muted">{emptyText}</div>
+                </BaseCombobox.Empty>
+
+                <BaseCombobox.List>
+                  {(item: ComboboxOption) => (
+                    <BaseCombobox.Item key={item.value} value={item} disabled={item.disabled} className={itemCls}>
+                      <span className="min-w-0 flex-1 truncate">
+                        {item.label}
+                        {item.count !== undefined ? ` (${item.count})` : ""}
+                      </span>
+                      <BaseCombobox.ItemIndicator className="flex shrink-0 text-brand">
+                        <CheckIcon className="size-4" />
+                      </BaseCombobox.ItemIndicator>
+                    </BaseCombobox.Item>
+                  )}
+                </BaseCombobox.List>
+              </BaseCombobox.Popup>
+            </BaseCombobox.Positioner>
+          </BaseCombobox.Portal>
+        </>
+      )}
     </BaseCombobox.Root>
   );
 }

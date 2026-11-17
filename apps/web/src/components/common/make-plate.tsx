@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 
 /** The plate sizes on the Components board: 24 · 32 (cards) · 40 (lists) · 56 · 88 (makes). */
-type PlateSize = "xs" | "sm" | "md" | "lg" | "xl";
+export type PlateSize = "xs" | "sm" | "md" | "lg" | "xl";
 
 /** The make's first two letters, for a plate without a logo („ZO" for Zongshen). */
 function initials(name: string): string {
