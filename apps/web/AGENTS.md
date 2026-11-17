@@ -39,6 +39,14 @@ dedicated `src/` folders (modeled on the `ecommerce-store` repo):
 - `types/` (`ActionResult`, `CarView`, …), `contexts/` (React Context for UI
   state — no Zustand), `lib/` (`db`, `email`, `phone`, `cache-tags`,
   `car-mapper`), `constants/`, `data/` (static content + `FALLBACK_*` listings).
+- `styles/tokens.css` — the design tokens, imported by `app/globals.css`.
+
+Design: the UI is being rebuilt in the „Нощно шосе" design system. Before any
+UI work, read `docs/design/README.md` (repository root) and build each screen
+with the `selectauto-design` skill (`.claude/skills/selectauto-design/SKILL.md`),
+which first checks the screen's boards against today's code. Colours, type,
+radii and sizes come only from the tokens in `src/styles/tokens.css`; the old
+light theme's tokens in `app/globals.css` are legacy and go once unused.
 
 Barrels and the client bundle: `package.json` declares
 `"sideEffects": ["**/*.css"]` — every module here may be dropped when none of its

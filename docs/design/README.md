@@ -1,0 +1,226 @@
+# Design: „Нощно шосе"
+
+SelectAuto's site and admin are being rebuilt in the „Нощно шосе" design, the direction the owner chose on
+26 October 2026. This page holds the rules in words. The values live in code, and the pictures are the boards on the
+design canvases.
+
+- **The code binds.** `apps/web/src/styles/tokens.css` holds every colour, type style, radius and size. When a board
+  disagrees with it, the code wins and the board is corrected.
+- **The boards show every screen,** state, e-mail and document for desktop, tablet and phone: 553 boards.
+- **Nothing ships until it matches today's product.** See [Parity first](#parity-first) below.
+
+## Where things are
+
+| What | Where |
+|---|---|
+| Tokens, fonts, type styles | `apps/web/src/styles/tokens.css`; fonts load in `apps/web/src/app/layout.tsx` |
+| Contrast test of every text and ground pair | `apps/web/tests/design-tokens.test.mts`, run by `pnpm test` |
+| The logo | `Logo` in `apps/web/src/components/common/logo.tsx` |
+| Why this direction, these fonts, this logo | [adr-0001-direction-type-logo.md](adr-0001-direction-type-logo.md) |
+| Which boards draw each screen | [boards.md](boards.md) |
+| How to build one screen | the `selectauto-design` skill, [`.claude/skills/selectauto-design/SKILL.md`](../../.claude/skills/selectauto-design/SKILL.md) |
+| Parity checks, one per rebuilt screen | [parity/](parity/README.md) |
+| The board files, the kit they were drawn with, the helpers' reports | the design workspace, `D:/design/selectauto` on the owner's PC |
+| The owner's decisions; the numbers on this page refer to them | `D:/design/selectauto/decisions.md` |
+| Open questions, the rebuild plan and its progress | `D:/repos/selectauto/REDESIGN.md` (kept out of git) |
+
+The canvases (main: the site, the account, e-mails and documents, 333 boards; admin: 220 boards), the design system
+and the exploration of 26 October are claude.ai pages owned by the account that drew them; other accounts can only
+view them. Their links are in `REDESIGN.md` and the workspace's `design.config.json`, not here: this repository is
+public, and whether the main and admin canvases stay public is still open. Build from the local board files.
+
+## Parity first
+
+The owner's rule of 17 November 2026 (decision 26): every board is checked against today's code before its screen is
+built, so the rebuild loses nothing.
+
+1. **List what the screen does today,** from the code on `main`, read in full: every field, string, control, state
+   (loading, empty, error, success, disabled, signed in and out, each admin role), entity variant, interaction,
+   message, side effect (records written, e-mails sent, redirects), page metadata and structured data, accessible
+   name, and per-device behaviour.
+2. **Find each on the boards.** Anything missing or different is either an owner decision already recorded, or a board
+   error.
+3. **Fix a board error on the board first,** in the design workspace, then tell the owner what changed and why.
+4. **Change behaviour only where it helps users or admins,** and only after the owner decides; record the decision in
+   `decisions.md` before building it.
+5. **Write the check down** in `docs/design/parity/<screen>.md`, and walk it again on the built screen.
+
+## Owner decisions that shape every screen
+
+The full list, with dates and wording, is `decisions.md`.
+
+- **1 · Register:** formal „вие" everywhere. **2 · Logo:** kept exactly, only on dark grounds. **4 · Direction:** B
+  „Нощно шосе".
+- **5 · Catalog filters** stay above the results: a console on desktop, a sheet on phones, no sidebar.
+- **6 · Every page, feature and state** exists for desktop, tablet and phone, and for every car type: Copart and IAAI
+  auctions, Buy Now, Canada, Encar, sold, motorcycle.
+- **7 · Car cards keep every field.** Buttons in a row share one height and alignment; secondary buttons are neutral.
+- **8 · Car makes** always show their logo. The 3D particle car stays as the home hero.
+- **10 · No regressions,** text included, compared case-sensitively. **11 · Emphasis capitals** („НЕ е оферта") keep
+  their letters and may be bold.
+- **13 · Car page:** the phone call stays the orange main action; the inquiry is secondary.
+- **14–20, 22, 23:** approved product changes, each listed in `REDESIGN.md` with its file and line.
+- **25 · Documents** (contracts, the deposit contract, notices, terms, policies) keep their wording.
+- **26 · Parity first,** as above.
+
+## Words
+
+- **Every string keeps the code's exact characters.** Only these changes are allowed:
+  - informal address becomes formal;
+  - text the code upper-cases only through CSS becomes sentence case;
+  - an arrow glyph becomes an icon;
+  - the listed formats (decimal comma, readable admin dates and amounts);
+  - new states and pages, whose strings the owner approves.
+- **Formal „вие".** Imperatives end in -ете or -йте („Разгледайте", „Обадете се"). New interface text writes „вие, ви,
+  вас" in lowercase; the capitalised forms are for e-mails and documents to one named person. A capital the code
+  already has („Вас", „Ви") stays; lowering it is a later copy decision (21).
+- **Sentence case.** No all-caps Cyrillic in the interface. Latin brand words keep their form: BUY NOW, COPART, IAAI,
+  ENCAR, VIN, Carfax. The buy-now option is „Buy Now" on cards and in the catalog filter, and „Купи сега" as the car
+  page's price label and in admin messages, as the code has it.
+- **Documents and stored data are verbatim,** capitals included: names, vehicle descriptions, anything staff typed.
+- **New copy only:** a button says what it does, verb plus object, on one line. An error says what happened and what to
+  do next, in two short sentences, without blame or codes. A computed price says it is an estimate. No emoji.
+- **Formats** (bg-BG):
+  - car prices in USD, a no-break space between thousands, the sign after: „10 200 $"; four digits stay ungrouped:
+    „3498 $";
+  - euro-quoted fees in €; calculator totals in USD;
+  - „155 316 km"; decimals with a comma: „2,5%";
+  - dates and times in Sofia time as Intl writes them: „26.10.2026 г., 13:30";
+  - admin money with two decimals: „23 875,00 USD"; never a database format on screen („2026-10-14", „1080.00");
+  - countdown „1д 22ч 17м 2с", digits in mono, units in Manrope;
+  - phone „+359 898 980 011"; VIN: 17 capital Latin letters and digits, always mono.
+
+## Colour
+
+| Token | Utility examples | Use |
+|---|---|---|
+| `bg` | `bg-bg` | Night: the ground of every page and band. The logo sits on it |
+| `s1` · `s2` · `s3` | `bg-s1` | Surfaces stepping up in lightness: cards and panels; fields and strips; pressed and selected |
+| `hair` · `hair2` | `border-hair` | Dividers and card borders; popover and dialog edges. Never a control's only edge |
+| `field` · `outl` | `border-field` | Control borders; the secondary button's border |
+| `tx` · `tx2` · `tx3` | `text-tx2` | Text; secondary text; labels and hints. Never pure white |
+| `or` · `or-hi` · `or-lo` | `bg-or` | The one primary action of a view, its hover and pressed states; selection |
+| `ortx` · `or-w` · `or-ring` | `text-ortx` | Links, active navigation, emphasis; the orange tint; a focused field's glow |
+| `gold` | `bg-gold` | The logo and the BUY NOW mark, nothing else |
+| `pos` · `warn` · `neg` · `info`, each with `-w` | `text-pos bg-pos-w` | Status, always with a word or an icon, on its tint |
+| `viber` · `vibertx` | `bg-viber` | Viber group buttons; the Viber glyph |
+| `plate` · `paper` · `ink` | `bg-plate text-ink` | The light plate behind make logos; the tile behind the Google logo; text on both |
+| `scrim` | `bg-scrim` | Behind dialogs, sheets and the drawer |
+
+- **Proportions 60 / 30 / 10:** night, then surfaces and text, then orange. Orange is never body text; links use `ortx`.
+- **Elevation is lightness,** `bg` → `s1` → `s2` → `s3`. Only popovers, menus, dialogs and toasts cast `shadow-pop`.
+- **Focus:** a 2 px `ortx` outline with a 2 px offset. On the chamfered primary button, an inset ring of `bg` then `tx`,
+  because the chamfer clips an outline.
+- **Contrast:** text 4.5:1 or more; borders, focus rings and selection marks 3:1. The test measures every pair the kit
+  draws, with tints blended over their surface. The closest calls today are white on `viber` (4.82:1) and `tx3` on `s3`
+  (4.83:1) for text, and `outl` on `s2` (3.75:1) for borders.
+
+## Type
+
+- **Families:** `font-display` is Unbounded (display, page and section titles, prices); `font-sans` is Manrope
+  (everything else, and the default); `font-mono` is JetBrains Mono, for Latin letters and digits only (VIN, lot №,
+  countdown digits).
+- **`lang="bg"` stays on `<html>`.** It switches Unbounded and Manrope to the Bulgarian letterforms of д, л, ж, к and the
+  rest; checked on 17 November 2026 against the font files the build ships. JetBrains Mono's Cyrillic has Russian forms
+  only, which is why it never sets Bulgarian text.
+- **Figures are tabular** (`font-variant-numeric: tabular-nums` on `body`), so prices and columns line up. Both fonts
+  have them.
+- **Type styles** are single utilities that set family, size, line height, weight and tracking, as the kit's classes do.
+  Colour and measure stay separate.
+
+| Utility | Size | Use |
+|---|---|---|
+| `type-display` | 40 → 92 px, Unbounded 700 | The home hero only |
+| `type-h1` | 30 → 52 px, Unbounded 700 | Page title |
+| `type-h2` | 24 → 38 px, Unbounded 600 | Section title |
+| `type-h3` | 18 → 22 px, Manrope 800 | Panel and card-group titles |
+| `type-h4` | 17 px, Manrope 700 | Small headings |
+| `type-lead` | 17 → 20 px | Intro paragraphs, `tx2`, at most 62 characters a line (`max-w-[62ch]`) |
+| `type-body` | 16 px, line 1.65 | Body copy, `tx2`, at most 68 characters a line |
+| `type-small` | 14 px | Secondary copy, `tx2` |
+| `type-label` | 13 px, 600 | Field and data labels, `tx3`; never all caps |
+| `type-price` | 22 px, Unbounded 700 | Prices on cards; other prices take their size from their board |
+| `type-button` · `-md` · `-sm` · `-xl` | 15 · 14 · 13 · 16 px, 800 | Button labels by button size |
+| `type-code` | 14 px, mono 500 | VIN and lot № |
+
+Sizes with an arrow grow with the window, as the boards' do (the kit's `cqi` became `vw`).
+
+## Layout
+
+- **Breakpoints:** phone below 640 px (no prefix), tablet 640–1023 px (`sm:`), desktop from 1024 px (`lg:`). Wide
+  screens need no breakpoint: widths and grids are fluid. Tailwind's `md:`, `xl:` and `2xl:` are not design
+  breakpoints.
+- **Width:** content grows to `max-w-content` (1920 px) inside `px-gutter` (16 to 96 px); section backgrounds run edge
+  to edge; sections are padded `py-band` (56 to 112 px).
+- **Card grids** fill columns of at least 280 px: one at 390 px, two at 820, three at 1024, four at 1440, five at 1920,
+  six at 2560. A big monitor shows more cars, never wider margins.
+- **Spacing** uses 4 px steps, which are Tailwind's own scale: the design's 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80 and
+  112 are `1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 28`. Space inside a group is smaller than space between groups.
+- **Navigation:** on desktop, the header hides on scroll down and returns on scroll up. On phones and tablets, a slim top
+  bar with the logo and the bottom tabs (Начало · Автомобили · Carfax · Меню) do the same.
+
+## Shape and size
+
+- **Radius:** `rounded-xs` 4 px small tags · `rounded-sm` 6 px badges · `rounded-md` 8 px buttons, icon buttons, inputs ·
+  `rounded-lg` 12 px cards, panels, menus, tables · `rounded-xl` 16 px dialogs and sheets. These replace Tailwind's
+  default values for the same names.
+- **The chamfer** (`--chamfer`, 10 px; 12, 8 and 6 px by button size) cuts the primary button's top-left and
+  bottom-right corners with a `clip-path`. Only the primary button and the BUY NOW mark (6 px) have it.
+- **Control heights:** `h-control-lg` 48 px for default buttons and every input; `h-control-md` 44 px in cards and dense
+  rows, the touch minimum; `h-control-sm` 36 px for dense admin controls; `h-control-xl` 56 px for hero calls to
+  action. Controls side by side share one height.
+- **Labels stay on one line,** never shortened with an ellipsis or a smaller font. On a phone, main actions are full
+  width and stacked.
+- **The logo:** `<Logo size="header" />` (48 px), `"bar"` (36 px, the phone and tablet top bar) or `"footer"` (72 px).
+  Never below 32 px, never on orange or a light ground.
+
+## Imagery, motion and icons
+
+- **Car photos are data:** 3:2 on cards, 4:3 in the gallery. A missing photo is a calm grey field reading „Снимка при
+  поискване". No stock images.
+- **Make logos** sit on `bg-plate` in their own colours. A make without a logo shows its first two letters.
+- **The 3D particle car** is the home hero and the only glow.
+- **Motion** lasts 150–300 ms, ease-out. The countdown ticks every second and turns `ortx` under 24 hours. Under
+  `prefers-reduced-motion` nothing moves, but every state still changes.
+- **Icons** are Lucide's drawings at stroke 1.8 and 20–24 px, beside a word, or with an `aria-label` when alone. Each is
+  a component in `components/icons`, like the brand glyphs already there.
+
+## Components and interaction
+
+Components are named after their code files. The Components board (`kit-components`) shows every state, and the car
+card board (`kit-cards`) shows every kind of card.
+
+- **Buttons** (`button.tsx`, `link-button.tsx`): primary (orange, chamfered, one per view), secondary (outline), tonal,
+  text link, negative, positive, Viber. Sizes sm, md, default, xl. A busy button shows a spinner and a verb in -ане.
+- **The car card** (`auction-card.tsx`) always shows all 11 fields (Търг №, Година, Пробег, Състояние, Щета, Цвят, Тип,
+  Задвижване, Скоростна кутия, Продавач, Двигател; a missing value is „—"), the status or countdown strip, the source
+  chip, the BUY NOW or „ПРОДАДЕН" mark, the favourite, the make plate, the price row and one action row at equal
+  heights. Sold cards have one action, „Вижте активни обяви".
+- **Fields:** the label above, never inside; 48 px; 16 px text so phones don't zoom; the error under the field as an icon
+  and a sentence in `neg`. Forms use `noValidate`, so every message is the kit's, in Bulgarian and formal.
+- **Bars** hide on scroll down and return on scroll up. A sticky action bar hides while what it jumps to is on screen.
+- **Toasts** sit bottom right on desktop and above the bottom tabs on a phone, close with ✕ and pause while hovered or
+  focused. The admin keeps its inline feedback beside the control.
+- **Carousels** keep advancing on their own, pause on hover and focus, and have a pause button („Спрете превъртането").
+- The rest of the interaction rules are on the boards of each screen; [boards.md](boards.md) finds them.
+
+## Accessibility
+
+- Real `button`, `a`, `label` and `input` elements. Icon-only controls carry an `aria-label`; decorative SVGs carry
+  `aria-hidden`.
+- Never remove a focus style. Targets are 44 px or more. Images carry the car's title as `alt`, and the countdown has a
+  text equivalent.
+
+## While the rebuild runs
+
+- **The old light theme's tokens** stay in `apps/web/src/app/globals.css`, marked legacy, until no page uses them. When
+  the last one goes, consider setting `--color-*: initial` in the tokens so a colour outside the design can't be used.
+- **The page ground is still white.** The shell's rebuild switches `body` to `bg` and `tx`, sets the viewport's colour
+  scheme to dark and its theme colour to `#0C0D10`, and adds the global focus ring (orange text colour on white would
+  be 2.2:1).
+- **Montserrat** still loads, only for the /proces particle title. Remove it when /proces is rebuilt.
+- **Fonts:** four font files are preloaded once Montserrat goes (Manrope and Unbounded, Latin and Cyrillic), against two
+  today. Measure LCP on a phone after the shell's rebuild.
+- **Where the design system's `tokens.json` and the kit differ, the code follows the kit,** because the boards were
+  drawn with it: `small` sets no weight (tokens.json says 500); prices and button labels have the kit's tracking; `or-ring`
+  and `paper` exist only in the kit. Correct `tokens.json` when the design system is next published.
