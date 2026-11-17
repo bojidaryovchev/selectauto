@@ -43,7 +43,7 @@ export function MapEmbed({ src, title, addressLabel }: Props) {
   }
 
   return (
-    <div className="flex h-115 w-full flex-col items-center justify-center gap-4 bg-[#f2f3f5] px-6 text-center max-md:h-85">
+    <div className="flex h-115 w-full flex-col items-center justify-center gap-4 bg-tx px-6 text-center max-md:h-85">
       <LocationIcon className="size-10 text-brand" />
       <p className="m-0 text-base font-extrabold text-ink">{addressLabel}</p>
       <Button

@@ -90,7 +90,7 @@ export function DrawerProfilePanel({ open, onBack, onNavigate }: Props) {
               href="/lyubimi"
               rippleTheme="light"
               onClick={onNavigate}
-              className="flex min-h-14 items-center gap-3 px-4.5 text-[15px] font-bold text-[#f2f3f5]"
+              className="flex min-h-14 items-center gap-3 px-4.5 text-[15px] font-bold text-tx"
             >
               <HeartIcon className="size-5 shrink-0 text-brand-soft" />
               <span className="flex-1">Любими автомобили</span>

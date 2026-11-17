@@ -1,24 +1,26 @@
 @import "tailwindcss";
 
+/* The „Нощно шосе" design tokens. They bind; docs/design/README.md has the rules. */
+@import "../styles/tokens.css";
+
 /*
-  SelectAuto design tokens — ported from the live theme.css :root block.
-  These map the site's `--sa-*` variables into Tailwind v4 theme tokens so
-  utilities like `text-brand`, `bg-brand-dark`, `font-sans` resolve correctly.
+  Legacy: the light theme's tokens, ported from the old site's theme.css. The
+  redesign moves each page to the tokens in ../styles/tokens.css. Delete a
+  token here once nothing uses it, and this block once it is empty.
+  Two left already: `ink` now has its „Нощно шосе" value (text on light
+  plates and paper; #222222 before), and `font-sans` is Manrope.
 */
 @theme {
   --color-brand: #d86f16;
   --color-brand-dark: #b95200;
   --color-brand-soft: #f5a14b;
   --color-brand-glow: #ff8a3d;
-  --color-ink: #222222;
   --color-ink-strong: #111111;
   --color-muted: #666666;
   --color-line: #e8e8e8;
   --color-shell: #0f1014;
   --color-shell-soft: #121317;
   --color-success: #1eb960;
-
-  --font-sans: var(--font-montserrat), "Montserrat", sans-serif;
 
   --radius-card: 24px;
 
@@ -50,6 +52,8 @@ body {
   background: #fff;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  /* Digits of equal width, so prices, mileage and table columns line up. */
+  font-variant-numeric: tabular-nums;
   /*
     Base UI portal setup (Combobox popups portal to <body>): `isolation: isolate`
     gives the body its own stacking context so popups layer above page content

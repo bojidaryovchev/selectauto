@@ -1,0 +1,222 @@
+/*
+  SelectAuto design tokens: „Нощно шосе", the direction the owner chose on
+  26 Oct 2026. The rules in words are in docs/design/README.md.
+
+  This file binds. The values were taken from the design system's tokens.json
+  and from the board kit (kit/sa.css) in the design workspace; where the two
+  differed, the kit won, because the boards were drawn with it. From now on,
+  when a board disagrees with this file, this file wins and the board is
+  corrected.
+
+  tests/design-tokens.test.mts checks every text and ground pair against
+  WCAG 2.2. A new colour here needs a pair there, or a place on that test's
+  decorative list, or the test fails.
+
+  `static` keeps every token below in the compiled CSS as a variable, so the
+  type utilities, page CSS, inline styles and scripts can always read it.
+*/
+@theme static {
+  /* Grounds. Surfaces step up in lightness instead of casting shadows. */
+  --color-bg: #0c0d10; /* Night: the ground of every page and full-bleed band. The logo sits on it. */
+  --color-s1: #15171b; /* Surface: cards, panels, menus, dialogs */
+  --color-s2: #1d2026; /* Surface 2: fields, icon buttons, the countdown strip, segmented controls, table heads */
+  --color-s3: #262a31; /* Surface 3: pressed and selected states, slider tracks, neutral tags */
+  --color-scrim: rgba(5, 6, 8, 0.74); /* Behind dialogs, sheets and the drawer */
+
+  /* Lines and control edges */
+  --color-hair: rgba(255, 255, 255, 0.1); /* Dividers and card borders. Decorative: never a control's only edge */
+  --color-hair2: rgba(255, 255, 255, 0.16); /* Popovers, dialogs, the bottom tab bar's top edge */
+  --color-field: #737a85; /* Control borders: inputs, selects, chips, icon buttons */
+  --color-outl: rgba(255, 255, 255, 0.4); /* The secondary (outline) button's 1.5px border */
+
+  /* Text. Never pure white. */
+  --color-tx: #f2f3f5; /* Headings, values, body text */
+  --color-tx2: #a9afb8; /* Descriptions, paragraphs, subtitles */
+  --color-tx3: #8f96a0; /* Data labels, hints, the dash for a missing value */
+
+  /* Orange: the one primary action of a view, and selection. Never body text. */
+  --color-or: #ff7a1a; /* The primary button, selected chips and switches, progress */
+  --color-or-hi: #ff8e3c; /* Primary button, hover */
+  --color-or-lo: #e8690f; /* Primary button, pressed */
+  --color-ortx: #ff9a52; /* Orange text: links, active navigation, a countdown under 24 h, emphasis in titles */
+  --color-or-w: rgba(255, 122, 26, 0.12); /* Orange tint behind orange text: active drawer row, icon wells */
+  --color-or-ring: rgba(255, 122, 26, 0.3); /* The glow around a focused field. From the kit; not in tokens.json */
+
+  /* Gold: the logo and the BUY NOW mark, nothing else */
+  --color-gold: #e4c80c;
+
+  /* Status. Always with a word or an icon, never colour alone. */
+  --color-pos: #3dd68c; /* Наличен, платено, изправно */
+  --color-pos-w: rgba(61, 214, 140, 0.12);
+  --color-warn: #f5b83d; /* Очаква плащане, ремонт, непотвърдено */
+  --color-warn-w: rgba(245, 184, 61, 0.12);
+  --color-neg: #ff6b5e; /* Просрочено, тотална щета, изтриване. Lighter than pos, so the pair differs in more than hue */
+  --color-neg-w: rgba(255, 107, 94, 0.12);
+  --color-info: #6ea8ff; /* Предстои, бележки, отчети по VIN. Orange's complement; keep it rare */
+  --color-info-w: rgba(110, 168, 255, 0.12);
+
+  /* Brands and light plates */
+  --color-viber: #6e5aee; /* Viber group buttons only, with white text */
+  --color-vibertx: #a99cff; /* The Viber glyph on dark surfaces */
+  --color-plate: #eef0f2; /* The light plate behind car-make logos, so every logo reads in its own colours */
+  --color-paper: #ffffff; /* The white tile behind the Google logo on /otzivi. From the kit; not in tokens.json */
+  --color-ink: #15171b; /* Text on plate and paper, such as a make's initials on its plate */
+
+  /* Font families. next/font (app/layout.tsx) defines --font-manrope and the
+     others on <html>, the element :root matches, so these resolve there and
+     every element inherits the result. */
+  --font-sans: var(--font-manrope), system-ui, -apple-system, "Segoe UI", sans-serif; /* Everything else */
+  --font-display: var(--font-unbounded), var(--font-manrope), system-ui, sans-serif; /* Display, page and section titles, prices */
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular", Consolas, monospace; /* Latin and digits only */
+
+  /* Radii. These replace Tailwind's defaults for the same names. */
+  --radius-xs: 4px; /* Small tags */
+  --radius-sm: 6px; /* Badges, source chips, gallery counters */
+  --radius-md: 8px; /* Buttons (secondary, tonal), icon buttons, inputs, selects */
+  --radius-lg: 12px; /* Cards, panels, tables, menus */
+  --radius-xl: 16px; /* Dialogs and sheets */
+
+  /* Elevation: only popovers, menus, dialogs and toasts. Cards have no shadow. */
+  --shadow-pop: 0 18px 48px rgba(0, 0, 0, 0.55);
+
+  /* Sizes. The 4 px spacing steps are Tailwind's own scale (p-1 = 4px … p-28 = 112px). */
+  --spacing-control-sm: 36px; /* Dense admin controls */
+  --spacing-control-md: 44px; /* Card actions, icon buttons, desktop chips. The touch minimum */
+  --spacing-control-lg: 48px; /* Default buttons and every input, so a button next to a field lines up */
+  --spacing-control-xl: 56px; /* Hero calls to action */
+  --spacing-gutter: clamp(16px, 4.5vw, 96px); /* Side gutters, 16 px on a phone to 96 px on a wide screen */
+  --spacing-band: clamp(56px, 6.5vw, 112px); /* Vertical padding of a page section */
+  --spacing-band-tight: clamp(32px, 4vw, 56px);
+  --container-content: 1920px; /* The widest content column; section backgrounds still run edge to edge */
+}
+
+/* Plain variables: values that size a clip-path or a fixed bar rather than
+   feed a utility class. */
+:root {
+  /* The chamfer is the brand's motorsport cut: the primary button's cut
+     corners (top left, bottom right) and the BUY NOW mark, nothing else. */
+  --chamfer: 10px; /* Primary button, default size */
+  --chamfer-xl: 12px;
+  --chamfer-md: 8px;
+  --chamfer-sm: 6px; /* Also the BUY NOW mark */
+  --bottom-nav: 62px; /* The phone and tablet bottom tab bar */
+}
+
+/*
+  Type styles. One class sets the family, size, line height, weight and
+  tracking, as the kit's .sa-display, .sa-h1 … classes do. Colour and measure
+  stay separate: lead, body and small text are tx2 and labels tx3; lead text
+  runs at most 62 characters a line and body text 68. Titles scale with the
+  window: the kit's cqi became vw here. Lead, body and small set no weight,
+  like the kit (tokens.json gives small 500).
+*/
+@utility type-display {
+  /* Home hero only */
+  font-family: var(--font-display);
+  font-size: clamp(40px, 4.4vw + 10px, 92px);
+  line-height: 1.02;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+@utility type-h1 {
+  /* Page title */
+  font-family: var(--font-display);
+  font-size: clamp(30px, 2.4vw + 12px, 52px);
+  line-height: 1.08;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+@utility type-h2 {
+  /* Section title */
+  font-family: var(--font-display);
+  font-size: clamp(24px, 1.5vw + 12px, 38px);
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+@utility type-h3 {
+  /* Panel and card-group titles */
+  font-family: var(--font-sans);
+  font-size: clamp(18px, 0.45vw + 15px, 22px);
+  line-height: 1.3;
+  font-weight: 800;
+}
+@utility type-h4 {
+  font-family: var(--font-sans);
+  font-size: 17px;
+  line-height: 1.35;
+  font-weight: 700;
+}
+@utility type-lead {
+  /* Intro paragraphs */
+  font-family: var(--font-sans);
+  font-size: clamp(17px, 0.35vw + 15px, 20px);
+  line-height: 1.6;
+}
+@utility type-body {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.65;
+}
+@utility type-small {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.55;
+}
+@utility type-label {
+  /* Field and data labels. Never all caps */
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.35;
+  font-weight: 600;
+}
+@utility type-price {
+  /* Prices on cards. Panels and the car page set their own size from their board */
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+@utility type-button {
+  /* Default and large buttons */
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+@utility type-button-md {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+@utility type-button-sm {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+@utility type-button-xl {
+  /* Hero calls to action */
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+@utility type-code {
+  /* VIN and lot №. Countdown digits inside Manrope text take font-mono alone */
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 500;
+  letter-spacing: 0;
+}

@@ -20,7 +20,8 @@
     "type-check": "pnpm --filter @selectauto/web --filter @selectauto/functions --filter @selectauto/infra --filter @selectauto/db --filter @selectauto/extension run type-check",
     "lint": "eslint --fix && pnpm --filter @selectauto/web run lint:fix",
     "format": "prettier --write \"**/*.{ts,tsx,mjs,json}\"",
-    "check": "pnpm run type-check && pnpm run lint"
+    "test": "pnpm --filter @selectauto/web run test",
+    "check": "pnpm run type-check && pnpm run lint && pnpm run test"
   },
   "devDependencies": {
     "@eslint/js": "9.36.0",

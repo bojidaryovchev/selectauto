@@ -327,7 +327,7 @@ export function SiteHeader() {
                       }
                       rippleTheme="light"
                       aria-expanded={openSub === item.label}
-                      className="flex min-h-14 w-full items-center justify-between gap-3 px-4.5 text-[15px] font-bold text-[#f2f3f5]"
+                      className="flex min-h-14 w-full items-center justify-between gap-3 px-4.5 text-[15px] font-bold text-tx"
                     >
                       {item.label}
                       <span
@@ -384,7 +384,7 @@ export function SiteHeader() {
                           onClick={() => setDrawerOpen(false)}
                           aria-current={active ? "page" : undefined}
                           className={`flex min-h-14 items-center px-4.5 text-[15px] font-bold transition-colors ${
-                            active ? "bg-brand/12 text-brand-soft" : "text-[#f2f3f5]"
+                            active ? "bg-brand/12 text-brand-soft" : "text-tx"
                           }`}
                         >
                           {/* Active row reads as a highlighted, selected row: a

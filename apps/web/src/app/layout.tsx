@@ -5,10 +5,38 @@ import { buildOrganizationJsonLd, buildWebsiteJsonLd } from "@/lib/site-jsonld";
 import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
 import { SessionProvider } from "next-auth/react";
-import { Montserrat } from "next/font/google";
+import { JetBrains_Mono, Manrope, Montserrat, Unbounded } from "next/font/google";
 import { Suspense } from "react";
 import "./globals.css";
 
+// The „Нощно шосе" type (docs/design/README.md). All three are variable fonts,
+// so every weight comes from one file per subset. Their CSS variables feed
+// font-sans, font-display and font-mono in src/styles/tokens.css.
+// Manrope: all interface text.
+const manrope = Manrope({
+  variable: "--font-manrope",
+  subsets: ["latin", "cyrillic"],
+  display: "swap",
+});
+// Unbounded: display, page and section titles, and prices.
+const unbounded = Unbounded({
+  variable: "--font-unbounded",
+  subsets: ["latin", "cyrillic"],
+  display: "swap",
+});
+// JetBrains Mono: VIN, lot № and countdown digits only. Its Cyrillic letters
+// have no Bulgarian forms, so only the Latin subset is loaded, and it is not
+// preloaded because it only sets short codes.
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+});
+
+// Montserrat, the old site face, stays only for the /proces particle title:
+// components/three/particle-process.tsx draws it on a canvas from the
+// --font-montserrat variable. Remove it when /proces is rebuilt.
 const montserrat = Montserrat({
   variable: "--font-montserrat",
   subsets: ["latin", "cyrillic"],
@@ -57,7 +85,10 @@ export default function RootLayout({
   const websiteJsonLd = buildWebsiteJsonLd();
 
   return (
-    <html lang="bg" className={`${montserrat.variable} h-full`}>
+    <html
+      lang="bg"
+      className={`${manrope.variable} ${unbounded.variable} ${jetbrainsMono.variable} ${montserrat.variable} h-full`}
+    >
       {/* Bottom padding on mobile reserves space for the fixed <MobileBottomNav>
           (≈62px tab bar + the iOS home-indicator safe area) so page content and
           the footer are never hidden behind it. Removed at lg where the bar is

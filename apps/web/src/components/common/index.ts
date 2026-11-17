@@ -6,6 +6,7 @@ export { Container } from "./container";
 export { CopyButton } from "./copy-button";
 export { ExpandableSection } from "./expandable-section";
 export { LinkButton } from "./link-button";
+export { Logo } from "./logo";
 export { Reveal } from "./reveal";
 export { Ripple } from "./ripple";
 export { SectionHeader } from "./section-header";
