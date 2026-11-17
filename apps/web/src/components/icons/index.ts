@@ -6,6 +6,7 @@ export { BankIcon } from "./bank-icon";
 export { BellIcon } from "./bell-icon";
 export { BuildingIcon } from "./building-icon";
 export { CalculatorIcon } from "./calculator-icon";
+export { CameraIcon } from "./camera-icon";
 export { CarIcon } from "./car-icon";
 export { CheckIcon } from "./check-icon";
 export { ChevronDownIcon } from "./chevron-down-icon";

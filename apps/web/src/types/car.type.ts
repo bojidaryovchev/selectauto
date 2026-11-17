@@ -42,6 +42,12 @@ export type CarView = {
    * mapper populates it; the static FALLBACK_* arrays omit it.
    */
   sortId?: number;
+  /**
+   * The make, for the card's logo plate: its name (alt text, and two letters when there is no logo) and its logo URL
+   * from `manufacturers.image_url`. Absent when the listing has no make, or the caller had no make index (the static
+   * FALLBACK_* arrays), and the card then shows no plate.
+   */
+  make?: { name: string; logo: string | null };
   /** Lot number → "Търг №" row. */
   lotNumber?: string;
   /** Production year → "Година" row (also in the title, shown as its own field). */

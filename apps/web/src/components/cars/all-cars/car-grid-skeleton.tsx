@@ -1,36 +1,60 @@
+/** One placeholder bar of the given size (the kit's `.sa-sk`). */
+function Bar({ className }: { className: string }) {
+  return <span className={`sa-sk block ${className}`} />;
+}
+
 /**
- * Shimmer placeholder cards for the catalog: used as the `loading.tsx` fallback
- * (Suspense), and — individually — as the in-place placeholder the virtualized
- * grid renders for NOT-YET-LOADED cells (its fixed-space layout reserves every
- * row's position up front; pages fill in without moving anything). Mirrors the
- * AuctionCard's rough proportions; `h-full` stretches it to the row height in
- * mixed loaded/skeleton rows.
+ * A placeholder card in the exact shape of the car card (board `kit-cards`, „Зарежда се"): photo, status strip,
+ * plate and two title lines, the 11 fields, the price row and the action row. Used as the `loading.tsx` fallback,
+ * and — individually — as the in-place placeholder the virtualized grid renders for cards that haven't loaded yet,
+ * so pages fill in without moving anything. `h-full` stretches it to the row height in mixed rows.
  */
 export function SkeletonCard() {
   return (
-    <div className="flex h-full animate-pulse flex-col overflow-hidden rounded-[20px] border border-line bg-white shadow-card">
-      <div className="aspect-40/26 w-full bg-[#e9e9ea]" />
-      <div className="h-9.5 bg-[#2f343c]/90" />
-      <div className="flex flex-1 flex-col gap-3 px-4 pb-4 pt-3.5">
-        <div className="h-5 w-3/4 rounded-sm bg-[#e9e9ea]" />
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex flex-col gap-1">
-              <div className="h-2.5 w-12 rounded-sm bg-[#eee]" />
-              <div className="h-3.5 w-16 rounded-sm bg-[#e9e9ea]" />
+    <article className="sa-car h-full text-tx" aria-busy="true" aria-label="Зареждане">
+      <div className="sa-car__ph sa-sk rounded-none" />
+      <div className="sa-car__clk">
+        <Bar className="h-2.5 w-22.5" />
+        <Bar className="h-3 w-20" />
+      </div>
+      <div className="sa-car__b">
+        <div className="sa-car__hd">
+          <Bar className="size-8 rounded-sm" />
+          <span className="sa-stack flex-1 gap-2">
+            <Bar className="h-3.5 w-[90%]" />
+            <Bar className="h-3.5 w-[55%]" />
+          </span>
+        </div>
+        <div className="sa-car__dl">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i}>
+              <Bar className="h-2.25 w-[60%]" />
+              <Bar className="mt-1.5 h-3 w-[80%]" />
             </div>
           ))}
+          <div className="is-wide">
+            <Bar className="h-2.25 w-[30%]" />
+            <Bar className="mt-1.5 h-3 w-1/2" />
+          </div>
         </div>
-        <div className="mt-auto h-11.5 w-full rounded-full bg-[#e9e9ea]" />
+        <div className="sa-car__pr">
+          <Bar className="h-2.5 w-12.5" />
+          <Bar className="h-5 w-22.5" />
+        </div>
+        <div className="sa-car__act">
+          <Bar className="h-11 flex-1" />
+          <Bar className="size-11" />
+          <Bar className="size-11" />
+        </div>
       </div>
-    </div>
+    </article>
   );
 }
 
-/** A grid of N shimmer cards. */
+/** A grid of N placeholder cards, in the catalog's grid (columns of at least 280 px). */
 export function CarGridSkeleton({ count = 12 }: { count?: number }) {
   return (
-    <div className="grid grid-cols-1 gap-5 min-[560px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="sa-grid">
       {Array.from({ length: count }).map((_, i) => (
         <SkeletonCard key={i} />
       ))}

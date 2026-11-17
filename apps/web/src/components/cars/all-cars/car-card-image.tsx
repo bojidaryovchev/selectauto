@@ -63,7 +63,7 @@ export function CarCardImage({
     [hasFallback],
   );
 
-  if (deferred) return <span role="img" aria-label={alt} className="block aspect-40/26 w-full" />;
+  if (deferred) return <span role="img" aria-label={alt} className="block size-full" />;
 
   return (
     // eslint-disable-next-line @next/next/no-img-element
@@ -71,14 +71,14 @@ export function CarCardImage({
       ref={probe}
       src={shown}
       alt={alt}
-      width={400}
-      height={260}
+      width={480}
+      height={320}
       loading={priority ? "eager" : "lazy"}
       fetchPriority={priority ? "high" : "auto"}
       decoding="async"
       referrerPolicy="no-referrer"
       onError={hasFallback ? () => setFailed(true) : undefined}
-      className="block aspect-40/26 w-full object-cover"
+      className="sa-car__img"
     />
   );
 }

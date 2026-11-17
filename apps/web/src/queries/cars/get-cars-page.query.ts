@@ -4,6 +4,7 @@ import { buildListingConditions as buildConditions, tableFor } from "@/lib/car-l
 import { carListingToView } from "@/lib/car-mapper";
 import { getDb } from "@/lib/db";
 import type { CarFilters, CarsPage } from "@/types/car-filters.type";
+import { getMakeIndex } from "./get-make-index.query";
 
 // Re-exported for existing server consumers that import it from the query barrel;
 // the canonical definition now lives in `@/constants` (client-safe). See there.
@@ -59,7 +60,8 @@ async function searchPage(filters: CarFilters): Promise<CarsPage> {
     .from(t)
     .where(or(like(t.lotNumber, `${q}%`), eq(t.vin, q.toUpperCase())))
     .limit(CARS_PAGE_SIZE);
-  return { cars: rows.map((r) => carListingToView(r, isPast)), nextCursor: null, prevCursor: null };
+  const makes = await getMakeIndex();
+  return { cars: rows.map((r) => carListingToView(r, isPast, makes)), nextCursor: null, prevCursor: null };
 }
 
 /**
@@ -101,7 +103,8 @@ async function keysetPage(
   // Backward pages come back ASC (nearest-above first); flip to DESC so the whole
   // catalog stays newest-first regardless of which way we paged.
   const orderedRows = direction === "forward" ? pageRows : pageRows.slice().reverse();
-  const cars = orderedRows.map((r) => carListingToView(r, isPast));
+  const makes = await getMakeIndex();
+  const cars = orderedRows.map((r) => carListingToView(r, isPast, makes));
 
   if (direction === "forward") {
     // Boundary is the last (lowest sort_id) row → the next forward cursor.
@@ -210,7 +213,8 @@ export async function getCarsWindow(
   // which case the window degenerates to just the above-page shown from its top.
   const anchorRow = belowPage[0];
 
-  const cars = [...above.cars, ...belowPage.map((r) => carListingToView(r, isPast))];
+  const makes = await getMakeIndex();
+  const cars = [...above.cars, ...belowPage.map((r) => carListingToView(r, isPast, makes))];
 
   // How many matching rows sit ABOVE this window's first row — the window's
   // absolute position in the filtered feed. The client grid reserves space for

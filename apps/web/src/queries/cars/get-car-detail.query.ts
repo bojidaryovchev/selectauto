@@ -5,6 +5,7 @@ import { carDetailFromRows } from "@/lib/car-detail-mapper";
 import { carListingToView } from "@/lib/car-mapper";
 import { CACHE_TAGS, carCacheTag } from "@/lib/cache-tags";
 import { getDb, schema } from "@/lib/db";
+import { getMakeIndex } from "./get-make-index.query";
 import { getModelYearSoldStat } from "./get-model-sold-prices.query";
 import type { CarDetail, CarDetailPayload } from "@/types/car-detail.type";
 import type { CarView } from "@/types/car.type";
@@ -286,7 +287,8 @@ async function getRelatedPool(kind: RelatedPoolKind, value: number): Promise<Car
     .orderBy(sql`${cl.sortId} DESC`)
     .limit(RELATED_POOL_SIZE);
 
-  return rows.map((r) => carListingToView(r, false));
+  const makes = await getMakeIndex();
+  return rows.map((r) => carListingToView(r, false, makes));
 }
 
 /**

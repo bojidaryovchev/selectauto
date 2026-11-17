@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { carListingToView } from "@/lib/car-mapper";
 import { getDb, schema } from "@/lib/db";
 import type { CarView } from "@/types/car.type";
+import { getMakeIndex } from "@/queries/cars/get-make-index.query";
 
 /**
  * The signed-in user's favourited cars as `CarView[]` for the /lyubimi page,
@@ -44,8 +45,9 @@ export async function getFavoriteCars(): Promise<CarView[]> {
     .where(eq(fav.userId, userId))
     .orderBy(desc(fav.createdAt));
 
+  const makes = await getMakeIndex();
   return [
-    ...activeRows.map((r) => carListingToView(r.listing, false)),
-    ...pastRows.map((r) => carListingToView(r.listing, true)),
+    ...activeRows.map((r) => carListingToView(r.listing, false, makes)),
+    ...pastRows.map((r) => carListingToView(r.listing, true, makes)),
   ];
 }

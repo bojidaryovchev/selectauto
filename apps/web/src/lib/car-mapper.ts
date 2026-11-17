@@ -12,6 +12,7 @@ import {
   vehicleTypeLabel,
 } from "@/lib/car-labels";
 import { collapseLeadingDuplicate } from "@/lib/title-clean";
+import type { MakeIndex } from "@/queries/cars/get-make-index.query";
 import type { CarView } from "@/types/car.type";
 
 /**
@@ -102,7 +103,11 @@ function typeLabel(vehicleType: string | null, bodyType: string | null): { label
   return { label: bodyType ? bodyTypeLabel(bodyType) || undefined : undefined, isNonCar: false };
 }
 
-export function carListingToView(row: AnyCarListing, isPast = false): CarView {
+/**
+ * A listing row → the card's view model. Pass the make index (`getMakeIndex()`) to give the card its make's logo
+ * plate; without it the card shows no plate.
+ */
+export function carListingToView(row: AnyCarListing, isPast = false, makes?: MakeIndex): CarView {
   // Buy-now when the chosen lot is buy_now with a positive price; otherwise it's
   // an auction listing. `status` decides the active/ended pill either way.
   const isBuyNow = row.buyNow === true && Number(row.buyNowPrice ?? 0) > 0;
@@ -158,6 +163,7 @@ export function carListingToView(row: AnyCarListing, isPast = false): CarView {
         : { kind: "time", label: statusLabel(row.status) },
 
     // rich AuctionCard fields
+    make: row.manufacturerId != null ? makes?.[row.manufacturerId] : undefined,
     lotNumber: row.lotNumber ?? undefined,
     year: row.carYear ?? undefined,
     saleDate: row.saleDate ? row.saleDate.toISOString() : undefined,

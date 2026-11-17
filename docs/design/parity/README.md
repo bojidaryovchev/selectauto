@@ -42,5 +42,7 @@ An outcome is one of:
 - **—:** the board has it as the code does.
 - **Board fixed:** the board was wrong or incomplete, so it was corrected first and the owner was told.
 - **Owner decision `<n>`:** the board changes it on purpose, and `decisions.md` records the owner's decision.
+- **Fixed:** today's behaviour is a bug, such as one in REDESIGN.md's list or one found during the check. The rebuild
+  fixes it without dropping anything the screen does, and the row says what the fix is.
 
 A difference with neither stops the build of that screen until it has one.

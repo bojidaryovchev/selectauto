@@ -5,6 +5,7 @@ import { CACHE_TAGS } from "@/lib/cache-tags";
 import { carListingToView } from "@/lib/car-mapper";
 import { getDb, schema } from "@/lib/db";
 import type { CarView } from "@/types/car.type";
+import { getMakeIndex } from "./get-make-index.query";
 
 const DEFAULT_LIMIT = 6;
 
@@ -52,7 +53,8 @@ export async function getAuctionCars(limit = DEFAULT_LIMIT): Promise<CarView[]> 
       .limit(limit);
 
     if (rows.length === 0) return FALLBACK_AUCTION_CARS;
-    return rows.map((row) => carListingToView(row));
+    const makes = await getMakeIndex();
+    return rows.map((row) => carListingToView(row, false, makes));
   } catch (error) {
     console.error("[get-auction-cars] query failed, using fallback", error);
     return FALLBACK_AUCTION_CARS;

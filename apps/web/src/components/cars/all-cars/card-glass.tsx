@@ -9,8 +9,8 @@ import type { ReactNode } from "react";
  * its own glass looks deliberate.
  *
  * The panel is `absolute inset-0` inside a `relative` wrapper, matching the
- * card's `rounded-[20px]` radius, with `backdrop-filter` blur so the card behind
- * frosts in place (cheap — each panel is only card-sized, never a giant surface).
+ * card's radius: the card dims and loses some colour in place, as the kit's
+ * `.sa-car.is-pending` draws it (board `kit-cards`, „обновява се").
  *
  * LAYOUT-NEUTRAL by construction, which the virtualized grid REQUIRES (it keys
  * scroll math off uniform, deterministic row heights): the wrapper is `h-full`
@@ -25,7 +25,7 @@ export function CardGlass({ pending, children }: { pending: boolean; children: R
       {pending ? (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 z-10 rounded-[20px] border border-white/40 bg-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] backdrop-blur-md backdrop-saturate-150"
+          className="pointer-events-none absolute inset-0 z-10 rounded-lg bg-bg/38 backdrop-blur-[1.5px] backdrop-saturate-[0.7]"
         />
       ) : null}
     </div>

@@ -2,6 +2,7 @@ export { getAuctionCars } from "./get-auction-cars.query";
 export { getBuyNowCars } from "./get-buy-now-cars.query";
 export { getCarDetail } from "./get-car-detail.query";
 export { getCarBrands, getCarFacets } from "./get-car-facets.query";
+export { getMakeIndex, type MakeIndex } from "./get-make-index.query";
 export {
   resolveCarHub,
   resolveBrandHub,
