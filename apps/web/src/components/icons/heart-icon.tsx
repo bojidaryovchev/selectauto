@@ -1,19 +1,8 @@
-/** Heart glyph (24×24) for the favourites toggle. `filled` swaps a solid heart
- *  (saved) for an outlined one (not saved). Uses currentColor so the button
- *  controls the colour. */
+/** Lucide „heart" as drawn on the boards (kit/icons.json, stroke 1.8). Colour follows `currentColor`. */
 export function HeartIcon({ className, filled = false }: { className?: string; filled?: boolean }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill={filled ? "currentColor" : "none"}
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      className={className}
-    >
-      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+    <svg viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill={filled ? "currentColor" : "none"} aria-hidden="true" className={className}>
+      <path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5" />
     </svg>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "@/components/common";
+import { IconButton } from "@/components/common";
 import { ArrowUpIcon } from "@/components/icons";
 
 /**
@@ -10,14 +10,14 @@ import { ArrowUpIcon } from "@/components/icons";
  * the page has been scrolled past {@link REVEAL_AFTER_PX}
  * and scrolls the window smoothly back to the top on click.
  *
- * Positioning: fixed to the bottom-right. On mobile it's lifted above the fixed
- * `<MobileBottomNav>` (≈62px + the iOS home-indicator safe area) so the two
- * never overlap. Its `z-10030` sits *below* the drawer overlay (`z-10040`), so
- * an open mobile menu covers it rather than letting it float on top.
+ * Positioning: fixed to the bottom-right (boards `ac-float`, `ac-float-desk`). On
+ * phones and tablets it's lifted above the bottom tab bar and the iOS
+ * home-indicator safe area, so the two never overlap. Its `z-10030` sits *below*
+ * the drawer overlay (`z-10040`), so an open menu covers it.
  *
- * Motion: scale + fade + slide-up on reveal (compositor-only transform/opacity).
- * The scroll itself uses `behavior: "smooth"`, downgraded to an instant jump
- * when the user prefers reduced motion.
+ * Motion: scale + fade + slide-up on reveal. The scroll itself uses
+ * `behavior: "smooth"`, downgraded to an instant jump when the user prefers
+ * reduced motion.
  */
 
 /** Pixels scrolled before the button appears. Roughly one viewport on mobile. */
@@ -42,25 +42,23 @@ export function BackToTop() {
 
   return (
     <div
-      // `pointer-events-none` on the wrapper so the empty gutter never eats
-      // clicks; the button re-enables them for itself only while visible.
-      className="pointer-events-none fixed bottom-6 right-4 z-10030 lg:right-6 max-lg:bottom-[calc(62px+env(safe-area-inset-bottom)+1rem)]"
+      // `pointer-events-none` on the wrapper so the empty gutter never eats presses; the button re-enables them for
+      // itself only while visible. On phones and tablets it sits above the bottom tab bar.
+      className="pointer-events-none fixed bottom-[calc(var(--bottom-nav)+16px+env(safe-area-inset-bottom))] right-4 z-10030 lg:bottom-6 lg:right-6"
     >
-      <Button
+      <IconButton
+        label="Обратно нагоре"
         onClick={scrollToTop}
-        rippleTheme="light"
-        aria-label="Обратно нагоре"
-        // Slide-up + fade + scale on reveal; hover lifts it a touch and deepens
-        // the shadow. `will-change-transform` keeps the transition on the
-        // compositor. Reduced-motion users get the same end states, just no tween.
-        className={`grid size-12 place-items-center rounded-full bg-brand text-white shadow-[0_12px_30px_rgba(216,111,22,0.45)] ring-1 ring-black/5 transition-all duration-300 ease-out will-change-transform hover:-translate-y-0.5 hover:bg-brand-dark hover:shadow-[0_16px_38px_rgba(216,111,22,0.55)] lg:size-13 ${
-          visible
-            ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
-            : "translate-y-4 scale-90 opacity-0"
+        // Out of the tab order and the accessibility tree while it's invisible.
+        tabIndex={visible ? undefined : -1}
+        aria-hidden={visible ? undefined : true}
+        // `sa-totop`, plus `is-on` while shown: the notifications move left of it (globals.css).
+        className={`sa-totop transition-[translate,scale,opacity] duration-300 ease-out will-change-transform motion-reduce:transition-opacity ${
+          visible ? "is-on pointer-events-auto translate-y-0 scale-100 opacity-100" : "translate-y-4 scale-90 opacity-0"
         }`}
       >
-        <ArrowUpIcon className="size-6" />
-      </Button>
+        <ArrowUpIcon />
+      </IconButton>
     </div>
   );
 }

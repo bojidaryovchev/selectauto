@@ -1,33 +1,44 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { signOut, useSession } from "next-auth/react";
-import { Button, LinkButton } from "@/components/common";
+import { DashboardIcon, HeartIcon, LogOutIcon } from "@/components/icons";
 import { grantsBackOfficeAccess } from "@/constants/admin";
 
 /**
- * Account dropdown for a signed-in user. Shows the user's initial/avatar; the
- * menu links to favourites and signs out via the client `signOut` from
- * next-auth/react (NOT a Server Action — the client call mutates the
- * SessionProvider state + broadcasts to other tabs, so the header flips to
- * "Вход" with no reload; a Server Action would clear the cookie but leave the
- * cached client session "authenticated", making sign-out look broken — the same
- * gotcha the sign-in form solves with `update()`). `tone` adapts the trigger
- * colours to the dark mobile drawer vs the orange desktop pill.
+ * The desktop header's account menu for a signed-in user (board `ac-hdr`, states 6–10): the initial of the name (or
+ * the e-mail) on a round avatar opens the menu with the name or „Профил", the e-mail, „Админ панел" for back-office
+ * roles, „Любими автомобили" and „Изход".
+ *
+ * It signs out with the client `signOut` from next-auth/react, NOT a Server Action: the client call updates the
+ * SessionProvider and broadcasts to other tabs, so the header flips to „Вход" without a reload. A Server Action would
+ * clear the cookie but leave the cached client session "authenticated".
+ *
+ * Closes on a press outside, on Esc (focus returns to the avatar) and after choosing a link.
  */
-export function UserMenu({ tone = "light" }: { tone?: "light" | "dark" }) {
+export function UserMenu() {
   const { data } = useSession();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
 
-  // Close on outside click.
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      triggerRef.current?.focus();
+    };
     document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
   }, [open]);
 
   const user = data?.user;
@@ -35,62 +46,40 @@ export function UserMenu({ tone = "light" }: { tone?: "light" | "dark" }) {
   // Both elevated roles reach the back office — an observer sees a reduced nav there.
   const canOpenBackOffice = grantsBackOfficeAccess(user?.roles);
 
-  const triggerClass =
-    tone === "dark"
-      ? "border-white/20 bg-white/10 text-white"
-      : "border-white/30 bg-white/15 text-white";
-
   return (
-    <div ref={ref} className="relative">
-      <Button
+    <div ref={ref} className="relative flex">
+      <button
+        ref={triggerRef}
+        type="button"
         onClick={() => setOpen((o) => !o)}
-        rippleTheme="light"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Профил"
-        className={`grid size-10 place-items-center rounded-full border text-sm font-black uppercase transition-transform duration-150 hover:scale-105 ${triggerClass}`}
+        className="sa-avatar cursor-pointer border-0 aria-expanded:shadow-[inset_0_0_0_2px_var(--color-or)]"
       >
         {initial}
-      </Button>
+      </button>
 
       {open ? (
-        <div
-          role="menu"
-          className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-line bg-white p-2 shadow-[0_18px_40px_rgba(0,0,0,0.16)]"
-        >
-          <div className="border-b border-line px-3 pb-2.5 pt-3">
-            <p className="truncate text-sm font-bold text-ink">{user?.name || "Профил"}</p>
-            {user?.email ? <p className="truncate text-xs text-muted">{user.email}</p> : null}
+        <div role="menu" aria-label="Профил" className="sa-menu absolute right-0 top-[calc(100%+16px)] z-60 w-68">
+          <div className="sa-menu__id">
+            <b className="truncate">{user?.name || "Профил"}</b>
+            {user?.email ? <span className="block truncate">{user.email}</span> : null}
           </div>
           {canOpenBackOffice ? (
-            <LinkButton
-              href="/admin"
-              onClick={() => setOpen(false)}
-              role="menuitem"
-              rippleTheme="dark"
-              className="block rounded-xl px-3 py-2.5 text-sm font-bold text-brand transition-colors hover:bg-brand/8"
-            >
+            <Link href="/admin" role="menuitem" className="is-or" onClick={() => setOpen(false)}>
+              <DashboardIcon />
               Админ панел
-            </LinkButton>
+            </Link>
           ) : null}
-          <LinkButton
-            href="/lyubimi"
-            onClick={() => setOpen(false)}
-            role="menuitem"
-            rippleTheme="dark"
-            className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-brand/8 hover:text-brand-dark"
-          >
+          <Link href="/lyubimi" role="menuitem" onClick={() => setOpen(false)}>
+            <HeartIcon />
             Любими автомобили
-          </LinkButton>
-          <Button
-            type="button"
-            onClick={() => signOut({ redirectTo: "/" })}
-            role="menuitem"
-            rippleTheme="dark"
-            className="block w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-[#b53b2f] transition-colors hover:bg-[#fff3f2]"
-          >
+          </Link>
+          <button type="button" role="menuitem" className="is-neg" onClick={() => signOut({ redirectTo: "/" })}>
+            <LogOutIcon />
             Изход
-          </Button>
+          </button>
         </div>
       ) : null}
     </div>

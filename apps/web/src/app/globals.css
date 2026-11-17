@@ -2,6 +2,8 @@
 
 /* The „Нощно шосе" design tokens. They bind; docs/design/README.md has the rules. */
 @import "../styles/tokens.css";
+/* Its component classes (sa-*), ported from the boards' kit. */
+@import "../styles/kit.css";
 
 /*
   Legacy: the light theme's tokens, ported from the old site's theme.css. The
@@ -46,10 +48,11 @@ html {
   scrollbar-gutter: stable;
 }
 
+/* The page: night ground, light text (the board kit's page root). */
 body {
   font-family: var(--font-sans);
-  color: var(--color-ink);
-  background: #fff;
+  color: var(--color-tx);
+  background: var(--color-bg);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   /* Digits of equal width, so prices, mileage and table columns line up. */
@@ -64,24 +67,81 @@ body {
   position: relative;
 }
 
+/* Focus and selection, everywhere: a 2px orange-text ring (the chamfered primary
+   button draws its own inset ring, see the kit) and an orange selection tint. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-ortx);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: rgba(255, 122, 26, 0.35);
+  }
+}
+
 /*
   Height of the fixed <SiteHeader>, exposed as a token so page wrappers can
-  offset their top padding by exactly the header's footprint (the header is
-  `position: fixed`, so it occupies no layout space of its own).
-  The header is `max-lg:hidden` — it only renders on desktop (≥1024px), where
-  it stands 107px tall (py-3.5 (14px ×2) + 78px inner min-height + 1px border).
-  On mobile it serves no purpose (navigation lives in the bottom tab bar), so it
-  is hidden and this token is 0 — collapsing every page's `pt-(--header-h)`
-  offset. SiteHeader also measures the real rendered height at runtime and
-  overrides this token; these are the SSR/pre-hydration fallbacks. Keep the
-  desktop value in sync with site-header.tsx if its padding/min-height changes.
+  offset their top padding by exactly its footprint (it is `position: fixed`, so
+  it occupies no layout space of its own). Below 1024px it is the slim top bar,
+  56px with its border inside; from 1024px the header, 77px (76px + a 1px border).
+  SiteHeader also measures the real rendered height at runtime and overrides
+  this token; these are the SSR/pre-hydration fallbacks. Keep them in sync with
+  the kit's .sa-tbar and .sa-hdr__in heights.
 */
 :root {
-  --header-h: 0px;
+  --header-h: 56px;
 }
 @media (min-width: 1024px) {
   :root {
-    --header-h: 107px;
+    --header-h: 77px;
+  }
+}
+
+/*
+  Notifications (SiteToaster). Desktop: bottom right, 24px from the edges, moved
+  left of the back-to-top button while it shows (.sa-totop.is-on). Phones and
+  tablets: across the width above the bottom tabs, short of the back-to-top
+  button while it shows. Pages without the tabs (the admin) keep 16px.
+*/
+:root {
+  --toast-left: 16px;
+  --toast-right: 16px;
+  --toast-bottom: 16px;
+}
+.sa-toasts {
+  position: fixed;
+  z-index: 10035;
+  left: var(--toast-left);
+  right: var(--toast-right);
+  bottom: var(--toast-bottom);
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: stretch;
+  gap: 8px;
+  pointer-events: none;
+}
+@media (max-width: 1023.98px) {
+  :root:has(.sa-bnav) {
+    --toast-bottom: calc(var(--bottom-nav) + 16px + env(safe-area-inset-bottom));
+  }
+  :root:has(.sa-totop.is-on) {
+    --toast-right: 76px;
+  }
+  .sa-toasts .sa-toast {
+    max-width: none;
+  }
+}
+@media (min-width: 1024px) {
+  :root {
+    --toast-left: auto;
+    --toast-right: 24px;
+    --toast-bottom: 24px;
+  }
+  :root:has(.sa-totop.is-on) {
+    --toast-right: 88px;
+  }
+  .sa-toasts {
+    align-items: flex-end;
   }
 }
 

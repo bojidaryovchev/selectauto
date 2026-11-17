@@ -1,24 +1,19 @@
 "use client";
 
+import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
-import { Button, LinkButton } from "@/components/common";
-import { ChevronLeftIcon, ChevronRightIcon, HeartIcon, ShieldIcon } from "@/components/icons";
+import { Button, IconButton } from "@/components/common";
+import { ChevronLeftIcon, ChevronRightIcon, DashboardIcon, HeartIcon, LogOutIcon } from "@/components/icons";
 import { grantsBackOfficeAccess } from "@/constants/admin";
 
 /**
- * App-style profile sub-screen for the mobile drawer. Slides in from the right
- * *over* the main menu drawer (same footprint, higher z-index) and is topped by
- * a back button that returns to the menu — mirroring a native mobile app's
- * push/pop navigation.
+ * The profile screen of the phone and tablet menu (board `ac-drawer`, states 7–8; `ac-drawer-tab` 2). It slides in
+ * from the right over the menu drawer, with the same footprint, and its back button returns to the menu, like a
+ * native app's push and pop. It shows the initial, the name (or „Профил") and the e-mail, „Админ панел" for
+ * back-office roles, „Любими автомобили" and „Изход".
  *
- * This replaces the old `UserMenu` dropdown that was reused inside the drawer:
- * that dropdown is an `absolute right-0 w-56` popover, and dropped into the
- * narrow, `overflow-y-auto` drawer it rendered partially outside the panel's
- * clip box and appeared cut off. A full slide-in screen has no such clipping.
- *
- * `useSession`/`signOut` are the client next-auth calls (same rationale as
- * `UserMenu`): the client `signOut` updates the SessionProvider + broadcasts to
- * other tabs so the header flips to "Вход" with no reload.
+ * `signOut` is the client next-auth call (same rationale as `UserMenu`): it updates the SessionProvider and
+ * broadcasts to other tabs, so the menu flips to „Вход / Регистрация" with no reload.
  */
 interface Props {
   /** Whether the profile screen is showing (slid in over the drawer). */
@@ -40,74 +35,48 @@ export function DrawerProfilePanel({ open, onBack, onNavigate }: Props) {
     <aside
       aria-label="Моят профил"
       aria-hidden={!open}
-      className={`fixed right-0 top-0 z-10060 flex h-dvh w-[min(88vw,380px)] flex-col overflow-y-auto bg-linear-to-b from-[#121318] to-[#0b0c10] transition-transform duration-300 lg:hidden ${
-        open ? "translate-x-0 shadow-[-12px_0_40px_rgba(0,0,0,0.28)]" : "translate-x-full"
+      inert={!open}
+      className={`sa-drawer fixed right-0 top-0 z-10060 h-dvh w-[min(88vw,380px)] transition-transform duration-300 motion-reduce:transition-none lg:hidden ${
+        open ? "translate-x-0" : "translate-x-full"
       }`}
     >
-      {/* Sticky top bar with a back control, covering the drawer's own header. */}
-      <div className="sticky top-0 z-2 flex items-center gap-3 border-b border-white/8 bg-[#121318]/94 px-3 py-4.5 backdrop-blur-md">
-        <Button
-          onClick={onBack}
-          rippleTheme="light"
-          aria-label="Назад към менюто"
-          className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/8 text-white"
-        >
-          <ChevronLeftIcon className="size-5" />
-        </Button>
-        <p className="m-0 text-sm font-extrabold uppercase tracking-[0.08em] text-white">Моят профил</p>
+      <div className="sa-drawer__h justify-start gap-1.5 pl-2">
+        <IconButton label="Назад към менюто" variant="ghost" onClick={onBack}>
+          <ChevronLeftIcon />
+        </IconButton>
+        <b>Моят профил</b>
       </div>
 
-      {/* Identity card. */}
-      <div className="flex items-center gap-3 border-b border-white/6 px-4.5 py-5">
-        <span className="grid size-11 shrink-0 place-items-center rounded-full border border-white/20 bg-white/10 text-base font-black uppercase text-white">
-          {initial}
-        </span>
+      <div className="flex items-center gap-3.5 border-b border-hair p-5">
+        <span className="sa-avatar size-11 text-base">{initial}</span>
         <div className="min-w-0">
-          <p className="truncate text-[15px] font-bold text-white">{user?.name || "Профил"}</p>
-          {user?.email ? <p className="truncate text-xs text-white/55">{user.email}</p> : null}
+          <b className="block text-base/snug">{user?.name || "Профил"}</b>
+          {user?.email ? <span className="block truncate text-[13.5px] text-tx3">{user.email}</span> : null}
         </div>
       </div>
 
-      {/* Profile actions as full-width rows. */}
-      <nav aria-label="Профил навигация">
-        <ul className="m-0 list-none p-0">
-          {canOpenBackOffice ? (
-            <li className="border-b border-white/6">
-              <LinkButton
-                href="/admin"
-                rippleTheme="light"
-                onClick={onNavigate}
-                className="flex min-h-14 items-center gap-3 px-4.5 text-[15px] font-bold text-brand-soft"
-              >
-                <ShieldIcon className="size-5 shrink-0 text-brand-soft" />
-                <span className="flex-1">Админ панел</span>
-                <ChevronRightIcon className="size-4 shrink-0 text-white/45" />
-              </LinkButton>
-            </li>
-          ) : null}
-          <li className="border-b border-white/6">
-            <LinkButton
-              href="/lyubimi"
-              rippleTheme="light"
-              onClick={onNavigate}
-              className="flex min-h-14 items-center gap-3 px-4.5 text-[15px] font-bold text-tx"
-            >
-              <HeartIcon className="size-5 shrink-0 text-brand-soft" />
-              <span className="flex-1">Любими автомобили</span>
-              <ChevronRightIcon className="size-4 shrink-0 text-white/45" />
-            </LinkButton>
-          </li>
-        </ul>
+      <nav className="sa-drawer__nav" aria-label="Профил навигация">
+        {canOpenBackOffice ? (
+          <Link href="/admin" onClick={onNavigate} className="text-ortx">
+            <span className="inline-flex min-w-0 items-center gap-3">
+              <DashboardIcon className="text-ortx" />
+              Админ панел
+            </span>
+            <ChevronRightIcon />
+          </Link>
+        ) : null}
+        <Link href="/lyubimi" onClick={onNavigate}>
+          <span className="inline-flex min-w-0 items-center gap-3">
+            <HeartIcon />
+            Любими автомобили
+          </span>
+          <ChevronRightIcon />
+        </Link>
       </nav>
 
-      {/* Sign out, pinned to the bottom of the screen. */}
-      <div className="mt-auto px-4.5 pb-[calc(22px+env(safe-area-inset-bottom))] pt-6">
-        <Button
-          type="button"
-          onClick={() => signOut({ redirectTo: "/" })}
-          rippleTheme="light"
-          className="inline-flex min-h-13.5 w-full items-center justify-center rounded-full border border-[#b53b2f]/40 bg-[#b53b2f]/12 px-6 text-[15px] font-extrabold text-[#ff8f83]"
-        >
+      <div className="sa-drawer__f mt-auto pb-[calc(28px+env(safe-area-inset-bottom))]">
+        <Button variant="neg" block onClick={() => signOut({ redirectTo: "/" })}>
+          <LogOutIcon />
           Изход
         </Button>
       </div>

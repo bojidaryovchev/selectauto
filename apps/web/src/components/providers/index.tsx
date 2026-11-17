@@ -1,8 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Toaster } from "react-hot-toast";
 import { RememberAuthMethod } from "@/components/auth";
+import { SiteToaster } from "@/components/layout/site-toaster";
 import { FavoritesProvider } from "@/contexts/favorites-context";
 import { InquiryProvider } from "@/contexts/inquiry-context";
 
@@ -24,11 +24,9 @@ import { InquiryProvider } from "@/contexts/inquiry-context";
  * belongs here rather than on the sign-in page because the Google flow redirects
  * the browser away and lands the user on `redirectTo` — anywhere in the app.
  *
- * The single app-wide react-hot-toast <Toaster> also lives here (top-right).
- * react-hot-toast renders via effects/state, so it must sit inside this
- * "use client" boundary — not in the server-rendered root layout. Defaults are
- * themed to the brand (rounded, white, orange success accent) rather than the
- * library's dark pill.
+ * The single app-wide notification renderer, <SiteToaster> (react-hot-toast's
+ * headless hook), also lives here. It renders via effects/state, so it must sit
+ * inside this "use client" boundary — not in the server-rendered root layout.
  */
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -37,24 +35,7 @@ export function Providers({ children }: { children: ReactNode }) {
 
       <RememberAuthMethod />
 
-      <Toaster
-        position="top-right"
-        gutter={10}
-        toastOptions={{
-          duration: 2200,
-          style: {
-            borderRadius: "14px",
-            background: "#ffffff",
-            color: "#191b20",
-            fontSize: "14px",
-            fontWeight: 700,
-            padding: "12px 16px",
-            border: "1px solid #e8e8e8",
-            boxShadow: "0 12px 30px rgba(0,0,0,0.1)",
-          },
-          success: { iconTheme: { primary: "#d86f16", secondary: "#ffffff" } },
-        }}
-      />
+      <SiteToaster />
     </FavoritesProvider>
   );
 }

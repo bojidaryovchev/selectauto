@@ -1,59 +1,56 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Button, LinkButton } from "@/components/common";
+import { Button, IconButton, LinkButton, Logo } from "@/components/common";
 import { UserMenu } from "@/components/auth";
 import { ChevronDownIcon, ChevronRightIcon, CloseIcon } from "@/components/icons";
 import { NAV } from "@/data/navigation";
 import { useInquiry } from "@/contexts/inquiry-context";
 import { useHasPainted } from "@/lib/after-first-paint";
-import { MobileBottomNav } from "./mobile-bottom-nav";
 import { DrawerProfilePanel } from "./drawer-profile-panel";
+import { HeaderDropdown } from "./header-dropdown";
+import { MobileBottomNav } from "./mobile-bottom-nav";
 
 /**
- * Fixed header with the orange gradient pill shell on desktop and a slide-in
- * drawer + fixed bottom-nav on mobile. Ported from the site's `sa-site-header`
- * and `sa-mobile-*` styles.
+ * The site's chrome (boards `ac-hdr`, `ac-drawer`, `ac-drawer-tab`; parity check docs/design/parity/shell.md):
  *
- * The header is `position: fixed`, so it occupies no layout space. Pages whose
- * content starts at the top (the light catalog/detail pages) offset it with
- * `pt-(--header-h)`. That token has a static fallback in globals.css, but we
- * also measure the real rendered height here and publish it to `--header-h` so
- * the offset is always pixel-exact across viewports (and never drifts if the
- * header's padding/min-height changes).
+ * - from 1024 px, the header: logo, navigation with dropdowns, the account control and „Запитване";
+ * - below 1024 px, a slim top bar with the logo, the bottom tab bar, and the menu drawer that the Меню tab opens,
+ *   with a profile screen that slides over it.
+ *
+ * The header (or the top bar) is `position: fixed`, so it occupies no layout space. Pages offset it with
+ * `pt-(--header-h)`. That token has a static fallback in globals.css, but the real rendered height is also measured
+ * here and published to `--header-h`, so the offset is pixel-exact at every width.
+ *
+ * Both bars and the bottom tabs hide on scroll down and come back on scroll up, and are always shown near the top.
  */
 export function SiteHeader() {
   const { open: openInquiry } = useInquiry();
-  // Auth.js session state for the header controls. `status` is "loading" until the
-  // SessionProvider resolves; we treat anything but "authenticated" as signed-out
-  // (shows the "Вход" button), which swaps to the account menu once authenticated.
+  // Auth.js session state. `status` is "loading" until the SessionProvider resolves; meanwhile the account control is
+  // a placeholder of its size, so a signed-in visitor never sees „Вход" flash.
   const { data: session, status } = useSession();
   const isSignedIn = status === "authenticated";
   const initial = (session?.user?.name || session?.user?.email || "?").trim().charAt(0).toUpperCase();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [openSub, setOpenSub] = useState<string | null>(null);
-  // Whether the app-style profile sub-screen is pushed over the drawer.
+  // Whether the profile screen is pushed over the drawer.
   const [profileOpen, setProfileOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
   const headerRef = useRef<HTMLElement | null>(null);
-  // No route prefetch from the plain <Link>s below until the page has painted —
-  // see useHasPainted (the LinkButtons do the same internally).
+  // No route prefetch from the plain <Link>s until the page has painted — see useHasPainted.
   const painted = useHasPainted();
 
-  // Current path (trailing-slash normalised to match the NAV hrefs) so the
-  // drawer can highlight the active entry, mirroring the bottom nav.
+  // Current path (trailing-slash normalised to match the NAV hrefs), to mark the current page.
   const pathname = usePathname();
   const currentPath = pathname.endsWith("/") ? pathname : `${pathname}/`;
   const isActivePath = (href: string) =>
     href === "/" ? currentPath === "/" : currentPath === href || currentPath.startsWith(href);
 
-  // Publish the header's real height to `--header-h` so page top-padding tracks
-  // it exactly. ResizeObserver keeps it correct through breakpoint/content
-  // changes (e.g. logo swap at lg). Measured on <html> so every page can read it.
+  // Publish the visible bar's real height to `--header-h`, so page top padding tracks it exactly. ResizeObserver
+  // keeps it right through breakpoint changes (header ↔ top bar). Measured on <html> so every page can read it.
   useEffect(() => {
     const el = headerRef.current;
     if (!el) return;
@@ -61,13 +58,9 @@ export function SiteHeader() {
     const root = document.documentElement;
     const publish = () => {
       const h = Math.round(el.offsetHeight);
-      // The header is `max-lg:hidden`, and offsetHeight is also 0 for any frame
-      // where it isn't laid out yet. Writing that 0 as an INLINE style would
-      // override the CSS media-query fallback (`--header-h: 107px` at ≥1024) and
-      // collapse every page's `pt-(--header-h)` to 0 — the content sits under the
-      // fixed header for a frame, then snaps down ~107px when the next measurement
-      // writes the real height. So only publish a real, positive height; when the
-      // header is genuinely hidden (mobile) the CSS base value (0) already applies.
+      // offsetHeight is 0 for any frame where the header isn't laid out yet. Writing that 0 as an INLINE style would
+      // override the CSS fallback in globals.css and collapse every page's `pt-(--header-h)`, so only a real, positive
+      // height is published.
       if (h > 0) root.style.setProperty("--header-h", `${h}px`);
     };
     publish();
@@ -80,44 +73,40 @@ export function SiteHeader() {
     };
   }, []);
 
-  // Lock body scroll while the mobile drawer is open.
+  // Lock body scroll while the drawer is open; Esc closes it.
   useEffect(() => {
     document.body.style.overflow = drawerOpen ? "hidden" : "";
+    if (!drawerOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setDrawerOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = "";
+      document.removeEventListener("keydown", onKey);
     };
   }, [drawerOpen]);
 
-  // The profile sub-screen only lives on top of an open drawer — pop it back to
-  // the menu whenever the drawer closes (tap outside, ✕, or a nav link), so
-  // reopening the drawer always lands on the menu, not a stale profile screen.
-  // Adjusted during render (the React-recommended pattern, same as the header
-  // reveal-on-navigation reset below) so no cascading-effect render is needed.
+  // The profile screen only lives on top of an open drawer — pop it back to the menu whenever the drawer closes, so
+  // reopening the drawer always lands on the menu. Adjusted during render (the React-recommended pattern), so no
+  // cascading effect render is needed.
   const [drawerWasOpen, setDrawerWasOpen] = useState(drawerOpen);
   if (drawerWasOpen !== drawerOpen) {
     setDrawerWasOpen(drawerOpen);
     if (!drawerOpen) setProfileOpen(false);
   }
 
-  // Always reveal the header when the route changes. Header visibility is otherwise
-  // driven purely by scroll direction, with no reset tied to navigation — so a
-  // `hidden` state set on one page carries onto the next. A client navigation can
-  // also land the new page at a deep, *restored* scroll position (the catalog's
-  // `?after=` restore teleports far down the feed), and the scroll handler below
-  // deliberately does NOT react to such teleports when they land away from the top
-  // (`Math.abs(delta) > 1000` re-anchors without revealing unless `y <= 120`).
-  // Together that leaves the header stuck off-screen after some navigations until
-  // the user manually scrolls up. Reset on the pathname change itself — done during
-  // render (not in an effect) so the new page never paints a carried-over hidden
-  // header even for a frame. It hides again normally once you scroll down the page.
+  // Always reveal the bars when the route changes. Their visibility otherwise follows the scroll direction only, so a
+  // hidden state from one page would carry onto the next; a client navigation can also land at a deep, restored
+  // scroll position (the catalog's `?after=` restore), which the scroll handler deliberately ignores. Reset during
+  // render, so the new page never paints a carried-over hidden bar.
   const [lastPath, setLastPath] = useState(pathname);
   if (pathname !== lastPath) {
     setLastPath(pathname);
     setHidden(false);
   }
 
-  // Hide the header when scrolling down past it, reveal it when scrolling up.
-  // rAF-throttled so the scroll handler does no layout work per event.
+  // Hide the bars when scrolling down past them, reveal them when scrolling up. rAF-throttled.
   useEffect(() => {
     let lastY = window.scrollY;
     let ticking = false;
@@ -127,12 +116,8 @@ export function SiteHeader() {
       ticking = false;
       const y = window.scrollY;
       const delta = y - lastY;
-      // A multi-thousand-px jump in one frame is a TELEPORT (programmatic
-      // scrollTo, e.g. the catalog's `?after=` restore jumping deep into the
-      // feed on load), not a user gesture — reacting to its direction would
-      // flicker the header. Re-anchor the baseline and keep the current
-      // state — except near the page top, where the header must always be
-      // visible.
+      // A multi-thousand-px jump in one frame is a TELEPORT (a programmatic scrollTo, e.g. the catalog's `?after=`
+      // restore), not a gesture. Re-anchor and keep the current state, except near the top, where the bars must show.
       if (Math.abs(delta) > 1000) {
         lastY = y;
         downFrames = 0;
@@ -141,11 +126,8 @@ export function SiteHeader() {
       }
       // Ignore sub-pixel jitter; never hide near the very top of the page.
       if (Math.abs(delta) > 6) {
-        // HIDING requires the down-motion to persist for 2+ consecutive frames.
-        // Real scrolling always does (Chrome spreads even one wheel notch over
-        // many frames); the virtualizer's one-frame row-measurement corrections
-        // (tens to a few hundred px, downward) never do — without this they
-        // blink the header out mid-pause. Revealing stays instant.
+        // Hiding needs the down-motion to persist for 2+ consecutive frames. Real scrolling always does; the
+        // virtualizer's one-frame row-measurement corrections never do. Revealing stays instant.
         if (delta > 0) {
           downFrames += 1;
           if (downFrames >= 2 && y > 120) setHidden(true);
@@ -168,304 +150,207 @@ export function SiteHeader() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Header visibility is driven purely by scroll direction. It used to also be
-  // force-shown while the drawer was open (back when the hamburger lived in the
-  // header — hiding it would have hidden the only way to close the menu). The
-  // drawer trigger now lives in the bottom nav and the drawer renders above the
-  // header (z-[10050] > z-[9999]), so pinning the header buys nothing — decoupled.
-  const isHidden = hidden;
+  const closeDrawer = () => setDrawerOpen(false);
 
   return (
     <>
       <header
         ref={headerRef}
-        className={`fixed inset-x-0 top-0 z-9999 border-b border-white/6 bg-shell/88 px-0 py-3.5 backdrop-blur-xl transition-transform duration-300 ease-out will-change-transform max-lg:hidden ${
-          isHidden ? "-translate-y-full" : "translate-y-0"
+        className={`fixed inset-x-0 top-0 z-9999 transition-transform duration-300 ease-out will-change-transform motion-reduce:transition-none ${
+          hidden ? "-translate-y-full" : "translate-y-0"
         }`}
       >
-        <div className="mx-auto w-[min(100%-28px,1280px)]">
-          <div className="flex min-h-19.5 items-center justify-between gap-6 rounded-card bg-linear-to-r from-brand to-brand-dark px-6.5 shadow-[0_16px_40px_rgba(0,0,0,0.2)] max-lg:min-h-18 max-lg:rounded-none max-lg:bg-none max-lg:px-0 max-lg:shadow-none">
-            {/* Logo. On mobile the desktop nav + action buttons are hidden, so the
-                logo is the only child of this row — stretch it full-width and
-                center its content so the logo sits in the middle of the bar.
-                Desktop keeps the natural inline (left) placement. */}
-            <Link
-              href="/"
-              prefetch={painted ? undefined : false}
-              className="inline-flex items-center max-lg:w-full max-lg:justify-center"
-            >
-              {/* width/height are the RENDERED box at the file's real 2560×1555
-                  ratio (h-15.5 = 62px → 102px wide). They must be: next/image picks
-                  its srcset from `width`, and the old 150 made every 2x screen pull
-                  the 640px variant (~48KB) for a 102px slot — while the wrong ratio
-                  reserved a 150px box that snapped to 102px once the file loaded.
-                  No `preload`/`priority`: the whole header is `max-lg:hidden`, and a
-                  preload is fetched regardless of `display: none`, so phones paid
-                  for a logo they never show. Left lazy, the browser skips it when
-                  hidden; `fetchPriority` keeps it first in line on desktop. */}
-              <Image
-                src="/logo.png"
-                alt="SelectAuto"
-                width={102}
-                height={62}
-                fetchPriority="high"
-                className="h-15.5 w-auto object-contain max-lg:h-12.5"
-              />
+        {/* Desktop, from 1024 px. */}
+        <div className="sa-hdr">
+          <div className="sa-wrap sa-hdr__in">
+            <Link href="/" prefetch={painted ? undefined : false} className="sa-hdr__logo">
+              {/* No preload: the header is hidden on phones, and a preload is fetched even then. */}
+              <Logo size="header" fetchPriority="high" />
             </Link>
 
-            {/* Desktop nav */}
-            <nav className="flex items-center max-lg:hidden">
-              <ul className="flex items-center gap-7.5">
-                {NAV.map((item) => (
-                  <li key={item.label} className="group relative">
-                    <Link
-                      href={item.href}
-                      prefetch={painted ? undefined : false}
-                      className="relative inline-flex min-h-11 items-center text-base font-bold text-white after:absolute after:bottom-1.25 after:left-0 after:h-0.5 after:w-0 after:rounded-full after:bg-[#fff2d9] after:transition-[width] after:duration-200 group-hover:after:w-full"
-                    >
-                      {item.label}
-                    </Link>
-                    {item.children && (
-                      <ul className="invisible absolute left-0 top-full z-50 mt-3 min-w-55 translate-y-2 rounded-2xl bg-white p-2.5 opacity-0 shadow-[0_18px_40px_rgba(0,0,0,0.16)] transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
-                        {item.children.map((sub) => (
-                          <li key={sub.label}>
-                            <LinkButton
-                              href={sub.href}
-                              rippleTheme="dark"
-                              className="block whitespace-nowrap rounded-xl px-3.5 py-3 text-sm font-semibold text-[#1d1d1d] transition-colors hover:bg-brand/8 hover:text-brand-dark"
-                            >
-                              {sub.label}
-                            </LinkButton>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </li>
-                ))}
-              </ul>
+            <nav className="sa-hdr__nav" aria-label="Основна навигация">
+              {NAV.map((item) =>
+                item.children ? (
+                  <HeaderDropdown
+                    key={item.label}
+                    item={{ ...item, children: item.children }}
+                    active={item.children.some((sub) => isActivePath(sub.href))}
+                    isActivePath={isActivePath}
+                    painted={painted}
+                  />
+                ) : (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    prefetch={painted ? undefined : false}
+                    aria-current={isActivePath(item.href) ? "page" : undefined}
+                  >
+                    {item.label}
+                  </Link>
+                ),
+              )}
             </nav>
 
-            {/* Desktop inquiry button + auth controls */}
-            <div className="flex items-center gap-4.5 max-lg:hidden">
-              <Button
-                onClick={() => openInquiry()}
-                rippleTheme="light"
-                className="inline-flex min-h-13.5 items-center justify-center rounded-full border border-white/25 bg-white/10 px-6 text-[15px] font-extrabold text-white transition-transform duration-200 hover:-translate-y-0.5"
-              >
-                Запитване
-              </Button>
-              {/* Signed out → "Вход" links to the sign-in page; signed in → the
-                  account dropdown (favourites + sign-out). */}
-              {isSignedIn ? (
-                <UserMenu tone="light" />
+            <div className="sa-hdr__act">
+              {status === "loading" ? (
+                <span className="sa-sk block size-10 rounded-full" aria-hidden="true" />
+              ) : isSignedIn ? (
+                <UserMenu />
               ) : (
-                <LinkButton
-                  href="/sign-in"
-                  rippleTheme="dark"
-                  className="inline-flex min-h-13.5 items-center justify-center rounded-full bg-white px-6 text-[15px] font-extrabold text-brand-dark transition-transform duration-200 hover:-translate-y-0.5"
-                >
+                <LinkButton href="/sign-in" variant="sec" size="md">
                   Вход
                 </LinkButton>
               )}
+              <Button variant="pri" size="md" onClick={() => openInquiry()}>
+                Запитване
+              </Button>
             </div>
-
-            {/* The mobile drawer toggle now lives in the fixed bottom nav (the
-                Меню tab) — see <MobileBottomNav> below. */}
           </div>
+        </div>
+
+        {/* Phones and tablets: the slim top bar with the logo. */}
+        <div className="sa-tbar">
+          <Link href="/" prefetch={painted ? undefined : false} className="flex">
+            <Logo size="bar" />
+          </Link>
         </div>
       </header>
 
-      {/* Fixed app-style bottom tab bar (mobile only). Shares the drawer state so
-          its Меню tab opens the same slide-in drawer rendered below. */}
+      {/* The bottom tab bar shares the drawer state, so its Меню tab opens the drawer below. */}
       <MobileBottomNav
         drawerOpen={drawerOpen}
-        hidden={isHidden}
+        hidden={hidden}
         onToggleDrawer={() => setDrawerOpen((open) => !open)}
       />
 
-      {/* Drawer overlay */}
+      {/* Dimmed page behind the drawer; a press on it closes the drawer. */}
       <div
-        onClick={() => setDrawerOpen(false)}
-        className={`fixed inset-0 z-10040 bg-black/52 transition-opacity duration-200 lg:hidden ${
+        aria-hidden="true"
+        onClick={closeDrawer}
+        className={`sa-scrim fixed z-10040 transition-opacity duration-200 motion-reduce:transition-none lg:hidden ${
           drawerOpen ? "visible opacity-100" : "invisible opacity-0"
         }`}
       />
 
-      {/* Drawer */}
       <aside
-        className={`fixed right-0 top-0 z-10050 h-dvh w-[min(88vw,380px)] overflow-y-auto bg-linear-to-b from-[#121318] to-[#0b0c10] transition-transform duration-300 lg:hidden ${
-          // The shadow is cast to the LEFT (-12px, 40px blur). While the drawer is
-          // parked off-canvas (translate-x-full moves it right by only its own
-          // width), that shadow would bleed ~52px back onto the viewport's right
-          // edge as a dark strip on every mobile page — so only render it while
-          // the drawer is actually open.
-          drawerOpen ? "translate-x-0 shadow-[-12px_0_40px_rgba(0,0,0,0.28)]" : "translate-x-full"
+        aria-label="Меню"
+        inert={!drawerOpen}
+        className={`sa-drawer fixed right-0 top-0 z-10050 h-dvh w-[min(88vw,380px)] transition-transform duration-300 motion-reduce:transition-none lg:hidden ${
+          drawerOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        <div className="sticky top-0 z-2 flex items-center justify-between gap-3 border-b border-white/8 bg-[#121318]/94 px-4 py-4.5 backdrop-blur-md">
-          <p className="m-0 text-sm font-extrabold uppercase tracking-[0.08em] text-white">
-            Меню
-          </p>
-          <Button
-            onClick={() => setDrawerOpen(false)}
-            rippleTheme="light"
-            className="flex size-10 items-center justify-center rounded-xl bg-white/8 text-white"
-            aria-label="Затвори менюто"
-          >
-            <CloseIcon className="size-5" />
-          </Button>
+        <div className="sa-drawer__h">
+          <b>Меню</b>
+          <IconButton label="Затворете менюто" variant="ghost" onClick={closeDrawer}>
+            <CloseIcon />
+          </IconButton>
         </div>
-        <div className="pb-[calc(22px+env(safe-area-inset-bottom))]">
-          <nav aria-label="Меню навигация">
-            <ul className="m-0 list-none p-0">
-              {NAV.map((item) =>
-                item.children ? (
-                  <li key={item.label} className="border-b border-white/6">
-                    <Button
-                      onClick={() =>
-                        setOpenSub(openSub === item.label ? null : item.label)
-                      }
-                      rippleTheme="light"
-                      aria-expanded={openSub === item.label}
-                      className="flex min-h-14 w-full items-center justify-between gap-3 px-4.5 text-[15px] font-bold text-tx"
-                    >
-                      {item.label}
-                      <span
-                        aria-hidden
-                        className={`shrink-0 text-white/70 transition-transform duration-300 ease-in-out motion-reduce:transition-none ${
-                          openSub === item.label ? "rotate-180" : ""
-                        }`}
-                      >
-                        <ChevronDownIcon className="size-4" />
-                      </span>
-                    </Button>
-                    {/* Sub-menu animates height 0 ↔ auto (matching ExpandableSection)
-                        instead of snapping; children stay mounted so the links are in
-                        the DOM even while collapsed. Plain CSS: a grid row going
-                        0fr ↔ 1fr is the "height: auto" a transition can reach. (This
-                        was the Motion library — ~120KB of script, ~35KB compressed,
-                        on every page, for this.)
-                        `motion-reduce` makes it instant under prefers-reduced-motion. */}
-                    <div
-                      className={`grid transition-[grid-template-rows,opacity] duration-320 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none ${
-                        openSub === item.label ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-                      }`}
-                    >
-                      <ul className="m-0 min-h-0 list-none overflow-hidden bg-white/2 p-0">
-                        {item.children.map((sub) => {
-                          const active = isActivePath(sub.href);
-                          return (
-                            <li key={sub.label}>
-                              <LinkButton
-                                href={sub.href}
-                                rippleTheme="light"
-                                onClick={() => setDrawerOpen(false)}
-                                aria-current={active ? "page" : undefined}
-                                className={`flex min-h-14 items-center pl-7.5 pr-4.5 text-sm font-semibold transition-colors ${
-                                  active ? "text-brand-soft" : "text-white/70"
-                                }`}
-                              >
-                                {sub.label}
-                              </LinkButton>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-                  </li>
-                ) : (
-                  (() => {
-                    const active = isActivePath(item.href);
-                    return (
-                      <li key={item.label} className="border-b border-white/6">
-                        <LinkButton
-                          href={item.href}
-                          rippleTheme="light"
-                          onClick={() => setDrawerOpen(false)}
+
+        <nav className="sa-drawer__nav" aria-label="Меню навигация">
+          {NAV.map((item) => {
+            if (!item.children) {
+              const active = isActivePath(item.href);
+              return (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  prefetch={painted ? undefined : false}
+                  onClick={closeDrawer}
+                  aria-current={active ? "page" : undefined}
+                  className={active ? "is-on" : undefined}
+                >
+                  {item.label}
+                </Link>
+              );
+            }
+            const expanded = openSub === item.label;
+            return (
+              <div key={item.label}>
+                <button
+                  type="button"
+                  aria-expanded={expanded}
+                  onClick={() => setOpenSub(expanded ? null : item.label)}
+                >
+                  {item.label}
+                  <ChevronDownIcon
+                    className={`transition-transform duration-300 ease-in-out motion-reduce:transition-none ${
+                      expanded ? "rotate-180 text-ortx" : ""
+                    }`}
+                  />
+                </button>
+                {/* The group's pages animate height 0 ↔ auto as a grid row going 0fr ↔ 1fr, and stay in the DOM
+                    while collapsed, so the links are always there for crawlers. */}
+                <div
+                  className={`grid transition-[grid-template-rows,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none ${
+                    expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                  }`}
+                >
+                  <div className="sa-drawer__sub min-h-0 overflow-hidden" inert={!expanded}>
+                    {item.children.map((sub) => {
+                      const active = isActivePath(sub.href);
+                      return (
+                        <Link
+                          key={sub.href}
+                          href={sub.href}
+                          prefetch={painted ? undefined : false}
+                          onClick={closeDrawer}
                           aria-current={active ? "page" : undefined}
-                          className={`flex min-h-14 items-center px-4.5 text-[15px] font-bold transition-colors ${
-                            active ? "bg-brand/12 text-brand-soft" : "text-tx"
-                          }`}
+                          className={active ? "is-on" : undefined}
                         >
-                          {/* Active row reads as a highlighted, selected row: a
-                              subtle brand wash + a full-height left accent bar in
-                              the gutter. The bar is absolutely positioned so it
-                              never shifts the label — every row's text stays flush
-                              at px-[18px] whether active or not. */}
-                          <span
-                            aria-hidden="true"
-                            className={`absolute inset-y-0 left-0 w-1 transition-colors ${
-                              active ? "bg-brand-soft" : "bg-transparent"
-                            }`}
-                          />
-                          {item.label}
-                        </LinkButton>
-                      </li>
-                    );
-                  })()
-                ),
-              )}
-            </ul>
-          </nav>
-          <div className="flex flex-col gap-3 px-4.5 pt-5">
-            <Button
-              onClick={() => {
-                setDrawerOpen(false);
-                openInquiry();
-              }}
-              rippleTheme="light"
-              className="inline-flex min-h-13.5 w-full items-center justify-center rounded-full bg-linear-to-r from-brand-dark to-brand px-6 text-[15px] font-extrabold text-white shadow-[0_12px_26px_rgba(216,111,22,0.24)]"
+                          {sub.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </nav>
+
+        <div className="sa-drawer__f pb-[calc(20px+env(safe-area-inset-bottom))]">
+          <Button
+            variant="pri"
+            block
+            onClick={() => {
+              closeDrawer();
+              openInquiry();
+            }}
+          >
+            Направете запитване
+          </Button>
+          {status === "loading" ? (
+            <span className="sa-sk block h-12 rounded-md" aria-hidden="true" />
+          ) : isSignedIn ? (
+            // A row that pushes the profile screen in from the right.
+            <button
+              type="button"
+              onClick={() => setProfileOpen(true)}
+              aria-haspopup="menu"
+              aria-expanded={profileOpen}
+              className="flex min-h-15 w-full cursor-pointer items-center gap-3 rounded-lg border-0 bg-s2 py-2 pl-2 pr-3.5 text-left text-tx shadow-[inset_0_0_0_1px_var(--color-hair2)]"
             >
-              Направете запитване
-            </Button>
-            {/* Auth: signed-out links to sign-in; signed-in shows a full-width
-                row that pushes the app-style profile sub-screen (favourites +
-                sign-out) in from the right — see <DrawerProfilePanel> below.
-                (The old reused <UserMenu> popover got clipped by the drawer.) */}
-            {isSignedIn ? (
-              <Button
-                onClick={() => setProfileOpen(true)}
-                rippleTheme="light"
-                aria-haspopup="menu"
-                aria-expanded={profileOpen}
-                className="flex min-h-14 w-full items-center gap-3 rounded-full border border-white/10 bg-white/6 pl-2 pr-4 text-left"
-              >
-                <span className="grid size-10 shrink-0 place-items-center rounded-full border border-white/20 bg-white/10 text-sm font-black uppercase text-white">
-                  {initial}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[15px] font-bold text-white">Моят профил</span>
-                  {session?.user?.email ? (
-                    <span className="block truncate text-xs text-white/55">{session.user.email}</span>
-                  ) : null}
-                </span>
-                <ChevronRightIcon className="size-4 shrink-0 text-white/55" />
-              </Button>
-            ) : (
-              <LinkButton
-                href="/sign-in"
-                rippleTheme="light"
-                onClick={() => setDrawerOpen(false)}
-                className="inline-flex min-h-13.5 w-full items-center justify-center rounded-full border border-white/20 bg-white/10 px-6 text-[15px] font-extrabold text-white"
-              >
-                Вход / Регистрация
-              </LinkButton>
-            )}
-          </div>
+              <span className="sa-avatar">{initial}</span>
+              <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <b className="text-[15px] font-extrabold leading-tight">Моят профил</b>
+                {session?.user?.email ? (
+                  <small className="truncate text-[13px] text-tx3">{session.user.email}</small>
+                ) : null}
+              </span>
+              <ChevronRightIcon className="size-4.5 shrink-0 text-tx2" />
+            </button>
+          ) : (
+            <LinkButton href="/sign-in" variant="sec" block onClick={closeDrawer}>
+              Вход / Регистрация
+            </LinkButton>
+          )}
         </div>
       </aside>
 
-      {/* App-style profile sub-screen. Only mounted while signed in; slides in
-          over the drawer when the "Моят профил" row is tapped, with a back
-          button that pops back to the menu. */}
+      {/* The profile screen, mounted only while signed in. */}
       {isSignedIn ? (
-        <DrawerProfilePanel
-          open={profileOpen}
-          onBack={() => setProfileOpen(false)}
-          onNavigate={() => setDrawerOpen(false)}
-        />
+        <DrawerProfilePanel open={profileOpen} onBack={() => setProfileOpen(false)} onNavigate={closeDrawer} />
       ) : null}
     </>
   );
 }
-

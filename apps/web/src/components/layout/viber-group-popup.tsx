@@ -1,13 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { Button, LinkButton } from "@/components/common";
+import { buttonClasses, IconButton } from "@/components/common";
 import { CloseIcon, ViberGlyphIcon } from "@/components/icons";
 import { SOCIALS } from "@/constants";
 
 /**
- * Floating "Влез във Viber групата" CTA pill, mounted once in the root layout
- * (through PublicWidgets, which leaves it out of /admin).
+ * Floating „Влезте във Viber групата" call to action, mounted once in the root
+ * layout (through PublicWidgets, which leaves it out of /admin): a pill at the top
+ * on desktop, a card across the top on phones and tablets (boards `ac-float`,
+ * `ac-float-desk`).
  *
  * Behaviour (per product spec):
  *  - Reveals while the user scrolls DOWN (past a small threshold), hides while
@@ -128,67 +130,72 @@ export function ViberGroupPopup() {
 
   return (
     <div
-      // Fixed, centred near the TOP. The sticky header auto-hides on scroll-down —
-      // which is exactly when this popup reveals — so the two never collide.
-      // `pointer-events-none` on the wrapper + `pointer-events-auto` on the pill
-      // lets clicks pass through the empty gutters.
-      className="pointer-events-none fixed inset-x-0 top-4 z-10060 flex justify-center px-3 max-md:top-3"
+      // Fixed near the TOP. The header and the top bar hide on scroll-down — which is exactly when this popup
+      // reveals — so they never collide. `pointer-events-none` on the wrapper and `pointer-events-auto` on the popup
+      // let presses pass through the empty gutters.
+      className="pointer-events-none fixed inset-x-3 top-3 z-10060 flex justify-center lg:inset-x-4 lg:top-4"
       aria-hidden={!visible}
-      // `aria-hidden` hides it from assistive tech but leaves the link and the
-      // close button in the tab order — keyboard focus could land on a control
-      // nobody can see. `inert` takes the whole subtree out while it is hidden.
+      // `aria-hidden` hides it from assistive tech but leaves the link and the close button in the tab order —
+      // keyboard focus could land on a control nobody can see. `inert` takes the whole subtree out while hidden.
       inert={!visible}
     >
       <div
-        // Slide DOWN from above + fade in on reveal; slide back up + fade out (and
-        // disable pointer events) on hide. `will-change-transform` keeps the
-        // transition on the compositor. Respects reduced-motion via the duration
-        // utilities only.
-        className={`pointer-events-auto flex w-[min(620px,100%)] items-center gap-4 rounded-full bg-white py-3 pl-3 pr-3.5 shadow-[0_24px_60px_rgba(15,12,41,0.28)] ring-1 ring-black/5 transition-all duration-300 ease-out will-change-transform max-md:gap-3 ${
+        // Slides down and fades in on reveal; slides back up and fades out on hide. Reduced motion keeps the fade.
+        className={`pointer-events-auto w-full transition-[translate,opacity] duration-300 ease-out will-change-transform motion-reduce:transition-opacity lg:w-auto ${
           visible ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-6 opacity-0"
         }`}
         role="dialog"
-        aria-label="Влез във Viber групата"
+        aria-label="Влезте във Viber групата"
       >
-        {/* Purple Viber badge */}
-        <span className="grid size-14 shrink-0 place-items-center rounded-full bg-[#7360f2] text-white shadow-[0_8px_20px_rgba(115,96,242,0.45)] max-md:size-12">
-          <ViberGlyphIcon className="size-7 max-md:size-6" />
-        </span>
-
-        {/* Copy */}
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[17px] font-extrabold leading-tight text-ink max-md:text-[15px]">
-            Влез във Viber групата
-          </p>
-          <p className="truncate text-[15px] leading-snug text-muted max-md:text-[13px]">
-            Получавайте първи най-добрите оферти
-          </p>
-          <p className="truncate text-[15px] font-bold leading-snug text-[#2f80ff] max-md:text-[13px]">
-            6,500+ ентусиасти вече се присъединиха
-          </p>
+        {/* Desktop: a pill at the top centre (board `ac-float-desk`). */}
+        <div className="sa-viberpop max-lg:hidden">
+          <span className="sa-viberpop__ic">
+            <ViberGlyphIcon />
+          </span>
+          <div className="sa-viberpop__tx">
+            <b>Влезте във Viber групата</b>
+            <span>Получавайте първи най-добрите оферти</span>
+            <em>6,500+ ентусиасти вече се присъединиха</em>
+          </div>
+          <a
+            href={VIBER_HREF}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonClasses({ variant: "vb", size: "md" })}
+          >
+            Влезте
+          </a>
+          <IconButton label="Затворете" variant="ghost" onClick={close}>
+            <CloseIcon />
+          </IconButton>
         </div>
 
-        {/* CTA — external link to the Viber group; light ripple on the purple surface. */}
-        <LinkButton
-          href={VIBER_HREF}
-          target="_blank"
-          rel="noopener noreferrer"
-          rippleTheme="light"
-          className="shrink-0 rounded-full bg-[#7360f2] px-7 py-3 text-[16px] font-extrabold text-white transition-colors hover:bg-[#5f4ce6] max-md:px-5 max-md:py-2.5 max-md:text-[14px]"
-        >
-          Влез
-        </LinkButton>
-
-        {/* Close — dismisses for the session. Dark ripple on the white surface.
-            Uses the same {@link CloseIcon} as the header's drawer-close button. */}
-        <Button
-          onClick={close}
-          aria-label="Затвори"
-          rippleTheme="dark"
-          className="grid size-9 shrink-0 place-items-center rounded-full leading-none text-muted/70 transition-colors hover:bg-black/5 hover:text-ink max-md:size-8"
-        >
-          <CloseIcon className="size-5 max-md:size-4.5" />
-        </Button>
+        {/* Phones and tablets: a card across the top with a full-width button (board `ac-float`, state 2). */}
+        <div className="flex flex-col gap-3 rounded-[20px] border border-hair2 bg-s2 p-3.5 shadow-pop lg:hidden">
+          <div className="flex items-start gap-3">
+            <span className="grid size-11 flex-none place-items-center rounded-full bg-viber text-white">
+              <ViberGlyphIcon className="size-5.5" />
+            </span>
+            <div className="min-w-0 flex-1 pt-0.5">
+              <b className="block text-base leading-[1.3]">Влезте във Viber групата</b>
+              <span className="mt-0.5 block text-sm leading-[1.4] text-tx2">Получавайте първи най-добрите оферти</span>
+              <em className="mt-0.5 block text-sm font-bold not-italic leading-[1.4] text-vibertx">
+                6,500+ ентусиасти вече се присъединиха
+              </em>
+            </div>
+            <IconButton label="Затворете" variant="ghost" onClick={close} className="-mr-1.5 -mt-1.5">
+              <CloseIcon />
+            </IconButton>
+          </div>
+          <a
+            href={VIBER_HREF}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`${buttonClasses({ variant: "vb", size: "md", block: true })} rounded-full`}
+          >
+            Влезте
+          </a>
+        </div>
       </div>
     </div>
   );

@@ -27,12 +27,13 @@ const eslintConfig = defineConfig([
       // strings onto multiple lines and conflicts with Prettier's formatting.
       "better-tailwindcss/enforce-consistent-line-wrapping": "off",
       // These are our own project-global classes, not Tailwind utilities:
-      //   sa-*                 — theme classes / Swiper hooks (see globals.css + theme.css)
-      //   is-visible           — scroll-reveal toggle (globals.css .sa-reveal.is-visible)
+      //   sa-*                 — the design's component classes (src/styles/kit.css) and Swiper hooks
+      //   is-*, has-*          — the kit's state modifiers (is-on, is-neg, has-end …) and the
+      //                          scroll-reveal toggle (globals.css .sa-reveal.is-visible)
       //   animate-ripple-effect — custom keyframe utility (globals.css)
       //   calc-range            — financing-calculator range slider (globals.css)
       // Whitelist them so the rule still catches genuine typos elsewhere.
-      "better-tailwindcss/no-unknown-classes": ["error", { ignore: ["^sa-", "^is-visible$", "^animate-", "^calc-"] }],
+      "better-tailwindcss/no-unknown-classes": ["error", { ignore: ["^sa-", "^is-", "^has-", "^animate-", "^calc-"] }],
       // Convert arbitrary pixel values to the spacing scale where an exact scale
       // step exists: min-h-[34px] -> min-h-8.5, px-[16px] -> px-4, etc.
       // Requires the <html> root font size (16px) to map px -> rem scale steps.

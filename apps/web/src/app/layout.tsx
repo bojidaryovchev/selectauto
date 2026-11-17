@@ -64,11 +64,11 @@ export const metadata: Metadata = {
   },
 };
 
-// Mobile browser-chrome colour = the dark header/nav (`bg-shell`, #0f1014). The
-// site UI is light-only, so pin `colorScheme` to light (no forced dark inversion).
+// Mobile browser-chrome colour = the night ground (`bg`, #0C0D10). The site is
+// dark-only, so `colorScheme` is dark: native controls and scrollbars match it.
 export const viewport: Viewport = {
-  themeColor: "#0f1014",
-  colorScheme: "light",
+  themeColor: "#0c0d10",
+  colorScheme: "dark",
 };
 
 export default function RootLayout({
@@ -93,7 +93,7 @@ export default function RootLayout({
           (≈62px tab bar + the iOS home-indicator safe area) so page content and
           the footer are never hidden behind it. Removed at lg where the bar is
           `lg:hidden`. */}
-      <body className="flex min-h-full flex-col bg-white pb-[calc(62px+env(safe-area-inset-bottom))] text-ink lg:pb-0">
+      <body className="flex min-h-full flex-col pb-[calc(var(--bottom-nav)+env(safe-area-inset-bottom))] lg:pb-0">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}

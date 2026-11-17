@@ -1,15 +1,8 @@
-/** Leftward chevron (24×24), used by the gallery prev control. */
+/** Lucide „chevron-left" as drawn on the boards (kit/icons.json, stroke 1.8). Colour follows `currentColor`. */
 export function ChevronLeftIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
-      <path
-        d="M15 5l-7 7 7 7"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className}>
+      <path d="m15 18-6-6 6-6" />
     </svg>
   );
 }

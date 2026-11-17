@@ -1,20 +1,11 @@
-/** Document under a magnifier (24×24), outlined. The admin sidebar's Carfax inbox. */
+/** Lucide „file-search" as drawn on the boards (kit/icons.json, stroke 1.8). Colour follows `currentColor`. */
 export function FileSearchIcon({ className }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      className={className}
-    >
-      <path d="M19 11V8l-5-5H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4" />
-      <path d="M14 3v5h5" />
-      <circle cx="16" cy="16" r="3" />
-      <path d="m18.2 18.2 2.3 2.3" />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className}>
+      <path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" />
+      <path d="M14 2v5a1 1 0 0 0 1 1h5" />
+      <circle cx="11.5" cy="14.5" r="2.5" />
+      <path d="M13.3 16.3 15 18" />
     </svg>
   );
 }

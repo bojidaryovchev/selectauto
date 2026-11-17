@@ -1,10 +1,12 @@
 export { Button } from "./button";
+export { buttonClasses, type ButtonSize, type ButtonStyleProps, type ButtonVariant } from "./button-variants";
 export { CarouselNav } from "./carousel-nav";
 export { Combobox, type ComboboxOption } from "./combobox";
 export { ConfirmDialog } from "./confirm-dialog";
 export { Container } from "./container";
 export { CopyButton } from "./copy-button";
 export { ExpandableSection } from "./expandable-section";
+export { IconButton } from "./icon-button";
 export { LinkButton } from "./link-button";
 export { Logo } from "./logo";
 export { Reveal } from "./reveal";

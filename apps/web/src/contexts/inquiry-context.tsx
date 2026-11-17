@@ -104,12 +104,13 @@ export function InquiryProvider({
         <Modal isOpen={isOpen} prefill={prefill} onClose={close} />
       ) : isOpen ? (
         // Opened before the chunk arrived (a tap in the first moments of a slow
-        // load): show the modal's own backdrop at once so the tap visibly lands.
-        <div
-          aria-hidden="true"
-          onClick={close}
-          className="fixed inset-0 z-99999 bg-[rgba(8,10,14,0.72)] backdrop-blur-lg"
-        />
+        // load): show the dimmed page and a spinner at once, so the tap visibly
+        // lands (board `ac-float`, state 5). A press on it gives up.
+        <div onClick={close} className="sa-scrim fixed z-99999 grid place-items-center">
+          <span role="status" aria-label="Зареждане" className="grid place-items-center">
+            <span className="sa-spin size-8 border-3 text-or" aria-hidden="true" />
+          </span>
+        </div>
       ) : null}
     </InquiryContext.Provider>
   );

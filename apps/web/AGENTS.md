@@ -39,7 +39,9 @@ dedicated `src/` folders (modeled on the `ecommerce-store` repo):
 - `types/` (`ActionResult`, `CarView`, …), `contexts/` (React Context for UI
   state — no Zustand), `lib/` (`db`, `email`, `phone`, `cache-tags`,
   `car-mapper`), `constants/`, `data/` (static content + `FALLBACK_*` listings).
-- `styles/tokens.css` — the design tokens, imported by `app/globals.css`.
+- `styles/tokens.css` — the design tokens; `styles/kit.css` — the design's
+  component classes (`sa-*`), ported from the boards. Both are imported by
+  `app/globals.css`.
 
 Design: the UI is being rebuilt in the „Нощно шосе" design system. Before any
 UI work, read `docs/design/README.md` (repository root) and build each screen

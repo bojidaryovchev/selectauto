@@ -1,19 +1,10 @@
-/** Percent sign (24×24), outlined. The admin sidebar's „Тарифи“. */
+/** Lucide „percent" as drawn on the boards (kit/icons.json, stroke 1.8). Colour follows `currentColor`. */
 export function PercentIcon({ className }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      className={className}
-    >
-      <path d="M19 5 5 19" />
-      <circle cx="7" cy="7" r="2.5" />
-      <circle cx="17" cy="17" r="2.5" />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className}>
+      <line x1="19" x2="5" y1="5" y2="19" />
+      <circle cx="6.5" cy="6.5" r="2.5" />
+      <circle cx="17.5" cy="17.5" r="2.5" />
     </svg>
   );
 }

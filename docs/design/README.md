@@ -14,6 +14,7 @@ design canvases.
 | What | Where |
 |---|---|
 | Tokens, fonts, type styles | `apps/web/src/styles/tokens.css`; fonts load in `apps/web/src/app/layout.tsx` |
+| Component classes (`sa-btn`, `sa-car`, `sa-hdr` …) | `apps/web/src/styles/kit.css`, ported from the boards' kit; React components apply them |
 | Contrast test of every text and ground pair | `apps/web/tests/design-tokens.test.mts`, run by `pnpm test` |
 | The logo | `Logo` in `apps/web/src/components/common/logo.tsx` |
 | Why this direction, these fonts, this logo | [adr-0001-direction-type-logo.md](adr-0001-direction-type-logo.md) |
@@ -188,7 +189,9 @@ Sizes with an arrow grow with the window, as the boards' do (the kit's `cqi` bec
 ## Components and interaction
 
 Components are named after their code files. The Components board (`kit-components`) shows every state, and the car
-card board (`kit-cards`) shows every kind of card.
+card board (`kit-cards`) shows every kind of card. Their styles are the kit's classes in `src/styles/kit.css`, ported
+from the boards, so code and boards render alike: `Button` and `LinkButton` take `variant` (`pri`, `sec`, `ton`, `txt`,
+`neg`, `pos`, `vb`), `size` (`sm`, `md`, `lg`, `xl`), `block` and `busy`; `IconButton` takes a required `label`.
 
 - **Buttons** (`button.tsx`, `link-button.tsx`): primary (orange, chamfered, one per view), secondary (outline), tonal,
   text link, negative, positive, Viber. Sizes sm, md, default, xl. A busy button shows a spinner and a verb in -ане.
@@ -215,9 +218,9 @@ card board (`kit-cards`) shows every kind of card.
 
 - **The old light theme's tokens** stay in `apps/web/src/app/globals.css`, marked legacy, until no page uses them. When
   the last one goes, consider setting `--color-*: initial` in the tokens so a colour outside the design can't be used.
-- **The page ground is still white.** The shell's rebuild switches `body` to `bg` and `tx`, sets the viewport's colour
-  scheme to dark and its theme colour to `#0C0D10`, and adds the global focus ring (orange text colour on white would
-  be 2.2:1).
+- **The shell is rebuilt** (17–18 November): the page ground is night, the header, phone top bar, bottom tabs, drawer,
+  footer, Viber popup, back-to-top and notifications follow their boards, and the focus ring and the dark colour scheme
+  are global. Pages not rebuilt yet look broken on the dark ground until their turn.
 - **Montserrat** still loads, only for the /proces particle title. Remove it when /proces is rebuilt.
 - **Fonts:** four font files are preloaded once Montserrat goes (Manrope and Unbounded, Latin and Cyrillic), against two
   today. Measure LCP on a phone after the shell's rebuild.
