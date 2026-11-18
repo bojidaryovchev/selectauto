@@ -1,7 +1,8 @@
 "use client";
 
-import { ADMIN_INPUT, AdminBanner, adminChipClass, AdminEmptyState } from "@/components/admin/ui";
+import { ADMIN_INPUT, AdminBanner, adminChipClass, AdminEmptyState, AdminStatusTag } from "@/components/admin/ui";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { CheckIcon, SearchIcon, UsersIcon } from "@/components/icons";
 import { APP_ROLE_META, APP_ROLES, type AppRole } from "@/constants/admin";
 import { formatSofiaDate } from "@/lib/sofia-time";
 import { setUserRoles } from "@/mutations/users";
@@ -10,9 +11,9 @@ import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 
 /**
- * /admin/potrebiteli — grant or revoke the elevated roles on an account. This is
- * how „профил на Радка" gets made: the person registers on the site as usual,
- * then an admin ticks „Наблюдаващ" here. Any number of such profiles is allowed.
+ * /admin/potrebiteli — grant or revoke the elevated roles on an account (boards `ad-users`, `-dialog`, `-list`,
+ * `-roles`; parity check docs/design/parity/admin-users.md). This is how „профил на Радка" gets made: the person
+ * registers on the site as usual, then an admin ticks „Наблюдаващ" here. Any number of such profiles is allowed.
  *
  * An admin can't change their own roles (the mutation refuses), which rules out
  * locking yourself out of the back office. Администратор is full access, so
@@ -67,67 +68,71 @@ export function UsersManager({ users, currentUserId }: { users: UserRow[]; curre
   });
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+    <>
+      <div className="ad-utools">
         <label htmlFor={searchId} className="sr-only">
           Търсене по име или имейл
         </label>
-        <input
-          id={searchId}
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Търсене по име или имейл…"
-          autoCapitalize="off"
-          autoCorrect="off"
-          spellCheck={false}
-          className={`${ADMIN_INPUT} sm:max-w-sm`}
-        />
+        <span className="sa-inw ad-ugrow">
+          <SearchIcon />
+          <input
+            id={searchId}
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Търсене по име или имейл…"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+            className={ADMIN_INPUT}
+          />
+        </span>
         <button
           type="button"
           aria-pressed={staffOnly}
           onClick={() => setStaffOnly((v) => !v)}
-          className={`${adminChipClass(staffOnly)} self-start sm:self-auto`}
+          className={adminChipClass(staffOnly)}
         >
           Само с роли
         </button>
       </div>
-      <p className="text-sm text-muted" aria-live="polite">
-        Показани: <span className="font-bold text-ink">{shown.length}</span> от {users.length}
+      <p className="ad-count" aria-live="polite">
+        Показани: <b>{shown.length}</b> от {users.length}
       </p>
 
       {shown.length === 0 ? (
         <AdminEmptyState
+          icon={<UsersIcon />}
           title={users.length === 0 ? "Няма регистрирани потребители." : "Никой не отговаря на търсенето."}
         />
       ) : (
         <div className="@container">
-          <ul className="m-0 flex list-none flex-col gap-2 p-0 @4xl:hidden">
+          <ul className="ad-ucards @4xl:hidden">
             {shown.map((u) => (
-              <li key={u.id} className="flex flex-col gap-3 rounded-xl border border-line bg-white p-4">
+              <li key={u.id} className="ad-uc">
                 <Identity {...rowProps(u)} />
                 <Roles {...rowProps(u)} />
               </li>
             ))}
           </ul>
 
-          <div className="hidden overflow-hidden rounded-xl border border-line bg-white @4xl:block">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-line text-xs tracking-wide text-muted uppercase">
+          <div className="sa-tbl-wrap hidden @4xl:block">
+            <table className="sa-tbl ad-tbl">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3 font-semibold">Потребител</th>
-                  <th className="w-px px-4 py-3 font-semibold whitespace-nowrap">Регистриран</th>
-                  <th className="px-4 py-3 font-semibold">Роли</th>
+                  <th scope="col">Потребител</th>
+                  <th scope="col">Регистриран</th>
+                  <th scope="col">Роли</th>
                 </tr>
               </thead>
               <tbody>
                 {shown.map((u) => (
-                  <tr key={u.id} className="border-b border-line/60 align-top last:border-0">
-                    <td className="px-4 py-3">
+                  <tr key={u.id}>
+                    <td>
                       <Identity {...rowProps(u)} hideDate />
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-muted">{formatSofiaDate(u.createdAt)}</td>
-                    <td className="px-4 py-3">
+                    <td className="ad-dim ad-nowrap">{formatSofiaDate(u.createdAt)}</td>
+                    <td>
                       <Roles {...rowProps(u)} />
                     </td>
                   </tr>
@@ -149,7 +154,7 @@ export function UsersManager({ users, currentUserId }: { users: UserRow[]; curre
               : `${confirmAdmin.user.name ?? confirmAdmin.user.email} губи пълния достъп до минута.`
             : undefined
         }
-        confirmLabel={confirmAdmin?.grant ? "Дай права" : "Отнеми правата"}
+        confirmLabel={confirmAdmin?.grant ? "Дайте права" : "Отнемете правата"}
         isPending={busyId !== null}
         onConfirm={() => {
           const pending = confirmAdmin;
@@ -158,7 +163,7 @@ export function UsersManager({ users, currentUserId }: { users: UserRow[]; curre
         }}
         onCancel={() => setConfirmAdmin(null)}
       />
-    </div>
+    </>
   );
 }
 
@@ -172,29 +177,25 @@ type RowProps = {
 
 function Identity({ user: u, isSelf, hideDate }: RowProps & { hideDate?: boolean }) {
   return (
-    <div className="min-w-0">
-      <p className="font-semibold wrap-anywhere text-ink">
+    <div className="ad-uid">
+      <p className="ad-uid__n">
         {u.name ?? "—"}
-        {isSelf ? <span className="ml-2 text-xs font-normal text-muted">(вие)</span> : null}
+        {isSelf ? <small>(вие)</small> : null}
       </p>
-      <p className="text-sm wrap-anywhere text-muted">
-        {u.email}
-        {u.emailVerified ? null : (
-          <span className="ml-2 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
-            непотвърден
-          </span>
-        )}
+      <p className="ad-uid__e">
+        <span>{u.email}</span>
+        {u.emailVerified ? null : <AdminStatusTag tone="warn">непотвърден</AdminStatusTag>}
       </p>
-      {hideDate ? null : <p className="text-xs text-muted">Регистриран {formatSofiaDate(u.createdAt)}</p>}
+      {hideDate ? null : <p className="ad-uid__r">Регистриран {formatSofiaDate(u.createdAt)}</p>}
     </div>
   );
 }
 
-/** The roles as labelled toggle pills — 40 px, readable, and reachable by keyboard (real checkboxes). */
+/** The roles as the kit's chips over real checkboxes — 40 px, readable, and reachable by keyboard. */
 function Roles({ user: u, isSelf, busy, error, onToggle }: RowProps) {
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap gap-2" role="group" aria-label={`Роли на ${u.name ?? u.email}`}>
+    <div className="ad-roles">
+      <div className="sa-chips" role="group" aria-label={`Роли на ${u.name ?? u.email}`}>
         {APP_ROLES.map((r) => {
           const on = u.roles.includes(r);
           return (
@@ -206,12 +207,13 @@ function Roles({ user: u, isSelf, busy, error, onToggle }: RowProps) {
                 onChange={(e) => onToggle(r, e.target.checked)}
                 className="sr-only"
               />
+              {on ? <CheckIcon /> : null}
               {APP_ROLE_META[r].label}
             </label>
           );
         })}
       </div>
-      {isSelf ? <p className="text-xs text-muted">Собствените си права не можете да променяте.</p> : null}
+      {isSelf ? <p className="ad-hint">Собствените си права не можете да променяте.</p> : null}
       {error ? <AdminBanner tone="error">{error}</AdminBanner> : null}
     </div>
   );
