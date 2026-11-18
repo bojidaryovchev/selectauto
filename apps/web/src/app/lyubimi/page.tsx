@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { auth } from "@/auth";
-import { Container, LinkButton } from "@/components/common";
+import { LinkButton } from "@/components/common";
 import { CarGridSkeleton } from "@/components/cars/all-cars";
 import { AuctionAlertToggle, FavoritesGrid } from "@/components/cars";
+import { LogInIcon } from "@/components/icons";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { getAuctionAlertPreference, getFavoriteCars } from "@/queries/favorites";
 
@@ -14,70 +15,79 @@ export const metadata: Metadata = {
 };
 
 /**
- * /lyubimi — the signed-in user's saved cars. Static shell (header/footer) renders
- * immediately; the data body streams in a <Suspense> because it reads request-time
- * auth (required under cacheComponents — same pattern as the detail page). The body
- * branches on the Auth.js session: signed-out → a sign-in prompt; signed-in → the
- * saved-cars grid.
+ * /lyubimi — the signed-in user's saved cars (boards `ac-fav`, `ac-fav-out`, `ac-fav-st`; parity check
+ * docs/design/parity/lyubimi.md). Static shell (header/footer, and the title with card skeletons) renders
+ * immediately; the data body streams in a <Suspense> because it reads request-time auth (required under
+ * cacheComponents — same pattern as the detail page). The body branches on the Auth.js session: signed-out → a
+ * sign-in prompt; signed-in → the alert switch and the saved-cars grid.
  */
 export default function FavoritesPage() {
   return (
     <>
       <SiteHeader />
-      <main className="flex-1 bg-[#fafafa] pt-(--header-h) text-ink">
-        <Container>
-          <div className="py-10 max-md:py-7">
-            <h1 className="mb-2 text-4xl font-black uppercase tracking-tight text-ink max-md:text-3xl">
-              Любими автомобили
-            </h1>
-
-            <Suspense fallback={<CarGridSkeleton count={8} />}>
-              <FavoritesBody />
-            </Suspense>
-          </div>
-        </Container>
+      <main className="flex-1 pt-(--header-h)">
+        <Suspense fallback={<FavoritesLoading />}>
+          <FavoritesBody />
+        </Suspense>
       </main>
       <SiteFooter />
     </>
   );
 }
 
+/** While the session and the list load (`ac-fav-st` 6): the title and the catalog's card skeletons. */
+function FavoritesLoading() {
+  return (
+    <>
+      <section className="ac-favtop">
+        <div className="sa-wrap">
+          <div className="ac-favhd">
+            <h1 className="type-h1">Любими автомобили</h1>
+          </div>
+        </div>
+      </section>
+      <section className="ac-favgrid">
+        <div className="sa-wrap">
+          <CarGridSkeleton count={8} />
+        </div>
+      </section>
+    </>
+  );
+}
+
 /**
- * Reads the session (request-time). Signed-out → sign-in prompt; signed-in →
- * fetch the saved cars and hand them to the client <FavoritesGrid>, which renders
- * the grid (reusing the catalog `AuctionCard` — no infinite scroll, favourites are
- * a bounded set), drops cards as they're un-favourited live, and owns the empty
- * state.
+ * Reads the session (request-time). Signed-out → sign-in prompt; signed-in → fetch the saved cars and the alert
+ * preference and hand them to the client <FavoritesGrid>, which renders the header and the grid (reusing the
+ * catalog's card — no infinite scroll, favourites are a bounded set), drops cards as they're un-favourited live, and
+ * owns the empty state.
  */
 async function FavoritesBody() {
   const session = await auth();
 
   if (!session?.user?.id) {
     return (
-      <div className="mt-6 rounded-2xl border border-line bg-white px-6 py-16 text-center">
-        <p className="mb-5 text-base text-muted">
-          Влезте в профила си, за да виждате и управлявате запазените автомобили.
-        </p>
-        <LinkButton
-          href="/sign-in?redirectTo=/lyubimi"
-          rippleTheme="light"
-          className="inline-flex min-h-13 items-center justify-center rounded-full bg-linear-to-r from-brand-dark to-brand px-8 text-[15px] font-extrabold text-white shadow-[0_12px_28px_rgba(216,111,22,0.22)] transition-transform duration-200 hover:-translate-y-0.5"
-        >
-          Вход / Регистрация
-        </LinkButton>
-      </div>
+      <section className="ac-favout">
+        <div className="sa-wrap">
+          <h1 className="type-h1">Любими автомобили</h1>
+          <div className="sa-pnl ac-gate">
+            <div className="sa-empty">
+              <span className="sa-empty__ic" aria-hidden="true">
+                <LogInIcon />
+              </span>
+              <p className="max-w-[46ch] text-[17px] leading-[1.55] font-semibold text-tx">
+                Влезте в профила си, за да виждате и управлявате запазените автомобили.
+              </p>
+              <LinkButton href="/sign-in?redirectTo=/lyubimi" variant="pri">
+                Вход / Регистрация
+              </LinkButton>
+            </div>
+          </div>
+        </div>
+      </section>
     );
   }
 
-  const [cars, alertsEnabled] = await Promise.all([
-    getFavoriteCars(),
-    getAuctionAlertPreference(),
-  ]);
+  const [cars, alertsEnabled] = await Promise.all([getFavoriteCars(), getAuctionAlertPreference()]);
 
-  return (
-    <>
-      <AuctionAlertToggle initialEnabled={alertsEnabled} />
-      <FavoritesGrid cars={cars} />
-    </>
-  );
+  return <FavoritesGrid cars={cars} toggle={<AuctionAlertToggle initialEnabled={alertsEnabled} />} />;
 }

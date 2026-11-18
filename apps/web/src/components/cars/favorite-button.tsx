@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import toast from "react-hot-toast";
 import { ConfirmDialog, IconButton } from "@/components/common";
 import { HeartIcon } from "@/components/icons";
 import { useFavorites } from "@/contexts/favorites-context";
@@ -69,8 +70,10 @@ export function FavoriteButton({
       if (result?.success) {
         setFavorite(carId, result.data.favorited);
       } else {
-        // Roll back on failure (e.g. session expired between render and click, or no connection).
+        // Roll back on failure (e.g. session expired between render and click, or no connection), and say so
+        // (boards `ac-fav-st` 9, `ac-fav-flow` 5, `ac-fav-guest` 6): the heart alone changing back went unnoticed.
         setFavorite(carId, !optimistic);
+        toast.error("Възникна грешка. Опитайте отново.");
       }
     });
   };

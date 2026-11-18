@@ -272,7 +272,8 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
   model hubs (`/avtomobili/marka/…`), the import calculator (`/kalkulator`, its e-mail form and the car page's
   calculator dialog), the leasing and budget calculators, the import hubs (`/vnos-na-koli-ot-…`), the FAQ, contacts,
   about and reviews pages, the Carfax and VIN check pages with the Carfax dialog, /proces, the blog, the three
-  legal pages, the 404, 410 and error pages, and the sign-in and account pages (`/sign-in` to `/greshka-pri-vhod`).
+  legal pages, the 404, 410 and error pages, the sign-in and account pages (`/sign-in` to `/greshka-pri-vhod`) and
+  the favourites (`/lyubimi`).
   Each has its parity file in [parity/](parity/README.md). The inquiry dialog opens as it is until its own step.
 - **The fonts are defined once,** in `src/styles/fonts.ts`: the root layout and `app/global-error.tsx`, which replaces
   the layout, both load them from there.

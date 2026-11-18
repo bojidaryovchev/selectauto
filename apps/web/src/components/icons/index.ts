@@ -49,6 +49,7 @@ export { LayoutGridIcon } from "./layout-grid-icon";
 export { ListChecksIcon } from "./list-checks-icon";
 export { LocationIcon } from "./location-icon";
 export { LockIcon } from "./lock-icon";
+export { LogInIcon } from "./log-in-icon";
 export { LogOutIcon } from "./log-out-icon";
 export { MailIcon } from "./mail-icon";
 export { MapPinIcon } from "./map-pin-icon";

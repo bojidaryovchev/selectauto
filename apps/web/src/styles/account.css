@@ -1,5 +1,5 @@
 /*
-  The account pages /sign-in, /registratsiya, /zabravena-parola, /nova-parola, /verify and /greshka-pri-vhod (boards ac-signin, ac-register, ac-forgot, ac-reset, ac-verify, ac-autherr and their state sheets): the card, the „или“ divider, the label row with its link, the „Последно използвано“ badge and rings, the password field with its eye button, the waiting row and the warning circle.
+  The account pages: /sign-in, /registratsiya, /zabravena-parola, /nova-parola, /verify and /greshka-pri-vhod (boards ac-signin, ac-register, ac-forgot, ac-reset, ac-verify, ac-autherr and their state sheets), the card, the „или“ divider, the label row with its link, the „Последно използвано“ badge and rings, the waiting row and the warning circle; and /lyubimi (boards ac-fav, ac-fav-out, ac-fav-st), the header with the alert switch row, the grid band and the sign-in and empty panels.
   Ported by script from the screen's board sources (apps/web/scripts/port-board-css.mjs), as kit.css is from the kit: token
   names follow tokens.css, the boards' cqi became vw and their container queries media queries. Board-only parts
   (device frames, preview overlays) were left out. Class prefix: ac-.
@@ -34,4 +34,24 @@
   .ac-eic{width:64px;height:64px;display:grid;place-items:center;border-radius:50%;background:var(--color-warn-w);color:var(--color-warn)}
   .ac-eic svg{width:30px;height:30px}
   .ac-msg{font-size:15.5px;line-height:1.6;color:var(--color-tx2);max-width:38ch}
+  .ac-favhd{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,460px);grid-template-areas:"t g" "i g";column-gap:48px;row-gap:14px;align-items:end;margin-bottom:clamp(24px,2.4vw,40px)}
+  .ac-favhd>h1{grid-area:t}
+  .ac-favhd>.ac-favhd__i{grid-area:i;max-width:62ch}
+  .ac-favhd>.ac-tglw{grid-area:g}
+  @media (max-width:1023.98px){.ac-favhd{grid-template-columns:minmax(0,1fr);grid-template-areas:"t" "g" "i";align-items:stretch}}
+  .ac-tglw{display:flex;flex-direction:column;gap:8px}
+  .ac-tgl{display:flex;align-items:center;gap:14px;padding:14px 14px 14px 16px;border-radius:var(--radius-lg);background:var(--color-s1);border:1px solid var(--color-hair)}
+  .ac-tgl__ic{width:44px;height:44px;flex:none;display:grid;place-items:center;border-radius:50%;background:var(--color-s2);color:var(--color-tx2)}
+  .ac-tgl__ic svg{width:22px;height:22px}
+  .ac-tgl.is-on .ac-tgl__ic{background:var(--color-or-w);color:var(--color-ortx)}
+  .ac-tgl__tx{flex:1;min-width:0}
+  .ac-tgl__t{font:800 15.5px/1.3 var(--font-sans);color:var(--color-tx)}
+  .ac-tgl__d{font-size:14px;line-height:1.45;color:var(--color-tx2);margin-top:3px}
+  .ac-swb{border:0;background:transparent;padding:0;flex:none}
+  .ac-swb.ac-busy{opacity:.6;cursor:progress}
+  .ac-favgrid{padding-bottom:clamp(56px,6.5vw,112px)}
+  .ac-gate{margin-top:clamp(20px,2vw,32px)}
+  .ac-gate .sa-empty{padding:clamp(40px,5vw,72px) 20px}
+  .ac-favtop{padding-top:clamp(32px,4vw,56px);padding-bottom:0}
+  .ac-favout{padding-block:clamp(32px,4vw,56px) clamp(56px,6.5vw,112px)}
 }
