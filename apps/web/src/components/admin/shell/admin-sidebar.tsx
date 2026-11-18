@@ -19,14 +19,14 @@ export function AdminSidebar({
   account: AdminAccount;
 }) {
   return (
-    <aside className="ad-side fixed inset-y-0 left-0 z-40 hidden h-dvh w-64 border-r border-hair bg-s1 lg:flex">
-      <div className="ad-side__brand">
+    <aside className="bo-side fixed inset-y-0 left-0 z-40 hidden h-dvh w-64 border-r border-hair bg-s1 lg:flex">
+      <div className="bo-side__brand">
         <AdminBrand href={homeHref} />
       </div>
-      <nav aria-label="Админ панел" className="ad-side__nav">
+      <nav aria-label="Админ панел" className="bo-side__nav">
         <AdminNavList groups={groups} />
       </nav>
-      <div className="ad-side__acc">
+      <div className="bo-side__acc">
         <AdminAccountCard account={account} />
       </div>
     </aside>

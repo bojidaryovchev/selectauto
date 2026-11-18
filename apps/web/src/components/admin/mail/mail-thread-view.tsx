@@ -53,20 +53,20 @@ export function MailThreadView({ thread }: { thread: MailThreadDetail }) {
           select used to keep showing the status it was opened with. */}
       <MailThreadStatusSelect key={thread.status} threadId={thread.id} value={thread.status} />
 
-      <ul className="ad-msgs">
+      <ul className="bo-msgs">
         {thread.messages.map((m) => {
           const outbound = m.direction === "outbound";
           const files = attachmentsFor(m.id);
           return (
-            <li key={m.id} className={outbound ? "ad-msg ad-msg--out" : "ad-msg"}>
-              <div className="ad-msg__h">
+            <li key={m.id} className={outbound ? "bo-msg bo-msg--out" : "bo-msg"}>
+              <div className="bo-msg__h">
                 <b>{outbound ? "SelectAuto" : m.fromName || m.fromAddress}</b>
                 <time dateTime={new Date(m.createdAt).toISOString()}>{formatSofiaDateTime(m.createdAt)}</time>
               </div>
 
               {/* A failed reply must be impossible to mistake for a sent one. */}
               {outbound && m.deliveryState === "failed" && (
-                <AdminBanner tone="error" className="ad-msg__fail">
+                <AdminBanner tone="error" className="bo-msg__fail">
                   <p>
                     <strong>НЕ е изпратено</strong>
                     {m.deliveryError ? `: ${m.deliveryError}` : "."}
@@ -74,8 +74,8 @@ export function MailThreadView({ thread }: { thread: MailThreadDetail }) {
                 </AdminBanner>
               )}
               {outbound && m.deliveryState === "sending" && (
-                <p className="ad-sending">
-                  <span className="sa-spin ad-spin-sm" aria-hidden="true" />
+                <p className="bo-sending">
+                  <span className="sa-spin bo-spin-sm" aria-hidden="true" />
                   изпраща се…
                 </p>
               )}
@@ -83,9 +83,9 @@ export function MailThreadView({ thread }: { thread: MailThreadDetail }) {
               <MessageBody textBody={m.textBody} htmlBody={m.htmlBody} fetched={outbound || m.bodyFetchedAt !== null} />
 
               {files.length > 0 && (
-                <ul className="ad-files">
+                <ul className="bo-files">
                   {files.map((f, i) => (
-                    <li key={i} className="ad-file">
+                    <li key={i} className="bo-file">
                       <PaperclipIcon />
                       <span>
                         {f.filename || "прикачен файл"}
@@ -102,7 +102,7 @@ export function MailThreadView({ thread }: { thread: MailThreadDetail }) {
       </ul>
 
       {thread.attachments.length > 0 && (
-        <p className="ad-note">
+        <p className="bo-note">
           <InfoIcon />
           <span>Прикачените файлове се съхраняват в Resend и още не се свалят от панела.</span>
         </p>

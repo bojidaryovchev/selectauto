@@ -12,22 +12,22 @@ export function AdminShellSkeleton() {
     <>
       <div
         aria-hidden="true"
-        className="ad-side fixed inset-y-0 left-0 z-40 hidden h-dvh w-64 border-r border-hair bg-s1 lg:flex"
+        className="bo-side fixed inset-y-0 left-0 z-40 hidden h-dvh w-64 border-r border-hair bg-s1 lg:flex"
       >
-        <div className="ad-side__brand">
+        <div className="bo-side__brand">
           <AdminBrand />
         </div>
-        <div className="ad-side__nav">
-          <div className="ad-skrows">
+        <div className="bo-side__nav">
+          <div className="bo-skrows">
             {ROWS.map((row) => (
-              <div key={row} className="sa-sk ad-skr" />
+              <div key={row} className="sa-sk bo-skr" />
             ))}
           </div>
         </div>
       </div>
-      <div aria-hidden="true" className="sa-tbar ad-tbar">
-        <div className="ad-tbar__l">
-          <span className="ad-tbar__sp" />
+      <div aria-hidden="true" className="sa-tbar bo-tbar">
+        <div className="bo-tbar__l">
+          <span className="bo-tbar__sp" />
           <AdminBrand compact />
         </div>
       </div>

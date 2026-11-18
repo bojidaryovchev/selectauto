@@ -65,15 +65,15 @@ export function LeadDetailDrawer({
       <Drawer.Portal>
         <Drawer.Backdrop className="fixed inset-0 z-50 min-h-dvh bg-black opacity-[calc(0.74*(1-var(--drawer-swipe-progress)))] transition-opacity duration-450 ease-[cubic-bezier(0.32,0.72,0,1)] data-ending-style:opacity-0 data-ending-style:duration-[calc(var(--drawer-swipe-strength)*400ms)] data-starting-style:opacity-0 data-swiping:duration-0 supports-[-webkit-touch-callout:none]:absolute motion-reduce:transition-none" />
         <Drawer.Viewport className="fixed inset-0 z-50 flex justify-end">
-          <Drawer.Popup className="ad-dw relative -mr-(--bleed) h-full w-[calc(min(100vw,32rem)+var(--bleed))] transform-[translateX(var(--drawer-swipe-movement-x))] touch-auto pr-(--bleed) transition-transform duration-450 ease-[cubic-bezier(0.32,0.72,0,1)] outline-none [--bleed:3rem] data-ending-style:transform-[translateX(calc(100%-var(--bleed)+2px))] data-ending-style:duration-[calc(var(--drawer-swipe-strength)*400ms)] data-starting-style:transform-[translateX(calc(100%-var(--bleed)+2px))] data-swiping:select-none supports-[-webkit-touch-callout:none]:[--bleed:0px] motion-reduce:transition-none">
+          <Drawer.Popup className="bo-dw relative -mr-(--bleed) h-full w-[calc(min(100vw,32rem)+var(--bleed))] transform-[translateX(var(--drawer-swipe-movement-x))] touch-auto pr-(--bleed) transition-transform duration-450 ease-[cubic-bezier(0.32,0.72,0,1)] outline-none [--bleed:3rem] data-ending-style:transform-[translateX(calc(100%-var(--bleed)+2px))] data-ending-style:duration-[calc(var(--drawer-swipe-strength)*400ms)] data-starting-style:transform-[translateX(calc(100%-var(--bleed)+2px))] data-swiping:select-none supports-[-webkit-touch-callout:none]:[--bleed:0px] motion-reduce:transition-none">
             {lead ? (
               <Drawer.Content key={`${lead.type}-${lead.id}`} className="flex min-h-0 flex-1 flex-col">
-                <header className="ad-dw__h">
+                <header className="bo-dw__h">
                   <div>
-                    <p className="ad-dw__eb">
+                    <p className="bo-dw__eb">
                       {LEAD_TYPE_META[lead.type].short} · #{lead.id}
                     </p>
-                    <Drawer.Title className="ad-dw__t">{lead.cells[0].text}</Drawer.Title>
+                    <Drawer.Title className="bo-dw__t">{lead.cells[0].text}</Drawer.Title>
                   </div>
                   <LeadStatusBadge status={lead.status} />
                   <Drawer.Close aria-label="Затворете" className="sa-ib sa-ib--ghost">
@@ -81,12 +81,12 @@ export function LeadDetailDrawer({
                   </Drawer.Close>
                 </header>
 
-                <div className="ad-dw__b overscroll-contain">
+                <div className="bo-dw__b overscroll-contain">
                   <FieldList fields={lead.details} />
                   {lead.amounts.length > 0 ? <FieldList fields={lead.amounts} amounts /> : null}
                   <FieldList fields={lead.meta} />
 
-                  <div className="ad-box">
+                  <div className="bo-box">
                     <p>Статус</p>
                     <StatusSelect type={lead.type} id={lead.id} value={lead.status} onChanged={onStatusChanged} />
                   </div>
@@ -106,7 +106,7 @@ export function LeadDetailDrawer({
             forceRender
             className="sa-scrim fixed z-70 min-h-dvh transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 supports-[-webkit-touch-callout:none]:absolute"
           />
-          <AlertDialog.Popup className="sa-dlg ad-dlg fixed top-1/2 left-1/2 z-70 max-w-[calc(100vw-2rem)] -translate-1/2 transition-[scale,opacity] duration-150 outline-none data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-starting-style:scale-[0.98] data-starting-style:opacity-0">
+          <AlertDialog.Popup className="sa-dlg bo-dlg fixed top-1/2 left-1/2 z-70 max-w-[calc(100vw-2rem)] -translate-1/2 transition-[scale,opacity] duration-150 outline-none data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-starting-style:scale-[0.98] data-starting-style:opacity-0">
             <div className="sa-dlg__h">
               <AlertDialog.Title className="sa-dlg__t">Бележката не е запазена</AlertDialog.Title>
             </div>
@@ -137,10 +137,10 @@ export function LeadDetailDrawer({
   );
 }
 
-/** One of the drawer's lists (`ad-dl`); `amounts` right-aligns the values and sets the total larger. */
+/** One of the drawer's lists (`bo-dl`); `amounts` right-aligns the values and sets the total larger. */
 function FieldList({ fields, amounts = false }: { fields: AdminDetailField[]; amounts?: boolean }) {
   return (
-    <dl className={amounts ? "ad-dl ad-dl--num" : "ad-dl"}>
+    <dl className={amounts ? "bo-dl bo-dl--num" : "bo-dl"}>
       {fields.map((f, i) => (
         <DetailRow key={i} field={f} amount={amounts} />
       ))}

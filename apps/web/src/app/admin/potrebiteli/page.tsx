@@ -28,7 +28,7 @@ export default async function AdminUsersPage() {
         description="Нов служител първо се регистрира на сайта, след което тук му се дава роля — тя влиза в сила при следващото му влизане в профила. Отнемане или смяна на роля на служител влиза в сила до минута."
       />
 
-      <details className="ad-det">
+      <details className="bo-det">
         <summary>
           Какво може всяка роля
           <ChevronDownIcon />

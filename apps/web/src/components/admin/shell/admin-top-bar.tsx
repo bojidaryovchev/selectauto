@@ -38,8 +38,8 @@ export function AdminTopBar({
 
   return (
     <Drawer.Root open={open} onOpenChange={setOpen} swipeDirection="left">
-      <header className="sa-tbar ad-tbar">
-        <div className="ad-tbar__l">
+      <header className="sa-tbar bo-tbar">
+        <div className="bo-tbar__l">
           <Drawer.Trigger aria-label="Меню" className="sa-ib sa-ib--ghost">
             <MenuIcon />
           </Drawer.Trigger>

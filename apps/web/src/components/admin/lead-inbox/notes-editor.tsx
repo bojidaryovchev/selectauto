@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
 /**
- * Free-text follow-up notes for a lead (`ad-notes`; board `ad-inquiries-notes`). Textarea + save button; saves via
+ * Free-text follow-up notes for a lead (`bo-notes`; board `ad-inquiries-notes`). Textarea + save button; saves via
  * `updateLead` and refreshes. Dirty-tracked (save disabled until changed), and the dirty flag is reported up so the
  * drawer can ask before closing.
  */
@@ -60,8 +60,8 @@ export function NotesEditor({
   }
 
   return (
-    <div className="ad-notes">
-      <label className="ad-notes__l">
+    <div className="bo-notes">
+      <label className="bo-notes__l">
         <span className="sa-lbl">Бележки</span>
         <textarea
           value={text}
@@ -74,12 +74,12 @@ export function NotesEditor({
           className="sa-in w-full"
         />
       </label>
-      <div className="ad-notes__f">
+      <div className="bo-notes__f">
         <Button variant="pri" size="md" onClick={save} disabled={!dirty || pending} busy={pending}>
           {pending ? "Запазване…" : "Запазете бележки"}
         </Button>
         {ok && !dirty && (
-          <span role="status" className="ad-ok">
+          <span role="status" className="bo-ok">
             <CheckIcon />
             Запазено
           </span>

@@ -7,13 +7,13 @@ const ROWS = Array.from({ length: 6 }, (_, i) => i);
  */
 export function AdminPageSkeleton() {
   return (
-    <div role="status" className="ad-sk">
+    <div role="status" className="bo-sk">
       <span className="sr-only">Зареждане…</span>
       <div className="sa-sk h-8 w-56 max-w-full" />
       <div className="sa-sk h-4 w-full max-w-md" />
-      <div className="ad-sk__list">
+      <div className="bo-sk__list">
         {ROWS.map((row) => (
-          <div key={row} className="sa-sk ad-skl" />
+          <div key={row} className="sa-sk bo-skl" />
         ))}
       </div>
     </div>

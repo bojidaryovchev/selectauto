@@ -27,11 +27,11 @@ export function AdminNavList({
   const id = useId();
 
   return (
-    <div className={`ad-nav ${large ? "ad-nav--lg" : ""}`}>
+    <div className={`bo-nav ${large ? "bo-nav--lg" : ""}`}>
       {groups.map((group, index) => {
         const headingId = `${id}-group-${index}`;
         return (
-          <div key={group.label ?? "home"} className="ad-nav__g">
+          <div key={group.label ?? "home"} className="bo-nav__g">
             {group.label ? <p id={headingId}>{group.label}</p> : null}
             <ul aria-labelledby={group.label ? headingId : undefined}>
               {group.items.map((item) => {

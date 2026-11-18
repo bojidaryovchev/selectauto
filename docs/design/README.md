@@ -294,8 +294,13 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
   31, on template revision 2. Payment notices keep the client's ЕГН (decision 35 reversed decision 32).
 - **The ab- boards' styles** (deals, listings, settings) are `styles/admin-b.css`, ported with their named container
   queries (`ablist`, `abform` …), which are the code's own approach. The few rules the boards scope under their root
-  `.ab` are written by hand in `styles/admin-b-root.css`. Fields stay the admin's 44 px, 16 px `ad-in`, not the boards'
+  `.ab` are written by hand in `styles/admin-b-root.css`. Fields stay the admin's 44 px, 16 px `bo-in`, not the boards'
   15 px `ab-f`. The ported `admin.css` and `admin-b.css` had their rules for classes no code uses removed by hand.
+- **The admin's classes are `bo-`** („back office"); the boards and the parity notes say `ad-`. Renamed on 18.11.2026,
+  the night the redesign went live: ad blockers hide elements whose class reads like an ad, and EasyList (AdBlock,
+  Adblock Plus, uBlock) hides `.ad-main` and `.ad-side`, the admin's content and sidebar, so the admin showed a blank
+  page to anyone running one. `port-board-css.mjs` writes the ad- boards as `bo-`. **Never name a class, an id or a
+  file like an ad** (`ad-`, `-ad-`, `advert`, `banner`, `sponsor`): check a new prefix against EasyList's `##` rules.
 - **A local production build needs `SA_LOCAL_SERVER=1`,** at `next build` and again at `next start`. `next.config.ts`
   treats every visitor as an HTML-limited bot (metadata in the `<head>`), and a local `next start` then answers the
   router's prefetches with full pages: open the catalog from a link and its filters only change the URL. Vercel serves

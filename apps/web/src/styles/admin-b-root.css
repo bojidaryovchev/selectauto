@@ -1,18 +1,18 @@
 /*
   The few ab- rules the boards scope under their root `.ab` so they beat the kit's own rules (`.ab .ab-no` over
   `.sa-tbl a`, `.ab .ab-al` over `.sa-alert`). The app has no such root, so each is written here, by hand, with the
-  same effect: a second class, or `.ad-main` for page content. Text stays 16 px in fields (the boards set 15). admin-b.css is generated (port-board-css.mjs); this
+  same effect: a second class, or `.bo-main` for page content. Text stays 16 px in fields (the boards set 15). admin-b.css is generated (port-board-css.mjs); this
   file is not. Not here: `.ab .ab-f` (the board's 15 px dense field) — the admin's fields stay the 44 px, 16 px
-  `ad-in` (no zoom on iOS); `.ab .ab-back` — the page header is the ad- one.
+  `bo-in` (no zoom on iOS); `.ab .ab-back` — the page header is the bo- one.
 */
 @layer components {
   .sa-alert.ab-al{padding:11px 14px;font-size:14px;line-height:1.5;border-radius:var(--radius-md);gap:10px;font-weight:600}
   .sa-alert.ab-al>svg{width:18px;height:18px;margin-top:2px}
   .sa-btn.ab-btn-pos svg{color:var(--color-pos)}
-  .ad-main .ab-no{color:var(--color-ortx);font-weight:700;text-decoration:none}
-  .ad-main .ab-dlk,.ad-main .ab-used{color:var(--color-ortx)}
-  .ad-main .ab-url{color:var(--color-ortx);font-weight:600}
-  .ad-main .ab-ida2{color:var(--color-ortx)}
+  .bo-main .ab-no{color:var(--color-ortx);font-weight:700;text-decoration:none}
+  .bo-main .ab-dlk,.bo-main .ab-used{color:var(--color-ortx)}
+  .bo-main .ab-url{color:var(--color-ortx);font-weight:600}
+  .bo-main .ab-ida2{color:var(--color-ortx)}
   textarea.sa-in.ab-ta{min-height:120px;line-height:1.55}
   /* The tariff paste areas (the boards' `.ab .ab-tsv`): mono, no wrapping; the size is set where they are used (16 px
      on phones and iOS). */
@@ -23,8 +23,8 @@
      car's name beside it, painted them light on the light plate. The boards never drew a plate with letters there. */
   .ab-car .sa-plate b{color:var(--color-ink);font-weight:800}
   /* The journal's linked record (boards `ad-log*`): the ad- boards' only element-led rules, which the port leaves out. */
-  a.ad-ent{color:var(--color-ortx);text-decoration:none}
-  a.ad-ent .ad-id{color:var(--color-ortx)}
+  a.bo-ent{color:var(--color-ortx);text-decoration:none}
+  a.bo-ent .bo-id{color:var(--color-ortx)}
   /* A small phone (app-only; the boards are 390 px): a stage card's action buttons drop their icon before a label
      like „Отбележете като платено" could lose its room, as the kit's full-width buttons do. */
   @media (max-width:359.98px){.ab-acts>.sa-btn>svg{display:none}}

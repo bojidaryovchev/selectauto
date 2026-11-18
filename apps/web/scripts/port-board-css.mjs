@@ -126,6 +126,11 @@ for (const src of sources) {
 }
 
 let css = lines.join("\n");
+// The admin's boards are `ad-`, but ad blockers hide elements whose class reads like an ad: EasyList hides `.ad-main`,
+// `.ad-side`, `.ad-grid` and thousands more `.ad-*`, which left the admin blank for anyone running one (18.11.2026).
+// So the code's admin classes are `bo-` („back office"), and a port of the ad- boards writes them so.
+const outPrefix = prefix === "ad-" ? "bo-" : prefix;
+if (outPrefix !== prefix) css = css.replace(new RegExp(`\\.${prefix}(?=[A-Za-z0-9])`, "g"), `.${outPrefix}`);
 css = css.replace(/var\(--([a-z0-9-]+)\)/g, (m, name) => (rename[name] ? `var(--${rename[name]})` : m));
 css = css.replace(/(\d*\.?\d+)cqi/g, "$1vw");
 css = css.replace(/@container sa \(max-width:(\d+)px\)/g, (m, w) => `@media (max-width:${Number(w) + 0.98}px)`);
@@ -147,7 +152,7 @@ const header = `/*
   Ported by script from the screen's board sources (apps/web/scripts/port-board-css.mjs), as kit.css is from the kit: token
   names follow tokens.css, the boards' cqi became vw and their queries on the board's frame media queries (queries on a
   container these rules declare stay container queries). Board-only parts (device frames, preview overlays) were left
-  out. Class prefix: ${prefix}.${scope ? ` Scoped to ${scope}, the page's root.` : ""}
+  out. Class prefix: ${outPrefix}${outPrefix !== prefix ? ` (the boards' ${prefix}: ad blockers hide .ad-* elements)` : ""}.${scope ? ` Scoped to ${scope}, the page's root.` : ""}
 */
 @layer components {
 `;

@@ -30,14 +30,14 @@ export function RecipientsManager({ recipients }: { recipients: RecipientRow[] }
   return (
     <>
       {editing === "new" ? (
-        <div className="ad-rlist">
+        <div className="bo-rlist">
           <div className="is-wide">
             <RecipientForm key="new" recipient={null} onDone={onDone} onCancel={() => setEditing(null)} />
           </div>
         </div>
       ) : (
         <div>
-          <Button variant="pri" size="md" className="ad-wph" onClick={() => setEditing("new")}>
+          <Button variant="pri" size="md" className="bo-wph" onClick={() => setEditing("new")}>
             <PlusIcon />
             Добавете получател
           </Button>
@@ -47,7 +47,7 @@ export function RecipientsManager({ recipients }: { recipients: RecipientRow[] }
       {recipients.length === 0 ? (
         <AdminEmptyState icon={<LandmarkIcon />} title="Още няма получатели." />
       ) : (
-        <ul className="ad-rlist">
+        <ul className="bo-rlist">
           {recipients.map((r) => (
             <li key={r.id} className={editing === r.id ? "is-wide" : undefined}>
               {editing === r.id ? (
@@ -66,8 +66,8 @@ export function RecipientsManager({ recipients }: { recipients: RecipientRow[] }
 function RecipientCard({ recipient: r, onEdit }: { recipient: RecipientRow; onEdit: () => void }) {
   const missing = missingBankFields(r);
   return (
-    <article className="sa-pnl ad-rc">
-      <div className="ad-rc__h">
+    <article className="sa-pnl bo-rc">
+      <div className="bo-rc__h">
         <div>
           <h2>{r.name}</h2>
           <p>
@@ -75,7 +75,7 @@ function RecipientCard({ recipient: r, onEdit }: { recipient: RecipientRow; onEd
             {r.country ? ` · ${r.country}` : ""}
           </p>
         </div>
-        <div className="ad-rc__a">
+        <div className="bo-rc__a">
           {r.active ? <AdminStatusTag tone="pos">Активен</AdminStatusTag> : <AdminStatusTag tone={null}>Неактивен</AdminStatusTag>}
           <Button variant="sec" size="md" onClick={onEdit}>
             Редактирайте

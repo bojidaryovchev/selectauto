@@ -66,7 +66,7 @@ export function LeadInbox({
     <div className="flex flex-col gap-5">
       <LeadFilters basePath={basePath} />
 
-      <p className="ad-count">
+      <p className="bo-count">
         Намерени: <b>{total}</b>
       </p>
 
@@ -74,11 +74,11 @@ export function LeadInbox({
         <AdminEmptyState title="Няма заявки за този филтър." icon={<InboxIcon />} />
       ) : (
         <div className="@container">
-          <ul className="ad-grid @3xl:hidden">
+          <ul className="bo-grid @3xl:hidden">
             {leads.map((lead) => (
               <li key={lead.id} className="min-w-0">
-                <button type="button" onClick={() => openLead(lead)} className="ad-lc">
-                  <span className="ad-lc__h">
+                <button type="button" onClick={() => openLead(lead)} className="bo-lc">
+                  <span className="bo-lc__h">
                     <b>{lead.cells[0].text}</b>
                     <LeadStatusBadge status={lead.status} />
                   </span>
@@ -121,23 +121,23 @@ export function LeadInbox({
                   <tr
                     key={lead.id}
                     onClick={() => openLead(lead)}
-                    className={`cursor-pointer ${open && shown?.type === lead.type && shown.id === lead.id ? "ad-tr-sel" : ""}`}
+                    className={`cursor-pointer ${open && shown?.type === lead.type && shown.id === lead.id ? "bo-tr-sel" : ""}`}
                   >
                     {lead.cells.map((cell, i) =>
                       i === 0 ? (
                         <td key={i}>
-                          <button type="button" onClick={() => openLead(lead)} className="ad-link">
+                          <button type="button" onClick={() => openLead(lead)} className="bo-link">
                             {cell.text}
                           </button>
                         </td>
                       ) : (
                         // A VIN stays on one line (the name and the car wrap instead); an amount is right-aligned.
-                        <td key={i} className={columns[i]?.num ? "num" : cell.mono ? "ad-dim ad-nowrap" : "ad-dim wrap-anywhere"}>
+                        <td key={i} className={columns[i]?.num ? "num" : cell.mono ? "bo-dim bo-nowrap" : "bo-dim wrap-anywhere"}>
                           <Cell cell={cell} />
                         </td>
                       ),
                     )}
-                    <td className="ad-dim ad-nowrap">{lead.createdAt}</td>
+                    <td className="bo-dim bo-nowrap">{lead.createdAt}</td>
                     <td>
                       <LeadStatusBadge status={lead.status} />
                     </td>

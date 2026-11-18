@@ -69,11 +69,11 @@ export function UsersManager({ users, currentUserId }: { users: UserRow[]; curre
 
   return (
     <>
-      <div className="ad-utools">
+      <div className="bo-utools">
         <label htmlFor={searchId} className="sr-only">
           Търсене по име или имейл
         </label>
-        <span className="sa-inw ad-ugrow">
+        <span className="sa-inw bo-ugrow">
           <SearchIcon />
           <input
             id={searchId}
@@ -96,7 +96,7 @@ export function UsersManager({ users, currentUserId }: { users: UserRow[]; curre
           Само с роли
         </button>
       </div>
-      <p className="ad-count" aria-live="polite">
+      <p className="bo-count" aria-live="polite">
         Показани: <b>{shown.length}</b> от {users.length}
       </p>
 
@@ -107,9 +107,9 @@ export function UsersManager({ users, currentUserId }: { users: UserRow[]; curre
         />
       ) : (
         <div className="@container">
-          <ul className="ad-ucards @4xl:hidden">
+          <ul className="bo-ucards @4xl:hidden">
             {shown.map((u) => (
-              <li key={u.id} className="ad-uc">
+              <li key={u.id} className="bo-uc">
                 <Identity {...rowProps(u)} />
                 <Roles {...rowProps(u)} />
               </li>
@@ -117,7 +117,7 @@ export function UsersManager({ users, currentUserId }: { users: UserRow[]; curre
           </ul>
 
           <div className="sa-tbl-wrap hidden @4xl:block">
-            <table className="sa-tbl ad-tbl">
+            <table className="sa-tbl bo-tbl">
               <thead>
                 <tr>
                   <th scope="col">Потребител</th>
@@ -131,7 +131,7 @@ export function UsersManager({ users, currentUserId }: { users: UserRow[]; curre
                     <td>
                       <Identity {...rowProps(u)} hideDate />
                     </td>
-                    <td className="ad-dim ad-nowrap">{formatSofiaDate(u.createdAt)}</td>
+                    <td className="bo-dim bo-nowrap">{formatSofiaDate(u.createdAt)}</td>
                     <td>
                       <Roles {...rowProps(u)} />
                     </td>
@@ -177,16 +177,16 @@ type RowProps = {
 
 function Identity({ user: u, isSelf, hideDate }: RowProps & { hideDate?: boolean }) {
   return (
-    <div className="ad-uid">
-      <p className="ad-uid__n">
+    <div className="bo-uid">
+      <p className="bo-uid__n">
         {u.name ?? "—"}
         {isSelf ? <small>(вие)</small> : null}
       </p>
-      <p className="ad-uid__e">
+      <p className="bo-uid__e">
         <span>{u.email}</span>
         {u.emailVerified ? null : <AdminStatusTag tone="warn">непотвърден</AdminStatusTag>}
       </p>
-      {hideDate ? null : <p className="ad-uid__r">Регистриран {formatSofiaDate(u.createdAt)}</p>}
+      {hideDate ? null : <p className="bo-uid__r">Регистриран {formatSofiaDate(u.createdAt)}</p>}
     </div>
   );
 }
@@ -194,7 +194,7 @@ function Identity({ user: u, isSelf, hideDate }: RowProps & { hideDate?: boolean
 /** The roles as the kit's chips over real checkboxes — 40 px, readable, and reachable by keyboard. */
 function Roles({ user: u, isSelf, busy, error, onToggle }: RowProps) {
   return (
-    <div className="ad-roles">
+    <div className="bo-roles">
       <div className="sa-chips" role="group" aria-label={`Роли на ${u.name ?? u.email}`}>
         {APP_ROLES.map((r) => {
           const on = u.roles.includes(r);
@@ -213,7 +213,7 @@ function Roles({ user: u, isSelf, busy, error, onToggle }: RowProps) {
           );
         })}
       </div>
-      {isSelf ? <p className="ad-hint">Собствените си права не можете да променяте.</p> : null}
+      {isSelf ? <p className="bo-hint">Собствените си права не можете да променяте.</p> : null}
       {error ? <AdminBanner tone="error">{error}</AdminBanner> : null}
     </div>
   );

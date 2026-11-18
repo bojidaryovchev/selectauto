@@ -40,10 +40,10 @@ export function LeadFilters({ basePath }: { basePath: string }) {
   ];
 
   return (
-    <div className="ad-tools">
+    <div className="bo-tools">
       <form
         role="search"
-        className="ad-search"
+        className="bo-search"
         onSubmit={(e) => {
           e.preventDefault();
           apply({ q });
@@ -52,7 +52,7 @@ export function LeadFilters({ basePath }: { basePath: string }) {
         <label htmlFor={searchId} className="sr-only">
           Търсене
         </label>
-        <span className="sa-inw ad-grow">
+        <span className="sa-inw bo-grow">
           <SearchIcon />
           <input
             id={searchId}
@@ -66,7 +66,7 @@ export function LeadFilters({ basePath }: { basePath: string }) {
             className={ADMIN_INPUT}
           />
         </span>
-        <Button type="submit" variant="sec" size="md" className="ad-search__b shrink-0">
+        <Button type="submit" variant="sec" size="md" className="bo-search__b shrink-0">
           Търсете
         </Button>
       </form>

@@ -50,7 +50,7 @@ export default async function AdminDashboardPage() {
         }
       />
 
-      <div className="ad-dash">
+      <div className="bo-dash">
         {LEAD_TYPES.map((type) => (
           <LeadCard key={type} type={type} counts={overview[type]} />
         ))}
@@ -66,17 +66,17 @@ function LeadCard({ type, counts }: { type: LeadType; counts: StatusCounts }) {
   // number (it used to count the archive, so card and inbox disagreed).
   const listed = counts.total - counts.archived;
   return (
-    <section className="sa-pnl ad-lead">
-      <div className="ad-lead__h">
-        <div className="ad-lead__t">
-          <span className="ad-tile" aria-hidden="true">
+    <section className="sa-pnl bo-lead">
+      <div className="bo-lead__h">
+        <div className="bo-lead__t">
+          <span className="bo-tile" aria-hidden="true">
             <Icon />
           </span>
           <h2>
             <Link href={meta.href}>{meta.label}</Link>
           </h2>
         </div>
-        <span className="ad-lead__n">{listed}</span>
+        <span className="bo-lead__n">{listed}</span>
       </div>
 
       {counts.new > 0 ? (
@@ -88,7 +88,7 @@ function LeadCard({ type, counts }: { type: LeadType; counts: StatusCounts }) {
         </p>
       ) : null}
 
-      <ul className="ad-st">
+      <ul className="bo-st">
         {LEAD_STATUSES.map((s) => {
           const tone = LEAD_STATUS_META[s].tone;
           return (
@@ -105,7 +105,7 @@ function LeadCard({ type, counts }: { type: LeadType; counts: StatusCounts }) {
         })}
       </ul>
 
-      <div className="ad-lead__f">
+      <div className="bo-lead__f">
         <LinkButton href={meta.href} variant="txt" size="md">
           Вижте заявките
           <ArrowRightIcon />

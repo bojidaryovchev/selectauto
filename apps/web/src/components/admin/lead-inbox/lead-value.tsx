@@ -12,7 +12,7 @@ export function LeadValue({ text, make, market }: { text: string; make?: LeadMak
   if (!make && !market) return <>{text}</>;
   const Flag = market ? FLAGS[market] : null;
   return (
-    <span className="ad-car">
+    <span className="bo-car">
       {make ? <MakePlate name={make.name} logo={make.logo} size="xs" /> : null}
       {Flag ? <Flag className="sa-flag" /> : null}
       <span className="min-w-0">{text}</span>

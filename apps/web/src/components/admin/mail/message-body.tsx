@@ -47,16 +47,16 @@ export function MessageBody({
   fetched: boolean;
 }) {
   if (!fetched) {
-    return <p className="ad-msg__note">Съдържанието още не е изтеглено. Презаредете след малко.</p>;
+    return <p className="bo-msg__note">Съдържанието още не е изтеглено. Презаредете след малко.</p>;
   }
 
   const text = textBody?.trim() || (htmlBody ? htmlToText(htmlBody) : "");
 
   if (!text) {
-    return <p className="ad-msg__note">(празно съобщение)</p>;
+    return <p className="bo-msg__note">(празно съобщение)</p>;
   }
 
-  // `.ad-msg__b` is `white-space: pre-wrap`, which keeps the sender's line breaks (board `ad-thread`); the value is a
+  // `.bo-msg__b` is `white-space: pre-wrap`, which keeps the sender's line breaks (board `ad-thread`); the value is a
   // text node, so no markup in it can execute.
-  return <div className="ad-msg__b">{text}</div>;
+  return <div className="bo-msg__b">{text}</div>;
 }

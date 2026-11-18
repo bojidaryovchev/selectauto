@@ -21,9 +21,9 @@ export function AdminBrand({
       <span>Админ</span>
     </>
   );
-  if (!href) return <span className="ad-brand">{content}</span>;
+  if (!href) return <span className="bo-brand">{content}</span>;
   return (
-    <Link href={href} onClick={onNavigate} className="ad-brand">
+    <Link href={href} onClick={onNavigate} className="bo-brand">
       {content}
     </Link>
   );

@@ -70,7 +70,7 @@ export default async function AdminAuditLogPage({
         ))}
       </nav>
 
-      <p className="ad-count">
+      <p className="bo-count">
         Намерени: <b>{total}</b>
       </p>
 
@@ -78,22 +78,22 @@ export default async function AdminAuditLogPage({
         <AdminEmptyState icon={<ClockIcon />} title="Няма записи." />
       ) : (
         <div className="@container">
-          <ul className="ad-lgs @4xl:hidden">
+          <ul className="bo-lgs @4xl:hidden">
             {rows.map((e) => (
-              <li key={e.id} className="ad-lg">
-                <div className="ad-lg__h">
+              <li key={e.id} className="bo-lg">
+                <div className="bo-lg__h">
                   <b>{auditActionLabel(e.action)}</b>
                   <time dateTime={e.createdAt.toISOString()}>{formatSofiaDateTime(e.createdAt)}</time>
                 </div>
                 <Entity row={e} />
-                <span className="ad-actor">{e.actorEmail ?? "—"}</span>
+                <span className="bo-actor">{e.actorEmail ?? "—"}</span>
                 <Details row={e} />
               </li>
             ))}
           </ul>
 
           <div className="sa-tbl-wrap hidden @4xl:block">
-            <table className="sa-tbl ad-tbl">
+            <table className="sa-tbl bo-tbl">
               <thead>
                 <tr>
                   <th scope="col">Дата</th>
@@ -106,14 +106,14 @@ export default async function AdminAuditLogPage({
               <tbody>
                 {rows.map((e) => (
                   <tr key={e.id}>
-                    <td className="ad-dim ad-nowrap">{formatSofiaDateTime(e.createdAt)}</td>
+                    <td className="bo-dim bo-nowrap">{formatSofiaDateTime(e.createdAt)}</td>
                     <td>
                       <Entity row={e} />
                     </td>
                     <td>
                       <b>{auditActionLabel(e.action)}</b>
                     </td>
-                    <td className="ad-dim max-w-56 wrap-anywhere">{e.actorEmail ?? "—"}</td>
+                    <td className="bo-dim max-w-56 wrap-anywhere">{e.actorEmail ?? "—"}</td>
                     <td>
                       <Details row={e} />
                     </td>
@@ -138,15 +138,15 @@ function Entity({ row }: { row: AuditEventRow }) {
       {row.entityId > 0 ? (
         <>
           {" "}
-          <span className="ad-id">#{row.entityId}</span>
+          <span className="bo-id">#{row.entityId}</span>
         </>
       ) : null}
     </>
   );
   const link = auditEntityHref(row);
-  if (!link) return <span className="ad-ent">{label}</span>;
+  if (!link) return <span className="bo-ent">{label}</span>;
   // Padding grows the tap target to 40 px; the negative margin keeps the line where it was.
-  const cls = "ad-ent -my-2.5 py-2.5 hover:underline";
+  const cls = "bo-ent -my-2.5 py-2.5 hover:underline";
   return link.external ? (
     <a href={link.href} target="_blank" rel="noreferrer" className={cls}>
       {label}
@@ -161,9 +161,9 @@ function Entity({ row }: { row: AuditEventRow }) {
 
 function Details({ row }: { row: AuditEventRow }) {
   const details = auditDetails(row.entity, row.action, row.data, { market: row.contractMarket });
-  if (details.length === 0) return <span className="ad-dim">—</span>;
+  if (details.length === 0) return <span className="bo-dim">—</span>;
   return (
-    <dl className="ad-kv">
+    <dl className="bo-kv">
       {details.map((d, i) => (
         <div key={i}>
           <dt>{d.label}</dt>

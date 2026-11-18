@@ -9,14 +9,14 @@ import { LinkButton } from "@/components/common";
  */
 export default function AdminNotFound() {
   return (
-    <div className="sa-pnl ad-nf">
-      <span className="ad-nf__num" aria-hidden="true">
+    <div className="sa-pnl bo-nf">
+      <span className="bo-nf__num" aria-hidden="true">
         404
       </span>
       <span className="sa-eyebrow">Грешка 404</span>
-      <h1 className="ad-h1">Няма такъв запис</h1>
-      <p className="ad-ph__d">Записът не съществува, изтрит е или нямате достъп до него.</p>
-      <LinkButton href="/admin" variant="pri" size="md" className="ad-wph">
+      <h1 className="bo-h1">Няма такъв запис</h1>
+      <p className="bo-ph__d">Записът не съществува, изтрит е или нямате достъп до него.</p>
+      <LinkButton href="/admin" variant="pri" size="md" className="bo-wph">
         Към началото
       </LinkButton>
     </div>

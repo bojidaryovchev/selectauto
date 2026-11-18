@@ -26,9 +26,9 @@ export function AdminAccountCard({
   const size = large ? "md" : "sm";
 
   return (
-    <div className="ad-acc">
-      <div className="ad-acc__id">
-        <span className="ad-av" aria-hidden="true">
+    <div className="bo-acc">
+      <div className="bo-acc__id">
+        <span className="bo-av" aria-hidden="true">
           {initial}
         </span>
         <div>
@@ -36,12 +36,12 @@ export function AdminAccountCard({
           {account.role ? <small>{account.role}</small> : null}
         </div>
       </div>
-      <div className="ad-acc__act">
-        <LinkButton href="/" variant="ton" size={size} className="ad-accbtn" onClick={onNavigate}>
+      <div className="bo-acc__act">
+        <LinkButton href="/" variant="ton" size={size} className="bo-accbtn" onClick={onNavigate}>
           <ArrowLeftIcon />
           Към сайта
         </LinkButton>
-        <Button variant="ton" size={size} className="ad-accbtn" onClick={() => signOut({ redirectTo: "/" })}>
+        <Button variant="ton" size={size} className="bo-accbtn" onClick={() => signOut({ redirectTo: "/" })}>
           <LogOutIcon />
           Изход
         </Button>

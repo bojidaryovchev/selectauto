@@ -28,7 +28,8 @@ const eslintConfig = defineConfig([
       "better-tailwindcss/enforce-consistent-line-wrapping": "off",
       // These are our own project-global classes, not Tailwind utilities:
       //   sa-*                 — the design's component classes (src/styles/kit.css) and Swiper hooks
-      //   cd-*, hm-*, im-*, in-*, ac-*, ad-*, ab-* — a screen's own classes, ported from its boards
+      //   cd-*, hm-*, im-*, in-*, ac-*, bo-*, ab-* — a screen's own classes, ported from its boards (the admin's
+      //                          bo-* are the boards' ad-*: ad blockers hide .ad-* elements, see styles/admin.css)
       //                          (src/styles/car-page.css, hub-page.css, import-page.css, the info-*.css pages,
       //                          account.css, inquiry.css, admin.css)
       //   num, mute            — the kit's table cell modifiers (.sa-tbl .num, .sa-tbl .mute)
@@ -37,7 +38,7 @@ const eslintConfig = defineConfig([
       //   animate-ripple-effect — custom keyframe utility (globals.css)
       //   calc-range            — financing-calculator range slider (globals.css)
       // Whitelist them so the rule still catches genuine typos elsewhere.
-      "better-tailwindcss/no-unknown-classes": ["error", { ignore: ["^sa-", "^cd-", "^hm-", "^im-", "^in-", "^ac-", "^ad-", "^ab-", "^num$", "^mute$", "^is-", "^has-", "^animate-", "^calc-"] }],
+      "better-tailwindcss/no-unknown-classes": ["error", { ignore: ["^sa-", "^cd-", "^hm-", "^im-", "^in-", "^ac-", "^bo-", "^ab-", "^num$", "^mute$", "^is-", "^has-", "^animate-", "^calc-"] }],
       // Convert arbitrary pixel values to the spacing scale where an exact scale
       // step exists: min-h-[34px] -> min-h-8.5, px-[16px] -> px-4, etc.
       // Requires the <html> root font size (16px) to map px -> rem scale steps.

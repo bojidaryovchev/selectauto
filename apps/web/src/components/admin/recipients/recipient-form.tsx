@@ -40,7 +40,7 @@ const CODE = { autoCapitalize: "characters", autoCorrect: "off", spellCheck: fal
 
 /** The kit's checkbox, with the focus ring on its box. */
 const CHECKBOX =
-  "sa-chk ad-chk has-focus-visible:[&_.sa-box]:outline-2 has-focus-visible:[&_.sa-box]:outline-offset-2 has-focus-visible:[&_.sa-box]:outline-ortx";
+  "sa-chk bo-chk has-focus-visible:[&_.sa-box]:outline-2 has-focus-visible:[&_.sa-box]:outline-offset-2 has-focus-visible:[&_.sa-box]:outline-ortx";
 
 export function RecipientForm({
   recipient,
@@ -171,7 +171,7 @@ export function RecipientForm({
         onChange={(e) => set(e.target.value)}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${fieldIds[key]}-err` : undefined}
-        className={[ADMIN_INPUT, mono ? "ad-mono" : null, error ? "is-err" : null, className].filter(Boolean).join(" ")}
+        className={[ADMIN_INPUT, mono ? "bo-mono" : null, error ? "is-err" : null, className].filter(Boolean).join(" ")}
         {...rest}
       />
     );
@@ -179,22 +179,22 @@ export function RecipientForm({
 
   return (
     // Edited in place of its card, so it stands out from the cards around it.
-    <section className="sa-pnl ad-form">
-      <form ref={ref} onSubmit={onSubmit} noValidate className="ad-formin scroll-mt-20">
+    <section className="sa-pnl bo-form">
+      <form ref={ref} onSubmit={onSubmit} noValidate className="bo-formin scroll-mt-20">
         <h2>{recipient ? `Редакция: ${recipient.name}` : "Нов получател"}</h2>
 
         {isSelectAuto ? (
-          <p className="ad-hint">
+          <p className="bo-hint">
             Тези данни отиват в известията за плащане. Договорите и договорите за депозит печатат данните на SelectAuto
             от кода на сайта (сега са същите) — промяна тук не ги променя.
           </p>
         ) : null}
 
-        <div className="ad-fgrid">
+        <div className="bo-fgrid">
           {isSelectAuto ? (
             <div className="sa-fld">
               <span className="sa-lbl">Тип</span>
-              <p className="ad-fixed">SelectAuto (фиксиран)</p>
+              <p className="bo-fixed">SelectAuto (фиксиран)</p>
             </div>
           ) : (
             <Field id={`${id}-kind`} label="Тип">
@@ -287,7 +287,7 @@ export function RecipientForm({
 
         {status.kind === "error" ? <AdminBanner tone="error">{status.message}</AdminBanner> : null}
 
-        <div className="ad-form__f">
+        <div className="bo-form__f">
           <Button type="submit" variant="pri" disabled={busy} busy={busy}>
             {busy ? "Запазване…" : "Запазете"}
           </Button>

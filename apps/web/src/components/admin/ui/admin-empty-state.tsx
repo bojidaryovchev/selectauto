@@ -1,5 +1,5 @@
 /**
- * What a list shows when it has nothing to show — and, if useful, what to do about it (`.ad-empty`; boards
+ * What a list shows when it has nothing to show — and, if useful, what to do about it (`.bo-empty`; boards
  * `ad-inquiries-list` 3, `ad-mail-states`). `icon` goes in the kit's circle above the title. The title is a heading
  * of the page's second level; `titleAs="p"` keeps the look without the heading, for a list under a lower one (the
  * mobile.bg mappings under „Марки").
@@ -16,7 +16,7 @@ export function AdminEmptyState({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="ad-empty">
+    <div className="bo-empty">
       {icon ? (
         <span className="sa-empty__ic" aria-hidden="true">
           {icon}

@@ -18,7 +18,7 @@ function pageWindow(page: number, pageCount: number): (number | null)[] {
 const STEP = buttonClasses({ variant: "sec", size: "md" });
 
 /**
- * Pager for a server-paged list (`.ad-pager`): „Назад", the page numbers (just „X / Y" on a phone), „Напред", the
+ * Pager for a server-paged list (`.bo-pager`): „Назад", the page numbers (just „X / Y" on a phone), „Напред", the
  * arrows as icons. Plain links built by `hrefFor`, so a page can be opened in a new tab; they don't prefetch — each
  * would render a whole page of results in the background.
  */
@@ -33,7 +33,7 @@ export function AdminPagination({
 }) {
   if (pageCount <= 1) return null;
   return (
-    <nav aria-label="Страници" className="ad-pager">
+    <nav aria-label="Страници" className="bo-pager">
       {page > 1 ? (
         <Link href={hrefFor(page - 1)} prefetch={false} className={STEP} rel="prev">
           <ChevronLeftIcon />
@@ -46,7 +46,7 @@ export function AdminPagination({
         </span>
       )}
       {/* „1 / 2“ keeps both buttons on one line at 320 px; a screen reader still hears „Страница“. */}
-      <span className="ad-pager__n">
+      <span className="bo-pager__n">
         <span className="sr-only">Страница </span>
         {page} / {pageCount}
       </span>

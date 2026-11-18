@@ -43,7 +43,7 @@ export function MailThreadStatusSelect({ threadId, value }: { threadId: number; 
   }
 
   return (
-    <div className="ad-stsel">
+    <div className="bo-stsel">
       <span className="sa-lbl">Статус</span>
       <Combobox
         aria-label="Статус на разговора"

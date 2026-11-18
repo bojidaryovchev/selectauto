@@ -393,7 +393,7 @@ export function DepositForm({ clients, onDone }: { clients: ClientRow[]; onDone?
       ) : null}
 
       <div>
-        <Button type="submit" variant="pri" size="md" className="ad-wph" disabled={busy} busy={busy}>
+        <Button type="submit" variant="pri" size="md" className="bo-wph" disabled={busy} busy={busy}>
           {busy ? "Запазване…" : "Създайте депозит"}
         </Button>
       </div>

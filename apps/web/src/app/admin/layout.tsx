@@ -49,7 +49,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <AdminChrome />
       </Suspense>
       <div className="lg:pl-64">
-        <main id="admin-main" tabIndex={-1} className="ad-main outline-none">
+        <main id="admin-main" tabIndex={-1} className="bo-main outline-none">
           <Suspense fallback={<AdminPageSkeleton />}>
             <AdminGate>{children}</AdminGate>
           </Suspense>

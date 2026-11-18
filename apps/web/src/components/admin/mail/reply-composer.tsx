@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 
 /**
- * „Отговор" composer (`ad-comp`; board `ad-thread-reply`). Sends as info@selectauto.bg with the thread's
+ * „Отговор" composer (`bo-comp`; board `ad-thread-reply`). Sends as info@selectauto.bg with the thread's
  * In-Reply-To/References headers so the reply lands in the customer's existing conversation.
  *
  * Failure is surfaced LOUDLY and the text is kept in the box. Unlike the app's
@@ -52,8 +52,8 @@ export function ReplyComposer({ threadId, to }: { threadId: number; to: string }
   }
 
   return (
-    <div className="sa-pnl ad-comp">
-      <div className="ad-comp__h">
+    <div className="sa-pnl bo-comp">
+      <div className="bo-comp__h">
         <label htmlFor={fieldId}>Отговор</label>
         <p>
           До <b>{to}</b> · от info@selectauto.bg
@@ -76,8 +76,8 @@ export function ReplyComposer({ threadId, to }: { threadId: number; to: string }
         </AdminBanner>
       )}
 
-      <div className="ad-comp__f">
-        <Button variant="pri" className="ad-wph" onClick={submit} disabled={pending || !body.trim()} busy={pending}>
+      <div className="bo-comp__f">
+        <Button variant="pri" className="bo-wph" onClick={submit} disabled={pending || !body.trim()} busy={pending}>
           {pending ? "Изпраща се…" : "Изпратете"}
         </Button>
       </div>

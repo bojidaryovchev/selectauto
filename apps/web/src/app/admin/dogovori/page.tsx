@@ -59,7 +59,7 @@ export default async function AdminContractsPage({
         description={`Договори за посредничество — общо ${total}.`}
         actions={
           can(session, "contracts.create") ? (
-            <LinkButton href="/admin/dogovori/nov" variant="pri" size="md" className="ad-wph">
+            <LinkButton href="/admin/dogovori/nov" variant="pri" size="md" className="bo-wph">
               <PlusIcon />
               Нов договор
             </LinkButton>

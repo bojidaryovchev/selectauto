@@ -25,7 +25,7 @@ export function AdminBanner({
 }) {
   const { cls, Icon } = TONES[tone];
   return (
-    <div role={tone === "error" ? "alert" : "status"} className={`sa-alert ad-alert ${cls} wrap-anywhere ${className ?? ""}`}>
+    <div role={tone === "error" ? "alert" : "status"} className={`sa-alert bo-alert ${cls} wrap-anywhere ${className ?? ""}`}>
       <Icon />
       <div className="min-w-0">{children}</div>
     </div>
