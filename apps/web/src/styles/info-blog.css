@@ -1,0 +1,20 @@
+/*
+  The blog index, /blog (boards in-blog, in-blog-empty): the head band, the post cards and the empty state.
+  Ported by script from the screen's board sources (apps/web/scripts/port-board-css.mjs), as kit.css is from the kit: token
+  names follow tokens.css, the boards' cqi became vw and their container queries media queries. Board-only parts
+  (device frames, preview overlays) were left out. Class prefix: in-. Scoped to .in-blog-pg, the page's root.
+*/
+@layer components {
+  .in-blog-pg .in-head{position:relative;isolation:isolate;overflow:hidden;border-bottom:1px solid var(--color-hair)}
+  .in-blog-pg .in-head::before{content:"";position:absolute;z-index:-1;right:-12%;top:-70%;width:min(1100px,90vw);aspect-ratio:1;border-radius:50%;background:radial-gradient(closest-side,rgba(255,122,26,.16),transparent);pointer-events:none}
+  .in-blog-pg .in-head__in{display:flex;flex-direction:column;gap:18px;padding-block:clamp(24px,2.6vw,40px) clamp(48px,5vw,88px)}
+  .in-blog-pg .in-posts{grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr))}
+  .in-blog-pg .in-post{display:flex;flex-direction:column;gap:12px;min-width:0}
+  .in-blog-pg .in-post__d{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--color-tx3)}
+  .in-blog-pg .in-post__d svg{width:16px;height:16px}
+  .in-blog-pg .in-post h2{font:800 19px/1.35 var(--font-sans)}
+  .in-blog-pg .in-post h2 a{color:var(--color-tx);text-decoration:none}
+  .in-blog-pg .in-post .sa-small{flex:1}
+  .in-blog-pg .in-post .sa-btn{align-self:flex-start;margin-left:-4px}
+  .in-blog-pg .in-empty{border-radius:var(--radius-lg);border:1px dashed var(--color-hair2);padding:40px 20px}
+}

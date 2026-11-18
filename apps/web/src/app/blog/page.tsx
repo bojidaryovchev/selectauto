@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Container } from "@/components/common";
+import { LinkButton } from "@/components/common";
+import { ArrowRightIcon, CalendarIcon } from "@/components/icons";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
 import { formatBgDate, getAllPosts } from "@/lib/blog";
@@ -11,6 +12,9 @@ import { buildSocialMeta } from "@/lib/social-meta";
  * /blog — the topical-authority index (docs/13-seo-action-plan.md Phase C).
  * Posts are markdown files in content/blog (see lib/blog.ts); this page lists
  * them newest-first. Fully static (filesystem reads only).
+ *
+ * Look: boards `in-blog`, `in-blog-empty`; classes in styles/info-blog.css under the page's root class `.in-blog-pg`;
+ * parity check docs/design/parity/blog.md.
  */
 
 const PATH = "/blog";
@@ -42,50 +46,55 @@ export default function BlogIndexPage() {
   return (
     <>
       <SiteHeader />
-      <main className="flex-1 bg-[#fafafa] pt-(--header-h) text-ink">
+      <main className="in-blog-pg flex-1 pt-(--header-h)">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
         {posts.length > 0 ? (
           <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
         ) : null}
 
-        <Container className="max-w-245 py-12 max-md:py-8">
-          <nav className="mb-5 text-sm text-muted">
-            <Link href="/" className="hover:text-brand-dark">
-              Начало
-            </Link>
-            <span className="px-2">/</span>
-            <span className="text-ink">Блог</span>
-          </nav>
+        <section className="in-head">
+          <div className="sa-wrap in-head__in">
+            <nav className="sa-crumbs" aria-label="Пътечка">
+              <Link href="/">Начало</Link>
+              <i aria-hidden="true">/</i>
+              <span aria-current="page">Блог</span>
+            </nav>
+            <h1 className="type-h1">Блог</h1>
+            <p className="sa-lead max-w-[72ch]">
+              Практични статии за вноса на автомобили от Корея, САЩ и Канада — реални числа, проверени ставки и
+              отговори на въпросите, които се задават преди покупка.
+            </p>
+          </div>
+        </section>
 
-          <h1 className="mb-3 text-4xl font-black uppercase tracking-tight text-ink max-md:text-3xl">Блог</h1>
-          <p className="mb-8 max-w-2xl text-[15px] leading-[1.8] text-[#3d4046]">
-            Практични статии за вноса на автомобили от Корея, САЩ и Канада — реални числа, проверени ставки и
-            отговори на въпросите, които се задават преди покупка.
-          </p>
-
-          {posts.length === 0 ? (
-            <p className="text-sm text-muted">Още няма публикувани статии — очаквайте скоро.</p>
-          ) : (
-            <div className="flex flex-col gap-4">
-              {posts.map((p) => (
-                <article key={p.slug} className="rounded-2xl border border-line bg-white p-6 shadow-card max-md:p-5">
-                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">
-                    {formatBgDate(p.date)}
-                  </p>
-                  <h2 className="mb-2 text-xl font-black text-ink">
-                    <Link href={`/blog/${p.slug}`} className="hover:text-brand-dark">
-                      {p.title}
-                    </Link>
-                  </h2>
-                  <p className="mb-3 text-sm/relaxed text-[#5a5d64]">{p.description}</p>
-                  <Link href={`/blog/${p.slug}`} className="text-sm font-bold text-brand-dark hover:underline">
-                    Прочети →
-                  </Link>
-                </article>
-              ))}
-            </div>
-          )}
-        </Container>
+        <section className="sa-band">
+          <div className="sa-wrap">
+            {posts.length === 0 ? (
+              <div className="in-empty">
+                <p className="sa-p text-center">Още няма публикувани статии — очаквайте скоро.</p>
+              </div>
+            ) : (
+              <div className="sa-grid in-posts">
+                {posts.map((p) => (
+                  <article key={p.slug} className="sa-pnl in-post">
+                    <p className="in-post__d">
+                      <CalendarIcon />
+                      {formatBgDate(p.date)}
+                    </p>
+                    <h2>
+                      <Link href={`/blog/${p.slug}`}>{p.title}</Link>
+                    </h2>
+                    <p className="sa-small">{p.description}</p>
+                    <LinkButton href={`/blog/${p.slug}`} variant="txt" size="md" aria-label={`Прочетете: ${p.title}`}>
+                      Прочетете
+                      <ArrowRightIcon />
+                    </LinkButton>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
       </main>
       <SiteFooter />
     </>

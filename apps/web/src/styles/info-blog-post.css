@@ -1,0 +1,31 @@
+/*
+  A blog post, /blog/[slug] (board in-blog-post; in-blog-elements is a spec board): the head band with the meta line, the article beside its sticky aside, and the tables that turn into labelled cards on a phone.
+  Ported by script from the screen's board sources (apps/web/scripts/port-board-css.mjs), as kit.css is from the kit: token
+  names follow tokens.css, the boards' cqi became vw and their container queries media queries. Board-only parts
+  (device frames, preview overlays) were left out. Class prefix: in-. Scoped to .in-post-pg, the page's root.
+*/
+@layer components {
+  .in-post-pg .in-head{position:relative;isolation:isolate;overflow:hidden;border-bottom:1px solid var(--color-hair)}
+  .in-post-pg .in-head::before{content:"";position:absolute;z-index:-1;right:-12%;top:-70%;width:min(1100px,90vw);aspect-ratio:1;border-radius:50%;background:radial-gradient(closest-side,rgba(255,122,26,.16),transparent);pointer-events:none}
+  .in-post-pg .in-box{width:100%;max-width:1200px;margin-inline:auto}
+  .in-post-pg .in-head__in{display:flex;flex-direction:column;gap:18px;padding-block:clamp(24px,2.6vw,40px) clamp(40px,4.4vw,72px)}
+  .in-post-pg .in-meta{display:flex;align-items:flex-start;gap:8px;font-size:14px;font-weight:700;line-height:24px;color:var(--color-tx3)}
+  .in-post-pg .in-meta svg{flex:none;width:16px;height:16px;margin-top:4px}
+  .in-post-pg .in-meta>span{min-width:0}
+  .in-post-pg .in-head h1{max-width:24ch}
+  .in-post-pg .in-art{display:grid;grid-template-columns:minmax(0,68ch) minmax(300px,360px);justify-content:space-between;gap:clamp(32px,4vw,80px);align-items:start}
+  @media (max-width:1023.98px){.in-post-pg .in-art{grid-template-columns:minmax(0,1fr)}}
+  .in-post-pg .in-art .sa-prose{max-width:none}
+  .in-post-pg .in-art .sa-prose h2:first-child{margin-top:0}
+  .in-post-pg .in-art .sa-prose a{color:var(--color-ortx);font-weight:700}
+  .in-post-pg .in-art .sa-tbl-wrap{margin:8px 0 26px}
+  .in-post-pg .in-art .sa-tbl{font-size:15px}
+  .in-post-pg .in-art .sa-tbl td{color:var(--color-tx2);vertical-align:top;line-height:1.5}
+  .in-post-pg .in-art .sa-tbl td:first-child{color:var(--color-tx);font-weight:700}
+  .in-post-pg .in-art .sa-tbl tr.is-sum td{background:var(--color-s2);color:var(--color-tx);font-weight:800}
+  .in-post-pg .in-art .sa-tbl .num{font-variant-numeric:tabular-nums}
+  @media (max-width:639.98px){.in-post-pg .in-art .sa-tbl-wrap{overflow:visible;border:0;background:transparent}.in-post-pg .in-art .sa-tbl thead{display:none}.in-post-pg .in-art .sa-tbl,.in-post-pg .in-art .sa-tbl tbody,.in-post-pg .in-art .sa-tbl tr,.in-post-pg .in-art .sa-tbl td{display:block;width:100%}.in-post-pg .in-art .sa-tbl tr{margin-bottom:10px;border:1px solid var(--color-hair);border-radius:var(--radius-lg);background:var(--color-s1);overflow:hidden}.in-post-pg .in-art .sa-tbl td{display:flex;justify-content:space-between;gap:16px;padding:10px 14px;border-bottom:1px solid var(--color-hair);text-align:left}.in-post-pg .in-art .sa-tbl td.num{text-align:right}.in-post-pg .in-art .sa-tbl td:first-child{display:block;background:var(--color-s2);font-size:15px}.in-post-pg .in-art .sa-tbl td:not(:first-child)::before{content:attr(data-l);flex:none;max-width:42%;font-size:13px;font-weight:700;color:var(--color-tx3)}.in-post-pg .in-art .sa-tbl td:not(:first-child) .in-cell{text-align:right}.in-post-pg .in-art .sa-tbl tr:last-child td:last-child,.in-post-pg .in-art .sa-tbl td:last-child{border-bottom:0}.in-post-pg .in-art .sa-tbl tr.is-sum td:first-child{background:var(--color-s3)}}
+  .in-post-pg .in-side{position:sticky;top:112px;display:flex;flex-direction:column;gap:14px}
+  @media (max-width:1023.98px){.in-post-pg .in-side{position:static}}
+  .in-post-pg .in-side .sa-btn{width:100%}
+}
