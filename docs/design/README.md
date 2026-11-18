@@ -15,7 +15,7 @@ design canvases.
 |---|---|
 | Tokens, fonts, type styles | `apps/web/src/styles/tokens.css`; fonts load in `apps/web/src/app/layout.tsx` |
 | Component classes (`sa-btn`, `sa-car`, `sa-hdr` …) | `apps/web/src/styles/kit.css`, ported from the boards' kit; React components apply them |
-| A screen's own layout classes (`cd-*` on the car page, `hm-*` on the make and model hubs, `im-*` on the import hubs and the calculators, `in-*` on the information pages, `ac-*` on the account pages and the inquiry dialog, `ad-*` in the admin) | `apps/web/src/styles/<screen>.css` (`car-page.css`, `hub-page.css`, `import-page.css`, the `info-*.css` files, `account.css`, `inquiry.css`, `admin.css`), ported from that screen's board sources by `apps/web/scripts/port-board-css.mjs`: token names, `cqi` → `vw`, container queries → media queries |
+| A screen's own layout classes (`cd-*` on the car page, `hm-*` on the make and model hubs, `im-*` on the import hubs and the calculators, `in-*` on the information pages, `ac-*` on the account pages and the inquiry dialog, `ad-*` in the admin) | `apps/web/src/styles/<screen>.css` (`car-page.css`, `hub-page.css`, `import-page.css`, the `info-*.css` files, `account.css`, `inquiry.css`, and the admin's `admin.css` and `admin-b.css`, which `app/admin/layout.tsx` imports instead of `globals.css`), ported from that screen's board sources by `apps/web/scripts/port-board-css.mjs`: token names, `cqi` → `vw`, container queries → media queries |
 | Contrast test of every text and ground pair | `apps/web/tests/design-tokens.test.mts` (the site) and `email-colors.test.mts` (the e-mails), run by `pnpm test` |
 | The formal-address check of every string, the blog included | `apps/web/tests/formal-register.test.mts`, run by `pnpm test` |
 | The phone layout check: no sideways scroll, no button label that wraps, clips or loses its room, no field under 16 px | `apps/web/scripts/check-layout.mjs`: `pnpm --filter @selectauto/web check:layout -- --base <a running build>` (see its header) |
@@ -315,7 +315,14 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
 
   Check a change by rendering every template with `render()` from `react-email` (what Resend calls) and looking at it
   at 700, 390 and 320 px; the walk is in [parity/emails.md](parity/emails.md).
-- **Fonts:** four font files are preloaded (Manrope and Unbounded, Latin and Cyrillic). Measure LCP on a phone.
+- **Fonts:** four files are preloaded, Manrope and Unbounded in Latin and Cyrillic (120 KB, against Montserrat's 57 KB
+  before), and JetBrains Mono's Latin (40 KB) loads with the first VIN or lot number. On a car page they are the main
+  reason a phone loads more slowly than on `main` in Lighthouse (score 79–80 against 83): blocking the two Latin
+  files there brings its LCP from 5.4 s to 4.9 s. Preloading less doesn't help, because nearly every page shows
+  Latin in Unbounded (prices, years). What would: self-hosted subsets, basic Latin for Unbounded (51 → 32 KB) and
+  JetBrains Mono (40 → 26 KB) — a font change for the owner to weigh, since rare letters (Š, ë) would fall back.
+- **CSS that loads only where it's used:** the admin's styles come with `app/admin/layout.tsx`, not `globals.css`, so the
+  public pages don't download them, and the site's Tailwind doesn't scan `src/emails` (`@source not`).
 - **Where the design system's `tokens.json` and the kit differ, the code follows the kit,** because the boards were
   drawn with it: `small` sets no weight (tokens.json says 500); prices and button labels have the kit's tracking; `or-ring`
   and `paper` exist only in the kit. Correct `tokens.json` when the design system is next published.

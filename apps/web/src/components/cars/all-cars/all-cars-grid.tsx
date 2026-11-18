@@ -696,10 +696,10 @@ export function AllCarsGrid({
                   {cells.map((car, i) =>
                     car ? (
                       <CardGlass key={car.id ?? `${virtualRow.index}-${i}`} pending={pending}>
-                        {/* No `priority`: this branch only exists after
-                            hydration, when the static first-paint grid already
-                            loaded the LCP. */}
-                        <AuctionCard car={car} />
+                        {/* The first row keeps `priority`: on a slow connection this
+                            branch replaces the static grid before its photos arrive,
+                            and a lazy photo here would become the page's LCP. */}
+                        <AuctionCard car={car} priority={virtualRow.index === 0 && i < 2} />
                       </CardGlass>
                     ) : (
                       <SkeletonCard key={`s-${virtualRow.index}-${i}`} />

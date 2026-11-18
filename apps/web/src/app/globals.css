@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* The e-mails compile with their own Tailwind (src/emails/theme.ts); none of their classes belongs in the site's CSS. */
+@source not "../emails";
 
 /* The „Нощно шосе" design tokens. They bind; docs/design/README.md has the rules. */
 @import "../styles/tokens.css";
@@ -20,9 +22,8 @@
 @import "../styles/info-legal.css";
 @import "../styles/account.css";
 @import "../styles/inquiry.css";
-@import "../styles/admin.css";
-@import "../styles/admin-b.css";
-@import "../styles/admin-b-root.css";
+/* The admin's own styles (admin.css, admin-b.css, admin-b-root.css) are imported by app/admin/layout.tsx, so the
+   public pages don't download them. */
 
 html,
 body {

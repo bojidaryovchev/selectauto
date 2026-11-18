@@ -1,3 +1,8 @@
+// The admin's own styles, here and not in globals.css, so the public pages don't download them. In this order: the
+// ported ad- and ab- boards, then the hand-written rules that beat the kit's.
+import "@/styles/admin.css";
+import "@/styles/admin-b.css";
+import "@/styles/admin-b-root.css";
 import { AdminChrome, AdminPageSkeleton, AdminShellSkeleton } from "@/components/admin/shell";
 import { requirePageWith } from "@/lib/admin";
 import type { Metadata } from "next";
