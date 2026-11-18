@@ -1,6 +1,7 @@
 "use server";
 
 import { and, eq, isNull, sql } from "drizzle-orm";
+import { centsToDb, parseAmountToCents } from "@/lib/money";
 import { revalidatePath, updateTag } from "next/cache";
 import { getAdminSession } from "@/lib/admin";
 import { CACHE_TAGS, carCacheTag } from "@/lib/cache-tags";
@@ -73,10 +74,13 @@ export async function applyDeindex(
     return { success: false, error: "Невалиден VIN." };
   }
 
-  const fee = input.feeAmount?.trim();
-  if (fee && !/^\d+(\.\d{1,2})?$/.test(fee)) {
+  // The money parser the contracts use: comma or dot, spaces between thousands („50,5" was refused; notes ab §4).
+  const feeInput = input.feeAmount?.trim();
+  const feeCents = feeInput ? parseAmountToCents(feeInput) : null;
+  if (feeInput && feeCents === null) {
     return { success: false, error: "Невалидна сума." };
   }
+  const fee = feeCents === null ? null : centsToDb(feeCents);
 
   const db = getDb();
   let carIds: number[] = [];
@@ -105,7 +109,7 @@ export async function applyDeindex(
           requesterName: input.requesterName?.trim() || null,
           requesterContact: input.requesterContact?.trim() || null,
           proofNote: input.proofNote?.trim() || null,
-          feeAmount: fee || null,
+          feeAmount: fee,
           paidAt: fee ? new Date() : null,
           notes: input.notes?.trim() || null,
           createdBy: session.user?.id ?? null,

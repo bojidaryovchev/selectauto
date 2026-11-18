@@ -1,4 +1,5 @@
 import { getAdminSession } from "@/lib/admin";
+import { getMakeIndex } from "@/queries/cars/get-make-index.query";
 import { getDb, schema } from "@/lib/db";
 import { isUsableVin, normalizeVin } from "@/lib/vin";
 import { desc, eq, sql } from "drizzle-orm";
@@ -24,6 +25,8 @@ export type DeindexCandidate = {
   listedArchived: boolean;
   deindexedAt: Date | null;
   url: string;
+  /** The car's make with its logo, for the plate beside it (decision 8); null when the make is unknown. */
+  make: { name: string; logo: string | null } | null;
 };
 
 /** A car found by its id or lot number: what the admin sees to pick, or to learn why it can't be hidden. */
@@ -131,6 +134,7 @@ export async function lookupDeindexCandidates(rawQuery: string): Promise<LookupR
       title: schema.cars.title,
       year: schema.cars.year,
       deindexedAt: schema.cars.deindexedAt,
+      manufacturerId: schema.cars.manufacturerId,
       lotNumber: schema.auctionLots.lotNumber,
       domainName: schema.auctionLots.domainName,
       listedActive: sql<boolean>`EXISTS (SELECT 1 FROM car_listings cl WHERE cl.car_id = ${schema.cars.id})`,
@@ -141,6 +145,8 @@ export async function lookupDeindexCandidates(rawQuery: string): Promise<LookupR
     .where(sql`upper(btrim(${schema.cars.vin})) = ${vin}`)
     .orderBy(desc(schema.cars.id));
 
+  // The makes the car cards use (cached for days), for each listing's plate.
+  const makes = await getMakeIndex();
   // The left join fans out over lots; collapse to one row per car.
   const byCar = new Map<number, DeindexCandidate>();
   for (const r of rows) {
@@ -161,6 +167,7 @@ export async function lookupDeindexCandidates(rawQuery: string): Promise<LookupR
       listedArchived: r.listedArchived,
       deindexedAt: r.deindexedAt,
       url: `/avtomobil/${r.carId}`,
+      make: r.manufacturerId != null && makes[r.manufacturerId] ? makes[r.manufacturerId] : null,
     });
   }
 

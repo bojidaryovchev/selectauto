@@ -1,14 +1,16 @@
 "use client";
 
-import { ADMIN_INPUT, ADMIN_LABEL, AdminBanner, AdminButton, AdminCard } from "@/components/admin/ui";
-import { ConfirmDialog } from "@/components/common";
+import { ADMIN_INPUT, AdminBanner } from "@/components/admin/ui";
+import { Button, ConfirmDialog, MakePlate } from "@/components/common";
+import { ExternalLinkIcon, EyeOffIcon, RotateCcwIcon, SearchIcon } from "@/components/icons";
 import { applyDeindex, lookupForDeindex, revokeDeindex } from "@/mutations/deindex";
 import type { DeindexCandidate, DeindexFoundCar, LookupResult } from "@/queries/deindex";
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 
 /**
- * Search → review → charge → suppress.
+ * Search → review → charge → suppress (boards `ab-hidden`, `-done`, `-states`, `-states2`, `-flow`; parity check
+ * docs/design/parity/admin-hidden.md).
  *
  * The REVIEW step is not decoration. A VIN routinely owns several car rows, each
  * with its own indexable URL, so the admin must see the full list before taking
@@ -164,50 +166,57 @@ export function DeindexManager() {
   const count = `${candidates.length} ${candidates.length === 1 ? "обява" : "обяви"}`;
 
   return (
-    <div className="flex flex-col gap-4">
-      <AdminCard>
+    <>
+      <section className="sa-pnl">
         <form
           role="search"
-          className="flex flex-col gap-2"
+          className="ab-srch"
           onSubmit={(e) => {
             e.preventDefault();
             search(query);
           }}
         >
-          <label htmlFor={queryId} className={ADMIN_LABEL}>
+          <label htmlFor={queryId} className="sa-lbl">
             VIN, номер на лот или линк към обявата
           </label>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <input
-              id={queryId}
-              type="search"
-              enterKeyHint="search"
-              autoCapitalize="off"
-              autoCorrect="off"
-              spellCheck={false}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="напр. 1D7HU182X8J137865 или https://www.selectauto.bg/avtomobil/50290"
-              className={ADMIN_INPUT}
-            />
-            <AdminButton type="submit" variant="primary" className="shrink-0" disabled={pending || !query.trim()}>
-              {pending ? "Търси…" : "Търси"}
-            </AdminButton>
+          <div className="ab-srch__r">
+            <span className="sa-inw">
+              <SearchIcon />
+              <input
+                id={queryId}
+                type="search"
+                enterKeyHint="search"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="напр. 1D7HU182X8J137865 или https://www.selectauto.bg/avtomobil/50290"
+                className={ADMIN_INPUT}
+              />
+            </span>
+            <Button type="submit" variant="pri" size="md" disabled={pending || !query.trim()} busy={pending}>
+              {pending ? "Търсете…" : "Търсете"}
+            </Button>
           </div>
-          {searchError ? <AdminBanner tone="error">{searchError}</AdminBanner> : null}
+          {searchError ? (
+            <AdminBanner tone="error" className="ab-al">
+              {searchError}
+            </AdminBanner>
+          ) : null}
           {result?.withoutVin.map((car) => (
-            <AdminBanner key={car.carId} tone="warning">
+            <AdminBanner key={car.carId} tone="warning" className="ab-al">
               {carName(car)} (обява №{car.carId}) няма VIN. Скриването е по VIN, за да хване всички обяви на колата,
               затова не може да се приложи.
             </AdminBanner>
           ))}
         </form>
-      </AdminCard>
+      </section>
 
       {result && result.choices.length > 0 ? (
-        <AdminCard className="flex flex-col gap-3">
-          <h2 className="text-base font-black text-ink">Номерът съвпада с няколко автомобила — изберете кой</h2>
-          <ul className="m-0 flex list-none flex-col gap-2 p-0">
+        <section className="sa-pnl flex flex-col gap-3">
+          <h2 className="ab-h2">Номерът съвпада с няколко автомобила — изберете кой</h2>
+          <ul className="ab-choice">
             {result.choices.map((car) => (
               <li key={car.carId}>
                 <button
@@ -217,36 +226,35 @@ export function DeindexManager() {
                     setQuery(car.vin ?? "");
                     search(car.vin ?? "");
                   }}
-                  className="flex min-h-11 w-full flex-col items-start gap-0.5 rounded-lg border border-line bg-white px-3 py-2 text-left transition-colors hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-50"
                 >
-                  <span className="font-semibold text-ink">{carName(car)}</span>
-                  <span className="text-xs wrap-anywhere text-muted">
+                  <b>{carName(car)}</b>
+                  <small>
                     VIN {car.vin} · {car.via === "id" ? `обява №${car.carId}` : "номер на лот"}
-                  </span>
+                  </small>
                 </button>
               </li>
             ))}
           </ul>
-        </AdminCard>
+        </section>
       ) : null}
 
       {candidates.length > 0 ? (
-        <AdminCard className="@container flex flex-col gap-4">
-          <div>
-            <h2 className="text-base font-black wrap-anywhere text-ink">
-              VIN {result?.vin} — {count}
+        <section className="sa-pnl ab-cand">
+          <header>
+            <h2>
+              VIN <span className="ab-mono">{result?.vin}</span> — {count}
             </h2>
-            <p className="mt-1 text-sm text-muted">
+            <p>
               Един автомобил може да има няколко обяви (пре-листване, Copart→IAAI). Всички по-долу ще бъдат скрити
               заедно.
             </p>
-          </div>
+          </header>
 
           <CandidateCards candidates={candidates} />
           <CandidateTable candidates={candidates} />
 
           {!allSuppressed ? (
-            <div className="grid gap-3 @lg:grid-cols-2">
+            <div className="ab-reqf">
               <Field label="Заявител" value={requesterName} onChange={setRequesterName} autoComplete="off" />
               <Field label="Контакт" value={requesterContact} onChange={setRequesterContact} autoComplete="off" />
               <Field
@@ -265,37 +273,43 @@ export function DeindexManager() {
             </div>
           ) : null}
 
-          <div className="flex flex-wrap gap-2">
+          <div className="ab-row">
             {!allSuppressed ? (
-              <AdminButton variant="danger" size="lg" disabled={pending} onClick={() => setConfirming("apply")}>
-                Скрий от сайта и търсачките
-              </AdminButton>
+              <Button variant="neg" size="md" disabled={pending} onClick={() => setConfirming("apply")}>
+                <EyeOffIcon />
+                Скрийте от сайта и търсачките
+              </Button>
             ) : null}
             {anySuppressed ? (
-              <AdminButton variant="secondary" size="lg" disabled={pending} onClick={() => setConfirming("revoke")}>
-                Възстанови
-              </AdminButton>
+              <Button variant="sec" size="md" disabled={pending} onClick={() => setConfirming("revoke")}>
+                <RotateCcwIcon />
+                Възстановете
+              </Button>
             ) : null}
           </div>
-          {feedback ? <AdminBanner tone={feedback.tone}>{feedback.text}</AdminBanner> : null}
-        </AdminCard>
+          {feedback ? (
+            <AdminBanner tone={feedback.tone} className="ab-al">
+              {feedback.text}
+            </AdminBanner>
+          ) : null}
+        </section>
       ) : null}
 
       <ConfirmDialog
         isOpen={confirming === "apply"}
         tone="danger"
         title="Скриване на обявите"
-        confirmLabel="Скрий"
+        confirmLabel="Скрийте"
         isPending={pending}
         onConfirm={confirmApply}
         onCancel={() => setConfirming(null)}
         message={
-          <span className="block space-y-2 text-left">
+          <span className="ab-dlg-note block space-y-2 text-left">
             <span className="block">
               {count} за VIN <b>{result?.vin}</b> ще върнат <b>410 Gone</b> и ще изчезнат от каталога, картата на сайта
               и филтрите.
             </span>
-            <span className="block text-sm text-muted">
+            <span className="block text-sm text-tx2">
               Търсачките, които приемат IndexNow (Bing, Yandex и др.), се уведомяват автоматично.{" "}
               <b>Google няма API за премахване</b> — подайте ръчна заявка в Search Console. Снимките се хостват от
               аукциона и остават достъпни там.
@@ -306,22 +320,22 @@ export function DeindexManager() {
       <ConfirmDialog
         isOpen={confirming === "revoke"}
         title="Възстановяване на обявите"
-        confirmLabel="Възстанови"
+        confirmLabel="Възстановете"
         isPending={pending}
         onConfirm={confirmRevoke}
         onCancel={() => setConfirming(null)}
         message={
-          <span className="block space-y-2 text-left">
+          <span className="ab-dlg-note block space-y-2 text-left">
             <span className="block">
               {count} за VIN <b>{result?.vin}</b> отново ще се виждат в сайта, каталога и картата на сайта.
             </span>
-            <span className="block text-sm text-muted">
+            <span className="block text-sm text-tx2">
               Заявката остава в регистъра като отменена. Търсачките ще ги обходят отново по свой график.
             </span>
           </span>
         }
       />
-    </div>
+    </>
   );
 }
 
@@ -339,43 +353,46 @@ function listedLabel(c: DeindexCandidate): string {
 }
 
 function StateBadge({ hidden }: { hidden: boolean }) {
+  // Plain tags, no dot, as the boards draw them.
   return hidden ? (
-    <span className="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-bold text-rose-800 ring-1 ring-rose-200 ring-inset">
-      скрита
-    </span>
+    <span className="sa-tag ab-st shrink-0 sa-tag--neg">скрита</span>
   ) : (
-    <span className="inline-flex items-center rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-semibold text-muted ring-1 ring-line ring-inset">
-      видима
-    </span>
+    <span className="sa-tag ab-st shrink-0">видима</span>
   );
 }
 
 /** Opens the public page in a new tab — for checking the listing before charging. */
 function CarLink({ c }: { c: DeindexCandidate }) {
   return (
-    <a
-      href={c.url}
-      target="_blank"
-      rel="noreferrer"
-      className="-my-2.5 inline-block py-2.5 font-semibold wrap-anywhere text-brand hover:underline"
-    >
+    <a href={c.url} target="_blank" rel="noreferrer" className="ab-url">
+      <ExternalLinkIcon />
       {c.url}
     </a>
   );
 }
 
-/** Below the table's container width: one card per listing. */
+/** The car with its make's plate (decision 8). */
+function CarName({ c }: { c: DeindexCandidate }) {
+  return (
+    <span className="ab-car">
+      {c.make ? <MakePlate name={c.make.name} logo={c.make.logo} size="xs" /> : null}
+      <span>{carName(c)}</span>
+    </span>
+  );
+}
+
+/** Below a 768 px panel: one card per listing. */
 function CandidateCards({ candidates }: { candidates: DeindexCandidate[] }) {
   return (
-    <ul className="m-0 flex list-none flex-col gap-2 p-0 @3xl:hidden">
+    <ul className="ab-ccards">
       {candidates.map((c) => (
-        <li key={c.carId} className="flex flex-col gap-1 rounded-lg border border-line px-3 py-2.5 text-sm">
-          <div className="flex items-start justify-between gap-3">
+        <li key={c.carId}>
+          <div>
             <CarLink c={c} />
             <StateBadge hidden={c.deindexedAt !== null} />
           </div>
-          <span className="text-ink">{carName(c)}</span>
-          <span className="text-xs text-muted">
+          <CarName c={c} />
+          <span className="ab-meta">
             Лот {c.lotNumber ?? "—"}
             {c.domainName ? ` · ${c.domainName}` : ""} · в каталога: {listedLabel(c)}
           </span>
@@ -387,30 +404,32 @@ function CandidateCards({ candidates }: { candidates: DeindexCandidate[] }) {
 
 function CandidateTable({ candidates }: { candidates: DeindexCandidate[] }) {
   return (
-    <div className="hidden overflow-hidden rounded-lg border border-line @3xl:block">
-      <table className="w-full text-left text-sm">
+    <div className="ab-ctbl sa-tbl-wrap">
+      <table className="sa-tbl">
         <thead>
-          <tr className="border-b border-line text-xs tracking-wide text-muted uppercase">
-            <th className="px-3 py-2 font-bold">URL</th>
-            <th className="px-3 py-2 font-bold">Автомобил</th>
-            <th className="px-3 py-2 font-bold">Лот</th>
-            <th className="px-3 py-2 font-bold">В каталога</th>
-            <th className="px-3 py-2 font-bold">Състояние</th>
+          <tr>
+            <th>URL</th>
+            <th>Автомобил</th>
+            <th>Лот</th>
+            <th>В каталога</th>
+            <th>Състояние</th>
           </tr>
         </thead>
         <tbody>
           {candidates.map((c) => (
-            <tr key={c.carId} className="border-b border-line/60 last:border-0">
-              <td className="px-3 py-2">
+            <tr key={c.carId}>
+              <td>
                 <CarLink c={c} />
               </td>
-              <td className="px-3 py-2 text-ink">{carName(c)}</td>
-              <td className="px-3 py-2 text-muted">
+              <td>
+                <CarName c={c} />
+              </td>
+              <td className="mute">
                 {c.lotNumber ?? "—"}
                 {c.domainName ? ` · ${c.domainName}` : ""}
               </td>
-              <td className="px-3 py-2 text-muted">{listedLabel(c)}</td>
-              <td className="px-3 py-2">
+              <td className="mute">{listedLabel(c)}</td>
+              <td>
                 <StateBadge hidden={c.deindexedAt !== null} />
               </td>
             </tr>
@@ -438,8 +457,8 @@ function Field({
 }) {
   const id = useId();
   return (
-    <div className="flex min-w-0 flex-col gap-1">
-      <label htmlFor={id} className={ADMIN_LABEL}>
+    <div className="ab-fld">
+      <label htmlFor={id} className="sa-lbl">
         {label}
       </label>
       <input

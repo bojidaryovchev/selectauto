@@ -1,10 +1,12 @@
 import { AdminEmptyState } from "@/components/admin/ui";
+import { EyeOffIcon } from "@/components/icons";
+import { formatDbAmount } from "@/lib/money";
 import { formatSofiaDate } from "@/lib/sofia-time";
 import type { DeindexRequestRow } from "@/queries/deindex";
 
 /**
- * The de-listing register — a plain server component (no interactivity). Cards
- * below the table's container width, a table above it.
+ * The de-listing register (boards `ab-hidden`, `ab-hidden-done`; parity check docs/design/parity/admin-hidden.md) —
+ * a plain server component (no interactivity). Cards below a 56rem list, the kit's table above (`ab-list`).
  *
  * For a paid service this list IS the audit trail: who asked, what proof was
  * recorded, what was charged and by whom, and whether the suppression is still
@@ -13,32 +15,32 @@ import type { DeindexRequestRow } from "@/queries/deindex";
  * stamped looks like.
  */
 export function DeindexRequestList({ rows }: { rows: DeindexRequestRow[] }) {
-  if (rows.length === 0) return <AdminEmptyState title="Няма заявки за скриване." />;
+  if (rows.length === 0) return <AdminEmptyState title="Няма заявки за скриване." icon={<EyeOffIcon />} />;
 
   return (
-    <div className="@container">
-      <ul className="m-0 flex list-none flex-col gap-2 p-0 @4xl:hidden">
+    <div className="ab-list">
+      <ul className="ab-cards grid-cols-1!">
         {rows.map((r) => (
-          <li key={r.id} className="flex flex-col gap-2 rounded-xl border border-line bg-white p-4 text-sm">
-            <div className="flex items-start justify-between gap-3">
-              <span className="font-bold wrap-anywhere text-ink">{r.vinNormalized}</span>
+          <li key={r.id} className="ab-cc ab-reg">
+            <div className="ab-cc__h">
+              <b className="ab-mono ab-wrap">{r.vinNormalized}</b>
               <State row={r} />
             </div>
-            <dl className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-3 gap-y-1">
-              <dt className="text-muted">Заявител</dt>
-              <dd className="wrap-anywhere text-ink">
+            <dl>
+              <dt>Заявител</dt>
+              <dd>
                 <Requester row={r} />
               </dd>
-              <dt className="text-muted">Доказателство</dt>
-              <dd className="wrap-anywhere text-ink">{r.proofNote ?? "—"}</dd>
-              <dt className="text-muted">Такса</dt>
-              <dd className="text-ink">{fee(r)}</dd>
-              <dt className="text-muted">Обяви</dt>
+              <dt>Доказателство</dt>
+              <dd>{r.proofNote ?? "—"}</dd>
+              <dt>Такса</dt>
+              <dd>{fee(r)}</dd>
+              <dt>Обяви</dt>
               <dd>
                 <Listings row={r} />
               </dd>
-              <dt className="text-muted">Създадена</dt>
-              <dd className="wrap-anywhere text-ink">
+              <dt>Създадена</dt>
+              <dd>
                 <Created row={r} />
               </dd>
             </dl>
@@ -46,55 +48,60 @@ export function DeindexRequestList({ rows }: { rows: DeindexRequestRow[] }) {
         ))}
       </ul>
 
-      <div className="hidden overflow-hidden rounded-xl border border-line bg-white @4xl:block">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-line text-xs tracking-wide text-muted uppercase">
-              <th className="px-4 py-3 font-bold">VIN</th>
-              <th className="px-4 py-3 font-bold">Заявител</th>
-              <th className="px-4 py-3 font-bold">Доказателство</th>
-              <th className="px-4 py-3 font-bold">Такса</th>
-              <th className="px-4 py-3 font-bold">Обяви</th>
-              <th className="px-4 py-3 font-bold">Създадена</th>
-              <th className="px-4 py-3 font-bold">Състояние</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} className="border-b border-line/60 align-top last:border-0">
-                <td className="px-4 py-3 font-semibold wrap-anywhere text-ink">{r.vinNormalized}</td>
-                <td className="px-4 py-3 wrap-anywhere text-muted">
-                  <Requester row={r} />
-                </td>
-                <td className="px-4 py-3 wrap-anywhere text-muted">{r.proofNote ?? "—"}</td>
-                <td className="px-4 py-3 whitespace-nowrap text-muted">{fee(r)}</td>
-                <td className="px-4 py-3 text-muted">
-                  <Listings row={r} />
-                </td>
-                <td className="px-4 py-3 text-muted">
-                  <Created row={r} />
-                </td>
-                <td className="px-4 py-3">
-                  <State row={r} />
-                </td>
+      <div className="ab-tbl">
+        <div className="sa-tbl-wrap">
+          <table className="sa-tbl">
+            <thead>
+              <tr>
+                <th>VIN</th>
+                <th>Заявител</th>
+                <th>Доказателство</th>
+                <th>Такса</th>
+                <th>Обяви</th>
+                <th>Създадена</th>
+                <th>Състояние</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id}>
+                  <td>
+                    <b className="ab-mono">{r.vinNormalized}</b>
+                  </td>
+                  <td className="ab-rt wrap-anywhere">
+                    <Requester row={r} />
+                  </td>
+                  <td className="mute wrap-anywhere">{r.proofNote ?? "—"}</td>
+                  <td className="mute whitespace-nowrap">{fee(r)}</td>
+                  <td>
+                    <Listings row={r} />
+                  </td>
+                  <td className="ab-rt">
+                    <Created row={r} />
+                  </td>
+                  <td>
+                    <State row={r} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
 }
 
+/** The fee in the bg-BG format („50,00 EUR", decision 11; it read „50.00 EUR"). */
 function fee(r: DeindexRequestRow): string {
-  return r.feeAmount ? `${r.feeAmount} ${r.feeCurrency}` : "—";
+  return r.feeAmount ? `${formatDbAmount(r.feeAmount)} ${r.feeCurrency}` : "—";
 }
 
 function Requester({ row: r }: { row: DeindexRequestRow }) {
   return (
     <>
       {r.requesterName ?? "—"}
-      {r.requesterContact ? <span className="block text-xs text-muted">{r.requesterContact}</span> : null}
+      {r.requesterContact ? <small>{r.requesterContact}</small> : null}
     </>
   );
 }
@@ -102,12 +109,14 @@ function Requester({ row: r }: { row: DeindexRequestRow }) {
 /** Hidden / all listings of the VIN; amber while the request is active and some are still visible. */
 function Listings({ row: r }: { row: DeindexRequestRow }) {
   const mismatch = r.revokedAt === null && r.suppressedCount !== r.carCount;
-  return (
+  return mismatch ? (
+    <span className="ab-mis">
+      {r.suppressedCount}/{r.carCount}
+      <small>не всички са скрити</small>
+    </span>
+  ) : (
     <>
-      <span className={mismatch ? "font-bold text-amber-700" : "text-ink"}>
-        {r.suppressedCount}/{r.carCount}
-      </span>
-      {mismatch ? <span className="block text-xs text-amber-700">не всички са скрити</span> : null}
+      {r.suppressedCount}/{r.carCount}
     </>
   );
 }
@@ -116,28 +125,21 @@ function Created({ row: r }: { row: DeindexRequestRow }) {
   return (
     <>
       {formatSofiaDate(r.createdAt)}
-      {r.createdByEmail ? <span className="block text-xs text-muted">{r.createdByEmail}</span> : null}
+      {r.createdByEmail ? <small>{r.createdByEmail}</small> : null}
     </>
   );
 }
 
 function State({ row: r }: { row: DeindexRequestRow }) {
-  if (r.revokedAt === null) {
-    return (
-      <span className="inline-flex shrink-0 items-center rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-bold text-rose-800 ring-1 ring-rose-200 ring-inset">
-        Активна
-      </span>
-    );
-  }
+  // Plain tags, no dot, as the boards draw this register's states.
+  if (r.revokedAt === null) return <span className="sa-tag ab-st shrink-0 sa-tag--neg">Активна</span>;
   return (
-    <span className="flex flex-col items-start gap-0.5">
-      <span className="inline-flex shrink-0 items-center rounded-full bg-neutral-200 px-2.5 py-0.5 text-xs font-bold text-neutral-700 ring-1 ring-neutral-300 ring-inset">
-        Отменена
-      </span>
-      <span className="text-xs text-muted">
+    <span className="ab-rt">
+      <span className="sa-tag ab-st shrink-0">Отменена</span>
+      <small>
         {formatSofiaDate(r.revokedAt)}
         {r.revokedByEmail ? ` · ${r.revokedByEmail}` : ""}
-      </span>
+      </small>
     </span>
   );
 }
