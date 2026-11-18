@@ -17,6 +17,7 @@
 @import "../styles/info-proces.css";
 @import "../styles/info-blog.css";
 @import "../styles/info-blog-post.css";
+@import "../styles/info-legal.css";
 
 /*
   Legacy: the light theme's tokens, ported from the old site's theme.css. The
