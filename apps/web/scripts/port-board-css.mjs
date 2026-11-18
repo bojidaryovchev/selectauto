@@ -17,6 +17,13 @@
 //     cd-copart.html cd-iaai.html cd-buynow.html cd-buynow-iaai.html cd-canada.html cd-korea.html cd-korea-insp.html \
 //     cd-korea-full.html cd-sold.html cd-sold-noprice.html cd-unsold.html cd-sold-kr.html cd-moto.html cd-loading.html \
 //     cd-states.html cd-f-bar.html cd-f-sticky.html cd-f-vin.html
+//
+// The make and model hubs (styles/hub-page.css), no hand edits:
+//
+//   node <repo>/apps/web/scripts/port-board-css.mjs hm- <repo>/apps/web/src/styles/hub-page.css \
+//     'hm-(sk\b|w\b|st__cap|var\b|gridmsg)' "The make and model hubs (boards hm-make*, hm-model*, hm-hub-*): …" \
+//     hm-make.html hm-model.html hm-make-thin.html hm-make-empty.html hm-model-thin.html hm-model-empty.html \
+//     hm-hub-loading.html
 import fs from "node:fs";
 
 const [prefix, out, dropPattern, title, ...sources] = process.argv.slice(2);

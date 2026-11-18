@@ -5,6 +5,7 @@
 /* Its component classes (sa-*), ported from the boards' kit. */
 @import "../styles/kit.css";
 @import "../styles/car-page.css";
+@import "../styles/hub-page.css";
 
 /*
   Legacy: the light theme's tokens, ported from the old site's theme.css. The

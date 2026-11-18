@@ -15,7 +15,7 @@ design canvases.
 |---|---|
 | Tokens, fonts, type styles | `apps/web/src/styles/tokens.css`; fonts load in `apps/web/src/app/layout.tsx` |
 | Component classes (`sa-btn`, `sa-car`, `sa-hdr` …) | `apps/web/src/styles/kit.css`, ported from the boards' kit; React components apply them |
-| A screen's own layout classes (`cd-*` on the car page) | `apps/web/src/styles/<screen>.css` (so far `car-page.css`), ported from that screen's board sources by `apps/web/scripts/port-board-css.mjs`: token names, `cqi` → `vw`, container queries → media queries |
+| A screen's own layout classes (`cd-*` on the car page, `hm-*` on the hubs) | `apps/web/src/styles/<screen>.css` (so far `car-page.css` and `hub-page.css`), ported from that screen's board sources by `apps/web/scripts/port-board-css.mjs`: token names, `cqi` → `vw`, container queries → media queries |
 | Contrast test of every text and ground pair | `apps/web/tests/design-tokens.test.mts`, run by `pnpm test` |
 | The logo | `Logo` in `apps/web/src/components/common/logo.tsx` |
 | Why this direction, these fonts, this logo | [adr-0001-direction-type-logo.md](adr-0001-direction-type-logo.md) |
@@ -230,6 +230,8 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
   „Спрете превъртането"; a 6 s pause after an arrow click, rewind at the ends, and the controls and „Вижте всички …" in
   the heading (on a phone, the controls beside the eyebrow and the link under the rail). Without an eyebrow (the car
   page's „Подобни автомобили") the title and the controls share one row, and `freeMode` lets the track glide.
+- **Hubs** (`components/cars/hub/`): the header with the make's xl plate beside the H1, the model chips (a three-row
+  swipe on a phone), the empty panel, the FAQ (two columns when there's no sold-price table) and the skeleton.
 - **The catalog's filters** sit in one console above the results on tablets and desktops, and in a full-height sheet on
   phones, behind „Филтри" (decision 5). They apply as they change; the tab Активни / Приключили is not a filter.
 - **Carousels** keep advancing on their own, pause on hover and focus, and have a pause button („Спрете превъртането").
@@ -249,10 +251,10 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
 - **The shell is rebuilt** (17–18 November): the page ground is night, the header, phone top bar, bottom tabs, drawer,
   footer, Viber popup, back-to-top and notifications follow their boards, and the focus ring and the dark colour scheme
   are global. Pages not rebuilt yet look broken on the dark ground until their turn.
-- **Rebuilt so far:** the car card and the confirm dialog, the catalog (`/vsichki-avtomobili`), the home page and the
-  car page (`/avtomobil/[id]`) with its gallery, full-screen photo viewer, media dialogs and action bar. Each has its
-  parity file in [parity/](parity/README.md). The car page's calculator, inquiry and Carfax dialogs open as they are
-  until their own steps.
+- **Rebuilt so far:** the car card and the confirm dialog, the catalog (`/vsichki-avtomobili`), the home page, the car
+  page (`/avtomobil/[id]`) with its gallery, full-screen photo viewer, media dialogs and action bar, and the make and
+  model hubs (`/avtomobili/marka/…`). Each has its parity file in [parity/](parity/README.md). The car page's
+  calculator, inquiry and Carfax dialogs open as they are until their own steps.
 - **Montserrat** still loads, only for the /proces particle title. Remove it when /proces is rebuilt.
 - **Fonts:** four font files are preloaded once Montserrat goes (Manrope and Unbounded, Latin and Cyrillic), against two
   today. Measure LCP on a phone after the shell's rebuild.

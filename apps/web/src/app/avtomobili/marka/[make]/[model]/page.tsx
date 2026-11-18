@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { cache, Suspense } from "react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Container, LinkButton } from "@/components/common";
 import { AllCarsGrid, CarGridSkeleton } from "@/components/cars/all-cars";
-import { ModelSoldPrices } from "@/components/cars";
+import { ModelSoldPrices, hasSoldPrices } from "@/components/cars";
+import { HubEmpty, HubFaq, HubHeader, HubSkeleton } from "@/components/cars/hub";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { MIN_HUB_LISTINGS_TO_INDEX, SITE_URL } from "@/constants";
 import { brandHubPath, modelHubPath } from "@/lib/car-slug";
@@ -14,6 +13,7 @@ import {
   getCarsCount,
   getCarsPage,
   getHubFacetCount,
+  getMakeIndex,
   getModelHubStats,
   getModelSoldPricesByYear,
   resolveCarHub,
@@ -96,7 +96,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const label = `${hub.brandName} ${hub.modelName}`;
   const description =
     `${label} за внос от Copart, IAAI и Encar — ${obiavi(count)}. ` +
-    `Виж цени, спецификации и заяви оферта за внос от SelectAuto.`;
+    `Вижте цени, спецификации и заявете оферта за внос от SelectAuto.`;
 
   return {
     title: `${label} внос от аукцион | SelectAuto`,
@@ -110,7 +110,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 
 /**
  * /avtomobili/marka/[make]/[model] — the programmatic make/model SEO hub
- * (docs/12-web-seo-strategy.md §4.2). A durable ranking asset for `{make} {model} внос от
+ * (docs/12-web-seo-strategy.md §4.2; boards `hm-model*`, parity check docs/design/parity/avtomobili-marka.md). A durable ranking asset for `{make} {model} внос от
  * {държава}` long-tail: unlike a single transient listing it accumulates authority
  * across inventory churn, and it's the crawlable internal-link surface into deep
  * inventory the infinite-scroll catalog can't provide.
@@ -130,7 +130,7 @@ export default function ModelHubPage({ params }: { params: Params }) {
       <Suspense fallback={null}>
         <SiteHeader />
       </Suspense>
-      <main className="flex-1 bg-[#fafafa] pt-(--header-h) text-ink">
+      <main className="flex-1 pt-(--header-h)">
         <Suspense fallback={<HubSkeleton />}>
           <HubBody params={params} />
         </Suspense>
@@ -153,10 +153,11 @@ async function HubBody({ params }: { params: Params }) {
   if (!data) notFound();
 
   const { hub, filters, count } = data;
-  const [firstPage, stats, soldByYear] = await Promise.all([
+  const [firstPage, stats, soldByYear, makes] = await Promise.all([
     getCarsPage(filters, null),
     getModelHubStats(hub.brandId, hub.modelId),
     getModelSoldPricesByYear(hub.brandId, hub.modelId),
+    getMakeIndex(),
   ]);
 
   const label = `${hub.brandName} ${hub.modelName}`;
@@ -196,49 +197,25 @@ async function HubBody({ params }: { params: Params }) {
         />
       ))}
 
-      <Container>
-        <div className="py-10 max-md:py-7">
-          {/* Breadcrumb (matches the JSON-LD trail). Brand crumb links up to the
-              parent brand hub when it resolves. */}
-          <nav className="mb-5 text-sm text-muted">
-            <Link href="/vsichki-avtomobili" className="hover:text-brand-dark">
-              Всички автомобили
-            </Link>
-            {brandHref ? (
-              <>
-                <span className="px-2">/</span>
-                <Link href={brandHref} className="hover:text-brand-dark">
-                  {hub.brandName}
-                </Link>
-              </>
-            ) : null}
-            <span className="px-2">/</span>
-            <span className="text-ink">{label}</span>
-          </nav>
+      {/* Breadcrumb (matches the JSON-LD trail). The make crumb links up to the parent brand hub when it resolves. */}
+      <HubHeader
+        crumbs={[
+          { name: "Всички автомобили", href: "/vsichki-avtomobili" },
+          ...(brandHref ? [{ name: hub.brandName, href: brandHref }] : []),
+          { name: label },
+        ]}
+        make={{ name: hub.brandName, logo: makes[hub.brandId]?.logo ?? null }}
+        title={`${label} внос от аукцион`}
+        intro={intro}
+        count={count}
+        // The h2 the car cards' h3 titles sit under (as on the catalog).
+        countAs="h2"
+      />
 
-          <h1 className="mb-2 text-4xl font-black uppercase tracking-tight text-ink max-md:text-3xl">
-            {label} внос от аукцион
-          </h1>
-          <p className="mb-2 max-w-2xl text-sm text-muted">{intro}</p>
-          {/* The h2 the car cards' h3 titles sit under (as on the catalog). */}
-          <h2 className="mb-6 text-sm text-muted">
-            Намерени автомобили: <strong className="text-ink">{count.toLocaleString("bg-BG")}</strong>
-          </h2>
-
+      <section className="sa-band sa-band--tight">
+        <div className="sa-wrap">
           {count === 0 ? (
-            <div className="rounded-2xl border border-line bg-white px-6 py-10 text-center">
-              <p className="mb-4 text-sm text-muted">
-                В момента няма активни обяви за {label}. Заяви персонална селекция и ще намерим
-                подходящ автомобил от аукционите.
-              </p>
-              <LinkButton
-                href="/vsichki-avtomobili"
-                rippleTheme="light"
-                className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand px-6 text-sm font-extrabold uppercase tracking-wide text-white transition-transform duration-200 hover:-translate-y-0.5"
-              >
-                Виж всички автомобили
-              </LinkButton>
-            </div>
+            <HubEmpty label={label} />
           ) : (
             <Suspense fallback={<CarGridSkeleton count={12} />}>
               <AllCarsGrid
@@ -250,25 +227,18 @@ async function HubBody({ params }: { params: Params }) {
               />
             </Suspense>
           )}
-
-          {/* Real per-year sold-price averages (our archive) — market benchmark +
-              unique aggregate content. Self-hides when there aren't enough sales. */}
-          <ModelSoldPrices label={label} rows={soldByYear} />
-
-          {/* FAQ — visible copy backing the FAQPage JSON-LD (must match) */}
-          <section className="mt-14 max-w-2xl">
-            <h2 className="mb-5 text-2xl font-black text-ink">Често задавани въпроси</h2>
-            <dl className="flex flex-col gap-5">
-              {faq.map((f) => (
-                <div key={f.question}>
-                  <dt className="mb-1 font-bold text-ink">{f.question}</dt>
-                  <dd className="text-sm text-muted">{f.answer}</dd>
-                </div>
-              ))}
-            </dl>
-          </section>
         </div>
-      </Container>
+      </section>
+
+      {/* Real per-year sold-price averages (our archive) — market benchmark + unique aggregate content, beside the FAQ
+          from 1024 px. The FAQ is the visible copy backing the FAQPage JSON-LD (it must match); without the table it
+          runs in two columns on its own. */}
+      <section className="sa-band sa-band--line">
+        <div className={`sa-wrap ${hasSoldPrices(soldByYear) ? "hm-market" : ""}`}>
+          <ModelSoldPrices label={label} rows={soldByYear} />
+          <HubFaq faq={faq} solo={!hasSoldPrices(soldByYear)} />
+        </div>
+      </section>
     </>
   );
 }
@@ -303,7 +273,7 @@ function hasCountryClaim(stats: ModelHubStats): boolean {
 function hubIntro(label: string, stats: ModelHubStats | null): string {
   const base = `${label} за внос от Copart, IAAI и Encar.`;
   if (!stats) {
-    return `${base} Разгледай активните обяви по-долу, виж реалните аукционни цени и заяви оферта — SelectAuto поема целия внос до регистрация в КАТ.`;
+    return `${base} Разгледайте активните обяви по-долу, вижте реалните аукционни цени и заявете оферта — SelectAuto поема целия внос до регистрация в КАТ.`;
   }
 
   const bits: string[] = [];
@@ -315,7 +285,7 @@ function hubIntro(label: string, stats: ModelHubStats | null): string {
   if (hasCountryClaim(stats)) bits.push(`предимно от ${stats.topCountryLabel}`);
 
   const detail = bits.length > 0 ? ` Наличните ${label} са ${bits.join(", ")}.` : "";
-  return `${base}${detail} Виж реалните аукционни цени по-долу и заяви оферта — SelectAuto поема целия внос до регистрация в КАТ.`;
+  return `${base}${detail} Вижте реалните аукционни цени по-долу и заявете оферта — SelectAuto поема целия внос до регистрация в КАТ.`;
 }
 
 /**
@@ -335,10 +305,10 @@ function hubFaq(label: string, stats: ModelHubStats | null): { question: string;
         (stats.priceMedian != null && stats.priceMedian >= MIN_CREDIBLE_PRICE
           ? ` (медиана около ${usd(stats.priceMedian)})`
           : "") +
-        `. Към това се добавят транспорт, мито, ДДС и такси за регистрация — виж калкулатора на SelectAuto ` +
+        `. Към това се добавят транспорт, мито, ДДС и такси за регистрация — вижте калкулатора на SelectAuto ` +
         `за крайна оферта според конкретния автомобил.`
       : `Крайната цена за ${label} зависи от аукционната цена, транспорта, митото, ДДС и таксите за ` +
-        `регистрация. Използвай калкулатора на SelectAuto за ориентировъчна оферта според конкретния автомобил.`;
+        `регистрация. Използвайте калкулатора на SelectAuto за ориентировъчна оферта според конкретния автомобил.`;
 
   const sourceAnswer =
     stats && hasCountryClaim(stats)
@@ -355,7 +325,7 @@ function hubFaq(label: string, stats: ModelHubStats | null): { question: string;
       ? `Да — от активните ${label} ${obiavi(stats.buyNowCount)} ${stats.buyNowCount === 1 ? "е" : "са"} ` +
         `с фиксирана цена (Buy Now)${hasOthers ? ", останалите се предлагат на търг" : ""}. ` +
         `Buy Now позволява покупка без наддаване.`
-      : `${label} се предлагат основно на търг. Заяви персонална селекция и следим за подходящ автомобил ` +
+      : `${label} се предлагат основно на търг. Заявете персонална селекция и следим за подходящ автомобил ` +
         `и Buy Now оферта.`;
 
   return [
@@ -364,23 +334,11 @@ function hubFaq(label: string, stats: ModelHubStats | null): { question: string;
     { question: `Има ли ${label} с фиксирана цена (Buy Now)?`, answer: availabilityAnswer },
     {
       question: `Колко време отнема вносът?`,
+      // Owner decision 23 adds the second sentence (Korea).
       answer:
         "Обичайно 6–10 седмици от спечелването на търга до готовност за регистрация в КАТ — според " +
-        "държавата на произход и транспорта.",
+        "държавата на произход и транспорта. При внос от Корея срокът е по-дълъг: реалистично 2–3 месеца от " +
+        "покупката до готовност за регистрация в КАТ.",
     },
   ];
-}
-
-/** Lightweight placeholder shown while the hub body streams in. */
-function HubSkeleton() {
-  return (
-    <Container>
-      <div className="py-10 max-md:py-7">
-        <div className="mb-5 h-4 w-64 animate-pulse rounded-sm bg-line" />
-        <div className="mb-2 h-9 w-2/3 animate-pulse rounded-sm bg-line" />
-        <div className="mb-6 h-4 w-1/2 animate-pulse rounded-sm bg-line" />
-        <CarGridSkeleton count={12} />
-      </div>
-    </Container>
-  );
 }

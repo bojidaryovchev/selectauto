@@ -1,0 +1,43 @@
+/*
+  The make and model hubs (boards hm-make*, hm-model*, hm-hub-*): the hub header with the make's plate, the model chips that swipe on a phone, the empty panel, the sold-price table beside the FAQ, and the loading skeleton.
+  Ported by script from the screen's board sources (apps/web/scripts/port-board-css.mjs, which has the command), as
+  kit.css is from the kit: token names follow tokens.css, the boards' cqi became vw and their container queries media
+  queries. Left out: the boards' teaser cells and captions (the app's grid draws its own placeholders). No hand edits.
+  Class prefix: hm-.
+*/
+@layer components {
+  .hm-nobr{white-space:nowrap}
+  .hm-hub{background:var(--color-s1);border-bottom:1px solid var(--color-hair)}
+  .hm-hub__in{display:flex;flex-direction:column;gap:clamp(18px,1.8vw,26px);padding-block:clamp(24px,2.6vw,44px) clamp(28px,3.2vw,52px)}
+  .hm-hub__title{display:flex;align-items:center;gap:clamp(16px,1.6vw,26px);min-width:0}
+  .hm-hub__title .sa-h1{min-width:0;overflow-wrap:anywhere}
+  .hm-hub__intro{max-width:68ch}
+  .hm-hub__intro.sa-lead{font-size:clamp(16px,.3vw + 14px,19px)}
+  .hm-count{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;font:600 15px/1.3 var(--font-sans);color:var(--color-tx2)}
+  .hm-count strong{font:700 24px/1.1 var(--font-display);color:var(--color-tx);letter-spacing:-.01em}
+  @media (max-width:639.98px){.hm-hub__title .sa-plate{--ps:56px;border-radius:10px}}
+  .hm-models{display:flex;flex-direction:column;gap:14px;padding-top:clamp(18px,1.8vw,26px);border-top:1px solid var(--color-hair)}
+  @media (max-width:639.98px){.hm-models__list{display:grid;grid-auto-flow:column;grid-template-rows:repeat(3,auto);justify-content:start;gap:8px;overflow-x:auto;scrollbar-width:none;margin-inline:calc(-1*var(--spacing-gutter));padding-inline:var(--spacing-gutter);scroll-padding-inline:var(--spacing-gutter);scroll-snap-type:x proximity}.hm-models__list>.sa-chip{scroll-snap-align:start}}
+  .hm-empty{padding:clamp(8px,2vw,32px)}
+  .hm-empty .sa-empty p{color:var(--color-tx2);max-width:52ch;font-size:16px;line-height:1.6}
+  .hm-market{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:clamp(32px,4.4vw,96px);align-items:start}
+  @media (max-width:1023.98px){.hm-market{grid-template-columns:minmax(0,1fr)}}
+  .hm-sold,.hm-faq{display:flex;flex-direction:column;gap:16px;min-width:0}
+  .hm-sold>.sa-p{max-width:68ch}
+  .hm-sold .sa-tbl td,.hm-sold .sa-tbl th{padding-inline:clamp(14px,1.4vw,22px)}
+  .hm-sold .sa-tbl td.num b{font:700 15px/1 var(--font-display);letter-spacing:-.01em;color:var(--color-tx)}
+  .hm-sold .sa-tbl td:first-child{font-weight:800}
+  .hm-faq__list{display:flex;flex-direction:column}
+  .hm-faq__list>div{padding:18px 0;border-top:1px solid var(--color-hair)}
+  .hm-faq__list>div:last-child{border-bottom:1px solid var(--color-hair)}
+  .hm-faq__list dt{font:800 17px/1.4 var(--font-sans);color:var(--color-tx)}
+  .hm-faq__list dd{margin-top:8px;font-size:15.5px;line-height:1.7;color:var(--color-tx2);max-width:72ch}
+  .hm-faq--solo .hm-faq__list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:clamp(32px,4vw,80px)}
+  .hm-faq--solo .hm-faq__list>div:nth-last-child(2){border-bottom:1px solid var(--color-hair)}
+  @media (max-width:1023.98px){.hm-faq--solo .hm-faq__list{display:flex}.hm-faq--solo .hm-faq__list>div:nth-last-child(2){border-bottom:0}}
+  .hm-ld{display:flex;flex-direction:column;gap:clamp(18px,1.8vw,26px)}
+  .hm-ld__t{display:flex;align-items:center;gap:clamp(16px,1.6vw,26px)}
+  .hm-ld__p{width:88px;height:88px;border-radius:14px;flex:none}
+  .hm-ld .sa-sk{display:block}
+  @media (max-width:639.98px){.hm-ld__p{width:56px;height:56px;border-radius:10px}}
+}
