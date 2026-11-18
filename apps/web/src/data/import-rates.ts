@@ -157,6 +157,15 @@ export function calcVehicleTypeFromBody(
   return "sedan";
 }
 
+/**
+ * A number as Bulgarian writes it, with a decimal comma: 2.5 → „2,5", 1.08 → „1,08" (decision 11). Whole numbers are
+ * unchanged. Used in the breakdown's labels, which the estimator shows and the offer e-mail repeats; offers saved
+ * before it keep the labels they were saved with.
+ */
+export function bgDecimal(n: number): string {
+  return String(n).replace(".", ",");
+}
+
 /** Convert EUR → whole USD at the config's fixed rate. */
 export function usd(eur: number, eurUsd: number): number {
   return Math.round(eur * eurUsd);
@@ -263,12 +272,12 @@ export function computeImportBreakdown(
 
     const lines: ImportCostLine[] = [
       {
-        label: `Плащане 1 — автомобил, ENCAR такса (${config.krEncarFeeEur} €) и документи (${config.krDocsPct}%)`,
+        label: `Плащане 1 — автомобил, ENCAR такса (${bgDecimal(config.krEncarFeeEur)} €) и документи (${bgDecimal(config.krDocsPct)}%)`,
         amountUsd: payment1,
       },
       { label: "Плащане 2 — морски транспорт", amountUsd: payment2, amountEur: payment2Eur },
       {
-        label: `Плащане 3 — мито (${appliedDuty}%), ДДС (${vatPct}%) и агенция (${config.agencyEur} €)`,
+        label: `Плащане 3 — мито (${bgDecimal(appliedDuty)}%), ДДС (${bgDecimal(vatPct)}%) и агенция (${bgDecimal(config.agencyEur)} €)`,
         amountUsd: payment3,
       },
       { label: "Плащане 4 — автовоз от Холандия", amountUsd: payment4, amountEur: payment4Eur },
@@ -327,7 +336,7 @@ export function computeImportBreakdown(
   const bgTransport = usd(config.bgTransportEur[i.vehicleType], config.eurUsd);
 
   lines.push({
-    label: `Плащане 3 — мито (${dutyPct}%), ДДС (${vatPct}%) и агенция (${config.agencyEur} €)`,
+    label: `Плащане 3 — мито (${bgDecimal(dutyPct)}%), ДДС (${bgDecimal(vatPct)}%) и агенция (${bgDecimal(config.agencyEur)} €)`,
     amountUsd: duty + vat + agency,
   });
   lines.push({

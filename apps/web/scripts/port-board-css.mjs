@@ -24,6 +24,13 @@
 //     'hm-(sk\b|w\b|st__cap|var\b|gridmsg)' "The make and model hubs (boards hm-make*, hm-model*, hm-hub-*): …" \
 //     hm-make.html hm-model.html hm-make-thin.html hm-make-empty.html hm-model-thin.html hm-model-empty.html \
 //     hm-hub-loading.html
+//
+// The import hubs and the calculators (styles/import-page.css), no hand edits — every im- board carries the same
+// stylesheet, so one source is enough:
+//
+//   node <repo>/apps/web/scripts/port-board-css.mjs im- <repo>/apps/web/src/styles/import-page.css \
+//     'im-(wiz|run|tiles?|rd\b|sheet|b\b|b__|sx|g[234]\b|hr\b|frame|flowpad|shift|tall|msgs|total--first|dlgheads|dlg--head|dlgcenter|dlgph\b|dlgph__scroll|dlgbg|top\b|dlgwrap|trig|pop\b|loc\b|ph\b)' \
+//     "The import hubs and the calculators (boards im-*): …" im-calc.html
 import fs from "node:fs";
 
 const [prefix, out, dropPattern, title, ...sources] = process.argv.slice(2);
@@ -97,7 +104,11 @@ css = css.replace(/var\(--([a-z0-9-]+)\)/g, (m, name) => (rename[name] ? `var(--
 css = css.replace(/(\d*\.?\d+)cqi/g, "$1vw");
 css = css.replace(/@container sa \(max-width:(\d+)px\)/g, (m, w) => `@media (max-width:${Number(w) + 0.98}px)`);
 css = css.replace(/@container sa \(min-width:(\d+)px\)/g, "@media (min-width:$1px)");
-const leftovers = [...css.matchAll(/var\(--([a-z0-9-]+)\)/g)].map((m) => m[1]).filter((n) => !/^(color|font|radius|spacing|container|shadow|bottom-nav|ch|ps|chamfer)/.test(n));
+// Variables the ported rules declare themselves (a rail's `--n`, `--g`) are fine; anything else must be a token.
+const declared = new Set([...css.matchAll(/--([a-z0-9-]+)\s*:/g)].map((m) => m[1]));
+const leftovers = [...css.matchAll(/var\(--([a-z0-9-]+)\)/g)]
+  .map((m) => m[1])
+  .filter((n) => !declared.has(n) && !/^(color|font|radius|spacing|container|shadow|bottom-nav|ch|ps|chamfer)/.test(n));
 if (leftovers.length) throw new Error("Unmapped variables: " + [...new Set(leftovers)].join(", "));
 if (/@container|cqi/.test(css)) throw new Error("Board-only syntax left over");
 

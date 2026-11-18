@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Combobox as BaseCombobox } from "@base-ui/react/combobox";
 import { CheckIcon, ChevronDownIcon, SearchIcon } from "@/components/icons";
 import { MakePlate } from "./make-plate";
@@ -62,6 +63,8 @@ interface ComboboxProps {
   look?: "legacy" | "kit";
   /** Kit look only: each option but the „Всички …" row (`value: ""`) shows its make plate, and so does the field. */
   plates?: boolean;
+  /** Kit look only: an icon at the field's start (the calculator's map pin, board `im-dialog`). */
+  icon?: ReactNode;
 }
 
 const triggerCls =
@@ -98,6 +101,7 @@ export function Combobox({
   className = "",
   look = "legacy",
   plates = false,
+  icon,
 }: ComboboxProps) {
   const selected = options.find((o) => o.value === value) ?? null;
   const searchable = options.length > searchThreshold;
@@ -130,6 +134,13 @@ export function Combobox({
       {kit ? (
         <>
           <BaseCombobox.Trigger id={id} aria-label={ariaLabel} className={`sa-combo ${className}`}>
+            {/* In an <i>, not a bare svg or a span: the kit turns the field's direct svg children (the chevron) when
+                the list opens and stretches its spans. */}
+            {icon ? (
+              <i aria-hidden="true" className="flex flex-none text-tx2 not-italic [&>svg]:size-5">
+                {icon}
+              </i>
+            ) : null}
             <BaseCombobox.Value>
               {(current: ComboboxOption | null) => (
                 <>

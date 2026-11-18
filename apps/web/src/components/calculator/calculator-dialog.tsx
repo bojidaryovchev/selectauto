@@ -1,24 +1,24 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Button } from "@/components/common";
+import { IconButton } from "@/components/common";
 import { CloseIcon } from "@/components/icons";
 import type { MarketId, UsAuction, VehicleType } from "@/data/import-rates";
-import { CostEstimator } from "./cost-estimator";
+import { CostEstimator, type EstimateSummary } from "./cost-estimator";
 
 /**
  * Per-listing import-calculator dialog — opens the full <CostEstimator> over a car,
  * pre-seeded with THIS car's price + market + vehicle-type size class (still a
  * general tool once open: every input stays editable).
  *
- * Chrome mirrors the Carfax / inquiry modals: portal to `document.body` (so a
- * trigger deep inside the clipped/sticky aside still covers the viewport), blurred
- * backdrop, Escape + body-scroll lock, and only mounts while open. A PINNED header
- * sits over a scrollable body so the close button stays reachable on the tall form.
- * Centred card from 641px up (wide enough for the estimator's two-column layout on
- * desktop); on phones (≤640px) it fills the viewport edge-to-edge (`h-dvh`, square
- * corners) with safe-area-aware padding.
+ * Boards `im-dialog`, `im-dialog-states`, `im-dialog-flow`: from 640 px the kit's dialog (960 px) over the dimmed page,
+ * its header — „Калкулатор за внос", the car and its lot — pinned over the scrolling estimator; on a phone it fills
+ * the screen and a footer under the form keeps the total in view (or the prompt that stands in for it).
+ *
+ * Portalled to `document.body` (so a trigger deep inside the sticky buy box still covers the viewport), Escape and a
+ * press outside close it, body scroll is locked, and focus moves to „Затворете"; the trigger takes it back
+ * (CarImportCalculator). Mounted only while open.
  */
 export function CalculatorDialog({
   isOpen,
@@ -48,6 +48,7 @@ export function CalculatorDialog({
   lotNumber?: string;
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const [summary, setSummary] = useState<EstimateSummary>({});
 
   // Lock body scroll, focus the close button, and wire Escape while open.
   useEffect(() => {
@@ -69,39 +70,42 @@ export function CalculatorDialog({
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-99999" role="dialog" aria-modal="true" aria-labelledby="sa-calc-dialog-title">
-      {/* Backdrop */}
-      <div onClick={onClose} className="absolute inset-0 bg-[rgba(8,10,14,0.72)] backdrop-blur-lg" />
+    <div className="fixed inset-0 z-99999 flex items-start justify-center sm:px-6 sm:py-[5vh]">
+      <div className="sa-scrim" onClick={onClose} aria-hidden="true" />
 
-      {/* Dialog — flex column: pinned header over a scrollable body. */}
-      <div className="relative z-2 mx-auto mt-[5vh] flex max-h-[min(88vh,860px)] w-[min(100%-24px,960px)] flex-col overflow-hidden rounded-[28px] bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(248,248,250,0.98)_100%)] shadow-[0_30px_80px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.8)] max-[640px]:mt-0 max-[640px]:h-dvh max-[640px]:max-h-dvh max-[640px]:w-full max-[640px]:rounded-none max-[640px]:shadow-none">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="sa-calc-dialog-title"
+        className="sa-dlg sa-dlg--xl im-dlg max-h-[min(90vh,900px)] max-sm:h-dvh max-sm:max-h-dvh max-sm:w-full max-sm:rounded-none max-sm:border-0 max-sm:shadow-none"
+      >
         {/* Pinned header */}
-        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-line/70 px-7 pb-4 pt-6 max-[640px]:px-4.5 max-[640px]:pt-[max(1rem,env(safe-area-inset-top))]">
+        <div className="sa-dlg__h flex-none max-sm:pt-[max(16px,env(safe-area-inset-top))] max-sm:pr-3 max-sm:pb-3.5 max-sm:pl-4.5">
           <div className="min-w-0">
-            <h2 id="sa-calc-dialog-title" className="text-[22px] font-black text-[#17181b] max-md:text-xl">
+            <h2 id="sa-calc-dialog-title" className="sa-dlg__t max-sm:text-xl">
               Калкулатор за внос
             </h2>
             {carLabel ? (
-              <p className="mt-1 truncate text-sm text-muted">
-                <span className="font-bold text-ink">{carLabel}</span>
-                {lotNumber ? ` · Лот № ${lotNumber}` : ""}
+              <p className="im-dlg__car">
+                <b>{carLabel}</b>
+                {lotNumber ? (
+                  <>
+                    {" "}
+                    · Лот № <span className="sa-mono">{lotNumber}</span>
+                  </>
+                ) : null}
               </p>
             ) : (
-              <p className="mt-1 text-sm text-muted">Ориентировъчна оценка на разходите до България.</p>
+              <p className="im-dlg__sub">Ориентировъчна оценка на разходите до България.</p>
             )}
           </div>
-          <Button
-            ref={closeRef}
-            aria-label="Затвори"
-            onClick={onClose}
-            className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#f1f2f4] text-[#6f747c] transition-all duration-200 hover:-translate-y-px hover:bg-[#e8eaee] hover:text-[#17181b]"
-          >
-            <CloseIcon className="size-4.5" />
-          </Button>
+          <IconButton ref={closeRef} label="Затворете" variant="ghost" onClick={onClose}>
+            <CloseIcon />
+          </IconButton>
         </div>
 
         {/* Scrollable body — the full estimator, rendered bare (the dialog is the card). */}
-        <div className="flex-1 overflow-y-auto px-7 pb-7 pt-5 max-[640px]:px-4.5 max-[640px]:pb-[max(1.125rem,env(safe-area-inset-bottom))]">
+        <div className="sa-dlg__b min-h-0 flex-1 max-sm:px-4.5 max-sm:pt-4.5 max-sm:pb-6">
           <CostEstimator
             bare
             defaultPrice={defaultPrice}
@@ -110,8 +114,23 @@ export function CalculatorDialog({
             defaultAuction={defaultAuction}
             defaultUsLocation={defaultUsLocation}
             defaultCaFromBc={defaultCaFromBc}
+            onSummary={setSummary}
           />
         </div>
+
+        {/* Phone: the total stays in view while the form scrolls (or the prompt that stands in for it). */}
+        {summary.totalUsd || summary.prompt ? (
+          <div className="im-dlgph__f pb-[max(12px,env(safe-area-inset-bottom))] sm:hidden" role="status">
+            {summary.totalUsd ? (
+              <>
+                <span>Общо (ориентир)</span>
+                <b>{summary.totalUsd}</b>
+              </>
+            ) : (
+              <p>{summary.prompt}</p>
+            )}
+          </div>
+        ) : null}
       </div>
     </div>,
     document.body,

@@ -1,7 +1,24 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Container } from "@/components/common";
+import Link from "next/link";
+import { FaqAccordion, SectionHeading } from "@/components/common";
 import { CostEstimator, CostEstimatorFromUrl } from "@/components/calculator";
+import {
+  CarIcon,
+  ClipboardListIcon,
+  FileCheckIcon,
+  FileSearchIcon,
+  FlagCaIcon,
+  FlagKrIcon,
+  FlagUsIcon,
+  GavelIcon,
+  InfoIcon,
+  LandmarkIcon,
+  MessageIcon,
+  ReceiptIcon,
+  SearchIcon,
+  ShipIcon,
+} from "@/components/icons";
 import { InquiryButton } from "@/components/inquiry";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
@@ -12,7 +29,7 @@ import { buildSocialMeta } from "@/lib/social-meta";
 export const metadata: Metadata = {
   title: "Калкулатор за внос на автомобил — колко струва | SelectAuto",
   description:
-    "Изчисли ориентировъчната цена за внос на автомобил от Корея, САЩ или Канада — цена, аукционни такси, транспорт, мито, ДДС и регистрация.",
+    "Изчислете ориентировъчната цена за внос на автомобил от Корея, САЩ или Канада — цена, аукционни такси, транспорт, мито, ДДС и регистрация.",
   alternates: { canonical: `${SITE_URL}/kalkulator` },
   ...buildSocialMeta({
     title: "Калкулатор за внос на автомобил — колко струва | SelectAuto",
@@ -23,7 +40,8 @@ export const metadata: Metadata = {
 };
 
 /**
- * /kalkulator — import-cost landing page + the v2 interactive estimator
+ * /kalkulator — import-cost landing page + the v2 interactive estimator (boards `im-calc*`; parity check
+ * docs/design/parity/kalkulator.md)
  * (market-correct duty logic, itemized breakdown incl. екотакса/одобряване,
  * gated email-offer lead capture — docs/13-seo-action-plan.md Phase B). The
  * estimator is a client island seeded from `?market=&price=` (car-detail deep
@@ -67,6 +85,55 @@ const FAQ: FaqEntry[] = [
   },
 ];
 
+/** „От какво се състои крайната цена": each cost component with its icon (board `im-calc`). */
+const COST_PARTS = [
+  {
+    Icon: CarIcon,
+    t: "Цена на автомобила",
+    d: "Сумата, на която печелите автомобила на аукциона (Copart, IAAI, Encar) или цената Buy Now.",
+  },
+  { Icon: GavelIcon, t: "Аукционни такси", d: "Таксите на аукционната площадка и обработка на сделката." },
+  {
+    Icon: ShipIcon,
+    t: "Транспорт до България",
+    d: "Морски/контейнерен превоз и сухопътна логистика от пазара на произход.",
+  },
+  {
+    Icon: LandmarkIcon,
+    t: "Мито и ДДС",
+    d: "Мито 10% върху стойността до България и ДДС 20% върху стойността плюс митото. От Корея митото е 0% при декларация за преференциален произход от одобрен износител.",
+  },
+  {
+    Icon: ReceiptIcon,
+    t: "Екотакса (ПУДООС)",
+    d: "Еднократна продуктова такса преди първата регистрация — по възраст и задвижване (напр. 290 лв за бензин/дизел на 5–10 г.).",
+  },
+  {
+    Icon: ClipboardListIcon,
+    t: "Одобряване и адаптация",
+    d: "Индивидуално одобряване (технотест) за автомобили без ЕС одобрение на типа; за САЩ/Канада — и адаптация (светлини, km/h скоростомер).",
+  },
+  {
+    Icon: FileCheckIcon,
+    t: "Регистрация и такси",
+    d: "ГТП, такси на КАТ и табели — финалните стъпки до регистрацията.",
+  },
+  {
+    Icon: FileSearchIcon,
+    t: "Проверка на история",
+    d: "По желание — Carfax / проверка на VIN, за да сте сигурни в състоянието на автомобила.",
+  },
+];
+
+/** Contextual links into the money pages (the FAQ hub links here; this closes the loop — docs/12-web-seo-strategy.md §7). */
+const USEFUL_PAGES = [
+  { label: "Внос на коли от Корея", href: "/vnos-na-koli-ot-korea", Icon: FlagKrIcon, flag: true },
+  { label: "Внос на коли от САЩ", href: "/vnos-na-koli-ot-sasht", Icon: FlagUsIcon, flag: true },
+  { label: "Внос на коли от Канада", href: "/vnos-na-koli-ot-kanada", Icon: FlagCaIcon, flag: true },
+  { label: "Проверка на VIN", href: "/proverka-vin", Icon: SearchIcon, flag: false },
+  { label: "Често задавани въпроси", href: "/chesto-zadavani-vaprosi", Icon: MessageIcon, flag: false },
+];
+
 export default function CalculatorPage() {
   const faqJsonLd = buildFaqJsonLd(FAQ);
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
@@ -84,139 +151,104 @@ export default function CalculatorPage() {
   return (
     <>
       <SiteHeader />
-      <main className="flex-1 bg-[#fafafa] pt-(--header-h) text-ink">
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(webAppJsonLd) }}
-        />
+      <main className="flex-1 pt-(--header-h)">
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webAppJsonLd) }} />
 
-        <Container className="max-w-245 py-12 max-md:py-8">
-          <h1 className="mb-3 text-4xl font-black uppercase tracking-tight text-ink max-md:text-3xl">
-            Калкулатор за внос на автомобил
-          </h1>
-          <p className="mb-8 max-w-2xl text-[15px] leading-[1.8] text-[#3d4046]">
-            Вносът на автомобил от Корея, САЩ или Канада се състои от няколко ясни компонента. С калкулатора по-долу
-            получавате ориентировъчна разбивка по зададени от Вас стойности. За обвързваща, точна оферта направете
-            запитване — изготвяме персонална калкулация за конкретния автомобил.
-          </p>
-
-          {/* URL-seeded estimator (car-detail deep links): useSearchParams lives
-              in the wrapper, so only this hole is dynamic; the fallback is the
-              default estimator — visually identical when no params are set. */}
-          <Suspense fallback={<CostEstimator />}>
-            <CostEstimatorFromUrl />
-          </Suspense>
-
-          <p className="mt-3 text-xs text-muted">
-            Всички суми са в щатски долари ($). Ставките (мито, ДДС) са проверени към {RATES_VERIFIED_AT}.
-          </p>
-
-          {/* Cost-component explainer (real, indexable content) */}
-          <section className="mt-12">
-            <h2 className="mb-4 text-2xl font-black text-ink">От какво се състои крайната цена</h2>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {[
-                {
-                  t: "Цена на автомобила",
-                  d: "Сумата, на която печелите автомобила на аукциона (Copart, IAAI, Encar) или цената Buy Now.",
-                },
-                {
-                  t: "Аукционни такси",
-                  d: "Таксите на аукционната площадка и обработка на сделката.",
-                },
-                {
-                  t: "Транспорт до България",
-                  d: "Морски/контейнерен превоз и сухопътна логистика от пазара на произход.",
-                },
-                {
-                  t: "Мито и ДДС",
-                  d: "Мито 10% върху стойността до България и ДДС 20% върху стойността плюс митото. От Корея митото е 0% при декларация за преференциален произход от одобрен износител.",
-                },
-                {
-                  t: "Екотакса (ПУДООС)",
-                  d: "Еднократна продуктова такса преди първата регистрация — по възраст и задвижване (напр. 290 лв за бензин/дизел на 5–10 г.).",
-                },
-                {
-                  t: "Одобряване и адаптация",
-                  d: "Индивидуално одобряване (технотест) за автомобили без ЕС одобрение на типа; за САЩ/Канада — и адаптация (светлини, km/h скоростомер).",
-                },
-                {
-                  t: "Регистрация и такси",
-                  d: "ГТП, такси на КАТ и табели — финалните стъпки до регистрацията.",
-                },
-                {
-                  t: "Проверка на история",
-                  d: "По желание — Carfax / проверка на VIN, за да сте сигурни в състоянието на автомобила.",
-                },
-              ].map((c) => (
-                <div key={c.t} className="rounded-2xl border border-line bg-white p-5 shadow-card">
-                  <h3 className="mb-1.5 text-lg font-extrabold text-ink">{c.t}</h3>
-                  <p className="text-sm/relaxed text-[#5a5d64]">{c.d}</p>
-                </div>
-              ))}
+        <section className="sa-band sa-band--tight im-hero">
+          <div className="sa-wrap">
+            {/* The breadcrumb its JSON-LD already describes, now visible. */}
+            <nav className="sa-crumbs" aria-label="Пътечка">
+              <Link href="/">Начало</Link>
+              <i aria-hidden="true">/</i>
+              <span aria-current="page">Калкулатор за внос</span>
+            </nav>
+            <div className="im-hero__g im-hero__g--1">
+              <div className="im-hero__t">
+                <h1 className="type-h1">Калкулатор за внос на автомобил</h1>
+                <p className="sa-lead">
+                  Вносът на автомобил от Корея, САЩ или Канада се състои от няколко ясни компонента. С калкулатора
+                  по-долу получавате ориентировъчна разбивка по зададени от Вас стойности. За обвързваща, точна оферта
+                  направете запитване — изготвяме персонална калкулация за конкретния автомобил.
+                </p>
+              </div>
             </div>
-          </section>
+          </div>
+        </section>
 
-          {/* FAQ (visible — matches the FAQPage JSON-LD) */}
-          <section className="mt-12">
-            <h2 className="mb-4 text-2xl font-black text-ink">Често задавани въпроси</h2>
-            <div className="flex flex-col gap-4">
-              {FAQ.map((f) => (
-                <div key={f.question} className="rounded-2xl border border-line bg-white p-5 shadow-card">
-                  <h3 className="mb-1.5 text-base font-extrabold text-ink">{f.question}</h3>
-                  <p className="text-sm/relaxed text-[#5a5d64]">{f.answer}</p>
-                </div>
-              ))}
-            </div>
-          </section>
+        <section className="sa-band sa-band--tight">
+          <div className="sa-wrap">
+            {/* URL-seeded estimator (car-detail deep links): useSearchParams lives in the wrapper, so only this hole is
+                dynamic; the fallback is the default estimator — visually identical when no params are set. */}
+            <Suspense fallback={<CostEstimator />}>
+              <CostEstimatorFromUrl />
+            </Suspense>
 
-          {/* Contextual links into the money pages (the FAQ hub links here;
-              this closes the loop — docs/12-web-seo-strategy.md §7). */}
-          <section className="mt-12">
-            <h2 className="mb-4 text-2xl font-black text-ink">Полезни страници</h2>
-            <ul className="m-0 flex list-none flex-wrap gap-3 p-0">
-              {[
-                { label: "Внос на коли от Корея", href: "/vnos-na-koli-ot-korea" },
-                { label: "Внос на коли от САЩ", href: "/vnos-na-koli-ot-sasht" },
-                { label: "Внос на коли от Канада", href: "/vnos-na-koli-ot-kanada" },
-                { label: "Проверка на VIN", href: "/proverka-vin" },
-                { label: "Често задавани въпроси", href: "/chesto-zadavani-vaprosi" },
-              ].map((l) => (
-                <li key={l.href}>
-                  <a
-                    href={l.href}
-                    className="inline-flex rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-ink shadow-card transition-colors hover:text-brand-dark"
-                  >
-                    {l.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          {/* CTA */}
-          <section className="mt-12 rounded-card bg-linear-to-r from-brand-dark to-brand p-8 text-center max-md:p-6">
-            <h2 className="mb-2 text-2xl font-black text-white max-md:text-xl">Искаш точна оферта?</h2>
-            <p className="mx-auto mb-5 max-w-xl text-sm/relaxed text-white/85">
-              Кажи ни марка, модел и бюджет — ще изготвим персонална калкулация за конкретния автомобил, без скрити
-              такси.
+            <p className="im-note im-small">
+              <InfoIcon className="im-inl inline" />
+              Всички суми са в щатски долари ($). Ставките (мито, ДДС) са проверени към {RATES_VERIFIED_AT}.
             </p>
-            <InquiryButton
-              rippleTheme="dark"
-              className="inline-flex min-h-13.5 items-center justify-center rounded-full bg-white px-8 text-sm font-extrabold uppercase tracking-wide text-brand-dark transition-transform duration-200 hover:-translate-y-0.5"
-            >
-              Направи запитване
-            </InquiryButton>
-          </section>
-        </Container>
+          </div>
+        </section>
+
+        {/* Cost-component explainer (real, indexable content) */}
+        <section className="sa-band sa-band--tight sa-band--line">
+          <div className="sa-wrap">
+            <SectionHeading title="От какво се състои крайната цена" />
+            <div className="sa-grid sa-grid--4">
+              {COST_PARTS.map(({ Icon, t, d }) => (
+                <article key={t} className="im-card">
+                  <div className="im-card__h">
+                    <span className="im-ic">
+                      <Icon />
+                    </span>
+                    <h3>{t}</h3>
+                  </div>
+                  <p>{d}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* FAQ (the kit accordion; the answers stay in the page, matching the FAQPage JSON-LD) */}
+        <section className="sa-band sa-band--tight sa-band--line">
+          <div className="sa-wrap">
+            <SectionHeading title="Често задавани въпроси" />
+            <FaqAccordion items={FAQ} />
+          </div>
+        </section>
+
+        <section className="sa-band sa-band--tight sa-band--line">
+          <div className="sa-wrap">
+            <div className="im-end">
+              <div>
+                <SectionHeading title="Полезни страници" />
+                <nav className="sa-chips" aria-label="Полезни страници">
+                  {USEFUL_PAGES.map(({ label, href, Icon, flag }) => (
+                    <Link key={href} href={href} className="sa-chip">
+                      <Icon className={flag ? "sa-flag" : undefined} />
+                      {label}
+                    </Link>
+                  ))}
+                </nav>
+              </div>
+              <div className="im-cta">
+                <div className="im-cta__t">
+                  <h2 className="type-h2">Искате точна оферта?</h2>
+                  <p className="sa-lead">
+                    Кажете ни марка, модел и бюджет — ще изготвим персонална калкулация за конкретния автомобил, без
+                    скрити такси.
+                  </p>
+                </div>
+                <InquiryButton variant="pri" size="xl">
+                  Направете запитване
+                </InquiryButton>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
       <SiteFooter />
     </>

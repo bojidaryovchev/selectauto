@@ -1,8 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Button, Combobox } from "@/components/common";
+import { type ReactNode, useEffect, useId, useMemo, useState } from "react";
+import { Combobox } from "@/components/common";
 import {
+  AlertIcon,
+  CheckIcon,
+  FlagCaIcon,
+  FlagKrIcon,
+  FlagUsIcon,
+  InfoIcon,
+  MapPinIcon,
+  ShipIcon,
+} from "@/components/icons";
+import {
+  bgDecimal,
   type CalcConfig,
   computeImportBreakdown,
   DEFAULT_CALC_CONFIG,
@@ -32,8 +43,13 @@ import { CalculatorOfferForm } from "./calculator-offer-form";
  *  - 🇨🇦 Canada: same as USA but a flat transport figure (no location lookup).
  *
  * The customs-base % field lowers only the duty/VAT base. Still an ESTIMATE, not
- * an offer. The gated „Получи разбивката на имейл" form re-computes the same
+ * an offer. The gated „Получете разбивката на имейл" form re-computes the same
  * breakdown server-side from the raw inputs.
+ *
+ * Look (boards `im-calc*`, `im-dialog*`; parity check docs/design/parity/kalkulator.md): the inputs on the left — the
+ * two- and three-way choices as segmented controls, the price and customs base as kit fields with their unit, the
+ * options as kit check rows — and the breakdown panel on the right (below from 1024 px down). On a phone the boards
+ * draw a six-step guided sequence; until the owner decides on it (REDESIGN.md), phones keep today's single form.
  */
 
 const VEHICLE_TYPES: { id: VehicleType; label: string }[] = [
@@ -53,34 +69,32 @@ const CA_PROVINCES: { id: CaProvince; label: string }[] = [
   { id: "bc", label: "Британска Колумбия" },
 ];
 
+/** Each market's flag in its segment. */
+const MARKET_FLAGS: Record<MarketId, ReactNode> = {
+  kr: <FlagKrIcon className="sa-flag" />,
+  us: <FlagUsIcon className="sa-flag" />,
+  ca: <FlagCaIcon className="sa-flag" />,
+};
+
 /** "15 751 $" — space-grouped + $ suffix, matching the site's price style. */
 function usdFmt(n: number): string {
   if (!Number.isFinite(n) || n < 0) return "—";
   // Non-breaking spaces (U+00A0) for both the thousands separator and the ` $`
   // suffix so the amount never wraps across lines (e.g. "16 490 $" stays intact).
-  return `${Math.round(n).toLocaleString("bg-BG").replace(/\s/g, " ")} $`;
+  return `${Math.round(n).toLocaleString("bg-BG").replace(/\s/g, " ")} $`;
 }
 
 /** "1 630 €" — for the fees the owner quotes in EUR (shown unconverted). */
 function eurFmt(n: number): string {
   if (!Number.isFinite(n) || n < 0) return "—";
-  return `${Math.round(n).toLocaleString("bg-BG")} €`.replace(/\s/g, " ");
+  return `${Math.round(n).toLocaleString("bg-BG")} €`.replace(/\s/g, " ");
 }
 
-/** A label/value breakdown row. Module-scoped to avoid remounting on each render. */
-function Row({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
-  return (
-    <div className="flex items-center justify-between gap-3 border-b border-line py-2 last:border-0">
-      <span className={`min-w-0 text-sm ${muted ? "text-muted" : "text-[#5a5d64]"}`}>{label}</span>
-      <span className={`shrink-0 whitespace-nowrap text-sm font-bold tabular-nums ${muted ? "text-muted" : "text-ink"}`}>
-        {value}
-      </span>
-    </div>
-  );
-}
+/** What the phone dialog's footer shows under the form: the total, or why there is none yet. */
+export type EstimateSummary = { totalUsd?: string; prompt?: string };
 
-/** A numeric input. Module-scoped — a render-time definition would remount the
- *  `<input>` each keystroke and lose focus. text-base (16px) avoids iOS zoom.
+/** A numeric kit field with its unit. Module-scoped — a render-time definition would remount the `<input>` each
+ *  keystroke and lose focus. 16 px text avoids iOS zoom.
  *
  *  Holds a local text `draft` while the user is editing so the field can be
  *  CLEARED or left partial ("", "1", "1.") instead of snapping to a number on
@@ -88,15 +102,22 @@ function Row({ label, value, muted }: { label: string; value: string; muted?: bo
  *  which a min-clamped parent (e.g. customs base, min 1) then bounced to 1, making
  *  the input impossible to clear and retype. A parseable value is still pushed up
  *  live (the breakdown recomputes as you type); on blur the draft is dropped and
- *  the input snaps back to the parent's clamped numeric value. */
+ *  the input snaps back to the parent's clamped numeric value. The spinner arrows are hidden, as drawn; the arrow
+ *  keys still step. */
 function NumberField({
+  id,
   label,
+  unit,
+  hint,
   value,
   onChange,
   step = 100,
   max,
 }: {
+  id: string;
   label: string;
+  unit: string;
+  hint?: string;
   value: number;
   onChange: (v: number) => void;
   step?: number;
@@ -105,32 +126,43 @@ function NumberField({
   const [draft, setDraft] = useState<string | null>(null);
 
   return (
-    <label className="flex flex-col gap-1">
-      <span className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</span>
-      <input
-        type="number"
-        inputMode="numeric"
-        min={0}
-        max={max}
-        step={step}
-        value={draft ?? String(value)}
-        onChange={(e) => {
-          const raw = e.target.value;
-          setDraft(raw);
-          if (raw === "") return; // let the field sit empty mid-edit — don't push a number yet
-          const n = Number(raw);
-          if (Number.isFinite(n)) onChange(Math.max(0, Math.round(n)));
-        }}
-        onBlur={() => setDraft(null)}
-        className="w-full rounded-xl border border-line bg-white px-3 py-2 text-base font-bold text-ink outline-none focus:border-brand"
-      />
-    </label>
+    <div className="sa-fld">
+      <label className="sa-lbl" htmlFor={id}>
+        {label}
+      </label>
+      <span className="sa-inw">
+        <input
+          id={id}
+          type="number"
+          inputMode="numeric"
+          min={0}
+          max={max}
+          step={step}
+          value={draft ?? String(value)}
+          onChange={(e) => {
+            const raw = e.target.value;
+            setDraft(raw);
+            if (raw === "") return; // let the field sit empty mid-edit — don't push a number yet
+            const n = Number(raw);
+            if (Number.isFinite(n)) onChange(Math.max(0, Math.round(n)));
+          }}
+          onBlur={() => setDraft(null)}
+          aria-describedby={hint ? `${id}-hint` : undefined}
+          className="sa-in has-end im-num pl-3.5 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        />
+        <span className="sa-inw__unit">{unit}</span>
+      </span>
+      {hint ? (
+        <span id={`${id}-hint`} className="sa-hint">
+          {hint}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
-/** A labelled dropdown built on the shared {@link Combobox}. Module-scoped so the
- *  caption + control read as one field (like {@link NumberField}). */
-function SelectField<T extends string>({
+/** A labelled segmented control (the kit's `sa-seg`): one pressed button per choice. */
+function SegField<T extends string>({
   label,
   value,
   onChange,
@@ -139,17 +171,73 @@ function SelectField<T extends string>({
   label: string;
   value: T;
   onChange: (v: T) => void;
-  options: { id: T; label: string }[];
+  options: { id: T; label: string; icon?: ReactNode }[];
 }) {
   return (
-    <div className="flex flex-col gap-1">
-      <span className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</span>
-      <Combobox
-        aria-label={label}
-        options={options.map((o) => ({ value: o.id, label: o.label }))}
-        value={value}
-        onValueChange={(v) => onChange(v as T)}
-      />
+    <div className="sa-fld">
+      <span className="sa-lbl">{label}</span>
+      <div className="sa-seg im-seg" role="group" aria-label={label}>
+        {options.map((o) => (
+          <button key={o.id} type="button" aria-pressed={value === o.id} onClick={() => onChange(o.id)}>
+            {o.icon}
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** A kit check row (`sa-chk`, orange box and outline while ticked). The input is visually hidden, so the row shows
+ *  the keyboard focus ring. */
+function CheckRow({
+  checked,
+  onChange,
+  children,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  children: ReactNode;
+}) {
+  return (
+    <label
+      className={`sa-chk im-opt has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ortx ${checked ? "is-on" : ""}`}
+    >
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <span className="sa-box">
+        <CheckIcon />
+      </span>
+      <span>{children}</span>
+    </label>
+  );
+}
+
+/** A state in the breakdown panel instead of the lines: a prompt with its icon, or a spinner. */
+function PanelStatus({ icon, busy, children }: { icon?: ReactNode; busy?: boolean; children: ReactNode }) {
+  return (
+    <div className="im-st" role="status">
+      {busy ? <span className="sa-spin im-st__spin" aria-hidden="true" /> : <span className="im-st__ic">{icon}</span>}
+      <p>{children}</p>
+      {busy ? (
+        <div className="im-st__sk" aria-hidden="true">
+          <span className="im-skl" />
+          <span className="im-skl" />
+          <span className="im-skl" />
+          <span className="im-skl" />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** An error in the breakdown panel. */
+function PanelError({ children }: { children: ReactNode }) {
+  return (
+    <div className="sa-alert sa-alert--neg" role="alert">
+      <AlertIcon />
+      <div>
+        <p className="im-alert-t">{children}</p>
+      </div>
     </div>
   );
 }
@@ -169,6 +257,7 @@ export function CostEstimator({
   defaultUsLocation,
   defaultCaFromBc,
   bare = false,
+  onSummary,
 }: {
   defaultMarket?: MarketId;
   defaultPrice?: number;
@@ -180,7 +269,10 @@ export function CostEstimator({
   /** The seeding car sits in British Columbia — presets the Canada province control. */
   defaultCaFromBc?: boolean;
   bare?: boolean;
+  /** Reports the total (or the prompt instead of one) as it changes — the phone dialog's footer shows it. */
+  onSummary?: (summary: EstimateSummary) => void;
 } = {}) {
+  const uid = useId();
   const [market, setMarket] = useState<MarketId>(defaultMarket);
   const [price, setPrice] = useState(defaultPrice && defaultPrice > 0 ? defaultPrice : 15000);
   const [vehicleType, setVehicleType] = useState<VehicleType>(defaultVehicleType);
@@ -318,80 +410,74 @@ export function CostEstimator({
     [inputs, tariffsPending, locationPending, transportNotFound, config],
   );
 
+  // The phone dialog's footer follows the panel: the total, or the prompt that stands in for it.
+  const summaryTotal = b ? usdFmt(b.totalUsd) : undefined;
+  const summaryPrompt = tariffsPending
+    ? "Зареждане на тарифи…"
+    : locationPending
+      ? "Изберете локация на аукциона, за да изчислим транспорта."
+      : undefined;
+  useEffect(() => {
+    onSummary?.({ totalUsd: summaryTotal, prompt: summaryPrompt });
+  }, [onSummary, summaryTotal, summaryPrompt]);
+
   return (
-    <div
-      className={
-        bare
-          ? "grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1fr]"
-          : "grid grid-cols-1 gap-6 rounded-card border border-line bg-white p-6 shadow-card lg:grid-cols-[1fr_1fr] max-md:p-5"
-      }
-    >
+    <div className={bare ? "im-est im-est--bare" : "im-est"}>
       {/* Inputs */}
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted">Пазар</span>
-          <div className="flex gap-2">
-            {MARKETS.map((m) => (
-              <Button
-                key={m.id}
-                onClick={() => setMarket(m.id)}
-                rippleTheme="dark"
-                className={`flex-1 rounded-xl border px-3 py-2 text-sm font-bold transition-colors ${
-                  market === m.id
-                    ? "border-brand bg-brand/10 text-brand-dark"
-                    : "border-line bg-white text-[#5a5d64] hover:border-brand/50"
-                }`}
-              >
-                {m.label}
-              </Button>
-            ))}
+      <div className="im-in">
+        <SegField
+          label="Пазар"
+          value={market}
+          onChange={setMarket}
+          options={MARKETS.map((m) => ({ id: m.id, label: m.label, icon: MARKET_FLAGS[m.id] }))}
+        />
+
+        <NumberField id={`${uid}-price`} label="Цена на автомобила ($)" unit="$" value={price} onChange={setPrice} step={500} />
+
+        {market !== "kr" ? (
+          <div className="im-2">
+            <SegField label="Тип автомобил" value={vehicleType} onChange={setVehicleType} options={VEHICLE_TYPES} />
+            <SegField label="Аукцион" value={auction} onChange={setAuction} options={AUCTIONS} />
           </div>
-        </div>
-
-        <NumberField label="Цена на автомобила ($)" value={price} onChange={setPrice} step={500} />
-
-        <div className="grid grid-cols-2 gap-3">
-          <SelectField label="Тип автомобил" value={vehicleType} onChange={setVehicleType} options={VEHICLE_TYPES} />
-          {market !== "kr" ? (
-            <SelectField label="Аукцион" value={auction} onChange={setAuction} options={AUCTIONS} />
-          ) : (
-            <div />
-          )}
-        </div>
+        ) : (
+          <SegField label="Тип автомобил" value={vehicleType} onChange={setVehicleType} options={VEHICLE_TYPES} />
+        )}
 
         {/* Canada: the BC (west-coast) leg is priced separately from the rest. */}
         {market === "ca" ? (
-          <SelectField label="Провинция" value={caProvince} onChange={setCaProvince} options={CA_PROVINCES} />
+          <SegField label="Провинция" value={caProvince} onChange={setCaProvince} options={CA_PROVINCES} />
         ) : null}
 
         {/* US: auction location → terminal/inland/container lookup */}
         {market === "us" ? (
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted">Локация на аукциона</span>
+          <div className="sa-fld">
+            <span className="sa-lbl">Локация на аукциона</span>
             <Combobox
+              look="kit"
+              icon={<MapPinIcon />}
               aria-label="Локация на аукциона"
               options={locationOptions.map((loc) => ({ value: loc, label: loc }))}
               value={effectiveLocation}
               onValueChange={setLocation}
               disabled={tariffsPending || tariffErr}
               placeholder={
-                tariffsPending ? "Зареждане на локации…" : tariffErr ? "Грешка при зареждане" : "Избери локация"
+                tariffsPending ? "Зареждане на локации…" : tariffErr ? "Грешка при зареждане" : "Изберете локация"
               }
               searchPlaceholder="Търсене на локация…"
               emptyText="Няма намерена локация"
             />
             {usTransport && !usTransport.notFound ? (
-              <span className="text-[11px]/relaxed text-muted">
+              <span className="sa-hint im-term">
                 {usTransport.container > 0 ? (
                   <>
-                    Терминал: <strong>{usTransport.terminal}</strong> · вътрешен {usdFmt(usTransport.inland)} +
-                    контейнер {usdFmt(usTransport.container)}
+                    Терминал: <b>{usTransport.terminal}</b> · вътрешен {usdFmt(usTransport.inland)} + контейнер{" "}
+                    {usdFmt(usTransport.container)}
                   </>
                 ) : (
                   // Owner-quoted flat yards: one all-in figure, no inland/container split.
                   <>
-                    Терминал: <strong>{usTransport.terminal}</strong> · транспорт до Холандия{" "}
-                    {usdFmt(usTransport.total)} (обща цена)
+                    Терминал: <b>{usTransport.terminal}</b> · транспорт до Холандия {usdFmt(usTransport.total)} (обща
+                    цена)
                   </>
                 )}
               </span>
@@ -401,105 +487,89 @@ export function CostEstimator({
 
         {/* Korea duty toggle — the EU–KR FTA origin-declaration nuance. */}
         {activeMarket.originToggle ? (
-          <label className="flex items-start gap-2.5 rounded-xl border border-line bg-[#f7f7f8] p-3">
-            <input
-              type="checkbox"
-              checked={originDeclaration}
-              onChange={(e) => setOriginDeclaration(e.target.checked)}
-              className="mt-0.5 size-4 accent-brand"
-            />
-            <span className="text-[13px]/relaxed text-[#3d4046]">
-              <strong>Декларация за произход от одобрен износител</strong> — при внос от Корея митото е{" "}
-              <strong>0% вместо 10%</strong>, когато корейският износител издаде декларация за преференциален произход
-              (Споразумението ЕС–Корея). Без нея се дължи пълното мито.
-            </span>
-          </label>
+          <CheckRow checked={originDeclaration} onChange={setOriginDeclaration}>
+            <b>Декларация за произход от одобрен износител</b> — при внос от Корея митото е <b>0% вместо 10%</b>,
+            когато корейският износител издаде декларация за преференциален произход (Споразумението ЕС–Корея). Без
+            нея се дължи пълното мито.
+          </CheckRow>
         ) : null}
 
         {/* Optional технотест */}
-        <label className="flex items-start gap-2.5 rounded-xl border border-line bg-[#f7f7f8] p-3">
-          <input
-            type="checkbox"
-            checked={technotest}
-            onChange={(e) => setTechnotest(e.target.checked)}
-            className="mt-0.5 size-4 accent-brand"
-          />
-          <span className="text-[13px]/relaxed text-[#3d4046]">
-            <strong>Технотест (индивидуално одобряване)</strong> — по желание. Добавя{" "}
-            <strong>{eurFmt(config.technotestEur)}</strong> към калкулацията.
-          </span>
-        </label>
+        <CheckRow checked={technotest} onChange={setTechnotest}>
+          <b>Технотест (индивидуално одобряване)</b> — по желание. Добавя <b>{eurFmt(config.technotestEur)}</b> към
+          калкулацията.
+        </CheckRow>
 
-        <div className="flex flex-col gap-1">
-          <NumberField
-            label="Митническа основа (% от стойността)"
-            value={customsBasePct}
-            onChange={(v) => setCustomsBasePct(Math.min(100, Math.max(1, v)))}
-            step={5}
-            max={100}
-          />
-          <span className="text-[11px]/relaxed text-muted">
-            Процент от стойността, върху който се начисляват мито и ДДС. По подразбиране 100% (пълната стойност).
-          </span>
-        </div>
+        <NumberField
+          id={`${uid}-base`}
+          label="Митническа основа (% от стойността)"
+          unit="%"
+          hint="Процент от стойността, върху който се начисляват мито и ДДС. По подразбиране 100% (пълната стойност)."
+          value={customsBasePct}
+          onChange={(v) => setCustomsBasePct(Math.min(100, Math.max(1, v)))}
+          step={5}
+          max={100}
+        />
 
-        <p className="text-xs/relaxed text-muted">
-          Цените на автомобилите са в щатски долари ($); таксите, договорени в евро, са показани в евро (€). Общата
-          сума е в долари по курс 1 € ≈ {config.eurUsd} $. Ставките са проверени към {RATES_VERIFIED_AT}. Това е
-          ориентировъчна оценка, не оферта.
+        <p className="im-fine">
+          <InfoIcon />
+          <span>
+            Цените на автомобилите са в щатски долари ($); таксите, договорени в евро, са показани в евро (€). Общата
+            сума е в долари по курс 1 € ≈ {bgDecimal(config.eurUsd)} $. Ставките са проверени към {RATES_VERIFIED_AT}.
+            Това е ориентировъчна оценка, не оферта.
+          </span>
         </p>
       </div>
 
       {/* Result */}
-      <div className="flex flex-col rounded-[18px] bg-[#f7f7f8] p-5">
-        <span className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">Ориентировъчна разбивка</span>
+      <section className="im-out" aria-label="Ориентировъчна разбивка">
+        <h3 className="im-out__h">Ориентировъчна разбивка</h3>
 
         {tariffsPending ? (
-          <div className="rounded-xl bg-white px-4 py-3 text-sm font-semibold text-muted">Зареждане на тарифи…</div>
+          <PanelStatus busy>Зареждане на тарифи…</PanelStatus>
         ) : tariffErr ? (
-          <div className="rounded-xl bg-[#fdecea] px-4 py-3 text-sm font-semibold text-[#b3261e]">
+          <PanelError>
             Грешка при зареждане на транспортните тарифи. Опреснете страницата или направете запитване.
-          </div>
+          </PanelError>
         ) : locationPending ? (
           // No yard chosen yet (or this car's yard isn't in the tariff table).
           // A prompt, not an error — and never a silently substituted yard.
-          <div className="rounded-xl bg-white px-4 py-3 text-sm font-semibold text-muted">
-            Изберете локация на аукциона, за да изчислим транспорта.
-          </div>
+          <PanelStatus icon={<MapPinIcon />}>Изберете локация на аукциона, за да изчислим транспорта.</PanelStatus>
         ) : transportNotFound || !b ? (
-          <div className="rounded-xl bg-[#fdecea] px-4 py-3 text-sm font-semibold text-[#b3261e]">
+          <PanelError>
             Не е намерена транспортна цена за избрания аукцион и локация. Изберете друга локация или направете
             запитване за конкретния автомобил.
-          </div>
+          </PanelError>
         ) : (
           <>
-            {b.lines.map((l) => (
-              <Row
-                key={l.label}
-                label={l.label}
-                value={l.amountEur != null ? eurFmt(l.amountEur) : usdFmt(l.amountUsd)}
-                muted={l.muted}
-              />
-            ))}
-            <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-[#2f343c] px-4 py-3">
-              <span className="min-w-0 text-sm font-semibold uppercase tracking-wide text-white/70">Общо (ориентир)</span>
-              <span className="shrink-0 whitespace-nowrap text-xl font-black text-white tabular-nums">
-                {usdFmt(b.totalUsd)}
-              </span>
+            <dl className="im-lines">
+              {b.lines.map((l) => (
+                <div key={l.label} className={`im-ln ${l.muted ? "is-mut" : ""}`}>
+                  <dt>{l.label}</dt>
+                  <dd>{l.amountEur != null ? eurFmt(l.amountEur) : usdFmt(l.amountUsd)}</dd>
+                </div>
+              ))}
+            </dl>
+            <div className="im-total">
+              <span>Общо (ориентир)</span>
+              <b>{usdFmt(b.totalUsd)}</b>
             </div>
-            <p className="mt-2 text-xs font-semibold text-[#3d4046]">
-              Ориентировъчен срок за доставка: {activeMarket.transit}
+            <p className="im-eta">
+              <ShipIcon />
+              <span>
+                Ориентировъчен срок за доставка: <span className="im-nw">{activeMarket.transit}</span>
+              </span>
             </p>
-            <p className="mt-2 text-xs/relaxed text-muted">
-              Това е ориентировъчна оценка по зададените от Вас стойности и НЕ е оферта. Точните мита, ДДС, такси и
-              транспорт зависят от конкретния автомобил и текущите тарифи.
+            <p className="im-disc">
+              Това е ориентировъчна оценка по зададените от Вас стойности и <strong>НЕ</strong> е оферта. Точните мита,
+              ДДС, такси и транспорт зависят от конкретния автомобил и текущите тарифи.
             </p>
 
             {/* Gated offer: email me this breakdown (lead capture). */}
             <CalculatorOfferForm inputs={inputs} />
           </>
         )}
-      </div>
+      </section>
     </div>
   );
 }

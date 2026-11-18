@@ -1,9 +1,10 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/common";
+import { AlertIcon, CircleCheckIcon, MailIcon, SendIcon } from "@/components/icons";
 import type { ImportCostInputs } from "@/data/import-rates";
 import {
   calculatorOfferContactSchema,
@@ -19,6 +20,10 @@ import type { ActionResult } from "@/types";
  * form is the opt-in. Mirrors the carfax form's react-hook-form + zod pattern;
  * the server action recomputes the breakdown from `inputs`, so this form never
  * sends totals.
+ *
+ * Look (board `im-calc-offer`): the kit's fields with labels above them (the placeholders the code has always shown),
+ * each error under its field, a server's message in an alert above the button — its first sentence in bold, the rest
+ * under it, word for word — and the confirmation in place of the form.
  */
 
 type Status =
@@ -26,12 +31,28 @@ type Status =
   | { kind: "success"; message: string }
   | { kind: "error"; message: string };
 
-// text-base (16px) not text-sm: sub-16px inputs make iOS Safari auto-zoom on
-// focus (no maximum-scale lock in the viewport), which strands the page zoomed.
-const INPUT_CLASS =
-  "w-full rounded-xl border border-line bg-white px-3 py-2 text-base font-bold text-ink outline-none focus:border-brand";
+/** A message's first sentence and the rest, for an alert's bold line and the text under it („Готово!" / „Изпратихме…"). */
+function splitMessage(message: string): { head: string; rest: string | null } {
+  const m = /[.!?] /.exec(message);
+  return m ? { head: message.slice(0, m.index + 1), rest: message.slice(m.index + 2) } : { head: message, rest: null };
+}
+
+/** An alert with the message's first sentence in bold (boards `im-calc-offer`, frames 6–9). */
+function MessageAlert({ tone, message }: { tone: "pos" | "neg"; message: string }) {
+  const { head, rest } = splitMessage(message);
+  return (
+    <div className={`sa-alert sa-alert--${tone} ${tone === "pos" ? "im-sent" : ""}`} role={tone === "pos" ? "status" : "alert"}>
+      {tone === "pos" ? <CircleCheckIcon /> : <AlertIcon />}
+      <div>
+        <b>{head}</b>
+        {rest ? <p>{rest}</p> : null}
+      </div>
+    </div>
+  );
+}
 
 export function CalculatorOfferForm({ inputs }: { inputs: ImportCostInputs }) {
+  const uid = useId();
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
 
@@ -73,74 +94,66 @@ export function CalculatorOfferForm({ inputs }: { inputs: ImportCostInputs }) {
   }
 
   if (status.kind === "success") {
-    return (
-      <p className="mt-4 rounded-xl bg-[#e8f5ec] px-4 py-3 text-sm font-semibold text-[#1d6b35]">
-        {status.message}
-      </p>
-    );
+    return <MessageAlert tone="pos" message={status.message} />;
   }
 
   if (!open) {
     return (
-      <Button
-        onClick={() => setOpen(true)}
-        rippleTheme="light"
-        className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-linear-to-r from-brand-dark to-brand px-5 text-sm font-extrabold text-white transition-transform duration-200 hover:-translate-y-0.5"
-      >
-        Получи разбивката на имейл
+      <Button variant="pri" block onClick={() => setOpen(true)}>
+        <MailIcon />
+        Получете разбивката на имейл
       </Button>
     );
   }
 
+  const field = (
+    name: keyof CalculatorOfferContactValues,
+    label: string,
+    props: React.InputHTMLAttributes<HTMLInputElement>,
+  ) => {
+    const id = `${uid}-${name}`;
+    const error = errors[name]?.message;
+    return (
+      <div className="sa-fld">
+        <label className="sa-lbl" htmlFor={id}>
+          {label}
+        </label>
+        <input
+          id={id}
+          {...register(name)}
+          {...props}
+          className={`sa-in ${error ? "is-err" : ""}`}
+          aria-invalid={!!error}
+          aria-describedby={error ? `${id}-err` : undefined}
+        />
+        {error ? (
+          <span id={`${id}-err`} className="sa-err">
+            <AlertIcon />
+            {error}
+          </span>
+        ) : null}
+      </div>
+    );
+  };
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="mt-4 flex flex-col gap-2.5" noValidate>
-      <span className="text-xs font-semibold uppercase tracking-wide text-muted">
-        Получи тази разбивка на имейл
-      </span>
-      <input
-        {...register("name")}
-        placeholder="Име"
-        autoComplete="name"
-        className={INPUT_CLASS}
-        aria-invalid={!!errors.name}
-      />
-      {errors.name ? <p className="text-xs font-semibold text-[#b3261e]">{errors.name.message}</p> : null}
-      <input
-        {...register("phone")}
-        placeholder="Телефон (08…)"
-        autoComplete="tel"
-        inputMode="tel"
-        className={INPUT_CLASS}
-        aria-invalid={!!errors.phone}
-      />
-      {errors.phone ? <p className="text-xs font-semibold text-[#b3261e]">{errors.phone.message}</p> : null}
-      <input
-        {...register("email")}
-        placeholder="Имейл"
-        autoComplete="email"
-        inputMode="email"
-        className={INPUT_CLASS}
-        aria-invalid={!!errors.email}
-      />
-      {errors.email ? <p className="text-xs font-semibold text-[#b3261e]">{errors.email.message}</p> : null}
-
-      {status.kind === "error" ? (
-        <p className="rounded-xl bg-[#fdecea] px-3 py-2 text-xs font-semibold text-[#b3261e]">
-          {status.message}
-        </p>
-      ) : null}
-
-      <Button
-        type="submit"
-        disabled={isSubmitting}
-        rippleTheme="light"
-        className="inline-flex min-h-12 w-full items-center justify-center rounded-full bg-linear-to-r from-brand-dark to-brand px-5 text-sm font-extrabold text-white transition-transform duration-200 hover:-translate-y-0.5 disabled:opacity-60"
-      >
-        {isSubmitting ? "Изпращане…" : "Изпрати ми разбивката"}
-      </Button>
-      <p className="text-[11px]/relaxed text-muted">
-        С изпращането се съгласявате да се свържем с Вас относно калкулацията.
+    <form onSubmit={handleSubmit(onSubmit)} className="im-offer" noValidate>
+      <p className="im-offer__h">
+        <MailIcon />
+        Получете тази разбивка на имейл
       </p>
+      {field("name", "Име", { type: "text", autoComplete: "name" })}
+      {field("phone", "Телефон (08…)", { type: "tel", autoComplete: "tel", inputMode: "tel" })}
+      {field("email", "Имейл", { type: "email", autoComplete: "email", inputMode: "email" })}
+
+      {status.kind === "error" ? <MessageAlert tone="neg" message={status.message} /> : null}
+
+      {/* While sending, the busy button stays at full strength (the kit dims a disabled one). */}
+      <Button type="submit" variant="pri" block busy={isSubmitting} disabled={isSubmitting} className="opacity-100">
+        {isSubmitting ? null : <SendIcon />}
+        {isSubmitting ? "Изпращане…" : "Изпратете ми разбивката"}
+      </Button>
+      <p className="im-consent">С изпращането се съгласявате да се свържем с Вас относно калкулацията.</p>
     </form>
   );
 }

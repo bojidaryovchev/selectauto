@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/common";
 import { CalculatorIcon } from "@/components/icons";
 import type { MarketId, UsAuction, VehicleType } from "@/data/import-rates";
@@ -37,17 +37,23 @@ export function CarImportCalculator({
   lotNumber?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  // Closing hands focus back to the button that opened the dialog.
+  const close = useCallback(() => {
+    setOpen(false);
+    triggerRef.current?.focus();
+  }, []);
 
   return (
     <>
       {/* Board `cd-*`: a tonal button under the price panel. */}
-      <Button variant="ton" size="md" block onClick={() => setOpen(true)}>
+      <Button ref={triggerRef} variant="ton" size="md" block onClick={() => setOpen(true)}>
         <CalculatorIcon />
         Калкулирайте вноса до България
       </Button>
       <CalculatorDialog
         isOpen={open}
-        onClose={() => setOpen(false)}
+        onClose={close}
         defaultPrice={defaultPrice}
         defaultMarket={defaultMarket}
         defaultVehicleType={defaultVehicleType}
