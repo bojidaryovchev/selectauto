@@ -16,4 +16,7 @@
   textarea.sa-in.ab-ta{min-height:120px;line-height:1.55}
   .ab-dlg-note b{color:var(--color-tx)}
   a.ab-cc:hover{border-color:var(--color-or-ring)}
+  /* A make without a logo shows its two letters on the plate (the kit's `.sa-plate b`); `.ab-car b`, meant for the
+     car's name beside it, painted them light on the light plate. The boards never drew a plate with letters there. */
+  .ab-car .sa-plate b{color:var(--color-ink);font-weight:800}
 }

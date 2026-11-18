@@ -67,8 +67,10 @@ export async function lookupCarForMobilebg(rawQuery: string): Promise<CarLookupH
       .orderBy(desc(schema.auctionLots.id))
       .limit(5);
 
+  // A link whose id is past the column's range belongs to no car. It used to reach Postgres, fail there and read
+  // „Търсенето не бе успешно.".
   const urlId = carIdFromUrl(query);
-  if (urlId !== null) return byId(urlId);
+  if (urlId !== null) return urlId <= MAX_CAR_ID ? byId(urlId) : [];
 
   // A bare number is a car id OR a lot number: Copart, IAAI and Encar lot
   // numbers are all digits, and 26 713 of them are also some other car's id.

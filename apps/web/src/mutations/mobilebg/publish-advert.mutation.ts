@@ -220,7 +220,7 @@ export async function publishCarToMobilebg(
       revalidatePath("/admin/mobile-bg");
       return {
         success: false,
-        error: `Обява ${existingIda} вече не съществува в mobile.bg — изтрита е там и тук също е отбелязана като изтрита. Натиснете „Публикувай в mobile.bg“, за да създадете нова обява.`,
+        error: `Обява ${existingIda} вече не съществува в mobile.bg — изтрита е там и тук също е отбелязана като изтрита. Натиснете „Публикувайте в mobile.bg“, за да създадете нова обява.`,
       };
     }
 

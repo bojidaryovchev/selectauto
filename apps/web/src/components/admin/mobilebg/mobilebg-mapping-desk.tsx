@@ -1,7 +1,8 @@
 "use client";
 
-import { AdminBanner, AdminButton, AdminEmptyState } from "@/components/admin/ui";
-import { ConfirmDialog } from "@/components/common";
+import { AdminBanner, AdminEmptyState } from "@/components/admin/ui";
+import { Button, ConfirmDialog } from "@/components/common";
+import { CloseIcon, ListChecksIcon } from "@/components/icons";
 import { deleteMobilebgBrandMapping, deleteMobilebgModelMapping } from "@/mutations/mobilebg";
 import type { MobilebgBrandMapRow, MobilebgModelMapRow } from "@/queries/mobilebg";
 import { useRouter } from "next/navigation";
@@ -9,7 +10,7 @@ import { useState, useTransition } from "react";
 
 /**
  * The remembered overrides — every brand/model pairing an admin confirmed from
- * the advert preview.
+ * the advert preview (board `ab-mobilebg`, `-list`; parity check docs/design/parity/admin-mobilebg.md).
  *
  * There is no "add" form here on purpose: pairings are created in the preview,
  * where the car, our model name and mobile.bg's list for that brand are all on
@@ -41,7 +42,7 @@ export function MobilebgMappingDesk({
       }
     });
   }
-  // Asked first: on a phone „Премахни" sits right under a scrolling thumb, and a
+  // Asked first: on a phone „Премахнете" sits right under a scrolling thumb, and a
   // removed pairing is only re-made from a preview of a car of that model.
   const [removal, setRemoval] = useState<{ label: string; run: () => void } | null>(null);
 
@@ -64,8 +65,12 @@ export function MobilebgMappingDesk({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      {error && <AdminBanner tone="error">{error}</AdminBanner>}
+    <div className="ab-maps">
+      {error ? (
+        <AdminBanner tone="error" className="ab-al">
+          {error}
+        </AdminBanner>
+      ) : null}
 
       <MappingList
         title={`Марки (${brands.length})`}
@@ -101,7 +106,7 @@ export function MobilebgMappingDesk({
         isOpen={removal !== null}
         tone="danger"
         title="Премахване на съответствието?"
-        confirmLabel="Премахни"
+        confirmLabel="Премахнете"
         isPending={pending}
         onConfirm={() => {
           removal?.run();
@@ -126,19 +131,24 @@ function MappingList({
 }) {
   return (
     <div>
-      <h3 className="mb-2 font-bold text-ink">{title}</h3>
+      <h3>{title}</h3>
       {rows.length === 0 ? (
-        <AdminEmptyState title="Няма ръчни съответствия — всичко се разпознава автоматично." />
+        <AdminEmptyState
+          titleAs="p"
+          icon={<ListChecksIcon />}
+          title="Няма ръчни съответствия — всичко се разпознава автоматично."
+        />
       ) : (
-        <ul className="m-0 list-none divide-y divide-line/60 rounded-xl border border-line bg-white p-0">
+        <ul>
           {rows.map((r) => (
-            <li key={r.key} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2 text-sm">
-              <span className="min-w-0 wrap-anywhere text-ink">
-                {r.ours} <span className="text-muted">→</span> <strong>{r.theirs}</strong>
+            <li key={r.key}>
+              <span>
+                {r.ours} <span>→</span> <strong>{r.theirs}</strong>
               </span>
-              <AdminButton variant="secondary" onClick={r.onRemove} disabled={pending}>
-                Премахни
-              </AdminButton>
+              <Button variant="sec" size="md" onClick={r.onRemove} disabled={pending}>
+                <CloseIcon />
+                Премахнете
+              </Button>
             </li>
           ))}
         </ul>

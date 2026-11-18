@@ -16,6 +16,7 @@ import {
   hashParams,
 } from "@/lib/mobilebg/map-car";
 import type { ResolvedMapping } from "@/lib/mobilebg/resolve";
+import { getMakeIndex } from "@/queries/cars/get-make-index.query";
 import { getCalcConfig } from "@/queries/tariffs";
 import { getMobilebgCarSource } from "./get-advert-source.query";
 
@@ -67,6 +68,8 @@ export type MobilebgPreview = {
   countryOptions: string[];
   /** mobile.bg's car categories (the category picker). */
   categoryOptions: string[];
+  /** The car's make with its logo, for the plate beside its title (decision 8); null when the make is unknown. */
+  make: { name: string; logo: string | null } | null;
 };
 
 export async function getMobilebgPreview(
@@ -78,7 +81,9 @@ export async function getMobilebgPreview(
   const found = await getMobilebgCarSource(carId, overrides?.model);
   if (!found) return null;
 
-  const config = await getCalcConfig();
+  // The makes the car cards use (cached for days), for the plate.
+  const [config, makes] = await Promise.all([getCalcConfig(), getMakeIndex()]);
+  const makeId = found.source.manufacturerExternalId;
   const mapped = buildAdvertParams({
     source: found.source,
     mapping: found.mapping,
@@ -128,5 +133,6 @@ export async function getMobilebgPreview(
     markupPct: config.mobilebgMarkupPct,
     countryOptions,
     categoryOptions,
+    make: makeId != null && makes[makeId] ? makes[makeId] : null,
   };
 }

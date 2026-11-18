@@ -276,7 +276,7 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
   the favourites (`/lyubimi`), the inquiry dialog, the admin's shell (sidebar, phone top bar and drawer, account
   card), dashboard, loading, error and 404 states and shared parts (`components/admin/ui`), the three lead inboxes
   (Carfax, consultations, offers) with their drawer, the mail (Поща and the thread page), the contracts register,
-  the deposits page, the contract form, the contract page and the hidden listings.
+  the deposits page, the contract form, the contract page, the hidden listings and mobile.bg.
   Each has its parity file in [parity/](parity/README.md).
 - **The ab- boards' styles** (deals, listings, settings) are `styles/admin-b.css`, ported with their named container
   queries (`ablist`, `abform` …), which are the code's own approach. The few rules the boards scope under their root

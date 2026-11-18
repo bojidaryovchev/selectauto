@@ -1,6 +1,7 @@
 import { ADMIN_PAGE_SIZE } from "@/constants/admin";
 import { getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
+import { getMakeIndex } from "@/queries/cars/get-make-index.query";
 import { and, count, desc, eq, isNotNull, ne, sql, type SQL } from "drizzle-orm";
 
 /**
@@ -31,6 +32,8 @@ export type MobilebgAdvertRow = {
   vin: string | null;
   /** On the site now (`listed`), auction over (`ended`), or not shown at all (`gone`: hidden, or no listing). */
   listing: "listed" | "ended" | "gone";
+  /** The car's make with its logo, for the plate beside it (decision 8); null when the make is unknown. */
+  make: { name: string; logo: string | null } | null;
 };
 
 export async function listMobilebgAdverts(
@@ -55,7 +58,7 @@ export async function listMobilebgAdverts(
   )!;
   const where = filter === "ended" ? endedLive : undefined;
 
-  const [rows, [totalRow], [endedRow]] = await Promise.all([
+  const [rows, [totalRow], [endedRow], makes] = await Promise.all([
     db
       .select({
         carId: a.carId,
@@ -69,6 +72,7 @@ export async function listMobilebgAdverts(
         title: schema.cars.title,
         year: schema.cars.year,
         vin: schema.cars.vin,
+        manufacturerId: schema.cars.manufacturerId,
         listing,
       })
       .from(a)
@@ -79,7 +83,16 @@ export async function listMobilebgAdverts(
       .offset((safePage - 1) * ADMIN_PAGE_SIZE),
     db.select({ n: count() }).from(a).where(where),
     db.select({ n: count() }).from(a).where(endedLive),
+    // The makes the car cards use (cached for days).
+    getMakeIndex(),
   ]);
 
-  return { rows, total: totalRow?.n ?? 0, endedLive: endedRow?.n ?? 0 };
+  return {
+    rows: rows.map(({ manufacturerId, ...r }) => ({
+      ...r,
+      make: manufacturerId != null && makes[manufacturerId] ? makes[manufacturerId] : null,
+    })),
+    total: totalRow?.n ?? 0,
+    endedLive: endedRow?.n ?? 0,
+  };
 }

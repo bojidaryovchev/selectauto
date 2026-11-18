@@ -15,7 +15,8 @@ import Link from "next/link";
 export const metadata: Metadata = { title: "mobile.bg" };
 
 /**
- * /admin/mobile-bg — публикуване на автомобили в mobile.bg.
+ * /admin/mobile-bg — публикуване на автомобили в mobile.bg (boards `ab-mobilebg` and its states; parity check
+ * docs/design/parity/admin-mobilebg.md).
  *
  * Gated on `mobilebg.publish`, which „Наблюдаващ“ carries too, at the owner's
  * request (18.09.2026). Publishing still spends money (mobile.bg bills for every week an
@@ -49,74 +50,74 @@ export default async function AdminMobilebgPage({
   };
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-4">
-        <AdminPageHeader
-          title="mobile.bg"
-          description="Публикуване на автомобил от каталога като обява в mobile.bg. Цената в обявата е крайната цена за България (себестойност от калкулатора + надценката от „Тарифи“), а не аукционната цена на лота."
-        />
+    <>
+      <AdminPageHeader
+        title="mobile.bg"
+        description="Публикуване на автомобил от каталога като обява в mobile.bg. Цената в обявата е крайната цена за България (себестойност от калкулатора + надценката от „Тарифи“), а не аукционната цена на лота."
+      />
 
-        {!isConfigured() && (
-          <AdminBanner tone="warning" className="font-normal">
-            Акаунтът за импорт още не е конфигуриран. Задайте <code>MOBILEBG_USERNAME</code> и{" "}
-            <code>MOBILEBG_PASSWORD</code>, след като mobile.bg оторизира акаунта и регистрира домейна за снимките.
-            Дотогава всичко тук се изчислява и проверява, но нищо не се изпраща.
-          </AdminBanner>
-        )}
+      {!isConfigured() ? (
+        <AdminBanner tone="warning" className="ab-al">
+          Акаунтът за импорт още не е конфигуриран. Задайте <code>MOBILEBG_USERNAME</code> и{" "}
+          <code>MOBILEBG_PASSWORD</code>, след като mobile.bg оторизира акаунта и регистрира домейна за снимките.
+          Дотогава всичко тук се изчислява и проверява, но нищо не се изпраща.
+        </AdminBanner>
+      ) : null}
 
-        <MobilebgPublisher />
-      </div>
+      <MobilebgPublisher />
 
-      <section>
-        <h2 className="mb-2 text-lg font-black tracking-tight text-ink">
-          Обяви <span className="text-sm font-semibold text-muted">({total})</span>
+      <section aria-labelledby="mobilebg-adverts-title" className="ab-sec">
+        <h2 id="mobilebg-adverts-title" className="ab-h2">
+          Обяви <small>({total})</small>
         </h2>
-        <div className="flex flex-col gap-4">
-          {isConfigured() && <MobilebgReconcile />}
-          {endedLive > 0 || filter === "ended" ? (
-            <div className="flex flex-col gap-2">
-              {endedLive > 0 ? (
-                <AdminBanner tone="warning" className="font-normal">
+        {isConfigured() ? <MobilebgReconcile /> : null}
+        {endedLive > 0 || filter === "ended" ? (
+          <div className="ab-stack gap-2">
+            {endedLive > 0 ? (
+              <AdminBanner tone="warning" className="ab-al">
+                <span className="font-medium">
                   <strong>{endedLive}</strong>{" "}
                   {endedLive === 1
                     ? "обява е за кола, която вече не се предлага в сайта"
                     : "обяви са за коли, които вече не се предлагат в сайта"}{" "}
-                  (търгът е приключил или колата е скрита). mobile.bg ги таксува всяка седмица, докато не бъдат изтрити.
-                  Изтритите направо в mobile.bg се изчистват оттук със „Сверка с mobile.bg“.
-                </AdminBanner>
-              ) : null}
-              <nav aria-label="Филтър на обявите" className="flex flex-wrap gap-2">
-                <Link
-                  href={hrefFor(1, "all")}
-                  aria-current={filter === "all" ? "true" : undefined}
-                  className={adminChipClass(filter === "all")}
-                >
-                  Всички
-                </Link>
-                <Link
-                  href={hrefFor(1, "ended")}
-                  aria-current={filter === "ended" ? "true" : undefined}
-                  className={adminChipClass(filter === "ended")}
-                >
-                  Колата вече не е в сайта ({endedLive})
-                </Link>
-              </nav>
-            </div>
-          ) : null}
-          <MobilebgAdvertList rows={rows} />
-          <AdminPagination page={page} pageCount={pageCount} hrefFor={(p) => hrefFor(p)} />
-        </div>
+                  (търгът е приключил или колата е скрита). mobile.bg ги таксува всяка седмица, докато не бъдат
+                  изтрити. Изтритите направо в mobile.bg се изчистват оттук със „Сверка с mobile.bg“.
+                </span>
+              </AdminBanner>
+            ) : null}
+            <nav aria-label="Филтър на обявите" className="ab-filt-ch">
+              <Link
+                href={hrefFor(1, "all")}
+                aria-current={filter === "all" ? "true" : undefined}
+                className={adminChipClass(filter === "all")}
+              >
+                Всички
+              </Link>
+              <Link
+                href={hrefFor(1, "ended")}
+                aria-current={filter === "ended" ? "true" : undefined}
+                className={adminChipClass(filter === "ended")}
+              >
+                Колата вече не е в сайта ({endedLive})
+              </Link>
+            </nav>
+          </div>
+        ) : null}
+        <MobilebgAdvertList rows={rows} />
+        <AdminPagination page={page} pageCount={pageCount} hrefFor={(p) => hrefFor(p)} />
       </section>
 
-      <section>
-        <h2 className="mb-1 text-lg font-black tracking-tight text-ink">Запомнени съответствия</h2>
-        <p className="mb-3 max-w-3xl text-sm text-muted">
+      <section aria-labelledby="mobilebg-maps-title" className="ab-sec">
+        <h2 id="mobilebg-maps-title" className="ab-h2">
+          Запомнени съответствия
+        </h2>
+        <p className="ab-sub">
           Марките и моделите се разпознават автоматично по речника на mobile.bg — по същото име, известен синоним или
           обозначението в заглавието („330I“ → „330“). Тук са само ръчно потвърдените изключения, зададени от прегледа
           на обявата. Премахването връща модела към автоматичното разпознаване.
         </p>
         <MobilebgMappingDesk brands={mappings.brands} models={mappings.models} />
       </section>
-    </div>
+    </>
   );
 }

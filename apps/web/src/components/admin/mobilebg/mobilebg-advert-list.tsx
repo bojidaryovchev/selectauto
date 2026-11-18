@@ -1,7 +1,8 @@
 "use client";
 
-import { AdminBanner, AdminButton, AdminEmptyState } from "@/components/admin/ui";
-import { ConfirmDialog } from "@/components/common";
+import { AdminBanner, AdminEmptyState } from "@/components/admin/ui";
+import { Button, ConfirmDialog, MakePlate } from "@/components/common";
+import { MegaphoneIcon, Trash2Icon } from "@/components/icons";
 import { advertUrl } from "@/lib/mobilebg/advert-url";
 import { carTitle } from "@/lib/mobilebg/car-title";
 import { formatSofiaDateTime } from "@/lib/sofia-time";
@@ -12,14 +13,15 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 /**
- * The register of everything we have sent to mobile.bg.
+ * The register of everything we have sent to mobile.bg (boards `ab-mobilebg`, `-list`, `-sync`; parity check
+ * docs/design/parity/admin-mobilebg.md).
  *
  * `failed` and `deleted` rows are shown alongside live ones deliberately: a
  * failed publish carries the error an admin needs, and a deleted row is the
  * record that we did once pay for that advert.
  *
- * Cards while the list is narrower than 56rem, a table above (container query
- * on the list's own wrapper, like the contracts register).
+ * Cards while the list is narrower than 896 px (two columns from 576), the kit's table above (`ab-list`, a container
+ * query on the list itself). Each car carries its make's plate (decision 8).
  */
 
 const STATUS_LABEL: Record<string, string> = {
@@ -29,40 +31,44 @@ const STATUS_LABEL: Record<string, string> = {
   deleted: "изтрита",
 };
 
-const STATUS_CLASS: Record<string, string> = {
-  pending: "text-amber-700",
-  published: "font-bold text-emerald-700",
-  failed: "font-bold text-rose-700",
-  deleted: "text-muted",
-};
-
 function price(r: MobilebgAdvertRow): string {
   return r.priceEur ? `${Math.round(Number(r.priceEur)).toLocaleString("bg-BG")} €` : "при запитване";
 }
 
-/** A live advert for a car the site no longer offers — still billed weekly until deleted. */
-function Stale({ r, className }: { r: MobilebgAdvertRow; className?: string }) {
+function Status({ r }: { r: MobilebgAdvertRow }) {
+  return <span className={`ab-ad-st is-${r.status}`}>{STATUS_LABEL[r.status] ?? r.status}</span>;
+}
+
+/** A live advert for a car the site no longer offers — still billed weekly until deleted. In a table cell it sits on
+ *  its own line under the VIN (`block`). */
+function Stale({ r, block }: { r: MobilebgAdvertRow; block?: boolean }) {
   if (!r.ida || r.status === "deleted" || r.listing === "listed") return null;
-  return (
-    <span
-      className={`inline-flex w-fit items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-900 ring-1 ring-amber-300 ring-inset ${className ?? ""}`}
-    >
+  const tag = (
+    <span className="sa-tag sa-tag--warn ab-st self-start">
       {r.listing === "ended" ? "търгът е приключил" : "колата не е в сайта"}
     </span>
   );
+  return block ? <div className="mt-1.5">{tag}</div> : tag;
 }
 
 function Ida({ ida }: { ida: string | null }) {
-  if (!ida) return <span className="text-muted">няма</span>;
+  if (!ida) return <span className="ab-dim">няма</span>;
   return (
-    <a
-      href={advertUrl(ida)}
-      target="_blank"
-      rel="noreferrer"
-      className="-my-3 inline-block py-3 font-mono text-xs text-brand hover:underline"
-    >
+    <a href={advertUrl(ida)} target="_blank" rel="noreferrer" className="ab-ida2 hover:underline">
       {ida}
     </a>
+  );
+}
+
+/** The car, to its page on the site, with its make's plate. */
+function CarLink({ r, className }: { r: MobilebgAdvertRow; className?: string }) {
+  return (
+    <Link href={`/avtomobil/${r.carId}`} className={`ab-car hover:[&_b]:text-ortx ${className ?? ""}`}>
+      {r.make ? <MakePlate name={r.make.name} logo={r.make.logo} size="xs" /> : null}
+      <span>
+        <b className="wrap-anywhere">{carTitle(r.year, r.title, r.carId)}</b>
+      </span>
+    </Link>
   );
 }
 
@@ -109,108 +115,90 @@ export function MobilebgAdvertList({ rows }: { rows: MobilebgAdvertRow[] }) {
   }
 
   if (rows.length === 0) {
-    return <AdminEmptyState title="Няма изпратени обяви." />;
+    return <AdminEmptyState icon={<MegaphoneIcon />} title="Няма изпратени обяви." />;
   }
 
   const canDelete = (r: MobilebgAdvertRow) => Boolean(r.ida) && r.status !== "deleted";
   const deleteButton = (r: MobilebgAdvertRow) => (
-    <AdminButton variant="secondary" onClick={() => setTarget(r)} disabled={pending}>
-      Изтрий
-    </AdminButton>
+    <Button variant="sec" size="md" onClick={() => setTarget(r)} disabled={pending}>
+      <Trash2Icon />
+      Изтрийте
+    </Button>
   );
 
   return (
-    <div className="flex flex-col gap-3">
-      {error && <AdminBanner tone="error">{error}</AdminBanner>}
-      {notice && <AdminBanner tone="info">{notice}</AdminBanner>}
+    <div className="ab-stack">
+      {error ? (
+        <AdminBanner tone="error" className="ab-al">
+          {error}
+        </AdminBanner>
+      ) : null}
+      {notice ? (
+        <AdminBanner tone="info" className="ab-al">
+          {notice}
+        </AdminBanner>
+      ) : null}
 
-      <div className="@container">
-        <ul className="m-0 grid list-none gap-2 p-0 @xl:grid-cols-2 @4xl:hidden">
+      <div className="ab-list">
+        <ul className="ab-cards">
           {rows.map((r) => (
-            <li
-              key={r.carId}
-              className="flex min-w-0 flex-col gap-2 rounded-xl border border-line bg-white p-4 text-sm"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <Link
-                  href={`/avtomobil/${r.carId}`}
-                  className="-my-2.5 min-w-0 py-2.5 font-semibold wrap-anywhere text-ink hover:text-brand"
-                >
-                  {carTitle(r.year, r.title, r.carId)}
-                </Link>
-                <span className={`shrink-0 ${STATUS_CLASS[r.status] ?? "text-muted"}`}>
-                  {STATUS_LABEL[r.status] ?? r.status}
-                </span>
+            <li key={r.carId} className="ab-cc gap-2">
+              <div className="ab-cc__h">
+                <CarLink r={r} className="-my-2.5 py-2.5" />
+                <Status r={r} />
               </div>
-              <p className="text-xs break-all text-muted">
+              <p className="ab-vin">
                 #{r.carId}
                 {r.vin ? ` · ${r.vin}` : ""}
               </p>
               <Stale r={r} />
-              {r.lastError && <p className="text-xs wrap-anywhere text-rose-700">{r.lastError}</p>}
-              <p className="text-muted">
+              {r.lastError ? <p className="ab-err-t">{r.lastError}</p> : null}
+              <p className="ab-tx2 text-sm">
                 mobile.bg: <Ida ida={r.ida} /> · {price(r)} · {r.pictureCount} снимки
               </p>
-              <p className="text-xs text-muted">Обновена: {formatSofiaDateTime(r.updatedAt)}</p>
-              {canDelete(r) && <div>{deleteButton(r)}</div>}
+              <p className="ab-meta">Обновена: {formatSofiaDateTime(r.updatedAt)}</p>
+              {canDelete(r) ? <div>{deleteButton(r)}</div> : null}
             </li>
           ))}
         </ul>
 
-        <div className="hidden overflow-hidden rounded-xl border border-line bg-white @4xl:block">
-          <table className="w-full text-left text-sm">
+        <div className="ab-tbl sa-tbl-wrap">
+          <table className="sa-tbl">
             <thead>
-              <tr className="border-b border-line text-xs tracking-wide text-muted uppercase">
-                <th scope="col" className="px-3 py-2 font-bold">
-                  Автомобил
-                </th>
-                <th scope="col" className="px-3 py-2 font-bold">
-                  mobile.bg ID
-                </th>
-                <th scope="col" className="px-3 py-2 font-bold">
-                  Статус
-                </th>
-                <th scope="col" className="px-3 py-2 font-bold">
-                  Цена
-                </th>
-                <th scope="col" className="px-3 py-2 font-bold">
-                  Снимки
-                </th>
-                <th scope="col" className="px-3 py-2 font-bold">
-                  Обновена
-                </th>
-                <th scope="col" className="px-3 py-2 font-bold">
+              <tr>
+                <th scope="col">Автомобил</th>
+                <th scope="col">mobile.bg ID</th>
+                <th scope="col">Статус</th>
+                <th scope="col">Цена</th>
+                <th scope="col">Снимки</th>
+                <th scope="col">Обновена</th>
+                <th scope="col">
                   <span className="sr-only">Действия</span>
                 </th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.carId} className="border-b border-line/60 align-top last:border-0">
-                  <td className="min-w-56 px-3 py-2">
-                    <Link
-                      href={`/avtomobil/${r.carId}`}
-                      className="font-semibold wrap-anywhere text-ink hover:text-brand"
-                    >
-                      {carTitle(r.year, r.title, r.carId)}
-                    </Link>
-                    <div className="text-xs break-all text-muted">
+                <tr key={r.carId}>
+                  <td className="min-w-56">
+                    <CarLink r={r} />
+                    <div className="ab-vin">
                       #{r.carId}
                       {r.vin ? ` · ${r.vin}` : ""}
                     </div>
-                    <Stale r={r} className="mt-1" />
-                    {r.lastError && <div className="mt-1 text-xs wrap-anywhere text-rose-700">{r.lastError}</div>}
+                    <Stale r={r} block />
+                    {r.lastError ? <p className="ab-err-t">{r.lastError}</p> : null}
                   </td>
-                  <td className="px-3 py-2">
+                  <td>
                     <Ida ida={r.ida} />
                   </td>
-                  <td className={`px-3 py-2 whitespace-nowrap ${STATUS_CLASS[r.status] ?? "text-muted"}`}>
-                    {STATUS_LABEL[r.status] ?? r.status}
+                  <td>
+                    <Status r={r} />
                   </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-muted">{price(r)}</td>
-                  <td className="px-3 py-2 text-muted">{r.pictureCount}</td>
-                  <td className="px-3 py-2 whitespace-nowrap text-muted">{formatSofiaDateTime(r.updatedAt)}</td>
-                  <td className="px-3 py-2">{canDelete(r) && deleteButton(r)}</td>
+                  <td className="mute whitespace-nowrap">{price(r)}</td>
+                  <td className="mute">{r.pictureCount}</td>
+                  <td className="mute whitespace-nowrap">{formatSofiaDateTime(r.updatedAt)}</td>
+                  <td>{canDelete(r) ? deleteButton(r) : null}</td>
                 </tr>
               ))}
             </tbody>
@@ -222,15 +210,15 @@ export function MobilebgAdvertList({ rows }: { rows: MobilebgAdvertRow[] }) {
         isOpen={target !== null}
         tone="danger"
         title="Изтриване на обявата"
-        confirmLabel="Изтрий"
+        confirmLabel="Изтрийте"
         isPending={pending}
         onConfirm={confirmDelete}
         onCancel={() => setTarget(null)}
         message={
-          <>
+          <span className="ab-dlg-note text-tx">
             Обявата ще бъде премахната от mobile.bg (ID {target?.ida}). Изтриването е безплатно и спира седмичната
             такса; вече платени VIP/ТОП услуги не се възстановяват (Общи условия, т. I.15, I.16, II.8).
-          </>
+          </span>
         }
       />
     </div>
