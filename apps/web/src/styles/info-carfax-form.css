@@ -1,0 +1,13 @@
+/*
+  The Carfax form's own fields, used on /carfax and in the Carfax dialog the car page and the VIN tool open (board in-vin-dlg): the VIN in mono, the locked fields. Not scoped: the dialog is portalled outside the page.
+  Ported by script from the screen's board sources (apps/web/scripts/port-board-css.mjs), as kit.css is from the kit: token
+  names follow tokens.css, the boards' cqi became vw and their container queries media queries. Board-only parts
+  (device frames, preview overlays) were left out. Class prefix: in-.
+*/
+@layer components {
+  .in-vin{font-family:var(--font-mono);font-weight:500;letter-spacing:.04em;text-transform:uppercase}
+  .in-vin::placeholder{font-family:var(--font-sans);letter-spacing:0;text-transform:none}
+  .in-lock{border-style:dashed;background:var(--color-s1);color:var(--color-tx2);cursor:not-allowed}
+  .in-lock__ic{position:absolute;right:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--color-tx3);pointer-events:none}
+  .in-lock__ic svg{width:18px;height:18px}
+}

@@ -1,3 +1,4 @@
+export { CarfaxBar } from "./carfax-bar";
 export { CarfaxBenefits } from "./carfax-benefits";
 export { CarfaxDialog, CarfaxInquiryButton } from "./carfax-dialog";
 export { CarfaxForm } from "./carfax-form";

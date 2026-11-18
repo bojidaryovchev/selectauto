@@ -1,0 +1,41 @@
+/*
+  The VIN check page, /proverka-vin (boards in-vin and the result states of in-vin-flow): the hero with the tool, the reasons, the Korea band, the answers and the CTA.
+  Ported by script from the screen's board sources (apps/web/scripts/port-board-css.mjs), as kit.css is from the kit: token
+  names follow tokens.css, the boards' cqi became vw and their container queries media queries. Board-only parts
+  (device frames, preview overlays) were left out. Class prefix: in-. Scoped to .in-vin-pg, the page's root.
+*/
+@layer components {
+  .in-vin-pg .in-hero{position:relative;isolation:isolate;overflow:hidden;border-bottom:1px solid var(--color-hair)}
+  .in-vin-pg .in-hero::before{content:"";position:absolute;z-index:-1;right:-10%;top:-60%;width:min(1200px,92vw);aspect-ratio:1;border-radius:50%;background:radial-gradient(closest-side,rgba(255,122,26,.18),rgba(255,122,26,.05) 52%,transparent);pointer-events:none}
+  .in-vin-pg .in-hero__in{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(32px,4.4vw,96px);align-items:center;padding-block:clamp(32px,4vw,64px) clamp(48px,6vw,104px)}
+  @media (max-width:1023.98px){.in-vin-pg .in-hero__in{grid-template-columns:minmax(0,1fr)}}
+  .in-vin-pg .in-hero__copy{display:flex;flex-direction:column;gap:20px}
+  .in-vin-pg .in-tool{display:flex;flex-direction:column;gap:16px;padding:clamp(20px,2vw,32px)}
+  .in-vin-pg .in-tool__f{display:flex;gap:10px}
+  .in-vin-pg .in-tool__f .sa-inw{flex:1;min-width:0}
+  .in-vin-pg .in-tool .sa-in{height:56px;font-size:18px}
+  @media (max-width:639.98px){.in-vin-pg .in-tool__f{flex-direction:column}.in-vin-pg .in-tool__f .sa-btn{width:100%}}
+  .in-vin-pg .in-vin{font-family:var(--font-mono);font-weight:500;letter-spacing:.04em;text-transform:uppercase}
+  .in-vin-pg .in-vin::placeholder{font-family:var(--font-sans);letter-spacing:0;text-transform:none}
+  .in-vin-pg .in-why{display:flex;flex-direction:column;gap:12px}
+  .in-vin-pg .in-why .sa-pnl__ic{width:48px;height:48px;border-radius:12px;margin-bottom:6px}
+  .in-vin-pg .in-why .sa-pnl__ic svg{width:24px;height:24px}
+  .in-vin-pg .in-kr{display:grid;grid-template-columns:auto minmax(0,1fr);gap:clamp(20px,2.4vw,40px);align-items:start}
+  @media (max-width:639.98px){.in-vin-pg .in-kr{grid-template-columns:minmax(0,1fr)}}
+  .in-vin-pg .in-kr__flag{width:72px;height:48px;border-radius:6px;box-shadow:0 0 0 1px var(--color-hair2)}
+  .in-vin-pg .in-kr__flag svg{width:72px;height:48px;border-radius:6px;display:block}
+  .in-vin-pg .in-kr__b{display:flex;flex-direction:column;gap:16px;max-width:76ch}
+  .in-vin-pg .in-kr__b .sa-row{margin-top:6px}
+  @media (max-width:639.98px){.in-vin-pg .in-kr__b .sa-row .sa-btn{width:100%}}
+  .in-vin-pg .in-qa{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(440px,100%),1fr));gap:clamp(16px,1.6vw,24px)}
+  .in-vin-pg .in-qa>div{display:flex;flex-direction:column;gap:10px}
+  .in-vin-pg .in-cta{display:flex;align-items:center;justify-content:space-between;gap:24px 48px;flex-wrap:wrap;padding:clamp(24px,3vw,48px)}
+  .in-vin-pg .in-cta__t{display:flex;flex-direction:column;gap:12px;max-width:68ch}
+  @media (max-width:639.98px){.in-vin-pg .in-cta .sa-btn{width:100%}}
+  .in-vin-pg .in-res{display:flex;flex-direction:column;gap:14px}
+  .in-vin-pg .in-res__t{font:800 19px/1.3 var(--font-sans)}
+  .in-vin-pg .in-res__s{display:flex;flex-wrap:wrap;gap:8px}
+  .in-vin-pg .in-cnt{display:inline-flex;align-items:baseline;gap:6px;min-height:36px;padding:8px 14px;border-radius:999px;background:var(--color-or-w);font-size:14px;font-weight:700;line-height:1.4;color:var(--color-ortx);white-space:nowrap}
+  .in-vin-pg .in-cnt b{font:700 15px/1 var(--font-display);color:var(--color-ortx)}
+  .in-vin-pg .in-sk3{background:var(--color-s3)}
+}

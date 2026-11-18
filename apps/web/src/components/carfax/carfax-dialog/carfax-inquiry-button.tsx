@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/common";
 import type { ButtonStyleProps } from "@/components/common";
 import { CarfaxDialog } from "./carfax-dialog";
@@ -10,9 +10,9 @@ import { CarfaxDialog } from "./carfax-dialog";
  * pre-filled (and locked) with the car's VIN/make/model, so the visitor stays on
  * the page. Bundles its own open state (only two trigger sites — the car-detail
  * contact panel and the VIN-check tool — so a self-contained button beats a
- * site-wide context). Pass a `variant` (and `size`, `block`) for a „Нощно шосе"
- * button; without one it keeps the legacy look, styled by `className`, until its
- * page is rebuilt. `children` is its label.
+ * site-wide context), and takes the focus back when the dialog closes. Pass a
+ * `variant` (and `size`, `block`) for a „Нощно шосе" button; without one it keeps
+ * the legacy look, styled by `className`. `children` is its label.
  */
 export function CarfaxInquiryButton({
   vin,
@@ -35,10 +35,12 @@ export function CarfaxInquiryButton({
   children: React.ReactNode;
 } & ButtonStyleProps) {
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   return (
     <>
       <Button
+        ref={triggerRef}
         onClick={() => setOpen(true)}
         className={className}
         rippleTheme={rippleTheme}
@@ -50,7 +52,10 @@ export function CarfaxInquiryButton({
       </Button>
       <CarfaxDialog
         isOpen={open}
-        onClose={() => setOpen(false)}
+        onClose={() => {
+          setOpen(false);
+          triggerRef.current?.focus();
+        }}
         vin={vin}
         make={make}
         model={model}

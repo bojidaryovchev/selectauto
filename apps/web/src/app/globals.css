@@ -11,6 +11,9 @@
 @import "../styles/info-kontakti.css";
 @import "../styles/info-za-nas.css";
 @import "../styles/info-otzivi.css";
+@import "../styles/info-carfax-form.css";
+@import "../styles/info-carfax.css";
+@import "../styles/info-vin.css";
 
 /*
   Legacy: the light theme's tokens, ported from the old site's theme.css. The
@@ -140,9 +143,11 @@ body {
   :root:has(.sa-bnav) {
     --toast-bottom: calc(var(--bottom-nav) + var(--page-bar, 0px) + 16px + env(safe-area-inset-bottom));
   }
-  /* A page's own bottom bar while it shows (the car page's action bar, .cd-bar.is-on): the notifications and the
-     back-to-top button sit above it. 65px is the bar: 10px padding, a 44px button, 10px, the 1px top line. */
-  :root:has(.cd-bar.is-on) {
+  /* A page's own bottom bar while it shows (the car page's action bar, .cd-bar.is-on; the Carfax page's, .in-bar.is-on):
+     the notifications and the back-to-top button sit above it. 65px is the bar: 10px padding, a 44px button, 10px, the
+     1px top line. */
+  :root:has(.cd-bar.is-on),
+  :root:has(.in-bar.is-on) {
     --page-bar: 65px;
   }
   :root:has(.sa-totop.is-on) {

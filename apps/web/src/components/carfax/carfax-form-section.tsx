@@ -1,53 +1,48 @@
-import { Container, Reveal } from "@/components/common";
+import { Reveal } from "@/components/common";
 import { CarfaxForm } from "@/components/carfax/carfax-form";
+import { CircleCheckIcon } from "@/components/icons";
 
 const INFO_POINTS = [
   "Подходящо за автомобили от САЩ, Канада и други пазари",
   "Удобно за предварителна проверка преди покупка",
-  "Запитването се записва и в нашия админ панел",
 ];
 
-/** The form block: an info panel beside the Carfax inquiry form. */
-export function CarfaxFormSection() {
+/**
+ * The form block (board `in-carfax`): the info column (sticky on a desktop) beside the Carfax inquiry form. The third
+ * point, „Запитването се записва и в нашия админ панел", is gone (owner decision 19).
+ */
+export function CarfaxFormSection({ id }: { id: string }) {
   return (
-    <section id="sa-carfax-form-block" className="py-22 max-md:py-14.5">
-      <Container>
-        <div className="grid grid-cols-2 items-start gap-6.5 max-[1100px]:grid-cols-1">
-          <Reveal>
-            <div className="rounded-[30px] bg-[linear-gradient(135deg,#111216,#1b1d24)] px-7.5 py-8.5 text-white shadow-card-strong max-md:px-5 max-md:py-6">
-              <h3 className="mb-3.5 text-[38px] font-black leading-[1.04] max-md:text-[28px]">
-                Изпрати запитване за Carfax
-              </h3>
-              <p className="mb-4.5 text-[17px] leading-[1.85] text-white/82 max-md:text-base">
-                Остави ни VIN номер и данни за контакт. Ще прегледаме заявката и
-                ще се свържем с теб за следващите стъпки.
-              </p>
-              <ul className="m-0 list-disc pl-5">
-                {INFO_POINTS.map((point) => (
-                  <li
-                    key={point}
-                    className="mb-3 text-base leading-[1.7] text-white/88 last:mb-0 max-md:text-base"
-                  >
-                    {point}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </Reveal>
+    <section id={id} className="sa-band sa-band--s1 scroll-mt-(--header-h)">
+      <div className="sa-wrap in-form">
+        <Reveal>
+          <div className="in-form__info top-[calc(var(--header-h)+35px)]">
+            <h2 className="type-h2">Изпратете запитване за Carfax</h2>
+            <p className="sa-lead">
+              Оставете ни VIN номер и данни за контакт. Ще прегледаме заявката и ще се свържем с вас за следващите
+              стъпки.
+            </p>
+            <ul className="in-dots">
+              {INFO_POINTS.map((point) => (
+                <li key={point}>
+                  <CircleCheckIcon />
+                  {point}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </Reveal>
 
-          <Reveal delay={0.08}>
-            <div className="rounded-[30px] bg-white px-7.5 py-8.5 shadow-card-strong max-md:px-5 max-md:py-6">
-              <h3 className="mb-3 text-[34px] font-black leading-[1.06] text-[#17181b] max-md:text-[28px]">
-                Форма за запитване
-              </h3>
-              <p className="mb-5 text-base leading-[1.75] text-[#676b73]">
-                Попълни информацията по-долу и ще се свържем с теб.
-              </p>
-              <CarfaxForm />
+        <Reveal delay={0.08}>
+          <div className="sa-pnl in-form__card bg-bg">
+            <div className="in-form__head">
+              <h3 className="type-h3">Форма за запитване</h3>
+              <p className="sa-p">Попълнете информацията по-долу и ще се свържем с вас.</p>
             </div>
-          </Reveal>
-        </div>
-      </Container>
+            <CarfaxForm />
+          </div>
+        </Reveal>
+      </div>
     </section>
   );
 }

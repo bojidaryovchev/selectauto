@@ -5,28 +5,26 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/common";
 import { CarfaxInquiryButton } from "@/components/carfax/carfax-dialog";
+import { AlertIcon, InfoIcon, SearchIcon, ShieldCheckIcon, TimerIcon } from "@/components/icons";
 import { vinCheckSchema, type VinCheckValues } from "@/schemas/vin-check.schema";
 
 /**
- * Live VIN record-availability tool for /proverka-vin. Calls the server route
- * `/api/vin-check` (which wraps the FREE AuctionsAPI check-records lookup — the key
- * stays server-side). Shows how many Carfax / AutoCheck records exist for the VIN
- * plus the normalized vehicle name, then routes the user to the Carfax lead form
- * for the full (paid, manually-run) report. No paid call happens here.
+ * Live VIN record-availability tool for /proverka-vin (boards `in-vin`, `in-vin-flow`, `in-vin-msgs`). Calls the
+ * server route `/api/vin-check` (which wraps the FREE AuctionsAPI check-records lookup — the key stays server-side).
+ * Shows how many Carfax / AutoCheck records exist for the VIN plus the normalized vehicle name, then routes the user
+ * to the Carfax lead form for the full (paid, manually-run) report. No paid call happens here.
  *
- * The VIN field is validated with react-hook-form + `zodResolver(vinCheckSchema)`
- * — the SAME schema the `/api/vin-check` route validates against, so the instant
- * client check and the server guard can never drift. Field-level format errors
- * surface inline; `result` holds the async lookup outcome (network / API).
+ * The VIN field is validated with react-hook-form + `zodResolver(vinCheckSchema)` — the SAME schema the
+ * `/api/vin-check` route validates against, so the instant client check and the server guard can never drift.
+ * While it checks, the button reads „Проверявам…" and a placeholder stands where the result will be; with records
+ * found, „Заявете пълен Carfax" becomes the primary action and „Проверете" turns secondary. Too many requests (429)
+ * shows a warning, every other failure an error.
  */
 
 type Result =
   | { kind: "idle" }
-  | { kind: "error"; message: string }
+  | { kind: "error"; message: string; tooMany: boolean }
   | { kind: "ok"; vin: string; vehicle: string | null; carfax: number; autocheck: number };
-
-const INPUT_CLASS =
-  "min-h-[54px] w-full appearance-none rounded-[14px] border border-[#d9dde4] bg-white px-4 text-base font-semibold uppercase tracking-wide text-[#17181b] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-[border-color,box-shadow] duration-200 placeholder:font-medium placeholder:normal-case placeholder:text-[#9aa0aa] focus:border-brand focus:shadow-[0_0_0_4px_rgba(216,111,22,0.12)] focus:outline-none";
 
 export function VinCheckTool() {
   const [result, setResult] = useState<Result>({ kind: "idle" });
@@ -51,7 +49,7 @@ export function VinCheckTool() {
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setResult({ kind: "error", message: data.message ?? "Проверката не бе успешна." });
+        setResult({ kind: "error", message: data.message ?? "Проверката не бе успешна.", tooMany: res.status === 429 });
         return;
       }
       setResult({
@@ -62,89 +60,113 @@ export function VinCheckTool() {
         autocheck: data.autocheck ?? 0,
       });
     } catch {
-      setResult({ kind: "error", message: "Възникна грешка. Опитай отново." });
+      setResult({ kind: "error", message: "Възникна грешка. Опитайте отново.", tooMany: false });
     }
   }
 
   const total = result.kind === "ok" ? result.carfax + result.autocheck : 0;
+  const fieldError = errors.vin?.message;
 
   return (
-    <div className="rounded-2xl border border-line bg-white p-6 shadow-card max-md:p-5">
+    <div className="sa-pnl in-tool">
       <form
         noValidate
         // Clear any stale lookup result when the VIN fails client validation, so a
         // previous "ok" card doesn't linger next to the new inline field error.
         onSubmit={handleSubmit(onValid, () => setResult({ kind: "idle" }))}
-        className="flex flex-col gap-3 sm:flex-row"
+        className="in-tool__f items-start"
       >
-        <label className="sr-only" htmlFor="vinCheckInput">
-          VIN номер
-        </label>
-        <input
-          id="vinCheckInput"
-          maxLength={17}
-          autoComplete="off"
-          spellCheck={false}
-          placeholder="Въведи VIN номер (17 символа)"
-          className={INPUT_CLASS}
-          {...register("vin")}
-        />
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5 max-sm:w-full">
+          <span className="sa-inw">
+            <SearchIcon />
+            <input
+              id="vinCheckInput"
+              aria-label="VIN номер"
+              maxLength={17}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="Въведете VIN номер (17 символа)"
+              aria-invalid={fieldError ? true : undefined}
+              aria-describedby={fieldError ? "vinCheckInput-err" : undefined}
+              className={`sa-in in-vin ${fieldError ? "is-err" : ""}`}
+              {...register("vin")}
+            />
+          </span>
+          {fieldError ? (
+            <span id="vinCheckInput-err" className="sa-err">
+              <AlertIcon />
+              {fieldError}
+            </span>
+          ) : null}
+        </div>
         <Button
           type="submit"
+          variant={total > 0 ? "sec" : "pri"}
+          size="xl"
+          busy={isSubmitting}
           disabled={isSubmitting}
-          rippleTheme="light"
-          className="inline-flex min-h-13.5 shrink-0 items-center justify-center rounded-[14px] bg-brand px-7 text-sm font-extrabold uppercase tracking-wide text-white transition-transform duration-200 hover:-translate-y-px disabled:opacity-60 max-sm:w-full"
+          className="opacity-100"
         >
-          {isSubmitting ? "Проверявам…" : "Провери"}
+          {isSubmitting ? "Проверявам…" : "Проверете"}
         </Button>
       </form>
 
-      {errors.vin?.message ? (
-        <p className="mt-3 text-sm font-semibold text-red-600">{errors.vin.message}</p>
+      {isSubmitting ? (
+        <div className="sa-pnl sa-pnl--s2 in-res" aria-busy="true" aria-label="Зареждане">
+          <span className="sa-sk in-sk3 h-4.5 w-[70%]" />
+          <div className="in-res__s">
+            <span className="sa-sk in-sk3 h-9 w-37.5 rounded-full" />
+            <span className="sa-sk in-sk3 h-9 w-44 rounded-full" />
+          </div>
+          <span className="sa-sk in-sk3 h-3 w-[95%]" />
+          <span className="sa-sk in-sk3 h-3 w-[80%]" />
+        </div>
       ) : null}
 
-      {result.kind === "error" ? <p className="mt-3 text-sm font-semibold text-red-600">{result.message}</p> : null}
+      {result.kind === "error" ? (
+        <div className={`sa-alert ${result.tooMany ? "sa-alert--warn" : "sa-alert--neg"}`} role="alert">
+          {result.tooMany ? <TimerIcon /> : <AlertIcon />}
+          <div>
+            <b>{result.message}</b>
+          </div>
+        </div>
+      ) : null}
 
       {result.kind === "ok" ? (
-        <div className="mt-5 rounded-xl border border-line bg-[#fafafa] p-5">
-          {result.vehicle ? (
-            <p className="mb-3 text-lg font-black text-ink">{result.vehicle}</p>
-          ) : (
-            <p className="mb-3 text-lg font-black text-ink">VIN: {result.vin}</p>
-          )}
-
+        <div className="sa-pnl sa-pnl--s2 in-res" role="status">
+          <h2 className="in-res__t">{result.vehicle ?? `VIN: ${result.vin}`}</h2>
           {total > 0 ? (
             <>
-              <div className="mb-4 flex flex-wrap gap-3">
-                <span className="inline-flex items-center gap-2 rounded-full bg-brand/10 px-4 py-1.5 text-sm font-bold text-brand-dark">
-                  Carfax записи: {result.carfax}
+              <div className="in-res__s">
+                <span className="in-cnt">
+                  Carfax записи: <b>{result.carfax}</b>
                 </span>
-                <span className="inline-flex items-center gap-2 rounded-full bg-brand/10 px-4 py-1.5 text-sm font-bold text-brand-dark">
-                  AutoCheck записи: {result.autocheck}
+                <span className="in-cnt">
+                  AutoCheck записи: <b>{result.autocheck}</b>
                 </span>
               </div>
-              <p className="mb-4 text-sm/relaxed text-[#5a5d64]">
-                За този автомобил има налична история. Заяви пълен Carfax доклад през SelectAuto — ще получиш
+              <p className="sa-small">
+                За този автомобил има налична история. Заявете пълен Carfax доклад през SelectAuto — ще получите
                 подробния отчет (собственици, километри, инциденти, записи).
               </p>
-              <CarfaxInquiryButton
-                vin={result.vin}
-                rippleTheme="light"
-                className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand px-6 text-sm font-extrabold uppercase tracking-wide text-white transition-transform duration-200 hover:-translate-y-0.5"
-              >
-                Заяви пълен Carfax
+              <CarfaxInquiryButton vin={result.vin} variant="pri" block>
+                <ShieldCheckIcon />
+                Заявете пълен Carfax
               </CarfaxInquiryButton>
             </>
           ) : (
-            <p className="text-sm/relaxed text-[#5a5d64]">
-              За този VIN не са намерени Carfax или AutoCheck записи. Провери номера или се свържи с нас за
-              съдействие.
-            </p>
+            <div className="sa-alert sa-alert--info bg-s3">
+              <InfoIcon />
+              <p>
+                За този VIN не са намерени Carfax или AutoCheck записи. Проверете номера или се свържете с нас за
+                съдействие.
+              </p>
+            </div>
           )}
         </div>
       ) : null}
 
-      <p className="mt-4 text-xs/relaxed text-muted">
+      <p className="sa-hint">
         Проверката показва наличността на записи (Carfax / AutoCheck) за въведения VIN. Пълният доклад се заявява
         през SelectAuto.
       </p>

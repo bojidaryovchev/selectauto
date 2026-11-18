@@ -13,21 +13,21 @@ export const carfaxSchema = z.object({
   full_name: z
     .string()
     .trim()
-    .min(1, { message: "Въведи име и фамилия." }),
+    .min(1, { message: "Въведете име и фамилия." }),
   phone: z
     .string()
     .trim()
-    .min(1, { message: "Въведи телефон за връзка." }),
+    .min(1, { message: "Въведете телефон за връзка." }),
   // The original handler ran the email through sanitize_email and never
   // rejected the submission on a bad address, so this stays optional and lenient.
   email: z.string().optional(),
   vin: z
     .string()
     .trim()
-    .min(1, { message: "Въведи VIN номер." })
+    .min(1, { message: "Въведете VIN номер." })
     // Same format check as the original PHP handler: 11–17 chars, no I/O/Q.
     .refine((value) => /^[A-HJ-NPR-Z0-9]{11,17}$/.test(value.toUpperCase()), {
-      message: "Невалиден VIN номер — провери за печатна грешка.",
+      message: "Невалиден VIN номер — проверете за печатна грешка.",
     }),
   car_make: z.string().optional(),
   car_model: z.string().optional(),

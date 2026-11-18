@@ -1,7 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Container, LinkButton } from "@/components/common";
+import { LinkButton, SectionHeading } from "@/components/common";
 import { VinCheckTool } from "@/components/carfax";
+import {
+  ArrowRightIcon,
+  FlagKrIcon,
+  GaugeIcon,
+  ShieldCheckIcon,
+  TriangleAlertIcon,
+  UsersIcon,
+} from "@/components/icons";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
 import { buildBreadcrumbJsonLd, buildFaqJsonLd, buildWebApplicationJsonLd, type FaqEntry } from "@/lib/site-jsonld";
@@ -16,6 +24,10 @@ import { buildSocialMeta } from "@/lib/social-meta";
  * page is both a genuine utility AND a lead magnet, without exposing paid credits.
  *
  * Server component (SEO copy + FAQ + schema); only the tool is a client island.
+ *
+ * Look: boards `in-vin`, `in-vin-flow`, `in-vin-msgs` (the tool's states) and `in-vin-dlg`, `in-vin-carfax` (the
+ * Carfax dialog); classes in styles/info-vin.css under the page's root class `.in-vin-pg`; parity check
+ * docs/design/parity/proverka-vin.md.
  */
 
 const PATH = "/proverka-vin";
@@ -27,12 +39,12 @@ export const metadata: Metadata = {
   // „безплатно" is its top modifier. Both lead the title.
   title: "VIN проверка на автомобил — безплатно | SelectAuto",
   description:
-    "Безплатна проверка по VIN номер — виж дали има Carfax / AutoCheck история (собственици, километри, инциденти) преди да купиш. Заяви пълен доклад през SelectAuto.",
+    "Безплатна проверка по VIN номер — вижте дали има Carfax / AutoCheck история (собственици, километри, инциденти) преди да купите. Заявете пълен доклад през SelectAuto.",
   alternates: { canonical: CANONICAL },
   ...buildSocialMeta({
     title: "VIN проверка на автомобил — безплатно | SelectAuto",
     description:
-      "Безплатна проверка по VIN номер + пълен Carfax доклад през SelectAuto. Виж и как се проверява история на кола от Корея.",
+      "Безплатна проверка по VIN номер + пълен Carfax доклад през SelectAuto. Вижте и как се проверява история на кола от Корея.",
     path: PATH,
   }),
 };
@@ -42,7 +54,7 @@ const FAQ: FaqEntry[] = [
   {
     question: "Какво показва проверката на VIN?",
     answer:
-      "Показва колко Carfax и AutoCheck записи има за въведения VIN номер и разпознатия автомобил. Това е бърз начин да разбереш дали има налична история, преди да поръчаш пълния доклад.",
+      "Показва колко Carfax и AutoCheck записи има за въведения VIN номер и разпознатия автомобил. Това е бърз начин да разберете дали има налична история, преди да поръчате пълния доклад.",
   },
   {
     question: "Безплатна ли е проверката?",
@@ -83,118 +95,139 @@ export default function VinCheckPage() {
   return (
     <>
       <SiteHeader />
-      <main className="flex-1 bg-[#fafafa] pt-(--header-h) text-ink">
+      <main className="in-vin-pg flex-1 pt-(--header-h)">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webAppJsonLd) }} />
 
-        <Container className="max-w-245 py-12 max-md:py-8">
-          <nav className="mb-5 text-sm text-muted">
-            <Link href="/" className="hover:text-brand-dark">
-              Начало
-            </Link>
-            <span className="px-2">/</span>
-            <span className="text-ink">Проверка на VIN</span>
-          </nav>
-
-          <h1 className="mb-3 text-4xl font-black uppercase tracking-tight text-ink max-md:text-3xl">
-            Безплатна VIN проверка на автомобил
-          </h1>
-          <p className="mb-8 max-w-2xl text-[15px] leading-[1.8] text-[#3d4046]">
-            Провери безплатно по VIN номер дали за даден автомобил има налична история в Carfax и AutoCheck. Въведи
-            VIN-а по-долу — ще видиш броя записи и разпознатия автомобил. За пълния доклад с подробната история заяви
-            Carfax през SelectAuto.
-          </p>
-
-          {/* The live tool */}
-          <section className="mb-12">
+        <section className="in-hero">
+          <div className="sa-wrap">
+            <nav className="sa-crumbs pt-[clamp(20px,2.4vw,32px)]" aria-label="Пътечка">
+              <Link href="/">Начало</Link>
+              <i aria-hidden="true">/</i>
+              <span aria-current="page">Проверка на VIN</span>
+            </nav>
+          </div>
+          <div className="sa-wrap in-hero__in">
+            <div className="in-hero__copy">
+              <h1 className="type-h1">Безплатна VIN проверка на автомобил</h1>
+              <p className="sa-lead">
+                Проверете безплатно по VIN номер дали за даден автомобил има налична история в Carfax и AutoCheck.
+                Въведете VIN-а по-долу — ще видите броя записи и разпознатия автомобил. За пълния доклад с подробната
+                история заявете Carfax през SelectAuto.
+              </p>
+            </div>
+            {/* The live tool */}
             <VinCheckTool />
-          </section>
+          </div>
+        </section>
 
-          {/* Why check */}
-          <section className="mb-12">
-            <h2 className="mb-4 text-2xl font-black text-ink">Защо да провериш VIN преди покупка</h2>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {/* Why check */}
+        <section className="sa-band">
+          <div className="sa-wrap">
+            <SectionHeading title="Защо да проверите VIN преди покупка" />
+            <div className="sa-grid sa-grid--4">
               {[
-                { t: "История на собственост", d: "Колко собственици е имал автомобилът и къде е бил регистриран." },
-                { t: "Реален пробег", d: "Записи за километрите, които помагат да се засече върнат километраж." },
-                { t: "Инциденти и щети", d: "Данни за регистрирани катастрофи, тотални щети (salvage) и ремонти." },
-                { t: "Спокойствие при внос", d: "По-малко изненади при покупка от разстояние (Copart, IAAI, Encar)." },
-              ].map((c) => (
-                <div key={c.t} className="rounded-2xl border border-line bg-white p-5 shadow-card">
-                  <h3 className="mb-1.5 text-lg font-extrabold text-ink">{c.t}</h3>
-                  <p className="text-sm/relaxed text-[#5a5d64]">{c.d}</p>
-                </div>
+                {
+                  Icon: UsersIcon,
+                  t: "История на собственост",
+                  d: "Колко собственици е имал автомобилът и къде е бил регистриран.",
+                },
+                {
+                  Icon: GaugeIcon,
+                  t: "Реален пробег",
+                  d: "Записи за километрите, които помагат да се засече върнат километраж.",
+                },
+                {
+                  Icon: TriangleAlertIcon,
+                  t: "Инциденти и щети",
+                  d: "Данни за регистрирани катастрофи, тотални щети (salvage) и ремонти.",
+                },
+                {
+                  Icon: ShieldCheckIcon,
+                  t: "Спокойствие при внос",
+                  d: "По-малко изненади при покупка от разстояние (Copart, IAAI, Encar).",
+                },
+              ].map(({ Icon, t, d }) => (
+                <article key={t} className="sa-pnl in-why">
+                  <span className="sa-pnl__ic">
+                    <Icon />
+                  </span>
+                  <h3 className="type-h3">{t}</h3>
+                  <p className="sa-p">{d}</p>
+                </article>
               ))}
             </div>
-          </section>
+          </div>
+        </section>
 
-          {/* Korea angle — „вин проверка корея" is real, unserved demand
-              (docs/12-web-seo-strategy.md §3.4): Carfax doesn't cover Korean-
-              domestic cars, and honestly explaining what DOES work is both the
-              differentiator and the funnel into the Korea inventory. */}
-          <section className="mb-12">
-            <h2 className="mb-4 text-2xl font-black text-ink">VIN проверка на кола от Корея</h2>
-            <div className="rounded-2xl border border-line bg-white p-6 shadow-card max-md:p-5">
-              <p className="mb-3 text-[15px]/relaxed text-[#3d4046]">
+        {/* Korea angle — „вин проверка корея" is real, unserved demand
+            (docs/12-web-seo-strategy.md §3.4): Carfax doesn't cover Korean-
+            domestic cars, and honestly explaining what DOES work is both the
+            differentiator and the funnel into the Korea inventory. */}
+        <section className="sa-band sa-band--s1">
+          <div className="sa-wrap in-kr">
+            <span className="in-kr__flag">
+              <FlagKrIcon />
+            </span>
+            <div className="in-kr__b">
+              <h2 className="type-h2">VIN проверка на кола от Корея</h2>
+              <p className="sa-p text-[17px]">
                 Carfax и AutoCheck покриват основно автомобили, карани в САЩ и Канада. Кола от корейския вътрешен
-                пазар обикновено няма записи там — нейната история се проверява през корейските регистри: Encar
-                доклад със застрахователна история, брой собственици, регистрирани щети и официален оглед на
-                състоянието.
+                пазар обикновено няма записи там — нейната история се проверява през корейските регистри: Encar доклад
+                със застрахователна история, брой собственици, регистрирани щети и официален оглед на състоянието.
               </p>
-              <p className="mb-4 text-[15px]/relaxed text-[#3d4046]">
+              <p className="sa-p text-[17px]">
                 При обявите от Корея в каталога на SelectAuto тези данни са показани директно на страницата на
                 автомобила — история, застрахователни събития и протокол от огледа. За конкретен автомобил можем да
                 извадим и пълния доклад.
               </p>
-              <div className="flex flex-wrap gap-3">
-                <LinkButton
-                  href="/vnos-na-koli-ot-korea"
-                  rippleTheme="dark"
-                  className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-white px-5 text-sm font-extrabold text-ink transition-colors hover:text-brand-dark"
-                >
+              <div className="sa-row">
+                <LinkButton href="/vnos-na-koli-ot-korea" variant="sec">
                   Внос на коли от Корея
                 </LinkButton>
-                <LinkButton
-                  href="/vsichki-avtomobili?market=kr"
-                  rippleTheme="dark"
-                  className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-white px-5 text-sm font-extrabold text-ink transition-colors hover:text-brand-dark"
-                >
+                <LinkButton href="/vsichki-avtomobili?market=kr" variant="sec">
                   Коли от Корея в каталога
+                  <ArrowRightIcon />
                 </LinkButton>
               </div>
             </div>
-          </section>
+          </div>
+        </section>
 
-          {/* FAQ (visible — matches the FAQPage JSON-LD) */}
-          <section className="mb-12">
-            <h2 className="mb-4 text-2xl font-black text-ink">Често задавани въпроси</h2>
-            <div className="flex flex-col gap-4">
+        {/* FAQ (visible, every answer shown — matches the FAQPage JSON-LD) */}
+        <section className="sa-band">
+          <div className="sa-wrap">
+            <SectionHeading title="Често задавани въпроси" />
+            <div className="in-qa">
               {FAQ.map((f) => (
-                <div key={f.question} className="rounded-2xl border border-line bg-white p-5 shadow-card">
-                  <h3 className="mb-1.5 text-base font-extrabold text-ink">{f.question}</h3>
-                  <p className="text-sm/relaxed text-[#5a5d64]">{f.answer}</p>
+                <div key={f.question} className="sa-pnl">
+                  <h3 className="type-h4">{f.question}</h3>
+                  <p className="sa-p">{f.answer}</p>
                 </div>
               ))}
             </div>
-          </section>
+          </div>
+        </section>
 
-          {/* CTA */}
-          <section className="rounded-card bg-linear-to-r from-brand-dark to-brand p-8 text-center max-md:p-6">
-            <h2 className="mb-2 text-2xl font-black text-white max-md:text-xl">Искаш пълния Carfax доклад?</h2>
-            <p className="mx-auto mb-5 max-w-xl text-sm/relaxed text-white/85">
-              Заяви подробна история на автомобила през SelectAuto — собственици, километри, инциденти и важни записи
-              преди да вземеш решение.
-            </p>
-            <LinkButton
-              href="/carfax"
-              rippleTheme="dark"
-              className="inline-flex min-h-13.5 items-center justify-center rounded-full bg-white px-8 text-sm font-extrabold uppercase tracking-wide text-brand-dark transition-transform duration-200 hover:-translate-y-0.5"
-            >
-              Заяви Carfax проверка
-            </LinkButton>
-          </section>
-        </Container>
+        {/* CTA */}
+        <section className="sa-band sa-band--tight pt-0">
+          <div className="sa-wrap">
+            <div className="sa-pnl in-cta">
+              <div className="in-cta__t">
+                <h2 className="type-h2">Искате пълния Carfax доклад?</h2>
+                <p className="sa-p">
+                  Заявете подробна история на автомобила през SelectAuto — собственици, километри, инциденти и важни
+                  записи преди да вземете решение.
+                </p>
+              </div>
+              <LinkButton href="/carfax" variant="pri" size="xl">
+                <ShieldCheckIcon />
+                Заявете Carfax проверка
+              </LinkButton>
+            </div>
+          </div>
+        </section>
       </main>
       <SiteFooter />
     </>

@@ -1,55 +1,52 @@
-import { Container, Reveal, SectionHeader } from "@/components/common";
+import { Reveal, SectionHeading } from "@/components/common";
+import { HistoryIcon, SendIcon, ShieldCheckIcon } from "@/components/icons";
 
-/** "Защо Carfax" — three benefit cards. */
+const BENEFITS = [
+  {
+    Icon: HistoryIcon,
+    title: "История на автомобила",
+    text: "Вижте важни записи за регистрация, пробег, собственост и други ключови данни.",
+  },
+  {
+    Icon: ShieldCheckIcon,
+    title: "По-сигурна покупка",
+    text: "Намалявате риска от скрити проблеми и взимате решение с повече яснота.",
+  },
+  {
+    Icon: SendIcon,
+    title: "Бързо запитване",
+    text: "Изпратете VIN и основни данни, а ние ще се свържем с вас възможно най-скоро.",
+  },
+];
+
+/** „Защо Carfax" (board `in-carfax`): three benefit panels on one surface, each with its icon. */
 export function CarfaxBenefits() {
   return (
-    <section className="py-22 max-md:py-14.5">
-      <Container>
-        <SectionHeader
+    <section className="sa-band">
+      <div className="sa-wrap">
+        <SectionHeading
           eyebrow="Защо Carfax"
-          title="По-малко риск. По-добро решение."
-          subtitle="Проверка, която ти дава повече сигурност и спокойствие преди покупка."
-          className="mb-10.5 max-w-230"
+          title={
+            <>
+              По-малко риск. <span className="whitespace-nowrap">По-добро</span> решение.
+            </>
+          }
+          lead="Проверка, която ви дава повече сигурност и спокойствие преди покупка."
         />
-
-        <div className="grid grid-cols-3 gap-6 max-[1100px]:grid-cols-1">
-          <Reveal>
-            <article className="h-full min-h-70 rounded-[28px] bg-[linear-gradient(135deg,#0e1014,#181b22)] px-6.5 py-7.5 text-white shadow-card-strong transition-transform duration-200 hover:-translate-y-1.5 max-md:px-5 max-md:py-6">
-              <h3 className="mb-3.5 text-[30px] font-black leading-[1.08] max-md:text-[28px]">
-                История на автомобила
-              </h3>
-              <p className="m-0 text-[17px] leading-[1.85] max-md:text-base">
-                Виж важни записи за регистрация, пробег, собственост и други
-                ключови данни.
-              </p>
-            </article>
-          </Reveal>
-
-          <Reveal delay={0.08}>
-            <article className="h-full min-h-70 rounded-[28px] bg-[linear-gradient(135deg,#c45c00,#df7a10)] px-6.5 py-7.5 text-white shadow-card-strong transition-transform duration-200 hover:-translate-y-1.5 max-md:px-5 max-md:py-6">
-              <h3 className="mb-3.5 text-[30px] font-black leading-[1.08] max-md:text-[28px]">
-                По-сигурна покупка
-              </h3>
-              <p className="m-0 text-[17px] leading-[1.85] max-md:text-base">
-                Намаляваш риска от скрити проблеми и взимаш решение с повече
-                яснота.
-              </p>
-            </article>
-          </Reveal>
-
-          <Reveal delay={0.16}>
-            <article className="h-full min-h-70 rounded-[28px] bg-white px-6.5 py-7.5 text-[#17181b] shadow-card-strong transition-transform duration-200 hover:-translate-y-1.5 max-md:px-5 max-md:py-6">
-              <h3 className="mb-3.5 text-[30px] font-black leading-[1.08] max-md:text-[28px]">
-                Бързо запитване
-              </h3>
-              <p className="m-0 text-[17px] leading-[1.85] max-md:text-base">
-                Изпрати VIN и основни данни, а ние ще се свържем с теб възможно
-                най-скоро.
-              </p>
-            </article>
-          </Reveal>
+        <div className="sa-grid sa-grid--3">
+          {BENEFITS.map(({ Icon, title, text }, i) => (
+            <Reveal key={title} delay={0.08 * i} className="grid">
+              <article className="sa-pnl in-ben">
+                <span className="sa-pnl__ic">
+                  <Icon />
+                </span>
+                <h3 className="type-h3">{title}</h3>
+                <p className="sa-p">{text}</p>
+              </article>
+            </Reveal>
+          ))}
         </div>
-      </Container>
+      </div>
     </section>
   );
 }

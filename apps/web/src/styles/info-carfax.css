@@ -1,0 +1,38 @@
+/*
+  The Carfax page, /carfax (board in-carfax; in-carfax-flow is a phone frame): the hero with its card, the benefits, the form beside its info, and the phone and tablet bar.
+  Ported by script from the screen's board sources (apps/web/scripts/port-board-css.mjs), as kit.css is from the kit: token
+  names follow tokens.css, the boards' cqi became vw and their container queries media queries. Board-only parts
+  (device frames, preview overlays) were left out. Class prefix: in-. Scoped to .in-carfax-pg, the page's root.
+*/
+@layer components {
+  .in-carfax-pg .in-hero{position:relative;isolation:isolate;overflow:hidden;border-bottom:1px solid var(--color-hair)}
+  .in-carfax-pg .in-hero::before{content:"";position:absolute;z-index:-1;right:-14%;top:-48%;width:min(1280px,96vw);aspect-ratio:1;border-radius:50%;background:radial-gradient(closest-side,rgba(255,122,26,.20),rgba(255,122,26,.06) 52%,transparent);pointer-events:none}
+  .in-carfax-pg .in-hero__in{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,.7fr);gap:clamp(32px,4.4vw,96px);align-items:end;padding-block:clamp(48px,7vw,136px) clamp(48px,6vw,112px)}
+  @media (max-width:1023.98px){.in-carfax-pg .in-hero__in{grid-template-columns:minmax(0,1fr);align-items:start}}
+  .in-carfax-pg .in-hero__copy{display:flex;flex-direction:column;gap:24px;max-width:1040px}
+  .in-carfax-pg .in-hero__act{display:flex;flex-wrap:wrap;gap:12px;margin-top:6px}
+  @media (max-width:639.98px){.in-carfax-pg .in-hero__act{flex-direction:column}.in-carfax-pg .in-hero__act .sa-btn{width:100%}}
+  .in-carfax-pg .in-hero__card{display:flex;flex-direction:column;gap:14px;max-width:560px}
+  @media (max-width:1023.98px){.in-carfax-pg .in-hero__card{max-width:none}}
+  .in-carfax-pg .in-checks{display:flex;flex-direction:column;gap:10px}
+  .in-carfax-pg .in-checks li{display:flex;align-items:center;gap:12px;min-height:52px;padding:10px 14px;border-radius:var(--radius-md);background:var(--color-s2);font-size:15px;line-height:1.4;font-weight:700;color:var(--color-tx)}
+  .in-carfax-pg .in-checks svg{width:20px;height:20px;flex:none;color:var(--color-ortx)}
+  .in-carfax-pg .in-ben{display:flex;flex-direction:column;gap:14px;min-height:232px}
+  .in-carfax-pg .in-ben .sa-pnl__ic{width:48px;height:48px;border-radius:12px;margin-bottom:6px}
+  .in-carfax-pg .in-ben .sa-pnl__ic svg{width:24px;height:24px}
+  .in-carfax-pg .in-form{display:grid;grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);gap:clamp(32px,4.4vw,96px);align-items:start}
+  @media (max-width:1023.98px){.in-carfax-pg .in-form{grid-template-columns:minmax(0,1fr)}}
+  .in-carfax-pg .in-form__info{display:flex;flex-direction:column;gap:20px;position:sticky;top:112px}
+  @media (max-width:1023.98px){.in-carfax-pg .in-form__info{position:static}}
+  .in-carfax-pg .in-form__card{display:flex;flex-direction:column;gap:22px}
+  .in-carfax-pg .in-form__head{display:flex;flex-direction:column;gap:8px}
+  .in-carfax-pg .in-vin{font-family:var(--font-mono);font-weight:500;letter-spacing:.02em}
+  .in-carfax-pg .in-vin::placeholder{font-family:var(--font-sans);letter-spacing:0}
+  .in-carfax-pg .in-dots li{display:flex;gap:12px;align-items:flex-start;font-size:16px;line-height:1.6;color:var(--color-tx2)}
+  .in-carfax-pg .in-dots li+li{margin-top:12px}
+  .in-carfax-pg .in-dots svg{width:20px;height:20px;flex:none;margin-top:2px;color:var(--color-pos)}
+  .in-carfax-pg .in-nw{white-space:nowrap}
+  .in-carfax-pg .in-bar{position:fixed;left:0;right:0;bottom:var(--bottom-nav);z-index:45}
+  .in-carfax-pg .in-barsp{height:65px;flex:none}
+  @media (min-width:1024px){.in-carfax-pg .in-bar,.in-carfax-pg .in-barsp{display:none!important}}
+}

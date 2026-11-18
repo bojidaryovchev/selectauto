@@ -1,79 +1,60 @@
-import { Container, LinkButton, Reveal } from "@/components/common";
-
-const HERO_BG =
-  "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1800&q=80";
+import { buttonClasses, LinkButton, Reveal } from "@/components/common";
+import { FileSearchIcon, GaugeIcon, TriangleAlertIcon } from "@/components/icons";
 
 const CHECK_POINTS = [
-  "Проверка на VIN номер",
-  "История на щети и инциденти",
-  "Данни за пробег и предишни собственици",
+  { Icon: FileSearchIcon, text: "Проверка на VIN номер" },
+  { Icon: TriangleAlertIcon, text: "История на щети и инциденти" },
+  { Icon: GaugeIcon, text: "Данни за пробег и предишни собственици" },
 ];
 
-/** Carfax page hero — imagery background, headline and the "what you can check" card. */
-export function CarfaxHero() {
+/**
+ * Carfax page hero (board `in-carfax`): the display title with its orange words, the lead, „Изпратете запитване"
+ * (to the form) and „Свържете се с нас", and the card „Какво можете да проверите". The night ground with the hero
+ * glow; the stock photo is gone (no stock images).
+ */
+export function CarfaxHero({ actionsId, formId }: { actionsId: string; formId: string }) {
   return (
-    <section
-      className="relative flex min-h-[82vh] items-end overflow-hidden bg-cover bg-center bg-no-repeat max-md:min-h-[88vh]"
-      style={{
-        backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.58) 60%, rgba(0,0,0,0.82) 100%), radial-gradient(circle at 20% 16%, rgba(216,111,22,0.20), transparent 24%), radial-gradient(circle at 78% 78%, rgba(216,111,22,0.15), transparent 28%), url('${HERO_BG}')`,
-      }}
-    >
-      {/* On mobile the fixed header is hidden (--header-h collapses to 0), so
-          reserve the same top breathing room the home hero uses — otherwise the
-          tall hero content overflows and the h1 jams against the viewport top. */}
-      <Container className="pb-17.5 max-md:pb-9.5 max-md:pt-[clamp(76px,13vh,128px)]">
-        <div className="grid grid-cols-[1.08fr_0.92fr] items-end gap-7 max-[1100px]:grid-cols-1">
-          <Reveal>
-            <h1 className="mb-4 max-w-230 text-[clamp(44px,7vw,88px)] font-black leading-[0.94] tracking-[-0.04em] text-white">
-              Поръчай <span className="text-[#ffd4aa]">Carfax проверка</span> за
-              избрания автомобил
+    <section className="in-hero">
+      <div className="sa-wrap in-hero__in">
+        <Reveal>
+          <div className="in-hero__copy">
+            <h1 className="type-display">
+              Поръчайте <em className="sa-em">Carfax проверка</em> за избрания автомобил
             </h1>
-            <p className="mb-7 max-w-190 text-xl font-medium leading-[1.75] text-white/88">
-              Получи по-ясна представа за историята на автомобила — пробег,
-              инциденти, собственици и важни записи преди да вземеш решение.
+            <p className="sa-lead">
+              Получете по-ясна представа за историята на автомобила — пробег, инциденти, собственици и важни записи
+              преди да вземете решение.
             </p>
-
-            <div className="flex flex-wrap gap-3.5 max-md:flex-col">
-              <LinkButton
-                href="#sa-carfax-form-block"
-                rippleTheme="light"
-                className="inline-flex min-h-13.5 items-center justify-center rounded-full bg-[linear-gradient(90deg,#b95200,#d86f16)] px-6.5 text-[15px] font-extrabold text-white shadow-[0_12px_28px_rgba(216,111,22,0.24)] transition-transform duration-200 hover:-translate-y-0.5 max-md:w-full"
-              >
-                Изпрати запитване
-              </LinkButton>
-              <LinkButton
-                href="/kontakti"
-                rippleTheme="light"
-                className="inline-flex min-h-13.5 items-center justify-center rounded-full border border-white/18 bg-white/8 px-6.5 text-[15px] font-extrabold text-white backdrop-blur-md transition-transform duration-200 hover:-translate-y-0.5 max-md:w-full"
-              >
-                Свържи се с нас
+            <div id={actionsId} className="in-hero__act">
+              <a href={`#${formId}`} className={buttonClasses({ variant: "pri", size: "xl" })}>
+                Изпратете запитване
+              </a>
+              <LinkButton href="/kontakti" variant="sec" size="xl">
+                Свържете се с нас
               </LinkButton>
             </div>
-          </Reveal>
+          </div>
+        </Reveal>
 
-          <Reveal delay={0.16}>
-            <div className="rounded-[30px] border border-white/12 bg-[rgba(17,18,22,0.44)] p-7 text-white shadow-[0_20px_60px_rgba(0,0,0,0.25)] backdrop-blur-md max-md:p-5">
-              <h2 className="mb-3.5 text-[26px] font-black leading-[1.08]">
-                Какво можеш да провериш
-              </h2>
-              <p className="mb-4.5 text-base leading-[1.8] text-white/84">
-                Историята на автомобила често казва повече от самата обява.
-                Провери важните детайли преди покупка.
-              </p>
-              <div className="grid gap-2.5">
-                {CHECK_POINTS.map((point) => (
-                  <div
-                    key={point}
-                    className="rounded-2xl border border-white/8 bg-white/[0.07] px-3.5 py-3 text-sm font-semibold leading-[1.55]"
-                  >
-                    {point}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Reveal>
-        </div>
-      </Container>
+        <Reveal delay={0.16}>
+          <aside className="sa-pnl in-hero__card" aria-labelledby="in-cf-check">
+            <h2 className="type-h3" id="in-cf-check">
+              Какво можете да проверите
+            </h2>
+            <p className="sa-p">
+              Историята на автомобила често казва повече от самата обява. Проверете важните детайли преди покупка.
+            </p>
+            <ul className="in-checks">
+              {CHECK_POINTS.map(({ Icon, text }) => (
+                <li key={text}>
+                  <Icon />
+                  {text}
+                </li>
+              ))}
+            </ul>
+          </aside>
+        </Reveal>
+      </div>
     </section>
   );
 }

@@ -2,22 +2,21 @@
 
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Button } from "@/components/common";
+import { IconButton } from "@/components/common";
 import { CloseIcon } from "@/components/icons";
 import { CarfaxForm } from "@/components/carfax/carfax-form";
 import type { CarfaxFormValues } from "@/schemas/carfax.schema";
 
 /**
- * In-page Carfax inquiry modal — the same form as the /carfax page, opened over a
- * car (or a VIN-check result) so the visitor never leaves. The car's VIN/make/model
- * arrive pre-filled and locked (read-only): the buyer only adds name/phone/email.
- * Whichever of `vin`/`make`/`model` is passed gets seeded + locked; the rest stay
- * editable (e.g. the VIN-check tool knows only the VIN).
+ * In-page Carfax inquiry dialog — the same form as the /carfax page, opened over a car (or a VIN-check result) so the
+ * visitor never leaves (boards `in-vin-dlg`, `in-vin-carfax`). The car's VIN/make/model arrive pre-filled and locked
+ * (read-only): the buyer only adds name/phone/email. Whichever of `vin`/`make`/`model` is passed gets seeded + locked;
+ * the rest stay editable (e.g. the VIN-check tool knows only the VIN).
  *
- * Chrome mirrors ConfirmDialog / the inquiry modal: portal to `document.body`
- * (so a trigger deep inside a clipped/transformed card still covers the viewport),
- * blurred backdrop, Escape + body-scroll lock, and only mounts while open. On a
- * successful submit the form calls back and the dialog auto-closes after a beat.
+ * The kit's dialog from 640 px, full screen on a phone: portalled to `document.body` (so a trigger deep inside a
+ * clipped card still covers the viewport), Escape and a press outside close it, body scroll is locked, focus moves to
+ * „Затворете" and returns to the trigger on close (CarfaxInquiryButton). On a successful submit the form calls back
+ * and the dialog closes after 2,5 s. Mounted only while open.
  */
 export function CarfaxDialog({
   isOpen,
@@ -53,9 +52,12 @@ export function CarfaxDialog({
   }, [isOpen, onClose]);
 
   // Clear any pending auto-close timer if the dialog unmounts first.
-  useEffect(() => () => {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (closeTimer.current) clearTimeout(closeTimer.current);
+    },
+    [],
+  );
 
   // Never mount the overlay when closed — `isOpen` only flips true after a user
   // interaction (post-mount), so `document.body` is guaranteed to exist.
@@ -85,48 +87,37 @@ export function CarfaxDialog({
   };
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-99999"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="sa-carfax-dialog-title"
-    >
-      {/* Backdrop */}
-      <div onClick={onClose} className="absolute inset-0 bg-[rgba(8,10,14,0.72)] backdrop-blur-lg" />
+    <div className="fixed inset-0 z-99999 flex items-start justify-center sm:px-6 sm:py-[5vh]">
+      <div className="sa-scrim" onClick={onClose} aria-hidden="true" />
 
-      {/* Dialog — a flex column: a PINNED header over a scrollable body, so the
-          close button stays reachable on tall forms. Centred card from 641px up;
-          on phones (≤640px) it fills the viewport edge-to-edge (`h-dvh`, square
-          corners), with header/body padding honouring the notch + home-indicator
-          safe-area insets — matching the site's inquiry modal. */}
-      <div className="relative z-2 mx-auto mt-[5vh] flex max-h-[min(88vh,820px)] w-[min(100%-24px,560px)] flex-col overflow-hidden rounded-[28px] bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(248,248,250,0.98)_100%)] shadow-[0_30px_80px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.8)] max-[640px]:mt-0 max-[640px]:h-dvh max-[640px]:max-h-dvh max-[640px]:w-full max-[640px]:rounded-none max-[640px]:shadow-none">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="sa-carfax-dialog-title"
+        className="sa-dlg max-h-[min(90vh,900px)] max-sm:h-dvh max-sm:max-h-dvh max-sm:w-full max-sm:rounded-none max-sm:border-0 max-sm:shadow-none"
+      >
         {/* Pinned header */}
-        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-line/70 px-7 pb-4 pt-6 max-[640px]:px-4.5 max-[640px]:pt-[max(1rem,env(safe-area-inset-top))]">
+        <div className="sa-dlg__h flex-none border-b border-hair pt-5.5 pr-4 pb-4 pl-6 max-sm:pt-[max(16px,env(safe-area-inset-top))] max-sm:pr-3 max-sm:pb-3.5 max-sm:pl-4.5">
           <div className="min-w-0">
-            <h2 id="sa-carfax-dialog-title" className="text-[22px] font-black text-[#17181b] max-md:text-xl">
-              Заяви Carfax проверка
+            <h2 id="sa-carfax-dialog-title" className="sa-dlg__t max-sm:text-xl">
+              Заявете Carfax проверка
             </h2>
             {carLabel ? (
-              <p className="mt-1 truncate text-sm text-muted">
-                <span className="font-bold text-ink">{carLabel}</span>
+              <p className="mt-1.5 truncate text-sm/snug text-tx2">
+                <b className="font-extrabold text-tx">{carLabel}</b>
                 {lotNumber ? ` · Лот № ${lotNumber}` : ""}
               </p>
             ) : (
-              <p className="mt-1 text-sm text-muted">Остави данни за контакт и ще се свържем с теб.</p>
+              <p className="mt-1.5 text-sm/snug text-tx2">Оставете данни за контакт и ще се свържем с вас.</p>
             )}
           </div>
-          <Button
-            ref={closeRef}
-            aria-label="Затвори"
-            onClick={onClose}
-            className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#f1f2f4] text-[#6f747c] transition-all duration-200 hover:-translate-y-px hover:bg-[#e8eaee] hover:text-[#17181b]"
-          >
-            <CloseIcon className="size-4.5" />
-          </Button>
+          <IconButton ref={closeRef} label="Затворете" variant="ghost" onClick={onClose}>
+            <CloseIcon />
+          </IconButton>
         </div>
 
-        {/* Scrollable body — the shared form, stacked + pre-filled/locked. */}
-        <div className="flex-1 overflow-y-auto px-7 pb-7 pt-5 max-[640px]:px-4.5 max-[640px]:pb-[max(1.125rem,env(safe-area-inset-bottom))]">
+        {/* Scrollable body — the shared form, one field per row, pre-filled and locked. */}
+        <div className="sa-dlg__b min-h-0 flex-1 px-6 pt-5 pb-6 max-sm:px-4.5 max-sm:pb-[max(18px,env(safe-area-inset-bottom))]">
           <CarfaxForm stack defaults={defaults} lockedFields={lockedFields} onSuccess={handleSuccess} />
         </div>
       </div>
