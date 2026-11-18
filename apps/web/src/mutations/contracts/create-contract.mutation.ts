@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { CONTRACT_MARKET_META, type ContractAmountKey } from "@/constants/contracts";
 import { getSessionWith } from "@/lib/admin";
 import { getDb, schema } from "@/lib/db";
-import { centsToDb, dbToCents, parseAmountToCents } from "@/lib/money";
+import { centsToDb, dbToCents, formatCents, parseAmountToCents } from "@/lib/money";
 import { createContractSchema } from "@/schemas/contract.schema";
 import type { ActionResult } from "@/types/action-result.type";
 
@@ -157,7 +157,8 @@ export async function createContract(input: unknown): Promise<ActionResult<{ id:
         // the deposit becomes „Използван" either way.
         if (depositDeductionCents > amountByKey.amountCar) {
           throw new Error(
-            `BG:Депозитът за приспадане (${centsToDb(depositDeductionCents)} ${currency}) е по-голям от Точка 1 (${centsToDb(amountByKey.amountCar)} ${currency}) — попълнете Точка 1 или не приспадайте депозита сега.`,
+            // bg-BG amounts on screen („1080,00 USD"), not the database's („1080.00"; decision 11).
+            `BG:Депозитът за приспадане (${formatCents(depositDeductionCents)} ${currency}) е по-голям от Точка 1 (${formatCents(amountByKey.amountCar)} ${currency}) — попълнете Точка 1 или не приспадайте депозита сега.`,
           );
         }
         depositNumber = deposit.number;

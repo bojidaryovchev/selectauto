@@ -1,15 +1,8 @@
 "use client";
 
-import {
-  ADMIN_HINT,
-  ADMIN_INPUT,
-  ADMIN_LABEL,
-  ADMIN_SELECT,
-  AdminBanner,
-  AdminButton,
-  AdminCard,
-  adminChipClass,
-} from "@/components/admin/ui";
+import { ADMIN_INPUT, AdminBanner, adminChipClass } from "@/components/admin/ui";
+import { Button } from "@/components/common";
+import { AlertIcon, CheckIcon, ChevronDownIcon } from "@/components/icons";
 import {
   CLIENT_KIND_META,
   CONTRACT_MARKET_META,
@@ -26,6 +19,7 @@ import { createContract, updateContract } from "@/mutations/contracts";
 import type { ClientRow } from "@/queries/clients";
 import type { ContractDetail } from "@/queries/contracts";
 import type { AvailableDepositRow } from "@/queries/deposits";
+import { createContractSchema, updateContractSchema } from "@/schemas/contract.schema";
 import { useRouter } from "next/navigation";
 import { useId, useMemo, useState } from "react";
 
@@ -34,7 +28,13 @@ import { useId, useMemo, useState } from "react";
  * (client + car + the market's пера, live total, optional deposit deduction) and
  * the edit form on the detail page (car/amounts/status only — client and
  * deposit are frozen at creation). Controlled inputs like the other admin
- * forms; the zod schema re-validates server-side.
+ * forms. Boards `ab-contract-new*`, `ab-contract-edit*`; parity check
+ * docs/design/parity/admin-contract-form.md.
+ *
+ * The form runs the server's own schema first and puts each message under its
+ * field (the kit's field error, `noValidate`); the sticky bar keeps the server's
+ * refusals (the deposit checks, a taken number…) and a lost connection. The
+ * server re-validates everything.
  */
 type Status = { kind: "idle" } | { kind: "error"; message: string };
 
@@ -115,6 +115,8 @@ export function ContractForm({
   const [paymentBasis, setPaymentBasis] = useState(contract?.paymentBasis ?? "");
 
   const [statusMsg, setStatusMsg] = useState<Status>({ kind: "idle" });
+  /** The schema's messages by field path („carYear", „newClient.egn" …). */
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
 
   const marketMeta = CONTRACT_MARKET_META[market];
@@ -157,72 +159,119 @@ export function ContractForm({
     0,
   );
 
+  /** The field paths this form shows right now, so an issue without one goes to the bar. */
+  function visiblePaths(): Set<string> {
+    const paths = ["contractDate", "carYear", "carMake", "carModel", "vin", "purchaseMarket", "auctionPlatform", "paymentBasis"];
+    for (const point of marketMeta.points) {
+      if (point.foreignCurrency) paths.push("amountCarForeign", "foreignRate");
+      else paths.push(point.key);
+    }
+    if (!isEdit) {
+      if (clientMode === "existing") {
+        paths.push("clientId");
+        if (selectedDeposit && depositCrossCurrency) paths.push("depositDeductionAmount");
+      } else {
+        paths.push("newClient.name", "newClient.address", "newClient.phone", "newClient.email");
+        if (clientKind === "individual") paths.push("newClient.egn");
+        else paths.push("newClient.eik", "newClient.vatNumber", "newClient.representative");
+      }
+    }
+    return new Set(paths);
+  }
+
+  /** The props tying a control to its error, and its class. */
+  function control(path: string, id: string, base = ADMIN_INPUT) {
+    const error = errors[path];
+    return error
+      ? { className: `${base} is-err`, "aria-invalid": true as const, "aria-describedby": `${id}-err` }
+      : { className: base };
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const updateInput = {
+      contractDate,
+      carYear,
+      carMake,
+      carModel,
+      vin,
+      purchaseMarket,
+      auctionPlatform,
+      amountCar,
+      amountTransport,
+      amountCustomsVat,
+      amountTransportEuBg,
+      amountCommission,
+      amountCarForeign,
+      foreignRate,
+      paymentBasis,
+      status,
+    };
+    const createInput = {
+      market,
+      contractDate,
+      clientId: clientMode === "existing" ? clientId : undefined,
+      newClient:
+        clientMode === "new"
+          ? {
+              kind: clientKind,
+              name: clientName,
+              egn: clientEgn,
+              eik: clientEik,
+              vatNumber: clientVat,
+              address: clientAddress,
+              representative: clientRepresentative,
+              phone: clientPhone,
+              email: clientEmail,
+            }
+          : undefined,
+      carYear,
+      carMake,
+      carModel,
+      vin,
+      purchaseMarket,
+      auctionPlatform,
+      amountCar,
+      amountTransport,
+      amountCustomsVat,
+      amountTransportEuBg,
+      amountCommission,
+      amountCarForeign,
+      foreignRate,
+      paymentBasis,
+      depositContractId: clientMode === "existing" ? depositContractId : undefined,
+      depositDeductionAmount: clientMode === "existing" && depositCrossCurrency ? depositDeductionAmount : undefined,
+    };
+
+    // The server's own schema, first: each message under its field.
+    const parsed = isEdit ? updateContractSchema.safeParse(updateInput) : createContractSchema.safeParse(createInput);
+    if (!parsed.success) {
+      const shown = visiblePaths();
+      const next: Record<string, string> = {};
+      let unplaced: string | null = null;
+      for (const issue of parsed.error.issues) {
+        const path = issue.path.join(".");
+        if (shown.has(path)) next[path] ??= issue.message;
+        else unplaced ??= issue.message;
+      }
+      setErrors(next);
+      setStatusMsg(unplaced ? { kind: "error", message: unplaced } : { kind: "idle" });
+      return;
+    }
+    setErrors({});
+
     setBusy(true);
     setStatusMsg({ kind: "idle" });
     try {
       if (isEdit) {
-        const result = await updateContract(contract!.id, {
-          contractDate,
-          carYear,
-          carMake,
-          carModel,
-          vin,
-          purchaseMarket,
-          auctionPlatform,
-          amountCar,
-          amountTransport,
-          amountCustomsVat,
-          amountTransportEuBg,
-          amountCommission,
-          amountCarForeign,
-          foreignRate,
-          paymentBasis,
-          status,
-        });
+        const result = await updateContract(contract!.id, updateInput);
         if (result.success) {
           router.refresh();
         } else {
           setStatusMsg({ kind: "error", message: result.error });
         }
       } else {
-        const result = await createContract({
-          market,
-          contractDate,
-          clientId: clientMode === "existing" ? clientId : undefined,
-          newClient:
-            clientMode === "new"
-              ? {
-                  kind: clientKind,
-                  name: clientName,
-                  egn: clientEgn,
-                  eik: clientEik,
-                  vatNumber: clientVat,
-                  address: clientAddress,
-                  representative: clientRepresentative,
-                  phone: clientPhone,
-                  email: clientEmail,
-                }
-              : undefined,
-          carYear,
-          carMake,
-          carModel,
-          vin,
-          purchaseMarket,
-          auctionPlatform,
-          amountCar,
-          amountTransport,
-          amountCustomsVat,
-          amountTransportEuBg,
-          amountCommission,
-          amountCarForeign,
-          foreignRate,
-          paymentBasis,
-          depositContractId: clientMode === "existing" ? depositContractId : undefined,
-          depositDeductionAmount:
-            clientMode === "existing" && depositCrossCurrency ? depositDeductionAmount : undefined,
-        });
+        const result = await createContract(createInput);
         if (result.success) {
           router.push(`/admin/dogovori/${result.data.id}`);
         } else {
@@ -236,17 +285,25 @@ export function ContractForm({
     }
   }
 
+  /** A select in the kit's wrapper with its chevron. */
+  const select = (el: React.ReactNode) => (
+    <span className="sa-selw">
+      {el}
+      <ChevronDownIcon />
+    </span>
+  );
+
   return (
-    <form onSubmit={onSubmit} className="@container flex flex-col gap-6">
+    <form onSubmit={onSubmit} noValidate className="ab-form">
       {/* ── 1. Тип договор ── */}
-      <AdminCard className="flex flex-col gap-3">
-        <h2 className="text-lg font-black text-ink">{isEdit ? "Тип договор" : "1. Тип договор"}</h2>
+      <section className="sa-pnl ab-fcard">
+        <h2>{isEdit ? "Тип договор" : "1. Тип договор"}</h2>
         {isEdit ? (
-          <p className="text-sm text-muted">
+          <p className="text-sm text-tx2">
             {CONTRACT_MARKET_META[market].label} — валута {currency} (типът не се променя след създаване)
           </p>
         ) : (
-          <fieldset className="flex min-w-0 flex-wrap gap-2">
+          <fieldset className="ab-chiprow m-0 border-0 p-0">
             <legend className="sr-only">Тип договор</legend>
             {/* A choice pill: a real radio, visually hidden (not display:none, so the
                 keyboard and screen readers still reach it), with its label as the pill. */}
@@ -264,44 +321,47 @@ export function ContractForm({
             ))}
           </fieldset>
         )}
-        <div className="grid gap-4 @lg:grid-cols-2">
+        <div className="ab-g2">
           <Field
             id={fid("date")}
             label="Дата на договора"
             hint={isEdit ? undefined : "Оставете празно за днешна дата."}
+            error={errors.contractDate}
           >
             <input
               id={fid("date")}
               type="date"
               value={contractDate}
               onChange={(e) => setContractDate(e.target.value)}
-              className={ADMIN_INPUT}
+              {...control("contractDate", fid("date"))}
             />
           </Field>
           {isEdit ? (
             <Field id={fid("status")} label="Статус">
-              <select
-                id={fid("status")}
-                value={status}
-                onChange={(e) => setStatus(e.target.value as ContractStatus)}
-                className={ADMIN_SELECT}
-              >
-                {CONTRACT_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {CONTRACT_STATUS_META[s].label}
-                  </option>
-                ))}
-              </select>
+              {select(
+                <select
+                  id={fid("status")}
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as ContractStatus)}
+                  className={ADMIN_INPUT}
+                >
+                  {CONTRACT_STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {CONTRACT_STATUS_META[s].label}
+                    </option>
+                  ))}
+                </select>,
+              )}
             </Field>
           ) : null}
         </div>
-      </AdminCard>
+      </section>
 
       {/* ── 2. Клиент (create only) ── */}
       {isEdit ? null : (
-        <AdminCard className="flex flex-col gap-4">
-          <h2 className="text-lg font-black text-ink">2. Клиент</h2>
-          <fieldset className="flex min-w-0 flex-wrap gap-2">
+        <section className="sa-pnl ab-fcard">
+          <h2>2. Клиент</h2>
+          <fieldset className="ab-chiprow m-0 border-0 p-0">
             <legend className="sr-only">Клиент</legend>
             <label className={adminChipClass(clientMode === "existing")}>
               <input
@@ -326,33 +386,36 @@ export function ContractForm({
           </fieldset>
 
           {clientMode === "existing" ? (
-            <div className="flex flex-col gap-3">
-              <Field id={fid("client")} label="Клиент">
-                <select
-                  id={fid("client")}
-                  value={clientId ?? ""}
-                  onChange={(e) => {
-                    setClientId(e.target.value ? Number(e.target.value) : undefined);
-                    setDepositContractId(undefined);
-                    setDepositDeductionAmount("");
-                  }}
-                  className={ADMIN_SELECT}
-                >
-                  <option value="">— изберете клиент —</option>
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} {c.egn ? `(ЕГН ${c.egn})` : c.eik ? `(ЕИК ${c.eik})` : ""}
-                    </option>
-                  ))}
-                </select>
+            <div className="ab-stack">
+              <Field id={fid("client")} label="Клиент" error={errors.clientId}>
+                {select(
+                  <select
+                    id={fid("client")}
+                    value={clientId ?? ""}
+                    onChange={(e) => {
+                      setClientId(e.target.value ? Number(e.target.value) : undefined);
+                      setDepositContractId(undefined);
+                      setDepositDeductionAmount("");
+                    }}
+                    {...control("clientId", fid("client"))}
+                  >
+                    <option value="">— изберете клиент —</option>
+                    {clients.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} {c.egn ? `(ЕГН ${c.egn})` : c.eik ? `(ЕИК ${c.eik})` : ""}
+                      </option>
+                    ))}
+                  </select>,
+                )}
               </Field>
               {clientDeposits.length > 0 ? (
-                <div className="flex flex-col gap-1 rounded-lg border border-brand/40 bg-brand/5 p-3">
-                  <p className="text-sm font-semibold text-ink">
-                    Клиентът има платен депозит — да се приспадне от плащане „Кола“?
-                  </p>
+                <div className="ab-depo">
+                  <p>Клиентът има платен депозит — да се приспадне от плащане „Кола“?</p>
                   {clientDeposits.map((d) => (
-                    <label key={d.id} className="flex min-h-10 cursor-pointer items-center gap-3 text-sm text-ink">
+                    <label
+                      key={d.id}
+                      className={`sa-chk has-focus-visible:[&_.sa-box]:outline-2 has-focus-visible:[&_.sa-box]:outline-offset-2 has-focus-visible:[&_.sa-box]:outline-ortx ${depositContractId === d.id ? "is-on" : ""}`}
+                    >
                       <input
                         type="checkbox"
                         checked={depositContractId === d.id}
@@ -360,9 +423,13 @@ export function ContractForm({
                           setDepositContractId(e.target.checked ? d.id : undefined);
                           setDepositDeductionAmount("");
                         }}
-                        className="size-5 shrink-0 accent-brand"
                       />
-                      Депозит № {d.number} — {formatDbAmount(d.depositAmount)} {d.budgetCurrency}
+                      <span className="sa-box">
+                        <CheckIcon />
+                      </span>
+                      <span>
+                        Депозит № {d.number} — {formatDbAmount(d.depositAmount)} {d.budgetCurrency}
+                      </span>
                     </label>
                   ))}
                   {selectedDeposit && depositCrossCurrency ? (
@@ -370,6 +437,7 @@ export function ContractForm({
                       id={fid("deduction")}
                       label={`Сума за приспадане в ${currency} *`}
                       hint={`Депозитът е в ${depositCurrency}, а договорът — в ${currency}. Въведете равностойността, която се приспада от Точка 1.`}
+                      error={errors.depositDeductionAmount}
                     >
                       <input
                         id={fid("deduction")}
@@ -378,7 +446,7 @@ export function ContractForm({
                         value={depositDeductionAmount}
                         onChange={(e) => setDepositDeductionAmount(e.target.value)}
                         placeholder={`равностойност на ${formatDbAmount(selectedDeposit.depositAmount)} ${depositCurrency}`}
-                        className={ADMIN_INPUT}
+                        {...control("depositDeductionAmount", fid("deduction"))}
                       />
                     </Field>
                   ) : null}
@@ -386,54 +454,60 @@ export function ContractForm({
               ) : null}
             </div>
           ) : (
-            <div className="grid gap-4 @lg:grid-cols-2">
+            <div className="ab-g2">
               <Field id={fid("kind")} label="Тип клиент">
-                <select
-                  id={fid("kind")}
-                  value={clientKind}
-                  onChange={(e) => setClientKind(e.target.value as ClientKind)}
-                  className={ADMIN_SELECT}
-                >
-                  {(["individual", "company"] as const).map((k) => (
-                    <option key={k} value={k}>
-                      {CLIENT_KIND_META[k].label}
-                    </option>
-                  ))}
-                </select>
+                {select(
+                  <select
+                    id={fid("kind")}
+                    value={clientKind}
+                    onChange={(e) => setClientKind(e.target.value as ClientKind)}
+                    className={ADMIN_INPUT}
+                  >
+                    {(["individual", "company"] as const).map((k) => (
+                      <option key={k} value={k}>
+                        {CLIENT_KIND_META[k].label}
+                      </option>
+                    ))}
+                  </select>,
+                )}
               </Field>
-              <Field id={fid("name")} label={clientKind === "individual" ? "Три имена *" : "Име на фирмата *"}>
+              <Field
+                id={fid("name")}
+                label={clientKind === "individual" ? "Три имена *" : "Име на фирмата *"}
+                error={errors["newClient.name"]}
+              >
                 <input
                   id={fid("name")}
                   type="text"
                   value={clientName}
                   onChange={(e) => setClientName(e.target.value)}
-                  className={ADMIN_INPUT}
+                  {...control("newClient.name", fid("name"))}
                 />
               </Field>
               {clientKind === "individual" ? (
-                <Field id={fid("egn")} label="ЕГН *">
+                <Field id={fid("egn")} label="ЕГН *" error={errors["newClient.egn"]}>
                   <input
                     id={fid("egn")}
                     type="text"
                     inputMode="numeric"
                     value={clientEgn}
                     onChange={(e) => setClientEgn(e.target.value)}
-                    className={ADMIN_INPUT}
+                    {...control("newClient.egn", fid("egn"))}
                   />
                 </Field>
               ) : (
                 <>
-                  <Field id={fid("eik")} label="ЕИК *">
+                  <Field id={fid("eik")} label="ЕИК *" error={errors["newClient.eik"]}>
                     <input
                       id={fid("eik")}
                       type="text"
                       inputMode="numeric"
                       value={clientEik}
                       onChange={(e) => setClientEik(e.target.value)}
-                      className={ADMIN_INPUT}
+                      {...control("newClient.eik", fid("eik"))}
                     />
                   </Field>
-                  <Field id={fid("vat")} label="ДДС номер">
+                  <Field id={fid("vat")} label="ДДС номер" error={errors["newClient.vatNumber"]}>
                     <input
                       id={fid("vat")}
                       type="text"
@@ -442,40 +516,44 @@ export function ContractForm({
                       spellCheck={false}
                       value={clientVat}
                       onChange={(e) => setClientVat(e.target.value)}
-                      className={ADMIN_INPUT}
+                      {...control("newClient.vatNumber", fid("vat"))}
                     />
                   </Field>
-                  <Field id={fid("representative")} label="Представител">
+                  <Field id={fid("representative")} label="Представител" error={errors["newClient.representative"]}>
                     <input
                       id={fid("representative")}
                       type="text"
                       value={clientRepresentative}
                       onChange={(e) => setClientRepresentative(e.target.value)}
-                      className={ADMIN_INPUT}
+                      {...control("newClient.representative", fid("representative"))}
                     />
                   </Field>
                 </>
               )}
-              <Field id={fid("address")} label={clientKind === "individual" ? "Адрес" : "Адрес на управление"}>
+              <Field
+                id={fid("address")}
+                label={clientKind === "individual" ? "Адрес" : "Адрес на управление"}
+                error={errors["newClient.address"]}
+              >
                 <input
                   id={fid("address")}
                   type="text"
                   value={clientAddress}
                   onChange={(e) => setClientAddress(e.target.value)}
-                  className={ADMIN_INPUT}
+                  {...control("newClient.address", fid("address"))}
                 />
               </Field>
-              <Field id={fid("phone")} label="Телефон">
+              <Field id={fid("phone")} label="Телефон" error={errors["newClient.phone"]}>
                 <input
                   id={fid("phone")}
                   type="text"
                   inputMode="tel"
                   value={clientPhone}
                   onChange={(e) => setClientPhone(e.target.value)}
-                  className={ADMIN_INPUT}
+                  {...control("newClient.phone", fid("phone"))}
                 />
               </Field>
-              <Field id={fid("email")} label="Имейл">
+              <Field id={fid("email")} label="Имейл" error={errors["newClient.email"]}>
                 <input
                   id={fid("email")}
                   type="text"
@@ -485,47 +563,47 @@ export function ContractForm({
                   spellCheck={false}
                   value={clientEmail}
                   onChange={(e) => setClientEmail(e.target.value)}
-                  className={ADMIN_INPUT}
+                  {...control("newClient.email", fid("email"))}
                 />
               </Field>
             </div>
           )}
-        </AdminCard>
+        </section>
       )}
 
       {/* ── 3. Автомобил ── */}
-      <AdminCard className="flex flex-col gap-4">
-        <h2 className="text-lg font-black text-ink">{isEdit ? "Автомобил" : "3. Автомобил"}</h2>
-        <div className="grid gap-4 @lg:grid-cols-2 @3xl:grid-cols-3">
-          <Field id={fid("year")} label="Година *">
+      <section className="sa-pnl ab-fcard">
+        <h2>{isEdit ? "Автомобил" : "3. Автомобил"}</h2>
+        <div className="ab-g3">
+          <Field id={fid("year")} label="Година *" error={errors.carYear}>
             <input
               id={fid("year")}
               type="number"
               inputMode="numeric"
               value={carYear}
               onChange={(e) => setCarYear(e.target.value)}
-              className={ADMIN_INPUT}
+              {...control("carYear", fid("year"))}
             />
           </Field>
-          <Field id={fid("make")} label="Марка *">
+          <Field id={fid("make")} label="Марка *" error={errors.carMake}>
             <input
               id={fid("make")}
               type="text"
               value={carMake}
               onChange={(e) => setCarMake(e.target.value)}
-              className={ADMIN_INPUT}
+              {...control("carMake", fid("make"))}
             />
           </Field>
-          <Field id={fid("model")} label="Модел *">
+          <Field id={fid("model")} label="Модел *" error={errors.carModel}>
             <input
               id={fid("model")}
               type="text"
               value={carModel}
               onChange={(e) => setCarModel(e.target.value)}
-              className={ADMIN_INPUT}
+              {...control("carModel", fid("model"))}
             />
           </Field>
-          <Field id={fid("vin")} label="VIN">
+          <Field id={fid("vin")} label="VIN" error={errors.vin}>
             <input
               id={fid("vin")}
               type="text"
@@ -535,87 +613,99 @@ export function ContractForm({
               value={vin}
               onChange={(e) => setVin(e.target.value)}
               maxLength={17}
-              className={ADMIN_INPUT}
+              {...control("vin", fid("vin"))}
             />
           </Field>
-          <Field id={fid("purchase-market")} label="Държава / пазар на покупка">
+          <Field id={fid("purchase-market")} label="Държава / пазар на покупка" error={errors.purchaseMarket}>
             <input
               id={fid("purchase-market")}
               type="text"
               value={purchaseMarket}
               onChange={(e) => setPurchaseMarket(e.target.value)}
               placeholder="напр. САЩ"
-              className={ADMIN_INPUT}
+              {...control("purchaseMarket", fid("purchase-market"))}
             />
           </Field>
-          <Field id={fid("auction")} label="Търг / платформа">
+          <Field id={fid("auction")} label="Търг / платформа" error={errors.auctionPlatform}>
             <input
               id={fid("auction")}
               type="text"
               value={auctionPlatform}
               onChange={(e) => setAuctionPlatform(e.target.value)}
               placeholder="напр. Copart 46274725"
-              className={ADMIN_INPUT}
+              {...control("auctionPlatform", fid("auction"))}
             />
           </Field>
         </div>
-      </AdminCard>
+      </section>
 
       {/* ── 4. Финансови точки ── */}
-      <AdminCard className="flex flex-col gap-4">
-        <h2 className="text-lg font-black text-ink">
+      <section className="sa-pnl ab-fcard">
+        <h2>
           {isEdit ? "Финансови точки" : "4. Финансови точки"} ({currency})
         </h2>
-        <div className="grid gap-4 @lg:grid-cols-2">
+        <div className="ab-g2">
           {/* The пера come from the market definition: 5 for САЩ/Корея, 4 for
               Канада (перо 1 in CAD + курс), 3 for Европа. */}
-          {marketMeta.points.map((point) =>
-            point.foreignCurrency ? (
-              <div key={point.key} className="flex min-w-0 flex-col gap-1 @lg:col-span-2">
-                <p className={ADMIN_LABEL}>
-                  {point.label} — в {point.foreignCurrency}
-                </p>
-                <div className="grid gap-3 @lg:grid-cols-3">
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    aria-label={`Сума в ${point.foreignCurrency}`}
-                    value={amountCarForeign}
-                    onChange={(e) => setAmountCarForeign(e.target.value)}
-                    placeholder={`0.00 ${point.foreignCurrency}`}
-                    className={ADMIN_INPUT}
-                  />
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    aria-label={`Курс ${point.foreignCurrency}/EUR`}
-                    value={foreignRate}
-                    onChange={(e) => setForeignRate(e.target.value)}
-                    placeholder={`курс ${point.foreignCurrency}/EUR`}
-                    className={ADMIN_INPUT}
-                  />
-                  <p className="flex min-h-11 items-center rounded-lg bg-neutral-50 px-3 text-sm font-semibold text-ink">
-                    = {formatCents(derivedCarCents)} EUR
+          {marketMeta.points.map((point) => {
+            if (point.foreignCurrency) {
+              const cadError = errors.amountCarForeign ?? errors.foreignRate;
+              const cadId = fid("cad");
+              return (
+                <div key={point.key} className="ab-fld ab-span2">
+                  <p className="sa-lbl">
+                    {point.label} — в {point.foreignCurrency}
                   </p>
+                  <div className="ab-cad">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      aria-label={`Сума в ${point.foreignCurrency}`}
+                      value={amountCarForeign}
+                      onChange={(e) => setAmountCarForeign(e.target.value)}
+                      placeholder={`0.00 ${point.foreignCurrency}`}
+                      {...control("amountCarForeign", cadId)}
+                    />
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      aria-label={`Курс ${point.foreignCurrency}/EUR`}
+                      value={foreignRate}
+                      onChange={(e) => setForeignRate(e.target.value)}
+                      placeholder={`курс ${point.foreignCurrency}/EUR`}
+                      {...control("foreignRate", cadId)}
+                    />
+                    <p className="ab-derived">= {formatCents(derivedCarCents)} EUR</p>
+                  </div>
+                  {cadError ? (
+                    <span id={`${cadId}-err`} className="sa-err">
+                      <AlertIcon />
+                      {cadError}
+                    </span>
+                  ) : null}
+                  <p className="ab-hint">
+                    Плащането се превежда в {point.foreignCurrency}; евровата равностойност се изчислява по този курс
+                    и се записва в договора.
+                  </p>
+                  {selectedDeposit ? (
+                    <p className="ab-hint">
+                      <span className="ab-dhint">
+                        − Депозит № {selectedDeposit.number} ({depositNote}) ще се приспадне от това плащане.
+                      </span>
+                    </p>
+                  ) : null}
                 </div>
-                <p className={ADMIN_HINT}>
-                  Плащането се превежда в {point.foreignCurrency}; евровата равностойност се изчислява по този курс и се
-                  записва в договора.
-                </p>
-                {selectedDeposit ? (
-                  <p className="text-xs font-semibold text-brand">
-                    − Депозит № {selectedDeposit.number} ({depositNote}) ще се приспадне от това плащане.
-                  </p>
-                ) : null}
-              </div>
-            ) : (
+              );
+            }
+            return (
               <Field
                 key={point.key}
                 id={fid(point.key)}
                 label={point.label}
+                error={errors[point.key]}
                 hint={
                   point.key === "amountCar" && selectedDeposit ? (
-                    <span className="font-semibold text-brand">
+                    <span className="ab-dhint">
                       − Депозит № {selectedDeposit.number} ({depositNote}) ще се приспадне от това плащане.
                     </span>
                   ) : undefined
@@ -628,63 +718,75 @@ export function ContractForm({
                   value={valueByKey[point.key]}
                   onChange={(e) => setterByKey[point.key](e.target.value)}
                   placeholder="0.00"
-                  className={ADMIN_INPUT}
+                  {...control(point.key, fid(point.key))}
                 />
               </Field>
-            ),
-          )}
-          <Field id={fid("basis")} label="Основание за плащане">
+            );
+          })}
+          <Field id={fid("basis")} label="Основание за плащане" error={errors.paymentBasis}>
             <input
               id={fid("basis")}
               type="text"
               value={paymentBasis}
               onChange={(e) => setPaymentBasis(e.target.value)}
               placeholder="автоматично: Договор № …"
-              className={ADMIN_INPUT}
+              {...control("paymentBasis", fid("basis"))}
             />
           </Field>
         </div>
-      </AdminCard>
+      </section>
 
       {/* Sticky: on a phone the total and the save button stay in reach while the
           пера are typed, and a server error shows where the eye already is. */}
-      <div className="sticky bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-10 flex flex-col gap-3 rounded-xl border border-line bg-white/95 p-3 shadow-card backdrop-blur-sm">
-        {statusMsg.kind === "error" ? <AdminBanner tone="error">{statusMsg.message}</AdminBanner> : null}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm">
-            <span className="font-semibold text-muted">Обща сума: </span>
-            <span className="text-lg font-black whitespace-nowrap text-ink">
+      <div className="ab-dock ab-dock--stick bottom-[calc(10px+env(safe-area-inset-bottom))]">
+        {statusMsg.kind === "error" ? (
+          <AdminBanner tone="error" className="ab-al">
+            {statusMsg.message}
+          </AdminBanner>
+        ) : null}
+        <div className="ab-dock__r">
+          <p className="ab-dock__tot">
+            <span>Обща сума:</span>
+            <b>
               {formatCents(totalCents)} {currency}
-            </span>
+            </b>
           </p>
-          <AdminButton type="submit" variant="primary" size="lg" disabled={busy}>
-            {busy ? "Запазване…" : isEdit ? "Запази промените" : "Създай договор"}
-          </AdminButton>
+          <Button type="submit" variant="pri" size="md" disabled={busy} busy={busy}>
+            {busy ? "Запазване…" : isEdit ? "Запазете промените" : "Създайте договор"}
+          </Button>
         </div>
       </div>
     </form>
   );
 }
 
-/** A labelled control with an optional hint line below it. */
+/** A labelled control with its error, then an optional hint line below it. */
 function Field({
   id,
   label,
   hint,
+  error,
   children,
 }: {
   id: string;
   label: React.ReactNode;
   hint?: React.ReactNode;
+  error?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-w-0 flex-col gap-1">
-      <label htmlFor={id} className={ADMIN_LABEL}>
+    <div className="ab-fld">
+      <label htmlFor={id} className="sa-lbl">
         {label}
       </label>
       {children}
-      {hint ? <p className={ADMIN_HINT}>{hint}</p> : null}
+      {error ? (
+        <span id={`${id}-err`} className="sa-err">
+          <AlertIcon />
+          {error}
+        </span>
+      ) : null}
+      {hint ? <p className="ab-hint">{hint}</p> : null}
     </div>
   );
 }
