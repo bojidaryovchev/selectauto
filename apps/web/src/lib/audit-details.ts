@@ -15,12 +15,18 @@ import {
   RECIPIENT_KIND_META,
   type RecipientKind,
 } from "@/constants/contracts";
+import { formatSofiaDate } from "@/lib/sofia-time";
 
 /**
  * Readable details for one `contract_events` row (/admin/dnevnik): the `data`
  * JSON as label/value lines — status, stage and market codes in Bulgarian, and
- * for an edit only the fields that changed („Сума: 7 825.00 → 8 000.00"). The
+ * for an edit only the fields that changed („Сума: 7825,00 → 8000,00"). The
  * log printed the raw JSON, which no one reads on a phone. Pure.
+ *
+ * Amounts, dates and exchange rates read as the rest of the admin writes them
+ * (decision 3 of the design run, boards `ad-log*`): „11 330,00", „25.10.2026 г.",
+ * „0,9259", on both sides of an edit. They were printed as stored („11330.00",
+ * „2026-10-25", „0.9259").
  */
 export type AuditDetail = { label: string; value: string };
 
@@ -82,6 +88,7 @@ const KEY_LABELS: Record<string, string> = {
   amountCommission: "Точка 5 — Комисионна",
   deposit: "Депозит",
   depositDeduction: "Приспаднат депозит",
+  depositDeductionCurrency: "Валута на приспаднатия депозит",
   auctionPlatform: "Аукцион",
   carMake: "Марка",
   carModel: "Модел",
@@ -115,6 +122,33 @@ const HIDDEN_KEYS = new Set([
   "updatedBy",
 ]);
 
+/** Amounts with two decimals as bg-BG writes them: „11 330,00", and four digits ungrouped, „1910,00". */
+const MONEY = new Intl.NumberFormat("bg-BG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+/** Exchange rates, with up to the six decimals they are stored with: „0,9259". */
+const RATE = new Intl.NumberFormat("bg-BG", { maximumFractionDigits: 6 });
+
+const MONEY_KEYS = new Set([
+  "total",
+  "amount",
+  "due",
+  "totalPaid",
+  "typedAmount",
+  "clearedPaidAmount",
+  "fee",
+  "priceEur",
+  "computedPriceEur",
+  "totalAmount",
+  "amountCar",
+  "amountCarForeign",
+  "amountTransport",
+  "amountCustomsVat",
+  "amountTransportEuBg",
+  "amountCommission",
+  "depositDeduction",
+]);
+const DATE_KEYS = new Set(["paidAt", "dueDate", "clearedPaidAt", "contractDate"]);
+const RATE_KEYS = new Set(["usdEurRate", "foreignRate"]);
+
 function statusLabel(entity: string, code: string): string {
   if (entity === "contract") return CONTRACT_STATUS_META[code as ContractStatus]?.label ?? code;
   if (entity === "payment") return PAYMENT_STATUS_META[code as PaymentStatus]?.label ?? code;
@@ -129,6 +163,14 @@ function format(entity: string, key: string, value: unknown): string {
   if (typeof value === "object") return JSON.stringify(value);
   if (key === "sizeBytes" && typeof value === "number") return `${Math.max(1, Math.round(value / 1024))} KB`;
   const s = String(value);
+  if (MONEY_KEYS.has(key) || RATE_KEYS.has(key)) {
+    const n = Number(s);
+    if (s.trim() !== "" && Number.isFinite(n)) return (MONEY_KEYS.has(key) ? MONEY : RATE).format(n);
+  }
+  if (DATE_KEYS.has(key)) {
+    const d = new Date(s);
+    if (!Number.isNaN(d.getTime())) return formatSofiaDate(d);
+  }
   if (key === "status" || key === "newStatus" || key === "oldStatus") return statusLabel(entity, s);
   if (key === "stage") return PAYMENT_STAGE_META[s as PaymentStage]?.label ?? s;
   if (key === "market") return CONTRACT_MARKET_META[s as ContractMarket]?.label ?? s;

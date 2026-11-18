@@ -22,4 +22,7 @@
   /* A make without a logo shows its two letters on the plate (the kit's `.sa-plate b`); `.ab-car b`, meant for the
      car's name beside it, painted them light on the light plate. The boards never drew a plate with letters there. */
   .ab-car .sa-plate b{color:var(--color-ink);font-weight:800}
+  /* The journal's linked record (boards `ad-log*`): the ad- boards' only element-led rules, which the port leaves out. */
+  a.ad-ent{color:var(--color-ortx);text-decoration:none}
+  a.ad-ent .ad-id{color:var(--color-ortx)}
 }

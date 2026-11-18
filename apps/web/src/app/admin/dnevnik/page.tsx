@@ -1,4 +1,5 @@
 import { AdminEmptyState, AdminPageHeader, AdminPagination, adminChipClass } from "@/components/admin/ui";
+import { ClockIcon, ExternalLinkIcon } from "@/components/icons";
 import { auditActionLabel, auditEntityLabel } from "@/constants/audit";
 import { requireAdminPage } from "@/lib/admin";
 import { auditDetails, auditEntityHref } from "@/lib/audit-details";
@@ -18,7 +19,8 @@ export const metadata: Metadata = { title: "Дневник" };
  * charges for, an audit trail nobody can read is not an audit trail. Each row
  * reads as label/value lines and links to its record while that still exists.
  *
- * Read-only and admin-only.
+ * Read-only and admin-only. Boards `ad-log` and its states; parity check
+ * docs/design/parity/admin-log.md.
  */
 export default async function AdminAuditLogPage({
   searchParams,
@@ -42,13 +44,13 @@ export default async function AdminAuditLogPage({
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <>
       <AdminPageHeader
         title="Дневник"
         description="Действията по договори, плащания, депозити, клиенти, получатели, роли, номерация, скрити обяви и обяви в mobile.bg — кой, кога и какво. Запитванията, пощата и тарифите не се записват тук."
       />
 
-      <nav aria-label="Филтър по обект" className="flex flex-wrap gap-2">
+      <nav aria-label="Филтър по обект" className="sa-chips">
         <Link
           href={hrefFor(1, "")}
           aria-current={!sp.entity ? "true" : undefined}
@@ -68,49 +70,51 @@ export default async function AdminAuditLogPage({
         ))}
       </nav>
 
-      <p className="text-sm text-muted">
-        Намерени: <span className="font-bold text-ink">{total}</span>
+      <p className="ad-count">
+        Намерени: <b>{total}</b>
       </p>
 
       {rows.length === 0 ? (
-        <AdminEmptyState title="Няма записи." />
+        <AdminEmptyState icon={<ClockIcon />} title="Няма записи." />
       ) : (
         <div className="@container">
-          <ul className="m-0 flex list-none flex-col gap-2 p-0 @4xl:hidden">
+          <ul className="ad-lgs @4xl:hidden">
             {rows.map((e) => (
-              <li key={e.id} className="flex flex-col gap-2 rounded-xl border border-line bg-white p-4 text-sm">
-                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                  <span className="font-bold text-ink">{auditActionLabel(e.action)}</span>
-                  <span className="text-xs text-muted">{formatSofiaDateTime(e.createdAt)}</span>
+              <li key={e.id} className="ad-lg">
+                <div className="ad-lg__h">
+                  <b>{auditActionLabel(e.action)}</b>
+                  <time dateTime={e.createdAt.toISOString()}>{formatSofiaDateTime(e.createdAt)}</time>
                 </div>
                 <Entity row={e} />
-                <span className="text-xs wrap-anywhere text-muted">{e.actorEmail ?? "—"}</span>
+                <span className="ad-actor">{e.actorEmail ?? "—"}</span>
                 <Details row={e} />
               </li>
             ))}
           </ul>
 
-          <div className="hidden overflow-hidden rounded-xl border border-line bg-white @4xl:block">
-            <table className="w-full text-left text-sm">
+          <div className="sa-tbl-wrap hidden @4xl:block">
+            <table className="sa-tbl ad-tbl">
               <thead>
-                <tr className="border-b border-line text-xs tracking-wide text-muted uppercase">
-                  <th className="w-px px-4 py-3 font-bold whitespace-nowrap">Дата</th>
-                  <th className="px-4 py-3 font-bold">Обект</th>
-                  <th className="px-4 py-3 font-bold">Действие</th>
-                  <th className="px-4 py-3 font-bold">Потребител</th>
-                  <th className="px-4 py-3 font-bold">Детайли</th>
+                <tr>
+                  <th scope="col">Дата</th>
+                  <th scope="col">Обект</th>
+                  <th scope="col">Действие</th>
+                  <th scope="col">Потребител</th>
+                  <th scope="col">Детайли</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((e) => (
-                  <tr key={e.id} className="border-b border-line/60 align-top last:border-0">
-                    <td className="px-4 py-3 whitespace-nowrap text-muted">{formatSofiaDateTime(e.createdAt)}</td>
-                    <td className="px-4 py-3">
+                  <tr key={e.id}>
+                    <td className="ad-dim ad-nowrap">{formatSofiaDateTime(e.createdAt)}</td>
+                    <td>
                       <Entity row={e} />
                     </td>
-                    <td className="px-4 py-3 font-semibold text-ink">{auditActionLabel(e.action)}</td>
-                    <td className="max-w-56 px-4 py-3 wrap-anywhere text-muted">{e.actorEmail ?? "—"}</td>
-                    <td className="px-4 py-3">
+                    <td>
+                      <b>{auditActionLabel(e.action)}</b>
+                    </td>
+                    <td className="ad-dim max-w-56 wrap-anywhere">{e.actorEmail ?? "—"}</td>
+                    <td>
                       <Details row={e} />
                     </td>
                   </tr>
@@ -122,7 +126,7 @@ export default async function AdminAuditLogPage({
       )}
 
       <AdminPagination page={page} pageCount={pageCount} hrefFor={(p) => hrefFor(p)} />
-    </div>
+    </>
   );
 }
 
@@ -131,16 +135,22 @@ function Entity({ row }: { row: AuditEventRow }) {
   const label = (
     <>
       {auditEntityLabel(row.entity)}
-      {row.entityId > 0 ? <span className="text-muted"> #{row.entityId}</span> : null}
+      {row.entityId > 0 ? (
+        <>
+          {" "}
+          <span className="ad-id">#{row.entityId}</span>
+        </>
+      ) : null}
     </>
   );
   const link = auditEntityHref(row);
-  if (!link) return <span className="text-ink">{label}</span>;
+  if (!link) return <span className="ad-ent">{label}</span>;
   // Padding grows the tap target to 40 px; the negative margin keeps the line where it was.
-  const cls = "-my-2.5 inline-block self-start py-2.5 font-semibold text-brand hover:underline";
+  const cls = "ad-ent -my-2.5 py-2.5 hover:underline";
   return link.external ? (
     <a href={link.href} target="_blank" rel="noreferrer" className={cls}>
       {label}
+      <ExternalLinkIcon />
     </a>
   ) : (
     <Link href={link.href} prefetch={false} className={cls}>
@@ -151,13 +161,13 @@ function Entity({ row }: { row: AuditEventRow }) {
 
 function Details({ row }: { row: AuditEventRow }) {
   const details = auditDetails(row.entity, row.action, row.data);
-  if (details.length === 0) return <span className="text-muted">—</span>;
+  if (details.length === 0) return <span className="ad-dim">—</span>;
   return (
-    <dl className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-xs">
+    <dl className="ad-kv">
       {details.map((d, i) => (
-        <div key={i} className="contents">
-          <dt className="text-muted">{d.label}</dt>
-          <dd className="wrap-anywhere text-ink">{d.value}</dd>
+        <div key={i}>
+          <dt>{d.label}</dt>
+          <dd>{d.value}</dd>
         </div>
       ))}
     </dl>
