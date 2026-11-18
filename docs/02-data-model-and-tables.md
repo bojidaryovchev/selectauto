@@ -441,6 +441,12 @@ Written by the **website backend**, low-volume, **no** `raw_json`/upsert keys
 and `updated_at`, and is worked in its admin inbox (/admin/carfax,
 /admin/zapitvaniya, /admin/oferti — `calculator_offers`, 0028, is the third).
 
+**Retention (privacy policy §5, owner decision 33).** The monthly `purge-old-leads` cron
+deletes a person's leads in all three tables, with their `email_threads`, 12 months
+after their last contact, unless they signed a contract or a deposit contract or the
+lead is `won` (rules in `apps/web/src/lib/lead-retention.ts`; `?dryRun=1` reports
+without writing). The first leads come due in June 2027.
+
 ## `carfax_requests` — Carfax check form (`/carfax`)
 Ported from WordPress `wp_sa_carfax_requests`. `id`, `full_name*`, `phone*`,
 `email`, `vin*`, `car_make`, `car_model`, `message`, `page_url`, `user_ip`,
