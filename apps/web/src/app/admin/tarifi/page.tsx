@@ -15,7 +15,8 @@ const BUILTIN = {
 };
 
 /**
- * /admin/tarifi — the import-calculator manager. Two independent controls:
+ * /admin/tarifi — the import-calculator manager (boards `ab-tariffs` and its states; parity check
+ * docs/design/parity/admin-tariffs.md). Two independent controls:
  *  1. The business constants (fees, commission tiers, transport legs, agency,
  *     technotest, duty/VAT/FX, mobile.bg markup) — an editable form (updateCalcConfig).
  *  2. The CargoLoop US/Canada shipping table (596 rows) — pasted as TSV, checked
@@ -32,46 +33,40 @@ export default async function AdminTariffsPage() {
   const active = uploads.find((u) => u.active);
 
   return (
-    <div className="flex flex-col gap-8">
+    <>
       <AdminPageHeader
         title="Тарифи"
         description="Цените, по които калкулаторът за внос, офертите по имейл и обявите в mobile.bg смятат крайната сума."
       />
 
-      <section aria-labelledby="calc-settings-title" className="flex flex-col gap-4">
-        <div>
-          <h2 id="calc-settings-title" className="text-xl font-black tracking-tight text-ink">
-            Настройки на калкулатора
-          </h2>
-          <p className="mt-1 max-w-3xl text-sm text-muted">
+      <section aria-labelledby="calc-settings-title" className="ab-tsec">
+        <header>
+          <h2 id="calc-settings-title">Настройки на калкулатора</h2>
+          <p>
             Такси, комисионни, транспорт, мито/ДДС и валутен курс.{" "}
             {meta
               ? `Последна промяна: ${formatSofiaDateTime(meta.updatedAt)}${meta.updatedByName ? ` · ${meta.updatedByName}` : ""}.`
               : "Още не са променяни — в сила са вградените стойности."}
           </p>
-        </div>
+        </header>
         <CalcConfigForm initial={config} />
       </section>
 
-      <section aria-labelledby="us-table-title" className="flex flex-col gap-4">
-        <div>
-          <h2 id="us-table-title" className="text-xl font-black tracking-tight text-ink">
-            Транспортна таблица (САЩ/Канада)
-          </h2>
-          <p className="mt-1 max-w-3xl text-sm text-muted">
+      <section aria-labelledby="us-table-title" className="ab-tsec">
+        <header>
+          <h2 id="us-table-title">Транспортна таблица (САЩ/Канада)</h2>
+          <p>
             Цените по локация от CargoLoop.{" "}
             {active
               ? `Активна е версията от ${formatSofiaDateTime(active.createdAt)}.`
               : "Активна е вградената таблица."}{" "}
             Нова версия се проверява срещу активната, преди да влезе в сила.
           </p>
-        </div>
+        </header>
         <TariffUploadForm />
-        <div className="flex flex-col gap-3">
-          <h3 className="text-lg font-black text-ink">Версии</h3>
-          <TariffHistory uploads={uploads} builtin={BUILTIN} />
-        </div>
+        <h3 className="ab-h2">Версии</h3>
+        <TariffHistory uploads={uploads} builtin={BUILTIN} />
       </section>
-    </div>
+    </>
   );
 }

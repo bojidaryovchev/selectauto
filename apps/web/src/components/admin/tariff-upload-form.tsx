@@ -1,6 +1,7 @@
 "use client";
 
-import { ADMIN_HINT, ADMIN_INPUT, ADMIN_LABEL, AdminBanner, AdminButton, AdminCard } from "@/components/admin/ui";
+import { ADMIN_INPUT, AdminBanner, AdminCard } from "@/components/admin/ui";
+import { Button } from "@/components/common";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { ChevronDownIcon } from "@/components/icons";
 import { formatSofiaDateTime } from "@/lib/sofia-time";
@@ -13,9 +14,11 @@ import { useId, useState } from "react";
  * Admin tariff paste form: the CargoLoop inland + container tables, pasted from
  * Excel/Google Sheets (which copies as tab-separated text). No file upload, no
  * xlsx parser — plain text, so it's immune to which program made the sheet.
+ * Boards `ab-tariffs`, `-check`, `-states2`, `-states3`; parity check
+ * docs/design/parity/admin-tariffs.md.
  *
- * Two steps: „Провери" parses the paste and shows what it would change against
- * the active table (checkTariffsAction — nothing is saved); „Запази и активирай"
+ * Two steps: „Проверете" parses the paste and shows what it would change against
+ * the active table (checkTariffsAction — nothing is saved); „Запазете и активирайте"
  * then stores it as the new active version (uploadTariffs), asking first when
  * locations would lose their price. A paste used to go live at once, so a
  * partial selection quietly left hundreds of yards without a transport price.
@@ -24,9 +27,8 @@ import { useId, useState } from "react";
  */
 type Status = { kind: "idle" } | { kind: "ok"; message: string } | { kind: "error"; message: string };
 
-// Monospace for the pasted columns; 16 px on phones and iOS, so focusing it doesn't zoom.
-const TSV =
-  "block min-h-32 w-full min-w-0 rounded-lg border border-line bg-white px-3 py-2 font-mono text-base text-ink outline-none transition-colors placeholder:text-muted/70 focus:border-brand focus-visible:ring-2 focus-visible:ring-brand/20 sm:text-xs supports-[-webkit-touch-callout:none]:text-base";
+// The pasted columns in mono (`ab-tsv`); 16 px on phones and iOS, so focusing an area doesn't zoom.
+const TSV = "sa-in ab-ta ab-tsv w-full text-base sm:text-[13px] supports-[-webkit-touch-callout:none]:text-base";
 
 const LOST = "Връзката прекъсна — нищо не е записано. Опитайте отново.";
 
@@ -93,15 +95,15 @@ export function TariffUploadForm() {
   const removed = check?.diff.removed.count ?? 0;
 
   return (
-    <AdminCard className="flex flex-col gap-4">
-      <form onSubmit={runCheck} className="flex flex-col gap-4">
-        <p className="text-sm text-muted">
-          Отворете таблицата в Excel/Google Sheets, маркирайте данните <strong>заедно със заглавния ред</strong> и ги
+    <AdminCard className="ab-stack">
+      <form onSubmit={runCheck} className="ab-upl">
+        <p>
+          Отворете таблицата в Excel/Google Sheets, маркирайте данните <b>заедно със заглавния ред</b> и ги
           поставете тук (Ctrl+V). Данните се копират автоматично като таблица — без файлове.
         </p>
 
-        <div className="flex flex-col gap-1">
-          <label htmlFor={inlandId} className={ADMIN_LABEL}>
+        <div className="ab-fld">
+          <label htmlFor={inlandId} className="sa-lbl">
             Транспортна таблица (inland, +$235)
           </label>
           <textarea
@@ -118,8 +120,8 @@ export function TariffUploadForm() {
           />
         </div>
 
-        <div className="flex flex-col gap-1">
-          <label htmlFor={containerId} className={ADMIN_LABEL}>
+        <div className="ab-fld">
+          <label htmlFor={containerId} className="sa-lbl">
             Контейнерна таблица (+$105)
           </label>
           <textarea
@@ -136,9 +138,9 @@ export function TariffUploadForm() {
           />
         </div>
 
-        <div className="flex flex-col gap-1">
-          <label htmlFor={noteId} className={ADMIN_LABEL}>
-            Бележка <span className="font-normal text-muted">(по избор)</span>
+        <div className="ab-fld ab-note">
+          <label htmlFor={noteId} className="sa-lbl">
+            Бележка <em>(по избор)</em>
           </label>
           <input
             id={noteId}
@@ -146,34 +148,45 @@ export function TariffUploadForm() {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="напр. Тарифи от 01.08.2026"
-            className={`${ADMIN_INPUT} sm:max-w-md`}
+            className={ADMIN_INPUT}
           />
         </div>
 
-        {status.kind === "error" ? <AdminBanner tone="error">{status.message}</AdminBanner> : null}
-        {status.kind === "ok" ? <AdminBanner tone="success">{status.message}</AdminBanner> : null}
+        {status.kind === "error" ? (
+          <AdminBanner tone="error" className="ab-al">
+            {status.message}
+          </AdminBanner>
+        ) : null}
+        {status.kind === "ok" ? (
+          <AdminBanner tone="success" className="ab-al">
+            {status.message}
+          </AdminBanner>
+        ) : null}
 
         {!check ? (
-          <AdminButton type="submit" variant="primary" size="lg" className="self-start" disabled={busy !== null}>
-            {busy === "check" ? "Проверка…" : "Провери таблиците"}
-          </AdminButton>
+          <div>
+            <Button type="submit" variant="pri" size="md" disabled={busy !== null} busy={busy === "check"}>
+              {busy === "check" ? "Проверка…" : "Проверете таблиците"}
+            </Button>
+          </div>
         ) : null}
       </form>
 
       {check ? (
         <CheckSummary check={check}>
-          <div className="flex flex-wrap gap-2">
-            <AdminButton
-              variant="primary"
-              size="lg"
+          <div className="ab-row">
+            <Button
+              variant="pri"
+              size="md"
               disabled={busy !== null}
+              busy={busy === "save"}
               onClick={() => (removed > 0 ? setConfirmOpen(true) : void save())}
             >
-              {busy === "save" ? "Запазване…" : "Запази и активирай"}
-            </AdminButton>
-            <AdminButton variant="secondary" size="lg" disabled={busy !== null} onClick={() => setCheck(null)}>
-              Откажи
-            </AdminButton>
+              {busy === "save" ? "Запазване…" : "Запазете и активирайте"}
+            </Button>
+            <Button variant="sec" size="md" disabled={busy !== null} onClick={() => setCheck(null)}>
+              Откажете
+            </Button>
           </div>
         </CheckSummary>
       ) : null}
@@ -182,7 +195,7 @@ export function TariffUploadForm() {
         isOpen={confirmOpen}
         title="Да активирам ли таблицата?"
         message={`${removed} ${removed === 1 ? "локация остава" : "локации остават"} без транспортна цена — за коли от тях калкулаторът няма да дава обща сума.`}
-        confirmLabel="Активирай"
+        confirmLabel="Активирайте"
         tone="danger"
         isPending={busy === "save"}
         onConfirm={() => void save()}
@@ -198,25 +211,22 @@ function CheckSummary({ check, children }: { check: TariffCheck; children: React
   const nothing =
     diff.added.count === 0 && diff.removed.count === 0 && diff.changed.count === 0 && diff.container.count === 0;
   return (
-    <section
-      aria-label="Проверка на таблиците"
-      className="flex flex-col gap-3 rounded-xl border border-line bg-neutral-50 p-4"
-    >
-      <h3 className="text-base font-black text-ink">Проверка</h3>
-      <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-[auto_minmax(0,1fr)]">
-        <dt className="text-muted">Сега</dt>
-        <dd className="font-semibold text-ink">
+    <section aria-label="Проверка на таблиците" className="ab-check">
+      <h3>Проверка</h3>
+      <dl className="ab-cmp">
+        <dt>Сега</dt>
+        <dd>
           {baseline.createdAt ? `версията от ${formatSofiaDateTime(baseline.createdAt)}` : "вградената таблица"} —{" "}
           {baseline.inlandRows} реда, {baseline.containerRows} контейнерни цени
         </dd>
-        <dt className="text-muted">След активиране</dt>
-        <dd className="font-semibold text-ink">
+        <dt>След активиране</dt>
+        <dd>
           {check.inlandRows} реда, {check.containerRows} контейнерни цени
         </dd>
       </dl>
 
       {diff.removed.count > 0 ? (
-        <AdminBanner tone="warning">
+        <AdminBanner tone="warning" className="ab-al">
           {diff.removed.count === 1
             ? "1 локация няма да има транспортна цена"
             : `${diff.removed.count} локации няма да имат транспортна цена`}{" "}
@@ -224,10 +234,12 @@ function CheckSummary({ check, children }: { check: TariffCheck; children: React
         </AdminBanner>
       ) : null}
       {nothing ? (
-        <AdminBanner tone="info">Таблиците съвпадат с активната — цените няма да се променят.</AdminBanner>
+        <AdminBanner tone="info" className="ab-al">
+          Таблиците съвпадат с активната — цените няма да се променят.
+        </AdminBanner>
       ) : null}
 
-      <ul className="m-0 flex list-none flex-wrap gap-2 p-0 text-sm">
+      <ul className="ab-stats">
         <Stat label="Нови локации" n={diff.added.count} />
         <Stat label="Без цена след активиране" n={diff.removed.count} warn />
         <Stat label="С променена цена" n={diff.changed.count} />
@@ -247,12 +259,8 @@ function CheckSummary({ check, children }: { check: TariffCheck; children: React
 
 function Stat({ label, n, warn }: { label: string; n: number; warn?: boolean }) {
   return (
-    <li
-      className={`rounded-full border px-3 py-1 ${
-        warn && n > 0 ? "border-amber-300 bg-amber-50 text-amber-900" : "border-line bg-white text-ink"
-      }`}
-    >
-      {label}: <strong>{n}</strong>
+    <li className={warn && n > 0 ? "is-warn" : undefined}>
+      {label}: <b>{n}</b>
     </li>
   );
 }
@@ -261,22 +269,22 @@ function Details({ title, group }: { title: string; group: TariffDiffGroup<strin
   if (group.count === 0) return null;
   const more = group.count - group.sample.length;
   return (
-    <details className="group rounded-lg border border-line bg-white">
-      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 text-sm font-bold text-ink [&::-webkit-details-marker]:hidden">
+    <details className="ab-diff">
+      <summary>
         {title} ({group.count})
-        <ChevronDownIcon className="size-4 shrink-0 transition-transform group-open:rotate-180" />
+        <ChevronDownIcon />
       </summary>
-      <ul className="m-0 flex list-none flex-col gap-1 border-t border-line px-3 py-2 text-sm wrap-anywhere text-ink">
+      <ul>
         {group.sample.map((item, i) =>
           typeof item === "string" ? (
             <li key={i}>{item}</li>
           ) : (
             <li key={i}>
-              {item.label}: <span className="text-muted">{item.from}</span> → <strong>{item.to}</strong>
+              {item.label}: <span>{item.from}</span> → <b>{item.to}</b>
             </li>
           ),
         )}
-        {more > 0 ? <li className={ADMIN_HINT}>…и още {more}</li> : null}
+        {more > 0 ? <li className="ab-hint">…и още {more}</li> : null}
       </ul>
     </details>
   );
