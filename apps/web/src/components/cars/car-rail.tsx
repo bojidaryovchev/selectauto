@@ -26,8 +26,9 @@ const AUTOPLAY_RESUME_DELAY_MS = 6000;
  * Cards in view by window width, with a peek of the next one (board `hm-home`, `.hm-track`): 1,15 on a phone, 1,4 up
  * to 679 px, 2,2 on a tablet, 3,15 from 1024 px, 4,3 from 1400 px and 5,3 from 1800 px, so wide screens fill.
  */
-const BASE = { slidesPerView: 1.15, spaceBetween: 16 };
+const BASE = { slidesPerView: 1.08, spaceBetween: 16 };
 const BREAKPOINTS = {
+  360: { slidesPerView: 1.15, spaceBetween: 16 },
   640: { slidesPerView: 1.4, spaceBetween: 20 },
   680: { slidesPerView: 2.2, spaceBetween: 20 },
   1024: { slidesPerView: 3.15, spaceBetween: 24 },
@@ -195,7 +196,7 @@ export function CarRail({
           titleId={titleId}
           titleClassName="type-h2 max-sm:text-[21px]"
           actions={controls}
-          className="flex-nowrap items-center"
+          className="items-center max-[380px]:[&>.sa-sh__l]:basis-full min-[380px]:flex-nowrap"
         />
       )}
 
@@ -223,7 +224,7 @@ export function CarRail({
       </Swiper>
 
       {eyebrow && moreHref && moreLabel ? (
-        <LinkButton href={moreHref} variant="sec" block className="sa-only-ph mt-4">
+        <LinkButton href={moreHref} variant="sec" block className="sa-btn--long sa-only-ph mt-4">
           {moreLabel}
         </LinkButton>
       ) : null}

@@ -132,6 +132,13 @@
   .cd-bar b.is-soon{color:var(--color-ortx)}
   .cd-barsp{height:65px;flex:none}
   .cd-call{width:44px;padding:0}
+  /* A small phone: the price takes the first row, the buttons share the second (app-only; the board is 390 px). */
+  @media (max-width:359.98px){
+    .cd-bar{flex-wrap:wrap}
+    .cd-bar>div{flex:1 0 100%;flex-direction:row;align-items:baseline;justify-content:space-between;gap:8px}
+    .cd-bar>.sa-btn:not(.cd-call){flex:1}
+    .cd-barsp{height:93px}
+  }
   .cd-vinkr{display:flex;gap:8px;align-items:flex-start;font-size:14px;line-height:1.5;color:var(--color-tx2);max-width:68ch}
   .cd-vinkr svg{width:16px;height:16px;flex:none;margin-top:3px;color:var(--color-info)}
   .cd-vinkr a{font-weight:700}

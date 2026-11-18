@@ -16,6 +16,7 @@
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"tests/**/*.test.mts\"",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
+    "check:layout": "node scripts/check-layout.mjs",
     "bake:edges": "node scripts/bake-particle-edges.mjs",
     "bake:hero": "node scripts/bake-hero-points.mjs"
   },
@@ -58,6 +59,7 @@
     "eslint": "9.36.0",
     "eslint-config-next": "16.3.1",
     "eslint-plugin-better-tailwindcss": "4.6.1",
+    "playwright-core": "1.65.1",
     "sharp": "0.34.4",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.3"

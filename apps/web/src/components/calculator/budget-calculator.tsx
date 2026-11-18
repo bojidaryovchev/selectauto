@@ -146,7 +146,7 @@ export function BudgetCalculator() {
             <CalcResultRow label="Свободен доход след разходи" value={eur(r.freeIncome)} />
           </div>
 
-          <LinkButton href={catalogHref} variant="pri" size="xl" block>
+          <LinkButton href={catalogHref} variant="pri" size="xl" block className="sa-btn--long">
             Вижте автомобили в този бюджет
           </LinkButton>
           <p className="im-small">

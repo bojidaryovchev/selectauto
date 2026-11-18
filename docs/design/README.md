@@ -16,7 +16,9 @@ design canvases.
 | Tokens, fonts, type styles | `apps/web/src/styles/tokens.css`; fonts load in `apps/web/src/app/layout.tsx` |
 | Component classes (`sa-btn`, `sa-car`, `sa-hdr` …) | `apps/web/src/styles/kit.css`, ported from the boards' kit; React components apply them |
 | A screen's own layout classes (`cd-*` on the car page, `hm-*` on the make and model hubs, `im-*` on the import hubs and the calculators, `in-*` on the information pages, `ac-*` on the account pages and the inquiry dialog, `ad-*` in the admin) | `apps/web/src/styles/<screen>.css` (`car-page.css`, `hub-page.css`, `import-page.css`, the `info-*.css` files, `account.css`, `inquiry.css`, `admin.css`), ported from that screen's board sources by `apps/web/scripts/port-board-css.mjs`: token names, `cqi` → `vw`, container queries → media queries |
-| Contrast test of every text and ground pair | `apps/web/tests/design-tokens.test.mts`, run by `pnpm test` |
+| Contrast test of every text and ground pair | `apps/web/tests/design-tokens.test.mts` (the site) and `email-colors.test.mts` (the e-mails), run by `pnpm test` |
+| The formal-address check of every string, the blog included | `apps/web/tests/formal-register.test.mts`, run by `pnpm test` |
+| The phone layout check: no sideways scroll, no button label that wraps, clips or loses its room, no field under 16 px | `apps/web/scripts/check-layout.mjs`: `pnpm --filter @selectauto/web check:layout -- --base <a running build>` (see its header) |
 | The logo | `Logo` in `apps/web/src/components/common/logo.tsx` |
 | Why this direction, these fonts, this logo | [adr-0001-direction-type-logo.md](adr-0001-direction-type-logo.md) |
 | Which boards draw each screen | [boards.md](boards.md) |
@@ -158,6 +160,10 @@ Sizes with an arrow grow with the window, as the boards' do (the kit's `cqi` bec
   six at 2560. A big monitor shows more cars, never wider margins.
 - **Spacing** uses 4 px steps, which are Tailwind's own scale: the design's 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80 and
   112 are `1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 28`. Space inside a group is smaller than space between groups.
+- **Small phones:** the boards are drawn at 390 px; the code also works down to 320. Under 420 px buttons and segments
+  give up side padding first (`kit.css`, app-only rules); under 360 px a full-width or large button drops its icon, the
+  rails show more of each card, the car page's bar takes two rows and a rail's arrows go under its title. A label still
+  too long wraps only where the button carries `sa-btn--long`. Check with `check:layout` at 320 and 390.
 - **Navigation:** on desktop, the header hides on scroll down and returns on scroll up. On phones and tablets, a slim top
   bar with the logo and the bottom tabs (Начало · Автомобили · Carfax · Меню) do the same.
 

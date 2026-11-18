@@ -167,16 +167,19 @@ function SegField<T extends string>({
   value,
   onChange,
   options,
+  stack = false,
 }: {
   label: string;
   value: T;
   onChange: (v: T) => void;
   options: { id: T; label: string; icon?: ReactNode }[];
+  /** On a phone the options stack, for labels too long to share a row („Британска Колумбия"). */
+  stack?: boolean;
 }) {
   return (
     <div className="sa-fld">
       <span className="sa-lbl">{label}</span>
-      <div className="sa-seg im-seg" role="group" aria-label={label}>
+      <div className={stack ? "sa-seg im-seg im-seg--stack" : "sa-seg im-seg"} role="group" aria-label={label}>
         {options.map((o) => (
           <button key={o.id} type="button" aria-pressed={value === o.id} onClick={() => onChange(o.id)}>
             {o.icon}
@@ -445,7 +448,7 @@ export function CostEstimator({
 
         {/* Canada: the BC (west-coast) leg is priced separately from the rest. */}
         {market === "ca" ? (
-          <SegField label="Провинция" value={caProvince} onChange={setCaProvince} options={CA_PROVINCES} />
+          <SegField label="Провинция" value={caProvince} onChange={setCaProvince} options={CA_PROVINCES} stack />
         ) : null}
 
         {/* US: auction location → terminal/inland/container lookup */}

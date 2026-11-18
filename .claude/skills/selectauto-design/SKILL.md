@@ -93,7 +93,9 @@ This step is the owner's rule (decision 26). Write `docs/design/parity/<screen>.
   the request under test instead. Never open `/admin/poshta/[id]`, which writes when viewed.
 - **Compare with the board:** screenshot the screen at 390, 820, 1440 and 1920 px, and compare each with the board's
   PNG. Fix what differs: spacing, alignment, sizes, wrapping, clipped text.
-- **Check there is no sideways scroll** and no wrapped button at 320 and 390 px.
+- **Check there is no sideways scroll** and no wrapped button at 320 and 390 px: run `pnpm --filter @selectauto/web
+  check:layout -- --base <the build> --only <the screen's paths>` (add `--admin` with `SA_SESSION` for admin screens).
+  It emulates a phone; a desktop browser's own scrollbar would take 15 px off the width and mislead the check.
 - **Compare with the live site** at the same widths. Every string and state of the parity list must still be there.
 
 ## 6. Verify

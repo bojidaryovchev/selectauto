@@ -60,6 +60,7 @@
   @media (max-width:1439.98px){.im-rail{--n:3}}
   @media (max-width:1023.98px){.im-rail{--n:2}}
   @media (max-width:639.98px){.im-rail{--n:1.16}}
+  @media (max-width:359.98px){.im-rail{--n:1.08}}
   @media (min-width:1800px){.im-rail{--n:5}}
   @media (min-width:2300px){.im-rail{--n:6}}
   .im-railnav{display:flex;align-items:center;gap:8px}
@@ -94,6 +95,17 @@
   .im-in{display:flex;flex-direction:column;gap:20px;min-width:0}
   .im-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
   @media (max-width:639.98px){.im-2{grid-template-columns:minmax(0,1fr)}.im-total{padding:14px 16px}.im-total span{white-space:nowrap}.im-total b{font-size:26px}}
+  /* Phones (app-only; the board's phone calculator is the step-by-step flow, im-calc-flow): the breakdown is the card's
+     footer, across the card's full width (the card's padding is 20 px under 640), so the total and the e-mail button
+     fit; a total too wide for its row moves under its label; the province choice stacks; on a small phone the
+     market flags and the e-mail button's icon give way to the labels. */
+  @media (max-width:639.98px){
+    .im-est:not(.im-est--bare)>.im-out{margin:0 -20px -20px;border-width:1px 0 0;border-radius:0 0 calc(var(--radius-xl) - 1px) calc(var(--radius-xl) - 1px)}
+    .im-total{flex-wrap:wrap;row-gap:6px}.im-total b{margin-left:auto}
+    .im-seg--stack{flex-direction:column}.im-seg--stack>button{flex:none}
+  }
+  @media (max-width:379.98px){.im-out .sa-btn--block>svg{display:none}}
+  @media (max-width:374.98px){.im-seg>button>:is(svg,img){display:none}}
   .im-seg{width:100%}
   .im-seg>button{flex:1 1 0;min-width:0}
   .im-num{font-weight:700;font-size:17px}

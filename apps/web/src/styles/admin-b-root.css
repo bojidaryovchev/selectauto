@@ -25,4 +25,7 @@
   /* The journal's linked record (boards `ad-log*`): the ad- boards' only element-led rules, which the port leaves out. */
   a.ad-ent{color:var(--color-ortx);text-decoration:none}
   a.ad-ent .ad-id{color:var(--color-ortx)}
+  /* A small phone (app-only; the boards are 390 px): a stage card's action buttons drop their icon before a label
+     like „Отбележете като платено" could lose its room, as the kit's full-width buttons do. */
+  @media (max-width:359.98px){.ab-acts>.sa-btn>svg{display:none}}
 }

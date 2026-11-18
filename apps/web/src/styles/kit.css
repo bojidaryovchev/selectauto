@@ -102,7 +102,8 @@
   .sa-in:focus,.sa-in.is-focus{border-color:var(--color-or);box-shadow:0 0 0 3px var(--color-or-ring)}
   .sa-in.is-err{border-color:var(--color-neg);box-shadow:0 0 0 3px rgba(255,107,94,.22)}
   .sa-in:disabled,.sa-in.is-dis{opacity:.55;border-style:dashed;cursor:not-allowed}
-  .sa-in--sm{height:40px;font-size:15px;padding:0 12px}
+  /* 16 px, not the kit's 15: iOS Safari zooms into a focused field under 16 px (the dropdown's search). */
+  .sa-in--sm{height:40px;font-size:16px;padding:0 12px}
   textarea.sa-in{height:auto;min-height:128px;padding:12px 14px;line-height:1.55;resize:vertical}
   .sa-hint{font-size:13px;line-height:1.45;color:var(--color-tx3)}
   .sa-err{display:flex;gap:6px;align-items:flex-start;font-size:13px;line-height:1.45;font-weight:600;color:var(--color-neg)}
@@ -442,6 +443,8 @@
   - Motion: spinners turn and skeletons shimmer, except under prefers-reduced-motion (README, motion).
   - Base UI's state attributes (the Combobox in components/common/combobox.tsx) map onto the kit's state classes.
   - The switch's hidden checkbox drives its look and shows the focus ring.
+  - Phones: buttons and segments give up side padding before their label could wrap or clip (the owner's rule,
+    labels stay on one line). The boards are drawn at 390 px; scripts/check-layout.mjs checks 320 and 390.
 */
 @layer components {
   @media (prefers-reduced-motion:no-preference){
@@ -460,6 +463,24 @@
   .sa-sw:has(input:checked) .sa-sw__t{background:var(--color-or);box-shadow:none}
   .sa-sw:has(input:checked) .sa-sw__t::after{transform:translateX(18px);background:var(--color-bg)}
   .sa-sw:has(input:focus-visible) .sa-sw__t{outline:2px solid var(--color-ortx);outline-offset:2px}
+  @media (max-width:419.98px){
+    .sa-btn{padding:0 16px}.sa-btn--md{padding:0 14px}.sa-btn--sm{padding:0 12px}.sa-btn--xl{padding:0 20px}
+    .sa-btn--txt{padding:0 4px}
+    .sa-seg>button,.sa-seg>a{padding:0 10px}
+  }
+  @media (max-width:359.98px){
+    .sa-btn{padding:0 12px}.sa-btn--md{padding:0 10px}.sa-btn--sm{padding:0 10px}.sa-btn--xl{padding:0 14px}
+    .sa-btn--txt{padding:0 4px}
+    .sa-seg>button,.sa-seg>a{padding:0 8px}
+    /* A full-width or large button drops its icon before its label could clip. */
+    .sa-btn--block>svg,.sa-btn--xl>svg{display:none}
+  }
+  /* A label that is too long for the smallest phones in its formal wording wraps there instead of clipping, and
+     only when it doesn't fit (REDESIGN.md: shorter wording is the owner's call). */
+  @media (max-width:379.98px){
+    .sa-btn--long{white-space:normal;height:auto;min-height:var(--spacing-control-lg);padding-block:10px;line-height:1.25;text-wrap:balance}
+    .sa-btn--long.sa-btn--xl{min-height:var(--spacing-control-xl)}
+  }
 }
 @keyframes sa-spin{to{transform:rotate(360deg)}}
 @keyframes sa-shimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
