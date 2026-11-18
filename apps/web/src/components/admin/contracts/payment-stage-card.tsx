@@ -564,7 +564,7 @@ export function PaymentStageCard({
               placeholder="напр. +519 EUR SSANCAR"
               className={ADMIN_INPUT}
             />
-            <p className="ab-hint">Само за вас — вижда се тук и в историята, не се печата в известието.</p>
+            <p className="ab-hint">Само за вас — вижда се тук и в Дневник, не се печата в известието.</p>
           </div>
           {error ? (
             <AdminBanner tone="error" className="ab-al">

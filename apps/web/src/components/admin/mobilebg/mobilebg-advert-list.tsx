@@ -154,7 +154,7 @@ export function MobilebgAdvertList({ rows }: { rows: MobilebgAdvertRow[] }) {
               <Stale r={r} />
               {r.lastError ? <p className="ab-err-t">{r.lastError}</p> : null}
               <p className="ab-tx2 text-sm">
-                mobile.bg: <Ida ida={r.ida} /> · {price(r)} · {r.pictureCount} снимки
+                mobile.bg: <Ida ida={r.ida} /> · {price(r)} · {r.pictureCount === 1 ? "1 снимка" : `${r.pictureCount} снимки`}
               </p>
               <p className="ab-meta">Обновена: {formatSofiaDateTime(r.updatedAt)}</p>
               {canDelete(r) ? <div>{deleteButton(r)}</div> : null}

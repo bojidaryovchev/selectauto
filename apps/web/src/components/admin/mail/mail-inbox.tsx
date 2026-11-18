@@ -138,7 +138,7 @@ export function MailInbox({
                 </span>
                 <span className="ad-ml__meta">
                   <span className="ad-em">{t.participantEmail}</span>
-                  <span>{t.messageCount} съобщения</span>
+                  <span>{t.messageCount === 1 ? "1 съобщение" : `${t.messageCount} съобщения`}</span>
                   <span>{formatSofiaDateTime(t.lastMessageAt)}</span>
                 </span>
                 <span className="ad-ml__st">

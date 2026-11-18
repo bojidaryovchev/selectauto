@@ -56,7 +56,11 @@ export async function updateContract(id: number, input: unknown): Promise<Action
     // value rather than trusting the (read-only) EUR box.
     const foreignPoint = market.points.find((p) => p.foreignCurrency);
     const editedRate = values.foreignRate?.trim() ? Number(values.foreignRate.replace(",", ".")) : null;
-    const rate = editedRate ?? (existing.foreignRate ? Number(existing.foreignRate) : null);
+    const existingRate = existing.foreignRate ? Number(existing.foreignRate) : null;
+    const rate = editedRate ?? existingRate;
+    // An unchanged rate keeps the stored text („0.627530"): String(0.62753) would differ, and the log would show the
+    // rate as changed on every edit of a Canadian contract.
+    const rateText = rate === existingRate ? existing.foreignRate : rate ? String(rate) : existing.foreignRate;
     const carForeignCents = values.amountCarForeign?.trim()
       ? cents(values.amountCarForeign)
       : dbToCents(existing.amountCarForeign);
@@ -92,9 +96,7 @@ export async function updateContract(id: number, input: unknown): Promise<Action
       totalAmount: centsToDb(totalCents),
       paymentBasis: values.paymentBasis?.trim() || existing.paymentBasis,
       status: values.status,
-      ...(derivedCarCents !== null
-        ? { amountCarForeign: centsToDb(carForeignCents), foreignRate: rate ? String(rate) : existing.foreignRate }
-        : {}),
+      ...(derivedCarCents !== null ? { amountCarForeign: centsToDb(carForeignCents), foreignRate: rateText } : {}),
     };
 
     await db.transaction(async (tx) => {
@@ -132,6 +134,8 @@ export async function updateContract(id: number, input: unknown): Promise<Action
         action: existing.status === values.status ? "updated" : "status_changed",
         actorId,
         data: {
+          // The market numbers the amount points in the log (Canada has four, Европа none).
+          market: existing.market,
           old: {
             contractDate: existing.contractDate,
             carYear: existing.carYear,
@@ -148,6 +152,9 @@ export async function updateContract(id: number, input: unknown): Promise<Action
             totalAmount: existing.totalAmount,
             paymentBasis: existing.paymentBasis,
             status: existing.status,
+            // Canada's CAD value and rate: without them every edit listed both as changed.
+            amountCarForeign: existing.amountCarForeign,
+            foreignRate: existing.foreignRate,
           },
           new: patch,
         },

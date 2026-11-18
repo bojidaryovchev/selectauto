@@ -54,7 +54,9 @@ export async function reconcileMobilebgAdverts(apply: boolean): Promise<ActionRe
   } catch (error) {
     const message = error instanceof MobilebgError ? `${error.status}: ${error.message}` : String(error);
     console.error("[mobilebg] reconcile: listing failed", { message });
-    return { success: false, error: `Списъкът на обявите от mobile.bg не можа да се прочете — нищо не е променено. ${message}` };
+    // The admin reads the explanation only: the status is an internal word („unexpected") and stays in the log.
+    const reason = error instanceof MobilebgError ? error.message : String(error);
+    return { success: false, error: `Списъкът на обявите от mobile.bg не можа да се прочете — нищо не е променено. ${reason}` };
   } finally {
     await logout();
   }
@@ -75,7 +77,7 @@ export async function reconcileMobilebgAdverts(apply: boolean): Promise<ActionRe
   if (remote.size === 0 && live.length > 0) {
     return {
       success: false,
-      error: `mobile.bg върна празен списък, а в регистъра има ${live.length} активни обяви — сверката е спряна, нищо не е променено.`,
+      error: `mobile.bg върна празен списък, а в регистъра има ${live.length === 1 ? "1 активна обява" : `${live.length} активни обяви`} — сверката е спряна, нищо не е променено.`,
     };
   }
 

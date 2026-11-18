@@ -164,7 +164,7 @@ function parseInland(tsv: string): UsInlandTariff[] {
     });
   }
   if (out.length < 50) {
-    throw new Error(`Транспортната таблица съдържа само ${out.length} валидни реда — очаквани са стотици. Проверете поставените данни.`);
+    throw new Error(`Транспортната таблица съдържа само ${out.length === 1 ? "1 валиден ред" : `${out.length} валидни реда`} — очаквани са стотици. Проверете поставените данни.`);
   }
   return out;
 }

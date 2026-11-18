@@ -77,15 +77,16 @@ const KEY_LABELS: Record<string, string> = {
   fee: "Такса",
   requester: "Заявител",
   usdEurRate: "Курс USD→EUR",
-  // A contract's fields (its edits are logged with the new values).
+  // A contract's fields (its edits are logged with the new values). The amounts' point numbers depend on the market
+  // (Canada has four points, Европа none), so they are added by `contractPointLabel` when the market is known.
   totalAmount: "Обща сума",
-  amountCar: "Точка 1 — Кола",
+  amountCar: "Кола",
   amountCarForeign: "Кола (в оригиналната валута)",
   foreignRate: "Курс",
-  amountTransport: "Точка 2 — Транспорт",
-  amountCustomsVat: "Точка 3 — Мито и ДДС",
-  amountTransportEuBg: "Точка 4 — Транспорт до България",
-  amountCommission: "Точка 5 — Комисионна",
+  amountTransport: "Транспорт",
+  amountCustomsVat: "Мито и ДДС",
+  amountTransportEuBg: "Транспорт до България",
+  amountCommission: "Комисионна",
   deposit: "Депозит",
   depositDeduction: "Приспаднат депозит",
   depositDeductionCurrency: "Валута на приспаднатия депозит",
@@ -185,10 +186,35 @@ function format(entity: string, key: string, value: unknown): string {
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
-export function auditDetails(entity: string, action: string, data: unknown): AuditDetail[] {
+/**
+ * A contract amount named as its market numbers it: „Точка 2 — Мито и ДДС" on a Canadian contract, „Точка 3 — Мито и
+ * ДДС" on an American one, „Цена на стоките (автомобила)" on a European delivery contract. Null for a key that isn't one
+ * of the market's points, or an unknown market (the plain name is used then; it was a fixed US numbering before).
+ */
+function contractPointLabel(market: unknown, key: string): string | null {
+  const meta = typeof market === "string" ? CONTRACT_MARKET_META[market as ContractMarket] : undefined;
+  const point = meta?.points.find((p) => p.key === key);
+  if (!point) return null;
+  const numbered = /^(Точка \d+) — /.exec(point.label);
+  return numbered ? `${numbered[1]} — ${KEY_LABELS[key] ?? key}` : point.label;
+}
+
+/**
+ * An event's `data` as label/value lines. `market` is the contract's market for a contract event (from the contract
+ * row; the edits logged since 18.11.2026 also carry it in `data.market`), so its amounts get their own point numbers.
+ */
+export function auditDetails(
+  entity: string,
+  action: string,
+  data: unknown,
+  options: { market?: string | null } = {},
+): AuditDetail[] {
   if (!isRecord(data)) return [];
   const out: AuditDetail[] = [];
-  const add = (key: string, value: string) => out.push({ label: KEY_LABELS[key] ?? key, value });
+  const market = options.market ?? data.market;
+  const label = (key: string) =>
+    (entity === "contract" ? contractPointLabel(market, key) : null) ?? KEY_LABELS[key] ?? key;
+  const add = (key: string, value: string) => out.push({ label: label(key), value });
   const { old: before, new: after, ...rest } = data;
 
   if (isRecord(after)) {
@@ -196,6 +222,9 @@ export function auditDetails(entity: string, action: string, data: unknown): Aud
     for (const [key, value] of Object.entries(after)) {
       if (HIDDEN_KEYS.has(key)) continue;
       if (isRecord(before)) {
+        // A field the old values never recorded (Canada's CAD value and rate, before 18.11.2026) has nothing to
+        // compare with: listing it read as a change on every edit.
+        if (!(key in before)) continue;
         if (JSON.stringify(before[key] ?? null) === JSON.stringify(value ?? null)) continue;
         add(key, `${format(entity, key, before[key])} → ${format(entity, key, value)}`);
       } else if (value !== null && value !== "") {
@@ -207,7 +236,7 @@ export function auditDetails(entity: string, action: string, data: unknown): Aud
     // roles, or else the status.
     const key = typeof rest.field === "string" ? rest.field : action === "roles_changed" ? "role" : "status";
     out.push({
-      label: action === "roles_changed" ? "Роли" : (KEY_LABELS[key] ?? key),
+      label: action === "roles_changed" ? "Роли" : label(key),
       value: `${format(entity, key, before)} → ${format(entity, key, after)}`,
     });
   }

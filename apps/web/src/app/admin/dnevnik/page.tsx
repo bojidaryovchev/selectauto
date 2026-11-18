@@ -160,7 +160,7 @@ function Entity({ row }: { row: AuditEventRow }) {
 }
 
 function Details({ row }: { row: AuditEventRow }) {
-  const details = auditDetails(row.entity, row.action, row.data);
+  const details = auditDetails(row.entity, row.action, row.data, { market: row.contractMarket });
   if (details.length === 0) return <span className="ad-dim">—</span>;
   return (
     <dl className="ad-kv">

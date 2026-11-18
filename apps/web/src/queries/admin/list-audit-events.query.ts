@@ -21,6 +21,8 @@ export type AuditEventRow = {
   createdAt: Date;
   /** The contract a contract or payment event belongs to — null once it is deleted. */
   contractId: number | null;
+  /** A contract event's market (us / ca / kr / eu), which numbers its amount points; null once it is deleted. */
+  contractMarket: string | null;
   /** A deposit event's deposit still exists. */
   depositExists: boolean;
 };
@@ -57,6 +59,7 @@ export async function listAuditEvents(options: { page?: number; entity?: string 
         WHEN 'payment' THEN (SELECT cp.contract_id FROM contract_payments cp WHERE cp.id = ${e.entityId})
       END`,
       depositExists: sql<boolean>`${e.entity} = 'deposit' AND EXISTS (SELECT 1 FROM deposit_contracts d WHERE d.id = ${e.entityId})`,
+      contractMarket: sql<string | null>`CASE WHEN ${e.entity} = 'contract' THEN (SELECT c.market FROM contracts c WHERE c.id = ${e.entityId}) END`,
     })
     .from(e)
     .where(where)

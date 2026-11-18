@@ -365,7 +365,7 @@ export function MobilebgPublisher() {
       const skipped =
         res.data.skippedPictures.length > 0 ? ` Пропуснати снимки: ${res.data.skippedPictures.length}.` : "";
       setNotice({
-        text: `${res.data.edited ? "Обявата е коригирана" : "Обявата е публикувана"}: ID ${res.data.ida}, ${res.data.pictureCount} снимки.${skipped}`,
+        text: `${res.data.edited ? "Обявата е коригирана" : "Обявата е публикувана"}: ID ${res.data.ida}, ${res.data.pictureCount === 1 ? "1 снимка" : `${res.data.pictureCount} снимки`}.${skipped}`,
         url: advertUrl(res.data.ida),
       });
       load(carId);
@@ -505,7 +505,7 @@ export function MobilebgPublisher() {
               {preview.source.vin ? ` · VIN ${preview.source.vin}` : ""}
               {preview.source.lotNumber ? ` · лот ${preview.source.lotNumber}` : ""}
               {" · "}
-              {preview.source.images.length} снимки
+              {preview.source.images.length === 1 ? "1 снимка" : `${preview.source.images.length} снимки`}
             </p>
             {preview.advert?.ida ? (
               <a href={advertUrl(preview.advert.ida)} target="_blank" rel="noreferrer" className="ab-ida">

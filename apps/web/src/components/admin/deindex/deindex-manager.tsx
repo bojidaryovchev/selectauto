@@ -120,7 +120,7 @@ export function DeindexManager() {
         setFeedback({
           tone: failed > 0 ? "error" : "success",
           text:
-            `Скрити ${res.data.carIds.length} обяви за VIN ${res.data.vin}. ${indexNowNote}${advertsNote} ` +
+            `${res.data.carIds.length === 1 ? "Скрита 1 обява" : `Скрити ${res.data.carIds.length} обяви`} за VIN ${res.data.vin}. ${indexNowNote}${advertsNote} ` +
             `Google няма API за премахване — подайте ръчно заявка в Search Console.`,
         });
         clearRequest();
@@ -148,7 +148,10 @@ export function DeindexManager() {
         }
         setFeedback({
           tone: "success",
-          text: `Възстановени ${res.data.carIds.length} обяви. Търсачките ще ги обходят отново по свой график.`,
+          text:
+            res.data.carIds.length === 1
+              ? "Възстановена 1 обява. Търсачките ще я обходят отново по свой график."
+              : `Възстановени ${res.data.carIds.length} обяви. Търсачките ще ги обходят отново по свой график.`,
         });
         await refreshResult(vin);
       },

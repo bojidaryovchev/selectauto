@@ -96,7 +96,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const path = hubPath(hub);
   const canonical = `${SITE_URL}${path}`;
   const description =
-    `${hub.brandName} за внос от Copart, IAAI и Encar — ${count.toLocaleString("bg-BG")} обяви по модели. ` +
+    `${hub.brandName} за внос от Copart, IAAI и Encar — ${count.toLocaleString("bg-BG")} ${count === 1 ? "обява" : "обяви"} по модели. ` +
     `Вижте цени, филтрирайте по модел и заявете оферта за внос от SelectAuto.`;
 
   return {

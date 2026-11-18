@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LinkButton } from "@/components/common";
-import { bgDecimal } from "@/data/import-rates";
+import { bgDecimal, type CalcConfig, DEFAULT_CALC_CONFIG, usd } from "@/data/import-rates";
 import { affordablePrice, eur } from "@/lib/finance";
 import { CalcBar } from "./calc-bar";
 import { CalcField } from "./calc-field";
@@ -66,8 +66,27 @@ export function BudgetCalculator() {
     };
   }, [payment, term, income, expenses]);
 
+  // The catalog's price filter is in US dollars and the budget in euro: the link converts at the import calculator's
+  // own rate (the admin's `eurUsd` from /api/calc-config, the default until it loads). It used to pass the euro amount
+  // as dollars.
+  const [eurUsd, setEurUsd] = useState(DEFAULT_CALC_CONFIG.eurUsd);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/calc-config")
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+      .then((c: Partial<CalcConfig>) => {
+        if (!cancelled && typeof c.eurUsd === "number" && c.eurUsd > 0) setEurUsd(c.eurUsd);
+      })
+      .catch(() => {
+        /* keep the default rate */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const impactPct = Math.round(r.impact * 100);
-  const catalogHref = r.high > 0 ? `/vsichki-avtomobili?price_max=${Math.round(r.high)}` : "/vsichki-avtomobili";
+  const catalogHref = r.high > 0 ? `/vsichki-avtomobili?price_max=${usd(r.high, eurUsd)}` : "/vsichki-avtomobili";
   const range = `${eur(r.low)} – ${eur(r.high)}`;
 
   return (

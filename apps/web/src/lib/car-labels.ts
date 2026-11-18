@@ -351,21 +351,31 @@ const KR_INSPECT_STATUS_BG: Record<string, string> = {
   exists: "Има",
   bad: "Неизправно",
   poor: "Лошо",
+  // The problem values ENCAR also sends (a 1 % sample, 18.11.2026): they showed in English, with a green dot. The row's
+  // own label names the part and the fluid („Теч на масло – маслен картер", „Радиатор – теч").
+  "minor oil leak": "Лек теч",
+  "oil leak": "Теч",
+  "minor water leak": "Лек теч",
+  "water leak": "Теч",
+  error: "Грешка",
+  shortage: "Недостиг",
 };
 export const inspectStatusLabel = (v: string | null | undefined) => lookup(KR_INSPECT_STATUS_BG, v, v ?? "");
 /**
  * Tone for the inspection dot: "ok" (green) vs "warn" (amber). Only an explicit
- * problem value warns — note "doesn't exist" (no leak) is OK, "exist" (a leak) warns.
+ * problem value warns — note "doesn't exist" (no leak) is OK, "exist" (a leak) warns,
+ * and so does any leak, error or shortage.
  */
 export const inspectStatusTone = (v: string | null | undefined): "ok" | "warn" => {
   if (!v) return "ok";
   const k = v.toLowerCase().trim();
   if (k === "doesn't exist" || k === "none") return "ok";
   if (k === "exist" || k === "exists" || k === "bad" || k === "poor") return "warn";
+  if (k.includes("leak") || k === "error" || k === "shortage") return "warn";
   return "ok";
 };
 
-/** details.inspect.inner KEY → BG (the mechanical-inspection grid labels; 35 keys). */
+/** details.inspect.inner KEY → BG (the mechanical-inspection grid labels; 41 keys). */
 const KR_INSPECT_MECHANIC_BG: Record<string, string> = {
   brake_master_cylinder_oil_leakage: "Спирачен цилиндър – теч",
   brake_oil_leakage: "Спирачна течност – теч",
@@ -402,6 +412,14 @@ const KR_INSPECT_MECHANIC_BG: Record<string, string> = {
   trans_auto_oil_flow_and_condition: "Масло скорости – състояние",
   trans_auto_oil_leakage: "Скоростна кутия – теч",
   trans_auto_status: "Скоростна кутия",
+  // Keys found unmapped in a 1 % sample of active lots (18.11.2026): manual gearboxes and the high-voltage checks of
+  // hybrids and electric cars.
+  trans_manual_status: "Ръчна скоростна кутия",
+  trans_manual_oil_leakage: "Ръчна скоростна кутия – теч",
+  trans_manual_gear_shifting: "Ръчна скоростна кутия – превключване",
+  high_power_wiring_status: "Високоволтови кабели",
+  high_power_battery_isolation_status: "Високоволтова батерия – изолация",
+  high_power_charging_insulated_status: "Зареждане – изолация",
 };
 /** BG label for a mechanic key, or a spaced-out fallback for an unmapped one. */
 export const inspectMechanicLabel = (key: string): string =>
@@ -424,8 +442,10 @@ const KR_PANEL_STATUS_BG: Record<string, string> = {
 export const panelStatusLabel = (v: string | null | undefined) => lookup(KR_PANEL_STATUS_BG, v, v ?? "");
 
 /**
- * details.inspect.outer KEY → BG (body-panel names). Only the panel keys observed in
- * the sample are mapped; any other key humanizes its raw form (never guessed).
+ * details.inspect.outer KEY → BG (body-panel names): the parts of the Korean performance-inspection record (outer
+ * panels of ranks 1–2 and the main frame). Mapped from the keys active ENCAR lots actually carry (a 2 % sample,
+ * 18.11.2026: before it, `trunk_lead` — Encar's spelling, ~1 in 10 lots — and every frame part showed in English,
+ * „rear panel: Смяна"). Any other key still humanizes its raw form.
  */
 const KR_PANEL_NAME_BG: Record<string, string> = {
   hood: "Преден капак",
@@ -436,12 +456,35 @@ const KR_PANEL_NAME_BG: Record<string, string> = {
   radiator_support: "Носач на радиатора",
   roof_panel: "Покрив",
   trunk_lid: "Заден капак",
+  trunk_lead: "Заден капак",
   front_door_left: "Предна врата (лява)",
   front_door_right: "Предна врата (дясна)",
   rear_door_left: "Задна врата (лява)",
   rear_door_right: "Задна врата (дясна)",
   side_sill_panel_left: "Праг (ляв)",
   side_sill_panel_right: "Праг (десен)",
+  // The main frame.
+  front_panel: "Преден панел",
+  rear_panel: "Заден панел",
+  cross_member: "Напречна греда",
+  dash_panel: "Преградна стена",
+  trunk_floor: "Под на багажника",
+  inside_panel_left: "Вътрешен панел (ляв)",
+  inside_panel_right: "Вътрешен панел (десен)",
+  front_side_member_left: "Преден лонжерон (ляв)",
+  front_side_member_right: "Преден лонжерон (десен)",
+  rear_side_member_left: "Заден лонжерон (ляв)",
+  rear_side_member_right: "Заден лонжерон (десен)",
+  front_wheel_house_left: "Предна колесна арка (лява)",
+  front_wheel_house_right: "Предна колесна арка (дясна)",
+  rear_wheel_house_left: "Задна колесна арка (лява)",
+  rear_wheel_house_right: "Задна колесна арка (дясна)",
+  pillar_panel_front_left: "Колона A (лява)",
+  pillar_panel_front_right: "Колона A (дясна)",
+  pillar_panel_middle_left: "Колона B (лява)",
+  pillar_panel_middle_right: "Колона B (дясна)",
+  pillar_panel_rear_left: "Колона C (лява)",
+  pillar_panel_rear_right: "Колона C (дясна)",
 };
 export const panelNameLabel = (key: string): string => KR_PANEL_NAME_BG[key] ?? key.replace(/_/g, " ");
 
