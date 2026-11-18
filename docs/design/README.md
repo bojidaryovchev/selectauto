@@ -274,8 +274,11 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
   about and reviews pages, the Carfax and VIN check pages with the Carfax dialog, /proces, the blog, the three
   legal pages, the 404, 410 and error pages, the sign-in and account pages (`/sign-in` to `/greshka-pri-vhod`) and
   the favourites (`/lyubimi`), the inquiry dialog, the admin's shell (sidebar, phone top bar and drawer, account
-  card), dashboard, loading, error and 404 states and shared parts (`components/admin/ui`), and the three lead inboxes
-  (Carfax, consultations, offers) with their drawer. Each has its parity file in [parity/](parity/README.md).
+  card), dashboard, loading, error and 404 states and shared parts (`components/admin/ui`), the three lead inboxes
+  (Carfax, consultations, offers) with their drawer, and the mail (Поща and the thread page). Each has its parity file
+  in [parity/](parity/README.md).
+- **Never open a real mail thread to check it** (`/admin/poshta/[id]`): its render fetches missing message bodies from
+  Resend and saves them. Check the thread components on a temporary route with made-up threads, and delete it.
 - **Make plates in the admin** come from `getMakeLogoLookup` (`lib/admin-lead-view.ts`): leads store the make as text,
   so it is matched by name against the makes the car cards use, then against the inquiry quiz's own logos.
 - **Admin pages not rebuilt yet** already get the kit's buttons, panels, fields, chips, pager and banners through the

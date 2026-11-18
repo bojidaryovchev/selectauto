@@ -1,19 +1,16 @@
 import { MAIL_THREAD_STATUS_META, isMailThreadStatus } from "@/constants/mail";
 
 /**
- * Presentational status pill for a mail thread. Plain component — usable from
- * both server and client trees, like `LeadStatusBadge`.
+ * A mail thread's status as the kit's tag with its dot (board `ad-mail`): Нов amber, В процес blue, Затворен neutral;
+ * an unknown value shows as stored, neutral. Plain component — usable from both server and client trees, like
+ * `LeadStatusBadge`.
  */
 export function MailStatusBadge({ status }: { status: string }) {
-  const meta = isMailThreadStatus(status)
-    ? MAIL_THREAD_STATUS_META[status]
-    : { label: status, badgeClass: "bg-neutral-200 text-neutral-700 ring-neutral-300" };
-
+  const { label, tone } = isMailThreadStatus(status) ? MAIL_THREAD_STATUS_META[status] : { label: status, tone: null };
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ring-1 ring-inset ${meta.badgeClass}`}
-    >
-      {meta.label}
+    <span className={tone ? `sa-tag shrink-0 sa-tag--${tone}` : "sa-tag shrink-0"}>
+      <span className={tone ? `sa-dot sa-dot--${tone}` : "sa-dot"} aria-hidden="true" />
+      {label}
     </span>
   );
 }

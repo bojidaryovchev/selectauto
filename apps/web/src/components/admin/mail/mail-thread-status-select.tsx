@@ -1,14 +1,16 @@
 "use client";
 
 import { Combobox } from "@/components/common";
+import { AlertIcon } from "@/components/icons";
 import { MAIL_THREAD_STATUSES, MAIL_THREAD_STATUS_META, type MailThreadStatus } from "@/constants/mail";
 import { updateThreadStatus } from "@/mutations/mail";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 /**
- * Thread status dropdown. Mirrors the lead inbox's `StatusSelect`: shows the
- * chosen value immediately, reverts on failure, refreshes on success.
+ * Thread status dropdown („Статус", the kit's dropdown; board `ad-thread-states`). Mirrors the lead inbox's
+ * `StatusSelect`: shows the chosen value immediately, locked while it saves, reverts on failure with the message under
+ * it, refreshes on success.
  */
 export function MailThreadStatusSelect({ threadId, value }: { threadId: number; value: string }) {
   const router = useRouter();
@@ -41,8 +43,10 @@ export function MailThreadStatusSelect({ threadId, value }: { threadId: number; 
   }
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="ad-stsel">
+      <span className="sa-lbl">Статус</span>
       <Combobox
+        look="kit"
         aria-label="Статус на разговора"
         options={MAIL_THREAD_STATUSES.map((s) => ({
           value: s,
@@ -52,7 +56,12 @@ export function MailThreadStatusSelect({ threadId, value }: { threadId: number; 
         onValueChange={(v) => change(v as MailThreadStatus)}
         disabled={pending}
       />
-      {error && <span className="text-xs text-rose-600">{error}</span>}
+      {error && (
+        <p role="alert" className="sa-err">
+          <AlertIcon />
+          {error}
+        </p>
+      )}
     </div>
   );
 }

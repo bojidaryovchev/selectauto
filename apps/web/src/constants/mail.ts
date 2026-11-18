@@ -17,14 +17,11 @@ export const MAIL_THREAD_STATUSES = ["new", "in_progress", "closed"] as const;
 
 export type MailThreadStatus = (typeof MAIL_THREAD_STATUSES)[number];
 
-/** BG label + the same tailwind badge palette the lead statuses use. */
-export const MAIL_THREAD_STATUS_META: Record<
-  MailThreadStatus,
-  { label: string; badgeClass: string }
-> = {
-  new: { label: "Нов", badgeClass: "bg-amber-100 text-amber-800 ring-amber-200" },
-  in_progress: { label: "В процес", badgeClass: "bg-blue-100 text-blue-800 ring-blue-200" },
-  closed: { label: "Затворен", badgeClass: "bg-neutral-200 text-neutral-700 ring-neutral-300" },
+/** BG label and the kit tone (`sa-tag--…`, `sa-dot--…`), as the lead statuses have; null is the neutral one. */
+export const MAIL_THREAD_STATUS_META: Record<MailThreadStatus, { label: string; tone: "warn" | "info" | null }> = {
+  new: { label: "Нов", tone: "warn" },
+  in_progress: { label: "В процес", tone: "info" },
+  closed: { label: "Затворен", tone: null },
 };
 
 export function isMailThreadStatus(value: unknown): value is MailThreadStatus {

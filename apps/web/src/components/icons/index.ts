@@ -59,6 +59,7 @@ export { MegaphoneIcon } from "./megaphone-icon";
 export { MenuIcon } from "./menu-icon";
 export { MessageIcon } from "./message-icon";
 export { NotebookTextIcon } from "./notebook-text-icon";
+export { PaperclipIcon } from "./paperclip-icon";
 export { PauseIcon } from "./pause-icon";
 export { PercentIcon } from "./percent-icon";
 export { PhoneIcon } from "./phone-icon";

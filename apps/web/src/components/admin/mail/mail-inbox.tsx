@@ -1,6 +1,8 @@
 "use client";
 
-import { ADMIN_INPUT, AdminButton, AdminEmptyState, AdminPagination, adminChipClass } from "@/components/admin/ui";
+import { ADMIN_INPUT, AdminEmptyState, AdminPagination, adminChipClass } from "@/components/admin/ui";
+import { Button } from "@/components/common";
+import { MailIcon, SearchIcon } from "@/components/icons";
 import { MAIL_THREAD_STATUSES, MAIL_THREAD_STATUS_META } from "@/constants/mail";
 import { formatSofiaDateTime } from "@/lib/sofia-time";
 import type { MailThreadRow } from "@/queries/mail";
@@ -10,9 +12,10 @@ import { useState } from "react";
 import { MailStatusBadge } from "./mail-status-badge";
 
 /**
- * The mail inbox list: a filter row, then one line per thread. Unlike the lead
- * inbox this navigates to a dedicated thread PAGE rather than opening a drawer —
- * a conversation plus a composer needs the room, and a URL two admins can share.
+ * The mail inbox list (boards `ad-mail`, `ad-mail-states`; parity check docs/design/parity/admin-mail.md): a search
+ * field and a filter row, then one line per thread (`ad-ml`: stacked on a narrow list, one row from a 56rem list).
+ * Unlike the lead inbox this navigates to a dedicated thread PAGE rather than opening a drawer — a conversation plus
+ * a composer needs the room, and a URL two admins can share.
  */
 export function MailInbox({
   threads,
@@ -48,103 +51,99 @@ export function MailInbox({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <form
-        role="search"
-        onSubmit={(e) => {
-          e.preventDefault();
-          setParam("q", q.trim() || null);
-        }}
-        className="flex flex-col gap-2 sm:flex-row"
-      >
-        <label htmlFor="mail-q" className="sr-only">
-          Търсене
-        </label>
-        <input
-          id="mail-q"
-          type="search"
-          enterKeyHint="search"
-          autoCapitalize="off"
-          autoCorrect="off"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Търсене по имейл, име или тема…"
-          className={`${ADMIN_INPUT} sm:max-w-md`}
-        />
-        <AdminButton type="submit" variant="primary" className="shrink-0">
-          Търси
-        </AdminButton>
-      </form>
+    <div className="flex flex-col gap-5">
+      <div className="ad-tools">
+        <form
+          role="search"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setParam("q", q.trim() || null);
+          }}
+          className="ad-search"
+        >
+          <label htmlFor="mail-q" className="sr-only">
+            Търсене
+          </label>
+          <span className="sa-inw ad-grow">
+            <SearchIcon />
+            <input
+              id="mail-q"
+              type="search"
+              enterKeyHint="search"
+              autoCapitalize="off"
+              autoCorrect="off"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Търсене по имейл, име или тема…"
+              className={ADMIN_INPUT}
+            />
+          </span>
+          <Button type="submit" variant="sec" size="md" className="ad-search__b shrink-0">
+            Търсете
+          </Button>
+        </form>
 
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Филтър по статус">
-        <button
-          type="button"
-          aria-pressed={status === ""}
-          onClick={() => setParam("status", null)}
-          className={adminChipClass(status === "")}
-        >
-          Всички
-        </button>
-        {MAIL_THREAD_STATUSES.map((s) => (
+        <div className="sa-chips" role="group" aria-label="Филтър по статус">
           <button
-            key={s}
             type="button"
-            aria-pressed={status === s}
-            onClick={() => setParam("status", s)}
-            className={adminChipClass(status === s)}
+            aria-pressed={status === ""}
+            onClick={() => setParam("status", null)}
+            className={adminChipClass(status === "")}
           >
-            {MAIL_THREAD_STATUS_META[s].label}
+            Всички
           </button>
-        ))}
-        <button
-          type="button"
-          aria-pressed={unreadOnly}
-          onClick={() => setParam("unread", unreadOnly ? null : "1")}
-          className={adminChipClass(unreadOnly)}
-        >
-          Само непрочетени
-        </button>
+          {MAIL_THREAD_STATUSES.map((s) => (
+            <button
+              key={s}
+              type="button"
+              aria-pressed={status === s}
+              onClick={() => setParam("status", s)}
+              className={adminChipClass(status === s)}
+            >
+              {MAIL_THREAD_STATUS_META[s].label}
+            </button>
+          ))}
+          <button
+            type="button"
+            aria-pressed={unreadOnly}
+            onClick={() => setParam("unread", unreadOnly ? null : "1")}
+            className={adminChipClass(unreadOnly)}
+          >
+            Само непрочетени
+          </button>
+        </div>
       </div>
 
-      <p className="text-sm text-muted">
-        Намерени: <span className="font-bold text-ink">{total}</span>
+      <p className="ad-count">
+        Намерени: <b>{total}</b>
       </p>
 
       {threads.length === 0 ? (
-        <AdminEmptyState title="Няма съобщения за този филтър." />
+        <AdminEmptyState title="Няма съобщения за този филтър." icon={<MailIcon />} />
       ) : (
-        <ul className="m-0 list-none overflow-hidden rounded-xl border border-line bg-white p-0">
+        <ul className="ad-ml">
           {threads.map((t) => (
-            <li key={t.id} className="border-b border-line/60 last:border-0">
+            <li key={t.id}>
               {/* No prefetch: a prefetch renders the whole thread page, and that
                   render pulls missing bodies from Resend and saves them — for
                   every thread in view, opened or not. */}
-              <Link
-                href={`/admin/poshta/${t.id}`}
-                prefetch={false}
-                className="flex flex-col gap-1 px-4 py-3 transition-colors hover:bg-[#fafafa] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <span className={`min-w-0 truncate ${t.unread ? "font-black text-ink" : "font-semibold text-ink"}`}>
-                    {t.participantName || t.participantEmail}
-                  </span>
-                  <span className="flex shrink-0 items-center gap-2">
-                    {t.unread && (
-                      <span className="inline-block size-2 rounded-full bg-brand" aria-label="Непрочетено" />
-                    )}
-                    <MailStatusBadge status={t.status} />
-                  </span>
-                </div>
-
-                <span className={`truncate text-sm ${t.unread ? "text-ink" : "text-muted"}`}>
-                  {t.lastDirection === "outbound" && <span className="text-muted">Вие: </span>}
+              <Link href={`/admin/poshta/${t.id}`} prefetch={false} className={t.unread ? "is-unread" : undefined}>
+                <span className="ad-ml__who">
+                  <b>{t.participantName || t.participantEmail}</b>
+                  <small>{t.participantEmail}</small>
+                </span>
+                <span className="ad-ml__sub">
+                  {t.lastDirection === "outbound" && <span>Вие: </span>}
                   {t.subject || "(без тема)"}
                 </span>
-
-                <span className="flex flex-wrap items-center gap-x-3 text-xs text-muted">
-                  <span className="break-all">{t.participantEmail}</span>
+                <span className="ad-ml__meta">
+                  <span className="ad-em">{t.participantEmail}</span>
                   <span>{t.messageCount} съобщения</span>
                   <span>{formatSofiaDateTime(t.lastMessageAt)}</span>
+                </span>
+                <span className="ad-ml__st">
+                  {t.unread && <span className="ad-unread" role="img" aria-label="Непрочетено" />}
+                  <MailStatusBadge status={t.status} />
                 </span>
               </Link>
             </li>

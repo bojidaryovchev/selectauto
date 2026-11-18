@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminBanner, AdminPageHeader } from "@/components/admin/ui";
+import { InfoIcon, PaperclipIcon } from "@/components/icons";
 import { formatSofiaDateTime } from "@/lib/sofia-time";
 import { markThreadRead } from "@/mutations/mail";
 import type { MailThreadDetail } from "@/queries/mail";
@@ -10,7 +11,8 @@ import { MessageBody } from "./message-body";
 import { ReplyComposer } from "./reply-composer";
 
 /**
- * One conversation: header, the messages oldest-first, then the composer.
+ * One conversation (boards `ad-thread`, `ad-thread-states`, `ad-thread-reply`; parity check
+ * docs/design/parity/admin-mail.md): header, the messages oldest-first, then the composer.
  *
  * Opening the thread clears its unread flag. Fired once per mount via a ref
  * guard (React runs effects twice in dev StrictMode) and deliberately NOT
@@ -35,7 +37,7 @@ export function MailThreadView({ thread }: { thread: MailThreadDetail }) {
   const replyTo = lastInbound?.replyToAddress ?? thread.participantEmail;
 
   return (
-    <div className="flex flex-col gap-4">
+    <>
       <AdminPageHeader
         back={{ href: "/admin/poshta", label: "Поща" }}
         title={thread.subject || "(без тема)"}
@@ -47,48 +49,49 @@ export function MailThreadView({ thread }: { thread: MailThreadDetail }) {
         }
       />
 
-      <div className="flex max-w-xs flex-col gap-1">
-        <span className="text-sm font-semibold text-muted">Статус</span>
-        {/* Keyed on the server value: a reply moves the thread to „В процес“, and the
-            select used to keep showing the status it was opened with. */}
-        <MailThreadStatusSelect key={thread.status} threadId={thread.id} value={thread.status} />
-      </div>
+      {/* Keyed on the server value: a reply moves the thread to „В процес“, and the
+          select used to keep showing the status it was opened with. */}
+      <MailThreadStatusSelect key={thread.status} threadId={thread.id} value={thread.status} />
 
-      <ul className="m-0 flex list-none flex-col gap-3 p-0">
+      <ul className="ad-msgs">
         {thread.messages.map((m) => {
           const outbound = m.direction === "outbound";
           const files = attachmentsFor(m.id);
           return (
-            <li
-              key={m.id}
-              className={`min-w-0 rounded-xl border p-4 ${outbound ? "border-brand/30 bg-brand/5" : "border-line bg-white"}`}
-            >
-              <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-                <span className="min-w-0 text-sm font-bold wrap-anywhere text-ink">
-                  {outbound ? "SelectAuto" : m.fromName || m.fromAddress}
-                </span>
-                <span className="text-xs text-muted">{formatSofiaDateTime(m.createdAt)}</span>
+            <li key={m.id} className={outbound ? "ad-msg ad-msg--out" : "ad-msg"}>
+              <div className="ad-msg__h">
+                <b>{outbound ? "SelectAuto" : m.fromName || m.fromAddress}</b>
+                <time dateTime={new Date(m.createdAt).toISOString()}>{formatSofiaDateTime(m.createdAt)}</time>
               </div>
 
               {/* A failed reply must be impossible to mistake for a sent one. */}
               {outbound && m.deliveryState === "failed" && (
-                <AdminBanner tone="error" className="mb-2">
-                  НЕ е изпратено{m.deliveryError ? `: ${m.deliveryError}` : "."}
+                <AdminBanner tone="error" className="ad-msg__fail">
+                  <p>
+                    <strong>НЕ е изпратено</strong>
+                    {m.deliveryError ? `: ${m.deliveryError}` : "."}
+                  </p>
                 </AdminBanner>
               )}
               {outbound && m.deliveryState === "sending" && (
-                <p className="mb-2 text-xs text-muted italic">изпраща се…</p>
+                <p className="ad-sending">
+                  <span className="sa-spin ad-spin-sm" aria-hidden="true" />
+                  изпраща се…
+                </p>
               )}
 
               <MessageBody textBody={m.textBody} htmlBody={m.htmlBody} fetched={outbound || m.bodyFetchedAt !== null} />
 
               {files.length > 0 && (
-                <ul className="m-0 mt-3 flex list-none flex-wrap gap-2 p-0">
+                <ul className="ad-files">
                   {files.map((f, i) => (
-                    <li key={i} className="rounded-full border border-line px-3 py-1 text-xs break-all text-muted">
-                      {f.filename || "прикачен файл"}
-                      {f.sizeBytes ? ` · ${Math.ceil(f.sizeBytes / 1024)} KB` : ""}
-                      {f.contentType ? ` · ${f.contentType}` : ""}
+                    <li key={i} className="ad-file">
+                      <PaperclipIcon />
+                      <span>
+                        {f.filename || "прикачен файл"}
+                        {f.sizeBytes ? ` · ${Math.ceil(f.sizeBytes / 1024)} KB` : ""}
+                        {f.contentType ? ` · ${f.contentType}` : ""}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -99,10 +102,13 @@ export function MailThreadView({ thread }: { thread: MailThreadDetail }) {
       </ul>
 
       {thread.attachments.length > 0 && (
-        <p className="text-xs text-muted">Прикачените файлове се съхраняват в Resend и още не се свалят от панела.</p>
+        <p className="ad-note">
+          <InfoIcon />
+          <span>Прикачените файлове се съхраняват в Resend и още не се свалят от панела.</span>
+        </p>
       )}
 
       <ReplyComposer threadId={thread.id} to={replyTo} />
-    </div>
+    </>
   );
 }

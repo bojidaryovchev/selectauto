@@ -1,14 +1,14 @@
 "use client";
 
-import { ADMIN_INPUT, AdminBanner, AdminButton } from "@/components/admin/ui";
+import { AdminBanner } from "@/components/admin/ui";
+import { Button } from "@/components/common";
 import { sendReply } from "@/mutations/mail";
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 
 /**
- * „Отговори" composer. Sends as info@selectauto.bg with the thread's
- * In-Reply-To/References headers so the reply lands in the customer's existing
- * conversation.
+ * „Отговор" composer (`ad-comp`; board `ad-thread-reply`). Sends as info@selectauto.bg with the thread's
+ * In-Reply-To/References headers so the reply lands in the customer's existing conversation.
  *
  * Failure is surfaced LOUDLY and the text is kept in the box. Unlike the app's
  * notification emails — which are best-effort by design because the underlying
@@ -52,13 +52,11 @@ export function ReplyComposer({ threadId, to }: { threadId: number; to: string }
   }
 
   return (
-    <div className="rounded-xl border border-line bg-white p-4">
-      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-        <label htmlFor={fieldId} className="font-bold text-ink">
-          Отговор
-        </label>
-        <p className="text-xs wrap-anywhere text-muted">
-          До <span className="font-semibold text-ink">{to}</span> · от info@selectauto.bg
+    <div className="sa-pnl ad-comp">
+      <div className="ad-comp__h">
+        <label htmlFor={fieldId}>Отговор</label>
+        <p>
+          До <b>{to}</b> · от info@selectauto.bg
         </p>
       </div>
 
@@ -69,19 +67,19 @@ export function ReplyComposer({ threadId, to }: { threadId: number; to: string }
         rows={8}
         disabled={pending}
         placeholder="Напишете отговора си…"
-        className={`${ADMIN_INPUT} min-h-40 resize-y`}
+        className="sa-in w-full"
       />
 
       {error && (
-        <AdminBanner tone="error" className="mt-2">
-          {error}
+        <AdminBanner tone="error">
+          <p>{error}</p>
         </AdminBanner>
       )}
 
-      <div className="mt-3 flex justify-end">
-        <AdminButton variant="primary" size="lg" onClick={submit} disabled={pending || !body.trim()}>
-          {pending ? "Изпраща се…" : "Изпрати"}
-        </AdminButton>
+      <div className="ad-comp__f">
+        <Button variant="pri" className="ad-wph" onClick={submit} disabled={pending || !body.trim()} busy={pending}>
+          {pending ? "Изпраща се…" : "Изпратете"}
+        </Button>
       </div>
     </div>
   );

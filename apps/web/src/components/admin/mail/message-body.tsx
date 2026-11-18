@@ -47,20 +47,16 @@ export function MessageBody({
   fetched: boolean;
 }) {
   if (!fetched) {
-    return (
-      <p className="text-sm italic text-muted">
-        Съдържанието още не е изтеглено. Презаредете след малко.
-      </p>
-    );
+    return <p className="ad-msg__note">Съдържанието още не е изтеглено. Презаредете след малко.</p>;
   }
 
   const text = textBody?.trim() || (htmlBody ? htmlToText(htmlBody) : "");
 
   if (!text) {
-    return <p className="text-sm italic text-muted">(празно съобщение)</p>;
+    return <p className="ad-msg__note">(празно съобщение)</p>;
   }
 
-  // `whitespace-pre-wrap` preserves the sender's line breaks; the value is a
+  // `.ad-msg__b` is `white-space: pre-wrap`, which keeps the sender's line breaks (board `ad-thread`); the value is a
   // text node, so no markup in it can execute.
-  return <div className="wrap-break-word whitespace-pre-wrap text-sm text-ink">{text}</div>;
+  return <div className="ad-msg__b">{text}</div>;
 }

@@ -106,7 +106,7 @@
   .ad-st a>span{display:inline-flex;align-items:center;gap:10px}
   .ad-st a>b{color:var(--color-tx);font-weight:800}
   .ad-lead__f{margin-top:auto;padding-top:10px;border-top:1px solid var(--color-hair)}
-  .ad-ml{border:1px solid var(--color-hair);border-radius:var(--radius-lg);background:var(--color-s1);overflow:hidden}
+  .ad-ml{border:1px solid var(--color-hair);border-radius:var(--radius-lg);background:var(--color-s1);overflow:hidden;container-type:inline-size}
   .ad-ml li+li{border-top:1px solid var(--color-hair)}
   .ad-ml a{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"who st" "sub sub" "meta meta";gap:4px 12px;padding:14px 16px;color:var(--color-tx);text-decoration:none}
   .ad-ml a:hover{background:var(--color-s2)}
@@ -121,7 +121,9 @@
   .ad-ml .is-unread .ad-ml__who b{font-weight:800}
   .ad-ml .is-unread .ad-ml__sub{color:var(--color-tx)}
   .ad-unread{width:9px;height:9px;border-radius:50%;background:var(--color-info);flex:none}
-  @media (min-width:1100px){.ad-ml a{grid-template-columns:minmax(0,16rem) minmax(0,1fr) auto minmax(118px,auto);grid-template-areas:"who sub meta st";align-items:center;gap:0 24px;padding:12px 20px}.ad-ml__who small{display:block}.ad-ml__meta .ad-em{display:none}.ad-ml__st{justify-content:flex-end}}
+  /* One line per thread once the LIST is 56rem wide (the board switched at a 1100 px window, which beside the
+     sidebar left the subject about 60 px); parity check docs/design/parity/admin-mail.md row 7. */
+  @container (min-width:56rem){.ad-ml a{grid-template-columns:minmax(0,16rem) minmax(0,1fr) auto minmax(118px,auto);grid-template-areas:"who sub meta st";align-items:center;gap:0 24px;padding:12px 20px}.ad-ml__who small{display:block}.ad-ml__meta .ad-em{display:none}.ad-ml__st{justify-content:flex-end}}
   .ad-stsel{display:flex;flex-direction:column;gap:6px;width:100%;max-width:320px}
   .ad-msgs{display:flex;flex-direction:column;gap:12px}
   .ad-msg{min-width:0;padding:16px 18px;border:1px solid var(--color-hair);border-radius:var(--radius-lg);background:var(--color-s1)}
