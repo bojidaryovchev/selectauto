@@ -270,11 +270,12 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
 - **Rebuilt so far:** the car card and the confirm dialog, the catalog (`/vsichki-avtomobili`), the home page, the car
   page (`/avtomobil/[id]`) with its gallery, full-screen photo viewer, media dialogs and action bar, the make and
   model hubs (`/avtomobili/marka/…`), the import calculator (`/kalkulator`, its e-mail form and the car page's
-  calculator dialog), the leasing and budget calculators, and the import hubs (`/vnos-na-koli-ot-…`). Each has its
-  parity file in [parity/](parity/README.md). The inquiry and Carfax dialogs open as they are until their own steps.
-- **Montserrat** still loads, only for the /proces particle title. Remove it when /proces is rebuilt.
-- **Fonts:** four font files are preloaded once Montserrat goes (Manrope and Unbounded, Latin and Cyrillic), against two
-  today. Measure LCP on a phone after the shell's rebuild.
+  calculator dialog), the leasing and budget calculators, the import hubs (`/vnos-na-koli-ot-…`), the FAQ, contacts,
+  about and reviews pages, the Carfax and VIN check pages with the Carfax dialog, and /proces. Each has its
+  parity file in [parity/](parity/README.md). The inquiry dialog opens as it is until its own step.
+- **Montserrat is gone** (with /proces, 18 November): the particle title is drawn in Unbounded. The e-mails still name it
+  first in their font stack (`emails/theme.ts`) until the e-mails step.
+- **Fonts:** four font files are preloaded (Manrope and Unbounded, Latin and Cyrillic). Measure LCP on a phone.
 - **Where the design system's `tokens.json` and the kit differ, the code follows the kit,** because the boards were
   drawn with it: `small` sets no weight (tokens.json says 500); prices and button labels have the kit's tracking; `or-ring`
   and `paper` exist only in the kit. Correct `tokens.json` when the design system is next published.

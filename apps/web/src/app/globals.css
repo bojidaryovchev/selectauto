@@ -14,6 +14,7 @@
 @import "../styles/info-carfax-form.css";
 @import "../styles/info-carfax.css";
 @import "../styles/info-vin.css";
+@import "../styles/info-proces.css";
 
 /*
   Legacy: the light theme's tokens, ported from the old site's theme.css. The

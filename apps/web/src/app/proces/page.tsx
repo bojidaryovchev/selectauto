@@ -19,6 +19,11 @@ export const metadata: Metadata = {
   }),
 };
 
+/**
+ * /proces (boards `in-proces`, `in-proces-flow`, `in-proces-nogl`; parity check docs/design/parity/proces.md): the
+ * scroll-driven 3D process (or its static band without WebGL) and the written steps. Its classes are in
+ * styles/info-proces.css under the page's root class `.in-proces-pg`.
+ */
 export default function ProcessPage() {
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
     { name: "Начало", url: "/" },
@@ -31,7 +36,8 @@ export default function ProcessPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
       <SiteHeader />
-      <main className="flex-1 text-ink">
+      {/* No top padding: the 3D intro is one screen tall and starts under the fixed header, as before. */}
+      <main className="in-proces-pg flex-1">
         <ParticleProcess />
         {/* Crawlable, server-rendered process content (the canvas above is
             JS-gated/animated → not reliably indexable). Holds the page's <h1>. */}

@@ -5,7 +5,7 @@ import { buildOrganizationJsonLd, buildWebsiteJsonLd } from "@/lib/site-jsonld";
 import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
 import { SessionProvider } from "next-auth/react";
-import { JetBrains_Mono, Manrope, Montserrat, Unbounded } from "next/font/google";
+import { JetBrains_Mono, Manrope, Unbounded } from "next/font/google";
 import { Suspense } from "react";
 import "./globals.css";
 
@@ -32,16 +32,6 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   display: "swap",
   preload: false,
-});
-
-// Montserrat, the old site face, stays only for the /proces particle title:
-// components/three/particle-process.tsx draws it on a canvas from the
-// --font-montserrat variable. Remove it when /proces is rebuilt.
-const montserrat = Montserrat({
-  variable: "--font-montserrat",
-  subsets: ["latin", "cyrillic"],
-  weight: ["400", "500", "600", "700", "800", "900"],
-  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -87,7 +77,7 @@ export default function RootLayout({
   return (
     <html
       lang="bg"
-      className={`${manrope.variable} ${unbounded.variable} ${jetbrainsMono.variable} ${montserrat.variable} h-full`}
+      className={`${manrope.variable} ${unbounded.variable} ${jetbrainsMono.variable} h-full`}
     >
       {/* Bottom padding on mobile reserves space for the fixed <MobileBottomNav>
           (≈62px tab bar + the iOS home-indicator safe area) so page content and
