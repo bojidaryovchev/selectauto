@@ -136,13 +136,18 @@ const leftovers = [...css.matchAll(/var\(--([a-z0-9-]+)\)/g)]
   .map((m) => m[1])
   .filter((n) => !declared.has(n) && !/^(color|font|radius|spacing|container|shadow|bottom-nav|ch|ps|chamfer)/.test(n));
 if (leftovers.length) throw new Error("Unmapped variables: " + [...new Set(leftovers)].join(", "));
-if (/@container|cqi/.test(css)) throw new Error("Board-only syntax left over");
+// Queries on the board's frame (`sa`) became media queries above. Queries on a container the ported rules declare
+// themselves (`container: ablist / inline-size` on the ab- lists, as the code's own registers do) are real and stay.
+const ownContainers = new Set([...css.matchAll(/container:\s*([a-z][a-z0-9-]*)\s*\//g)].map((m) => m[1]));
+const foreign = [...css.matchAll(/@container\s+([a-z][a-z0-9-]*)/g)].map((m) => m[1]).filter((n) => !ownContainers.has(n));
+if (/cqi/.test(css) || foreign.length) throw new Error("Board-only syntax left over: " + [...new Set(foreign)].join(", "));
 
 const header = `/*
   ${title}
   Ported by script from the screen's board sources (apps/web/scripts/port-board-css.mjs), as kit.css is from the kit: token
-  names follow tokens.css, the boards' cqi became vw and their container queries media queries. Board-only parts
-  (device frames, preview overlays) were left out. Class prefix: ${prefix}.${scope ? ` Scoped to ${scope}, the page's root.` : ""}
+  names follow tokens.css, the boards' cqi became vw and their queries on the board's frame media queries (queries on a
+  container these rules declare stay container queries). Board-only parts (device frames, preview overlays) were left
+  out. Class prefix: ${prefix}.${scope ? ` Scoped to ${scope}, the page's root.` : ""}
 */
 @layer components {
 `;

@@ -170,13 +170,16 @@ export const PAYMENT_STATUSES = [
 
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
-export const PAYMENT_STATUS_META: Record<PaymentStatus, { label: string; badgeClass: string }> = {
-  not_requested: { label: "Не е поискано", badgeClass: "bg-neutral-100 text-neutral-600 ring-neutral-200" },
-  awaiting_payment: { label: "Очаква плащане", badgeClass: "bg-amber-100 text-amber-800 ring-amber-200" },
-  partially_paid: { label: "Частично платено", badgeClass: "bg-blue-100 text-blue-800 ring-blue-200" },
-  paid: { label: "Платено", badgeClass: "bg-emerald-100 text-emerald-800 ring-emerald-200" },
-  overdue: { label: "Просрочено", badgeClass: "bg-rose-100 text-rose-800 ring-rose-200" },
-  cancelled: { label: "Анулирано", badgeClass: "bg-neutral-200 text-neutral-700 ring-neutral-300" },
+/** The kit tag colour of each status (boards `ab-contracts`, `ab-contract-stages`), as the old pills had them. */
+export type StatusTone = "warn" | "info" | "pos" | "neg" | "line" | null;
+
+export const PAYMENT_STATUS_META: Record<PaymentStatus, { label: string; badgeClass: string; tone: StatusTone }> = {
+  not_requested: { label: "Не е поискано", badgeClass: "bg-neutral-100 text-neutral-600 ring-neutral-200", tone: null },
+  awaiting_payment: { label: "Очаква плащане", badgeClass: "bg-amber-100 text-amber-800 ring-amber-200", tone: "warn" },
+  partially_paid: { label: "Частично платено", badgeClass: "bg-blue-100 text-blue-800 ring-blue-200", tone: "info" },
+  paid: { label: "Платено", badgeClass: "bg-emerald-100 text-emerald-800 ring-emerald-200", tone: "pos" },
+  overdue: { label: "Просрочено", badgeClass: "bg-rose-100 text-rose-800 ring-rose-200", tone: "neg" },
+  cancelled: { label: "Анулирано", badgeClass: "bg-neutral-200 text-neutral-700 ring-neutral-300", tone: null },
 };
 
 /** Contract lifecycle statuses. `fully_paid` = all of the contract's stages paid (§11.8). */
@@ -184,11 +187,11 @@ export const CONTRACT_STATUSES = ["draft", "active", "fully_paid", "cancelled"] 
 
 export type ContractStatus = (typeof CONTRACT_STATUSES)[number];
 
-export const CONTRACT_STATUS_META: Record<ContractStatus, { label: string; badgeClass: string }> = {
-  draft: { label: "Чернова", badgeClass: "bg-neutral-100 text-neutral-600 ring-neutral-200" },
-  active: { label: "Активен", badgeClass: "bg-blue-100 text-blue-800 ring-blue-200" },
-  fully_paid: { label: "Напълно платен", badgeClass: "bg-emerald-100 text-emerald-800 ring-emerald-200" },
-  cancelled: { label: "Анулиран", badgeClass: "bg-neutral-200 text-neutral-700 ring-neutral-300" },
+export const CONTRACT_STATUS_META: Record<ContractStatus, { label: string; badgeClass: string; tone: StatusTone }> = {
+  draft: { label: "Чернова", badgeClass: "bg-neutral-100 text-neutral-600 ring-neutral-200", tone: "line" },
+  active: { label: "Активен", badgeClass: "bg-blue-100 text-blue-800 ring-blue-200", tone: "info" },
+  fully_paid: { label: "Напълно платен", badgeClass: "bg-emerald-100 text-emerald-800 ring-emerald-200", tone: "pos" },
+  cancelled: { label: "Анулиран", badgeClass: "bg-neutral-200 text-neutral-700 ring-neutral-300", tone: null },
 };
 
 /** Deposit-contract statuses (§14). */
@@ -196,13 +199,13 @@ export const DEPOSIT_STATUSES = ["draft", "signed", "paid", "used", "returned", 
 
 export type DepositStatus = (typeof DEPOSIT_STATUSES)[number];
 
-export const DEPOSIT_STATUS_META: Record<DepositStatus, { label: string; badgeClass: string }> = {
-  draft: { label: "Чернова", badgeClass: "bg-neutral-100 text-neutral-600 ring-neutral-200" },
-  signed: { label: "Подписан", badgeClass: "bg-blue-100 text-blue-800 ring-blue-200" },
-  paid: { label: "Депозит платен", badgeClass: "bg-amber-100 text-amber-800 ring-amber-200" },
-  used: { label: "Използван", badgeClass: "bg-emerald-100 text-emerald-800 ring-emerald-200" },
-  returned: { label: "Върнат", badgeClass: "bg-neutral-200 text-neutral-700 ring-neutral-300" },
-  cancelled: { label: "Анулиран", badgeClass: "bg-rose-100 text-rose-800 ring-rose-200" },
+export const DEPOSIT_STATUS_META: Record<DepositStatus, { label: string; badgeClass: string; tone: StatusTone }> = {
+  draft: { label: "Чернова", badgeClass: "bg-neutral-100 text-neutral-600 ring-neutral-200", tone: "line" },
+  signed: { label: "Подписан", badgeClass: "bg-blue-100 text-blue-800 ring-blue-200", tone: "info" },
+  paid: { label: "Депозит платен", badgeClass: "bg-amber-100 text-amber-800 ring-amber-200", tone: "warn" },
+  used: { label: "Използван", badgeClass: "bg-emerald-100 text-emerald-800 ring-emerald-200", tone: "pos" },
+  returned: { label: "Върнат", badgeClass: "bg-neutral-200 text-neutral-700 ring-neutral-300", tone: null },
+  cancelled: { label: "Анулиран", badgeClass: "bg-rose-100 text-rose-800 ring-rose-200", tone: "neg" },
 };
 
 /** Recipient kinds (§5/§8). The kind drives which stages a recipient may serve. */

@@ -3,7 +3,8 @@ import { LeadInbox } from "@/components/admin";
 import { AdminPageHeader } from "@/components/admin/ui";
 import { requireAdminPage } from "@/lib/admin";
 import { LEAD_TYPE_META } from "@/constants/admin";
-import { CARFAX_COLUMNS, getMakeLogoLookup, toCarfaxView } from "@/lib/admin-lead-view";
+import { CARFAX_COLUMNS, toCarfaxView } from "@/lib/admin-lead-view";
+import { getMakeLogoLookup } from "@/lib/make-logo-lookup";
 import { parseLeadFilters, type LeadSearchParams } from "@/lib/admin-lead-filters";
 import { listCarfaxRequests } from "@/queries/admin";
 

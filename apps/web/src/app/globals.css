@@ -21,6 +21,8 @@
 @import "../styles/account.css";
 @import "../styles/inquiry.css";
 @import "../styles/admin.css";
+@import "../styles/admin-b.css";
+@import "../styles/admin-b-root.css";
 
 /*
   Legacy: the light theme's tokens, ported from the old site's theme.css. The

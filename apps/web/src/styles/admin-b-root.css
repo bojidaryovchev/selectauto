@@ -1,0 +1,19 @@
+/*
+  The few ab- rules the boards scope under their root `.ab` so they beat the kit's own rules (`.ab .ab-no` over
+  `.sa-tbl a`, `.ab .ab-al` over `.sa-alert`). The app has no such root, so each is written here, by hand, with the
+  same effect: a second class, or `.ad-main` for page content. Text stays 16 px in fields (the boards set 15). admin-b.css is generated (port-board-css.mjs); this
+  file is not. Not here: `.ab .ab-f` (the board's 15 px dense field) — the admin's fields stay the 44 px, 16 px
+  `ad-in` (no zoom on iOS); `.ab .ab-back` — the page header is the ad- one.
+*/
+@layer components {
+  .sa-alert.ab-al{padding:11px 14px;font-size:14px;line-height:1.5;border-radius:var(--radius-md);gap:10px;font-weight:600}
+  .sa-alert.ab-al>svg{width:18px;height:18px;margin-top:2px}
+  .sa-btn.ab-btn-pos svg{color:var(--color-pos)}
+  .ad-main .ab-no{color:var(--color-ortx);font-weight:700;text-decoration:none}
+  .ad-main .ab-dlk,.ad-main .ab-used{color:var(--color-ortx)}
+  .ad-main .ab-url{color:var(--color-ortx);font-weight:600}
+  .ad-main .ab-ida2{color:var(--color-ortx)}
+  textarea.sa-in.ab-ta{min-height:120px;line-height:1.55}
+  .ab-dlg-note b{color:var(--color-tx)}
+  a.ab-cc:hover{border-color:var(--color-or-ring)}
+}

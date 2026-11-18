@@ -1,10 +1,9 @@
 import type { LeadStatus } from "@/constants/admin";
-import { INQUIRY_BRAND_LOGOS } from "@/data/inquiry-brands";
 import type { AdminDetailField, AdminLeadColumn, AdminLeadView, LeadMake, LeadMarket } from "@/types/admin.type";
 import type { CarfaxRequestRow } from "@/queries/admin/list-carfax-requests.query";
 import type { InquiryRow } from "@/queries/admin/list-inquiries.query";
 import type { CalculatorOfferRow } from "@/queries/admin/list-calculator-offers.query";
-import { getMakeIndex } from "@/queries/cars/get-make-index.query";
+import type { MakeLogoLookup } from "@/lib/make-logo-lookup";
 import { formatSofiaDateTime } from "@/lib/sofia-time";
 
 /**
@@ -12,24 +11,6 @@ import { formatSofiaDateTime } from "@/lib/sofia-time";
  * the generic inbox renders. Formatting (dates, EUR) happens here on the server
  * so the client component stays presentation-only and type-agnostic.
  */
-
-/** A make's logo by its name, as typed or picked on the site; null when none is known. */
-export type MakeLogoLookup = (name: string) => string | null;
-
-/**
- * The logo for a lead's make (boards `ad-carfax`, `ad-inquiries`: the plate beside the car; decision 8). Leads store
- * the make as text: the car page's make, a name typed into the Carfax form, or the inquiry quiz's label. So it is
- * matched by name, ignoring case, against the makes the car cards use (`manufacturers`, cached for days), then against
- * the quiz's own labels and logos („Mercedes"). A make neither knows shows its two letters.
- */
-export async function getMakeLogoLookup(): Promise<MakeLogoLookup> {
-  const index = await getMakeIndex();
-  const byName = new Map<string, string>();
-  for (const { name, logo } of Object.values(index)) {
-    if (logo) byName.set(name.trim().toLowerCase(), logo);
-  }
-  return (name) => byName.get(name.trim().toLowerCase()) ?? INQUIRY_BRAND_LOGOS[name.trim()] ?? null;
-}
 
 /** The plate for a make, or none without one. */
 function makeOf(name: string | null, logoFor: MakeLogoLookup): LeadMake | undefined {

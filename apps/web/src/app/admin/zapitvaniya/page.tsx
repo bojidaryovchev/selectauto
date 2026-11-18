@@ -3,7 +3,8 @@ import { LeadInbox } from "@/components/admin";
 import { AdminPageHeader } from "@/components/admin/ui";
 import { requireAdminPage } from "@/lib/admin";
 import { LEAD_TYPE_META } from "@/constants/admin";
-import { INQUIRY_COLUMNS, getMakeLogoLookup, toInquiryView } from "@/lib/admin-lead-view";
+import { INQUIRY_COLUMNS, toInquiryView } from "@/lib/admin-lead-view";
+import { getMakeLogoLookup } from "@/lib/make-logo-lookup";
 import { parseLeadFilters, type LeadSearchParams } from "@/lib/admin-lead-filters";
 import { listInquiries } from "@/queries/admin";
 

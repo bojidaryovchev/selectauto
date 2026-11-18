@@ -275,8 +275,12 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
   legal pages, the 404, 410 and error pages, the sign-in and account pages (`/sign-in` to `/greshka-pri-vhod`) and
   the favourites (`/lyubimi`), the inquiry dialog, the admin's shell (sidebar, phone top bar and drawer, account
   card), dashboard, loading, error and 404 states and shared parts (`components/admin/ui`), the three lead inboxes
-  (Carfax, consultations, offers) with their drawer, and the mail (Поща and the thread page). Each has its parity file
-  in [parity/](parity/README.md).
+  (Carfax, consultations, offers) with their drawer, the mail (Поща and the thread page), and the contracts register.
+  Each has its parity file in [parity/](parity/README.md).
+- **The ab- boards' styles** (deals, listings, settings) are `styles/admin-b.css`, ported with their named container
+  queries (`ablist`, `abform` …), which are the code's own approach. The few rules the boards scope under their root
+  `.ab` are written by hand in `styles/admin-b-root.css`. Fields stay the admin's 44 px, 16 px `ad-in`, not the boards'
+  15 px `ab-f`.
 - **Never open a real mail thread to check it** (`/admin/poshta/[id]`): its render fetches missing message bodies from
   Resend and saves them. Check the thread components on a temporary route with made-up threads, and delete it.
 - **Make plates in the admin** come from `getMakeLogoLookup` (`lib/admin-lead-view.ts`): leads store the make as text,
