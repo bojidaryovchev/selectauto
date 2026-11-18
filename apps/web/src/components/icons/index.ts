@@ -64,6 +64,7 @@ export { PlayIcon } from "./play-icon";
 export { ReceiptIcon } from "./receipt-icon";
 export { RefreshCwIcon } from "./refresh-cw-icon";
 export { Rotate3dIcon } from "./rotate3d-icon";
+export { RotateCcwIcon } from "./rotate-ccw-icon";
 export { ScaleIcon } from "./scale-icon";
 export { SearchIcon } from "./search-icon";
 export { SendIcon } from "./send-icon";

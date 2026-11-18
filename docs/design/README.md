@@ -271,9 +271,13 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
   page (`/avtomobil/[id]`) with its gallery, full-screen photo viewer, media dialogs and action bar, the make and
   model hubs (`/avtomobili/marka/…`), the import calculator (`/kalkulator`, its e-mail form and the car page's
   calculator dialog), the leasing and budget calculators, the import hubs (`/vnos-na-koli-ot-…`), the FAQ, contacts,
-  about and reviews pages, the Carfax and VIN check pages with the Carfax dialog, /proces, the blog and the three
-  legal pages. Each has its parity file in [parity/](parity/README.md). The inquiry dialog opens as it is until its
-  own step.
+  about and reviews pages, the Carfax and VIN check pages with the Carfax dialog, /proces, the blog, the three
+  legal pages, and the 404, 410 and error pages. Each has its parity file in [parity/](parity/README.md). The inquiry
+  dialog opens as it is until its own step.
+- **The fonts are defined once,** in `src/styles/fonts.ts`: the root layout and `app/global-error.tsx`, which replaces
+  the layout, both load them from there.
+- **The 410 page is a document the proxy sends,** `src/lib/gone-page.ts`, not a route: it can't use the components,
+  the stylesheet or the fonts, so its look is written out there. Keep it in step with the tokens and the kit.
 - **Montserrat is gone** (with /proces, 18 November): the particle title is drawn in Unbounded. The e-mails still name it
   first in their font stack (`emails/theme.ts`) until the e-mails step.
 - **Fonts:** four font files are preloaded (Manrope and Unbounded, Latin and Cyrillic). Measure LCP on a phone.

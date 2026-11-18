@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import { authConfig } from "@/auth.config";
 import { grantsBackOfficeAccess } from "@/constants/admin";
+import { GONE_PAGE_HTML } from "@/lib/gone-page";
 import { isCarGone, parseAvtomobilId } from "@/lib/sold-lot-gone";
 
 /**
@@ -38,9 +39,16 @@ import { isCarGone, parseAvtomobilId } from "@/lib/sold-lot-gone";
  */
 const { auth } = NextAuth(authConfig);
 
-/** Shared 410 response (body-less, explicit noindex belt-and-braces). */
+/**
+ * Shared 410 response, explicit noindex belt-and-braces. Its body is the „Обявата вече не е налична" page
+ * (lib/gone-page.ts, board `info-410`), a finished document: before it, a person following an old link saw a blank
+ * page. The same for every car, so it reveals nothing about a de-indexed one.
+ */
 function gone(): NextResponse {
-  return new NextResponse(null, { status: 410, headers: { "x-robots-tag": "noindex" } });
+  return new NextResponse(GONE_PAGE_HTML, {
+    status: 410,
+    headers: { "content-type": "text/html; charset=utf-8", "x-robots-tag": "noindex" },
+  });
 }
 
 export const proxy = auth(async (request) => {

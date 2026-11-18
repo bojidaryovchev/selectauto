@@ -5,34 +5,10 @@ import { buildOrganizationJsonLd, buildWebsiteJsonLd } from "@/lib/site-jsonld";
 import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
 import { SessionProvider } from "next-auth/react";
-import { JetBrains_Mono, Manrope, Unbounded } from "next/font/google";
 import { Suspense } from "react";
+// The „Нощно шосе" type, defined once in styles/fonts.ts (app/global-error.tsx loads it too).
+import { FONT_VARIABLES } from "@/styles/fonts";
 import "./globals.css";
-
-// The „Нощно шосе" type (docs/design/README.md). All three are variable fonts,
-// so every weight comes from one file per subset. Their CSS variables feed
-// font-sans, font-display and font-mono in src/styles/tokens.css.
-// Manrope: all interface text.
-const manrope = Manrope({
-  variable: "--font-manrope",
-  subsets: ["latin", "cyrillic"],
-  display: "swap",
-});
-// Unbounded: display, page and section titles, and prices.
-const unbounded = Unbounded({
-  variable: "--font-unbounded",
-  subsets: ["latin", "cyrillic"],
-  display: "swap",
-});
-// JetBrains Mono: VIN, lot № and countdown digits only. Its Cyrillic letters
-// have no Bulgarian forms, so only the Latin subset is loaded, and it is not
-// preloaded because it only sets short codes.
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
-  display: "swap",
-  preload: false,
-});
 
 export const metadata: Metadata = {
   // Absolute base for all relative canonical/OG URLs across the app. Lets child
@@ -77,7 +53,7 @@ export default function RootLayout({
   return (
     <html
       lang="bg"
-      className={`${manrope.variable} ${unbounded.variable} ${jetbrainsMono.variable} h-full`}
+      className={`${FONT_VARIABLES} h-full`}
     >
       {/* Bottom padding on mobile reserves space for the fixed <MobileBottomNav>
           (≈62px tab bar + the iOS home-indicator safe area) so page content and
