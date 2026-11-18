@@ -147,14 +147,34 @@
   .cd-bar{position:fixed;left:0;right:0;bottom:var(--bottom-nav);z-index:45}
   .cd-bar b i{font-style:normal;font-family:var(--font-mono);font-weight:600;font-size:17px}
   .cd-bar b.is-soon{color:var(--color-ortx)}
+  /* From 360 to 389 px, under the boards' 390, the price and the countdown are a size smaller, so „13д 23ч 59м",
+     „23ч 59м 59с" and „123 456 €" fit beside the buttons (the countdown spilled over them from 360 to 377 px;
+     production review, 18.11.2026). Below 360 the value has a row of its own. */
+  @media (min-width:360px) and (max-width:389.98px){
+    .cd-bar b{font-size:15px}
+    .cd-bar b i{font-size:14px}
+  }
+  /* A status instead of a price or the countdown (an active car without either; the app's case, not on the boards) is
+     set like the page's status strip, in the body face: in the display face „Неизвестен" spilled over the buttons from
+     360 to 414 px and „Очаква одобрение" at 320 (check:layout, 18.11.2026). It keeps the bar's height, so the countdown
+     that replaces it after hydration doesn't move the bar: on one row it may take two lines (14 + 2 × 15 px is the 44 px
+     button), and on a small phone's two rows it has the price's line. */
+  .cd-bar b:has(>.sa-dot){font:700 14px var(--font-sans);line-height:calc(18px * 1.15);white-space:normal}
+  @media (min-width:360px){
+    .cd-bar>div:has(.sa-dot) small{line-height:14px}
+    .cd-bar b:has(>.sa-dot){line-height:15px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+  }
+  /* With its dot, „Неизвестен" (one word: it can't wrap) is 102 px at 14 px, exactly what a 360 px screen leaves. */
+  @media (min-width:360px) and (max-width:389.98px){.cd-bar b:has(>.sa-dot){font-size:13px}}
   .cd-barsp{height:65px;flex:none}
   .cd-call{width:44px;padding:0}
-  /* A small phone: the price takes the first row, the buttons share the second (app-only; the board is 390 px). */
+  /* A small phone: the price takes the first row, the buttons share the second (app-only; the board is 390 px). The bar
+     is then 95 px (1 + 10 + 22 + 8 + 44 + 10), which the spacer and `--page-bar` (globals.css) follow. */
   @media (max-width:359.98px){
     .cd-bar{flex-wrap:wrap}
-    .cd-bar>div{flex:1 0 100%;flex-direction:row;align-items:baseline;justify-content:space-between;gap:8px}
+    .cd-bar>div{flex:1 0 100%;flex-direction:row;align-items:baseline;justify-content:space-between;gap:8px;min-height:22px}
     .cd-bar>.sa-btn:not(.cd-call){flex:1}
-    .cd-barsp{height:93px}
+    .cd-barsp{height:95px}
   }
   .cd-vinkr{display:flex;gap:8px;align-items:flex-start;font-size:14px;line-height:1.5;color:var(--color-tx2);max-width:68ch}
   .cd-vinkr svg{width:16px;height:16px;flex:none;margin-top:3px;color:var(--color-info)}

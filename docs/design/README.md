@@ -163,9 +163,11 @@ Sizes with an arrow grow with the window, as the boards' do (the kit's `cqi` bec
 - **Spacing** uses 4 px steps, which are Tailwind's own scale: the design's 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80 and
   112 are `1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 28`. Space inside a group is smaller than space between groups.
 - **Small phones:** the boards are drawn at 390 px; the code also works down to 320. Under 420 px buttons and segments
-  give up side padding first (`kit.css`, app-only rules); under 360 px a full-width or large button drops its icon, the
-  rails show more of each card, the car page's bar takes two rows and a rail's arrows go under its title. A label still
-  too long wraps only where the button carries `sa-btn--long`. Check with `check:layout` at 320 and 390.
+  give up side padding first (`kit.css`, app-only rules); from 360 to 389 px the car page's bar sets its price and
+  countdown a size smaller; under 360 px a full-width or large button drops its icon, the rails show more of each card,
+  the car page's bar takes two rows and a rail's arrows go under its title. A label still too long wraps only where the
+  button carries `sa-btn--long`. Check with `check:layout` at 320, 360, 375 and 390: the bar's countdown spilled at 360
+  and 375 while 320 and 390 passed.
 - **Navigation:** on desktop, the header hides on scroll down and returns on scroll up. On phones and tablets, a slim top
   bar with the logo and the bottom tabs (Начало · Автомобили · Carfax · Меню) do the same.
 

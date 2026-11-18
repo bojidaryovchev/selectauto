@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * The phone layout guard (REDESIGN.md, step 6). Opens every page of a running build at 320 and 390 px and fails on:
+ * The phone layout guard (REDESIGN.md, step 6). Opens every page of a running build at 320, 360, 375 and 390 px (the
+ * smallest phones, the common Android and small-iPhone widths, and the boards' width) and fails on:
  * - sideways scroll;
  * - a button, chip, tag, tab, segment or page number whose label wraps onto a second line or spills out of it (the
  *   owner's rule: labels stay on one line), or that the screen's edge cuts off, in the page or in a fixed bar;
@@ -24,7 +25,8 @@ const arg = (name, fallback) => {
   return i === -1 ? fallback : args[i + 1];
 };
 const BASE = arg("base", "http://localhost:3000").replace(/\/$/, "");
-const WIDTHS = arg("widths", "320,390").split(",").map(Number);
+// 360 and 375 too: the car bar's countdown spilled there while 320 and 390 passed (18.11.2026).
+const WIDTHS = arg("widths", "320,360,375,390").split(",").map(Number);
 const ONLY = arg("only", "")?.split(",").filter(Boolean) ?? [];
 const ADMIN = args.includes("--admin");
 const SESSION = process.env.SA_SESSION;

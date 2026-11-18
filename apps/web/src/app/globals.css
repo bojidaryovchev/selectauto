@@ -152,6 +152,13 @@ body {
     --page-bar: 61px;
   }
 }
+@media (max-width: 359.98px) {
+  /* Below 360px the car page's bar takes two rows, 95px (car-page.css): at 65px the back-to-top button covered its top
+     14px (production review, 18.11.2026). */
+  :root:has(.cd-bar.is-on) {
+    --page-bar: 95px;
+  }
+}
 @media (min-width: 1024px) {
   :root {
     --toast-left: auto;
