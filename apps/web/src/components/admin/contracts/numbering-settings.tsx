@@ -67,50 +67,44 @@ export function NumberingSettings({ numbering }: { numbering: NumberingRow }) {
     </Button>
   );
 
-  if (!open) {
-    return (
-      <div className="ab-numb">
-        {summary}
-        {toggle}
-      </div>
-    );
-  }
-
+  // One structure for both states, the form appended when open: with two different trees React rebuilt the toggle on
+  // every press, the keyboard focus fell to the page and the aria-expanded change was never announced.
   return (
-    <div className="ab-numb ab-numb--open">
+    <div className={open ? "ab-numb ab-numb--open" : "ab-numb"}>
       <div className="ab-numb__top">
         {summary}
         {toggle}
       </div>
-      <form onSubmit={onSave} noValidate className="ab-numb__f">
-        <label htmlFor={inputId} className="sa-lbl">
-          Номер на следващия {label} за {numbering.year} г.
-        </label>
-        <div className="ab-numb__in">
-          <span className="ab-pre">{numbering.year}-</span>
-          <input
-            id={inputId}
-            type="text"
-            inputMode="numeric"
-            value={value}
-            onChange={(e) => {
-              setValue(e.target.value);
-              setFieldError(null);
-            }}
-            aria-invalid={fieldError ? true : undefined}
-            aria-describedby={fieldError ? `${inputId}-err` : undefined}
-            className={fieldError ? `${ADMIN_CONTROL} is-err` : ADMIN_CONTROL}
-          />
-          <span className="ab-arrow">→ {preview}</span>
-          <Button type="submit" variant="sec" size="md" disabled={busy} busy={busy}>
-            {busy ? "Запазване…" : "Запазете"}
-          </Button>
-        </div>
-        {fieldError ? (
-          <span id={`${inputId}-err`} className="sa-err">
-            <AlertIcon />
-            {fieldError}
-          </span>
+      {open ? (
+        <form onSubmit={onSave} noValidate className="ab-numb__f">
+          <label htmlFor={inputId} className="sa-lbl">
+            Номер на следващия {label} за {numbering.year} г.
+          </label>
+          <div className="ab-numb__in">
+            <span className="ab-pre">{numbering.year}-</span>
+            <input
+              id={inputId}
+              type="text"
+              inputMode="numeric"
+              value={value}
+              onChange={(e) => {
+                setValue(e.target.value);
+                setFieldError(null);
+              }}
+              aria-invalid={fieldError ? true : undefined}
+              aria-describedby={fieldError ? `${inputId}-err` : undefined}
+              className={fieldError ? `${ADMIN_CONTROL} is-err` : ADMIN_CONTROL}
+            />
+            <span className="ab-arrow">→ {preview}</span>
+            <Button type="submit" variant="sec" size="md" disabled={busy} busy={busy}>
+              {busy ? "Запазване…" : "Запазете"}
+            </Button>
+          </div>
+          {fieldError ? (
+            <span id={`${inputId}-err`} className="sa-err">
+              <AlertIcon />
+              {fieldError}
+            </span>
         ) : null}
         <p className="ab-hint">
           Използва се, когато номерацията трябва да продължи от определено място — например след договор, издаден на
@@ -122,6 +116,7 @@ export function NumberingSettings({ numbering }: { numbering: NumberingRow }) {
           </AdminBanner>
         ) : null}
       </form>
+      ) : null}
     </div>
   );
 }

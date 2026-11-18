@@ -6,6 +6,7 @@ import { AlertIcon, ChevronDownIcon } from "@/components/icons";
 import { CLIENT_KIND_META, type ClientKind } from "@/constants/contracts";
 import { createDeposit } from "@/mutations/deposits";
 import type { ClientRow } from "@/queries/clients";
+import { isIncompleteDate } from "@/lib/incomplete-date";
 import { createDepositSchema } from "@/schemas/deposit.schema";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
@@ -102,8 +103,10 @@ export function DepositForm({ clients, onDone }: { clients: ClientRow[]; onDone?
           ? {
               kind: clientKind,
               name: clientName,
-              egn: clientEgn,
-              eik: clientEik,
+              // Only the id the chosen kind shows: a value typed before switching kinds stayed in state, failed the
+              // schema under a field that isn't on screen, and the form did nothing, without a word.
+              egn: clientKind === "individual" ? clientEgn : "",
+              eik: clientKind === "company" ? clientEik : "",
               address: clientAddress,
               phone: clientPhone,
               email: clientEmail,
@@ -115,6 +118,15 @@ export function DepositForm({ clients, onDone }: { clients: ClientRow[]; onDone?
       budgetCurrency,
       depositAmount,
     };
+
+    // A half-typed date reads as empty, which the server would take as today (and number the deposit by this year).
+    const dateInput = document.getElementById(fid("date"));
+    if (isIncompleteDate(dateInput)) {
+      setErrors({ date: "Невалидна дата." });
+      setStatus({ kind: "idle" });
+      dateInput.focus();
+      return;
+    }
 
     // The server's own schema, first: each message under its field.
     const parsed = createDepositSchema.safeParse(input);

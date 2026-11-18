@@ -14,6 +14,7 @@ import {
   type ContractMarket,
   type ContractStatus,
 } from "@/constants/contracts";
+import { isIncompleteDate } from "@/lib/incomplete-date";
 import { formatCents, formatDbAmount, parseAmountToCents } from "@/lib/money";
 import { createContract, updateContract } from "@/mutations/contracts";
 import type { ClientRow } from "@/queries/clients";
@@ -189,6 +190,14 @@ export function ContractForm({
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // A half-typed date reads as empty, which the server would take as today (or, on an edit, keep the old date).
+    const dateInput = document.getElementById(fid("date"));
+    if (isIncompleteDate(dateInput)) {
+      setErrors({ contractDate: "Невалидна дата." });
+      setStatusMsg({ kind: "idle" });
+      dateInput.focus();
+      return;
+    }
     const updateInput = {
       contractDate,
       carYear,
@@ -216,11 +225,13 @@ export function ContractForm({
           ? {
               kind: clientKind,
               name: clientName,
-              egn: clientEgn,
-              eik: clientEik,
-              vatNumber: clientVat,
+              // Only the ids the chosen kind shows: a value typed before switching kinds stays in state, and it was
+              // sent and saved (a person with an ЕИК) or refused under a field that isn't on screen.
+              egn: clientKind === "individual" ? clientEgn : "",
+              eik: clientKind === "company" ? clientEik : "",
+              vatNumber: clientKind === "company" ? clientVat : "",
               address: clientAddress,
-              representative: clientRepresentative,
+              representative: clientKind === "company" ? clientRepresentative : "",
               phone: clientPhone,
               email: clientEmail,
             }

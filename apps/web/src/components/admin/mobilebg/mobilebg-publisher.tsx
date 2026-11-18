@@ -125,7 +125,9 @@ export function MobilebgPublisher() {
   // A field's change recomputes the preview in a transition of its own, so the buttons stay live meanwhile. Leaving a
   // text field for a button used to start the recompute on the press and disable the button before the click, which
   // was then lost. „Публикувайте" recomputes and re-checks everything before its dialog, so nothing goes out stale.
-  const [, startRecompute] = useTransition();
+  // The search waits for it, though: actions run one at a time, so a recompute still in flight lands after a new
+  // search has cleared the preview and puts the previous car back (found in the production review, 18.11.2026).
+  const [recomputing, startRecompute] = useTransition();
 
   // Admin-supplied fields — see the note above on why each one exists.
   const [month, setMonth] = useState("");
@@ -234,7 +236,7 @@ export function MobilebgPublisher() {
 
   function search() {
     const q = query.trim();
-    if (!q) return;
+    if (!q || recomputing) return;
     setError(null);
     setNotice(null);
     setPreview(null);
@@ -463,7 +465,7 @@ export function MobilebgPublisher() {
             type="submit"
             variant={preview ? "sec" : "pri"}
             size="md"
-            disabled={pending || !query.trim()}
+            disabled={pending || recomputing || !query.trim()}
             busy={pending}
           >
             {pending ? "Търсете…" : "Търсете"}

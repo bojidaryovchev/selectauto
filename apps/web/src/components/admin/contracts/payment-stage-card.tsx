@@ -24,6 +24,7 @@ import {
   type ContractMarket,
   type PaymentStage,
 } from "@/constants/contracts";
+import { isIncompleteDate } from "@/lib/incomplete-date";
 import { dbToCents, formatCents, formatDbAmount } from "@/lib/money";
 import { contractLineCents, noticeLineCurrency } from "@/lib/notice";
 import { formatSofiaDate, formatSofiaDateTime } from "@/lib/sofia-time";
@@ -191,6 +192,13 @@ export function PaymentStageCard({
   /** §6.3 — the server builds the snapshot the PDF will print, nothing is written. */
   async function onPreview() {
     if (!chosen) return;
+    // A half-typed due date reads as empty, which the server would replace with the default ten days.
+    const due = document.getElementById(fieldId("due"));
+    if (isIncompleteDate(due)) {
+      setError("Невалидна дата.");
+      due.focus();
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -233,6 +241,13 @@ export function PaymentStageCard({
 
   async function onMarkPaid(e: React.FormEvent) {
     e.preventDefault();
+    // A half-typed payment date reads as empty, which the server would record as today.
+    const paidAtInput = document.getElementById(fieldId("paid-at"));
+    if (isIncompleteDate(paidAtInput)) {
+      setError("Невалидна дата.");
+      paidAtInput.focus();
+      return;
+    }
     // A file that can't be sent is caught before the payment is recorded, so it
     // can be swapped first.
     const file = fileRef.current?.files?.[0];

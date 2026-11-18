@@ -243,6 +243,8 @@ export function auditDetails(
 
   for (const [key, value] of Object.entries(rest)) {
     if (HIDDEN_KEYS.has(key) || key === "field") continue;
+    // An edit carries its contract's market only to number the points: listing it read as a change.
+    if (key === "market" && isRecord(after) && isRecord(before)) continue;
     add(key, format(entity, key, value));
   }
   return out;
