@@ -88,7 +88,7 @@ export function CarActionBar({
                 <b>{price.value}</b>
               </>
             ) : (
-              <AuctionCountdown saleDate={saleDate} status={status} labelAs="small" />
+              <AuctionCountdown saleDate={saleDate} status={status} labelAs="small" compact />
             )}
           </div>
           <InquiryButton prefill={prefill} variant="sec" size="md">

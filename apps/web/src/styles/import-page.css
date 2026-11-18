@@ -102,7 +102,9 @@
   @media (max-width:639.98px){
     .im-est:not(.im-est--bare)>.im-out{margin:0 -20px -20px;border-width:1px 0 0;border-radius:0 0 calc(var(--radius-xl) - 1px) calc(var(--radius-xl) - 1px)}
     .im-total{flex-wrap:wrap;row-gap:6px}.im-total b{margin-left:auto}
-    .im-seg--stack{flex-direction:column}.im-seg--stack>button{flex:none}
+    /* Two classes: `.im-seg>button{flex:1 1 0}` comes later in this file, and in a column it shrank each button to its
+       text, 14 px tall. */
+    .im-seg.im-seg--stack{flex-direction:column}.im-seg.im-seg--stack>button{flex:none}
   }
   @media (max-width:379.98px){.im-out .sa-btn--block>svg{display:none}}
   @media (max-width:374.98px){.im-seg>button>:is(svg,img){display:none}}

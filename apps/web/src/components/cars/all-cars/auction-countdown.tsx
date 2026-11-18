@@ -24,11 +24,17 @@ export function AuctionCountdown({
   saleDate,
   status,
   labelAs: Label = "span",
+  compact = false,
 }: {
   saleDate?: string;
   status?: string;
   /** The label's element: `small` in the phone action bar (the kit's `.sa-bar`), `span` in the strips. */
   labelAs?: "span" | "small";
+  /**
+   * No seconds while a day or more is left (the phone action bar): „5д 23ч 9м 20с" didn't fit beside its two
+   * buttons at 390 px, and seconds mean nothing days ahead. Under a day the seconds stay.
+   */
+  compact?: boolean;
 }) {
   const target = saleDate ? new Date(saleDate).getTime() : NaN;
   const [now, setNow] = useState<number | null>(null);
@@ -68,7 +74,13 @@ export function AuctionCountdown({
             <i>{days}</i>д{" "}
           </>
         ) : null}
-        <i>{hours}</i>ч <i>{minutes}</i>м <i>{seconds}</i>с
+        <i>{hours}</i>ч <i>{minutes}</i>м
+        {compact && days > 0 ? null : (
+          <>
+            {" "}
+            <i>{seconds}</i>с
+          </>
+        )}
       </b>
     </>
   );

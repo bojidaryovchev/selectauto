@@ -53,10 +53,11 @@ export function MobileBottomNav({ drawerOpen, hidden, onToggleDrawer }: Props) {
           {label}
         </Link>
       ))}
+      {/* Named by its visible word „Меню" (WCAG 2.5.3, label in name: a voice user says what they see); whether the
+          drawer is open is announced through aria-expanded. */}
       <button
         type="button"
         onClick={onToggleDrawer}
-        aria-label={drawerOpen ? "Затворете менюто" : "Отворете менюто"}
         aria-expanded={drawerOpen}
         className={drawerOpen ? "is-on" : undefined}
       >

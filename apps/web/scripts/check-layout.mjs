@@ -4,7 +4,7 @@
  * - sideways scroll;
  * - a button, chip, tag, tab, segment or page number whose label wraps onto a second line or spills out of it (the
  *   owner's rule: labels stay on one line), or that the screen's edge cuts off, in the page or in a fixed bar;
- * - a visible text field under 16 px, which makes iOS Safari zoom in when it's focused.
+ * - a visible text field under 16 px, which makes iOS Safari zoom in when it's focused (phone widths only).
  *
  * It only reads. The local app talks to the live database and the live e-mail service, so every request that isn't a
  * GET is aborted, and a mail thread (/admin/poshta/<id>, which saves message bodies when viewed) is never opened.
@@ -268,7 +268,10 @@ for (const width of WIDTHS) {
       sideways > 0 ? `scrolls sideways by ${sideways} px` : null,
       ...wrapped.map((b) => `label doesn't fit: ${b}`),
       ...cut.map((b) => `cut off by the screen's edge: ${b}`),
-      ...fields.map((f) => `field under 16 px (iOS zooms): ${f}`),
+      // iOS Safari zooms into a focused field under 16 px. Only the phone contexts can say anything about that: a
+      // desktop browser never zooms, and a field that is 16 px on iOS only (`supports-[-webkit-touch-callout:none]`,
+      // the tariff paste boxes) can't be seen from desktop Chrome.
+      ...(width < 768 ? fields.map((f) => `field under 16 px (iOS zooms): ${f}`) : []),
     ].filter(Boolean);
     const status = response ? response.status() : "—";
     if (problems.length) {

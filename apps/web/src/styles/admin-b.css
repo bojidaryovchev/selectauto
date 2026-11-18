@@ -32,7 +32,9 @@
   .ab-al code{font:500 13px/1 var(--font-mono);color:var(--color-tx)}
   .ab-al a{color:var(--color-tx);font-weight:800}
   .ab-st{gap:6px}
-  .ab-st em{font-style:normal;font-weight:600;opacity:.82}
+  /* The tag's prefix (AdminStatusTag: the stage it names, „Кола:") is set apart by weight only: at 82 % opacity the
+     red one was 4.15:1 on its tag (axe, 18.11.2026), under the 4.5:1 text needs. */
+  .ab-st em{font-style:normal;font-weight:600}
   .ab-chips{display:flex;flex-wrap:wrap;gap:6px;max-width:30rem}
   .ab-disc{background:var(--color-s1);border:1px solid var(--color-hair);border-radius:var(--radius-lg);min-width:0}
   .ab-disc>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px;padding:0 20px;list-style:none;cursor:pointer;font:800 17px/1.3 var(--font-sans);color:var(--color-tx)}
