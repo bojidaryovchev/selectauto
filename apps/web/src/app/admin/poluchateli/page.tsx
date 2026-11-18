@@ -13,19 +13,20 @@ export const metadata: Metadata = { title: "Получатели" };
  * (migration 0038); international partners are added here. Notice generation
  * blocks while a chosen recipient's bank data is incomplete (the cards flag it
  * beforehand). `requireAdminPage()` is the gate: the /admin layout only
- * requires back-office access.
+ * requires back-office access. Boards `ad-recipients` and its states; parity
+ * check docs/design/parity/admin-recipients.md.
  */
 export default async function AdminRecipientsPage() {
   await requireAdminPage();
   const recipients = await listRecipients();
 
   return (
-    <div className="flex flex-col gap-6">
+    <>
       <AdminPageHeader
         title="Получатели"
         description="Фирмите и банковите данни, към които се генерират известия за плащане. SelectAuto е фиксиран получател; митническите брокери и международните партньори се управляват тук. Получател не се изтрива — деактивирайте го, за да спре да се предлага."
       />
       <RecipientsManager recipients={recipients} />
-    </div>
+    </>
   );
 }

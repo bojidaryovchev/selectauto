@@ -1,6 +1,8 @@
 "use client";
 
-import { AdminBanner, AdminButton, AdminEmptyState } from "@/components/admin/ui";
+import { AdminBanner, AdminEmptyState, AdminStatusTag } from "@/components/admin/ui";
+import { Button } from "@/components/common";
+import { LandmarkIcon, PlusIcon } from "@/components/icons";
 import { RECIPIENT_KIND_META, type RecipientKind } from "@/constants/contracts";
 import { missingBankFields } from "@/lib/recipient-bank";
 import type { RecipientRow } from "@/queries/recipients";
@@ -9,12 +11,11 @@ import { useState } from "react";
 import { RecipientForm } from "./recipient-form";
 
 /**
- * The /admin/poluchateli manager: one card per recipient; „Редактирай" turns
- * that card into its form (it used to open below the whole table — off screen
- * on a phone, so the button seemed to do nothing), and a new recipient's form
- * opens at the top. Recipients are never deleted — documents reference them — a
- * retired partner is just deactivated. Server data comes from the page; after a
- * save the router refreshes so the list reflects the change.
+ * The /admin/poluchateli manager (boards `ad-recipients`, `-edit`, `-states`; parity check
+ * docs/design/parity/admin-recipients.md): one card per recipient; „Редактирайте" turns that card into its form (it
+ * used to open below the whole table — off screen on a phone, so the button seemed to do nothing), and a new
+ * recipient's form opens at the top. Recipients are never deleted — documents reference them — a retired partner is
+ * just deactivated. Server data comes from the page; after a save the router refreshes so the list reflects the change.
  */
 export function RecipientsManager({ recipients }: { recipients: RecipientRow[] }) {
   const router = useRouter();
@@ -27,21 +28,28 @@ export function RecipientsManager({ recipients }: { recipients: RecipientRow[] }
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <>
       {editing === "new" ? (
-        <RecipientForm key="new" recipient={null} onDone={onDone} onCancel={() => setEditing(null)} />
+        <div className="ad-rlist">
+          <div className="is-wide">
+            <RecipientForm key="new" recipient={null} onDone={onDone} onCancel={() => setEditing(null)} />
+          </div>
+        </div>
       ) : (
-        <AdminButton variant="primary" size="lg" className="self-start" onClick={() => setEditing("new")}>
-          + Добави получател
-        </AdminButton>
+        <div>
+          <Button variant="pri" size="md" className="ad-wph" onClick={() => setEditing("new")}>
+            <PlusIcon />
+            Добавете получател
+          </Button>
+        </div>
       )}
 
       {recipients.length === 0 ? (
-        <AdminEmptyState title="Още няма получатели." />
+        <AdminEmptyState icon={<LandmarkIcon />} title="Още няма получатели." />
       ) : (
-        <ul className="m-0 flex list-none flex-col gap-3 p-0">
+        <ul className="ad-rlist">
           {recipients.map((r) => (
-            <li key={r.id}>
+            <li key={r.id} className={editing === r.id ? "is-wide" : undefined}>
               {editing === r.id ? (
                 <RecipientForm recipient={r} onDone={onDone} onCancel={() => setEditing(null)} />
               ) : (
@@ -51,35 +59,31 @@ export function RecipientsManager({ recipients }: { recipients: RecipientRow[] }
           ))}
         </ul>
       )}
-    </div>
+    </>
   );
 }
 
 function RecipientCard({ recipient: r, onEdit }: { recipient: RecipientRow; onEdit: () => void }) {
   const missing = missingBankFields(r);
   return (
-    <article className="@container flex flex-col gap-3 rounded-xl border border-line bg-white p-4 sm:p-5">
-      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-        <div className="min-w-0">
-          <h2 className="text-base font-black wrap-anywhere text-ink">{r.name}</h2>
-          <p className="text-sm text-muted">
+    <article className="sa-pnl ad-rc">
+      <div className="ad-rc__h">
+        <div>
+          <h2>{r.name}</h2>
+          <p>
             {RECIPIENT_KIND_META[r.kind as RecipientKind]?.label ?? r.kind}
             {r.country ? ` · ${r.country}` : ""}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {r.active ? (
-            <span className="rounded-full bg-[#e8f5ec] px-2.5 py-1 text-xs font-bold text-[#1d6b35]">Активен</span>
-          ) : (
-            <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-semibold text-muted">Неактивен</span>
-          )}
-          <AdminButton variant="secondary" onClick={onEdit}>
-            Редактирай
-          </AdminButton>
+        <div className="ad-rc__a">
+          {r.active ? <AdminStatusTag tone="pos">Активен</AdminStatusTag> : <AdminStatusTag tone={null}>Неактивен</AdminStatusTag>}
+          <Button variant="sec" size="md" onClick={onEdit}>
+            Редактирайте
+          </Button>
         </div>
       </div>
 
-      <dl className="grid gap-x-6 gap-y-2 text-sm @xl:grid-cols-2 @4xl:grid-cols-4">
+      <dl>
         <Detail label="Банка" value={r.bankName} />
         <Detail label="IBAN / Сметка" value={r.iban} mono />
         <Detail label="SWIFT / BIC" value={r.swiftBic} mono />
@@ -98,9 +102,9 @@ function RecipientCard({ recipient: r, onEdit }: { recipient: RecipientRow; onEd
 
 function Detail({ label, value, mono }: { label: string; value: string | null; mono?: boolean }) {
   return (
-    <div className="min-w-0">
-      <dt className="text-xs font-semibold text-muted">{label}</dt>
-      <dd className={`wrap-anywhere text-ink ${mono ? "font-mono text-[13px]" : ""}`}>{value || "—"}</dd>
+    <div>
+      <dt>{label}</dt>
+      <dd className={!value ? "is-none" : mono ? "sa-mono is-mono" : undefined}>{value || "—"}</dd>
     </div>
   );
 }

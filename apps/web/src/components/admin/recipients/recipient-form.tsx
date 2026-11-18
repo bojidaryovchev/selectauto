@@ -1,25 +1,46 @@
 "use client";
 
-import { ADMIN_HINT, ADMIN_INPUT, ADMIN_LABEL, ADMIN_SELECT, AdminBanner, AdminButton } from "@/components/admin/ui";
+import { ADMIN_INPUT, AdminBanner } from "@/components/admin/ui";
+import { Button } from "@/components/common";
+import { AlertIcon, CheckIcon, ChevronDownIcon } from "@/components/icons";
 import { RECIPIENT_KIND_META, type RecipientKind } from "@/constants/contracts";
 import { saveRecipient } from "@/mutations/recipients";
 import type { RecipientRow } from "@/queries/recipients";
+import { recipientSchema } from "@/schemas/recipient.schema";
 import { useEffect, useId, useRef, useState } from "react";
 
 /**
- * Create/edit form for one payment recipient (/admin/poluchateli — spec §8).
- * Plain controlled inputs like the other admin forms; the shared zod schema
- * re-validates server-side in `saveRecipient`. The fixed SelectAuto row keeps
- * its kind and can't be deactivated (the mutation enforces it too); admins may
- * add international partners and customs brokers only.
+ * Create/edit form for one payment recipient (/admin/poluchateli — spec §8; boards `ad-recipients-edit`,
+ * `ad-recipients-states`; parity check docs/design/parity/admin-recipients.md). The shared zod schema runs here first
+ * (`noValidate`): each message sits under its field, and the server re-validates in `saveRecipient`. The fixed
+ * SelectAuto row keeps its kind and can't be deactivated (the mutation enforces it too); admins may add international
+ * partners and customs brokers only.
  */
 type Status = { kind: "idle" } | { kind: "error"; message: string };
+
+type FieldKey =
+  | "name"
+  | "country"
+  | "address"
+  | "vatNumber"
+  | "bankName"
+  | "bankAddress"
+  | "iban"
+  | "swiftBic"
+  | "routingCode"
+  | "currency"
+  | "chargesInstruction"
+  | "paymentMethod";
 
 /** The kinds an admin may pick for a NEW recipient (SelectAuto is a seeded singleton). */
 const CREATABLE_KINDS: RecipientKind[] = ["international_partner", "customs_broker"];
 
 /** Codes typed in capitals and never „corrected" by a phone keyboard. */
 const CODE = { autoCapitalize: "characters", autoCorrect: "off", spellCheck: false } as const;
+
+/** The kit's checkbox, with the focus ring on its box. */
+const CHECKBOX =
+  "sa-chk ad-chk has-focus-visible:[&_.sa-box]:outline-2 has-focus-visible:[&_.sa-box]:outline-offset-2 has-focus-visible:[&_.sa-box]:outline-ortx";
 
 export function RecipientForm({
   recipient,
@@ -34,6 +55,7 @@ export function RecipientForm({
 }) {
   const isSelectAuto = recipient?.slug === "selectauto";
   const ref = useRef<HTMLFormElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
   const id = useId();
 
   const [kind, setKind] = useState<RecipientKind>(
@@ -53,37 +75,72 @@ export function RecipientForm({
   const [paymentMethod, setPaymentMethod] = useState(recipient?.paymentMethod ?? "");
   const [active, setActive] = useState(recipient?.active ?? true);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
+  const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({});
   const [busy, setBusy] = useState(false);
 
-  // The form replaces its card in place; bring all of it into view when it opens.
+  const fieldIds: Record<FieldKey, string> = {
+    name: `${id}-name`,
+    country: `${id}-country`,
+    address: `${id}-address`,
+    vatNumber: `${id}-vat`,
+    bankName: `${id}-bank`,
+    bankAddress: `${id}-bankAddress`,
+    iban: `${id}-iban`,
+    swiftBic: `${id}-swift`,
+    routingCode: `${id}-routing`,
+    currency: `${id}-currency`,
+    chargesInstruction: `${id}-charges`,
+    paymentMethod: `${id}-method`,
+  };
+
+  // The form replaces its card in place; bring all of it into view when it opens. A new recipient starts at its name.
+  const [isNew] = useState(recipient === null);
   useEffect(() => {
     ref.current?.scrollIntoView({ block: "nearest" });
-  }, []);
+    if (isNew) nameRef.current?.focus({ preventScroll: true });
+  }, [isNew]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const values = {
+      kind,
+      name,
+      country,
+      address,
+      vatNumber,
+      bankName,
+      bankAddress,
+      iban,
+      swiftBic,
+      routingCode,
+      currency,
+      chargesInstruction,
+      paymentMethod,
+      active,
+    };
+
+    // The server's own schema, first: each message under its field.
+    const parsed = recipientSchema.safeParse(values);
+    if (!parsed.success) {
+      const next: Partial<Record<FieldKey, string>> = {};
+      let unplaced: string | null = null;
+      for (const issue of parsed.error.issues) {
+        const key = issue.path[0];
+        if (typeof key === "string" && key in fieldIds) next[key as FieldKey] ??= issue.message;
+        else unplaced ??= issue.message;
+      }
+      setErrors(next);
+      setStatus(unplaced ? { kind: "error", message: unplaced } : { kind: "idle" });
+      // As the browser's bubble did: to the first field that needs a look.
+      requestAnimationFrame(() => ref.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
+      return;
+    }
+    setErrors({});
+
     setBusy(true);
     setStatus({ kind: "idle" });
     try {
-      const result = await saveRecipient({
-        id: recipient?.id,
-        values: {
-          kind,
-          name,
-          country,
-          address,
-          vatNumber,
-          bankName,
-          bankAddress,
-          iban,
-          swiftBic,
-          routingCode,
-          currency,
-          chargesInstruction,
-          paymentMethod,
-          active,
-        },
-      });
+      const result = await saveRecipient({ id: recipient?.id, values });
       if (result.success) {
         onDone();
       } else {
@@ -96,223 +153,179 @@ export function RecipientForm({
     }
   }
 
-  const field = (key: string) => `${id}-${key}`;
+
+  /** A text field: its control tied to its label and to its message. */
+  const text = (
+    key: FieldKey,
+    value: string,
+    set: (v: string) => void,
+    extra: React.ComponentProps<"input"> & { mono?: boolean } = {},
+  ) => {
+    const { mono, className, ...rest } = extra;
+    const error = errors[key];
+    return (
+      <input
+        id={fieldIds[key]}
+        type="text"
+        value={value}
+        onChange={(e) => set(e.target.value)}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${fieldIds[key]}-err` : undefined}
+        className={[ADMIN_INPUT, mono ? "ad-mono" : null, error ? "is-err" : null, className].filter(Boolean).join(" ")}
+        {...rest}
+      />
+    );
+  };
 
   return (
     // Edited in place of its card, so it stands out from the cards around it.
-    <section className="min-w-0 rounded-xl border border-brand/40 bg-white p-4 shadow-card sm:p-5">
-      <form ref={ref} onSubmit={onSubmit} className="@container flex scroll-mt-20 flex-col gap-4">
-        <h2 className="text-lg font-black wrap-anywhere text-ink">
-          {recipient ? `Редакция: ${recipient.name}` : "Нов получател"}
-        </h2>
+    <section className="sa-pnl ad-form">
+      <form ref={ref} onSubmit={onSubmit} noValidate className="ad-formin scroll-mt-20">
+        <h2>{recipient ? `Редакция: ${recipient.name}` : "Нов получател"}</h2>
 
         {isSelectAuto ? (
-          <p className={ADMIN_HINT}>
+          <p className="ad-hint">
             Тези данни отиват в известията за плащане. Договорите и договорите за депозит печатат данните на SelectAuto
             от кода на сайта (сега са същите) — промяна тук не ги променя.
           </p>
         ) : null}
 
-        <div className="grid gap-4 @xl:grid-cols-2">
+        <div className="ad-fgrid">
           {isSelectAuto ? (
-            <div className="flex min-w-0 flex-col gap-1">
-              <span className={ADMIN_LABEL}>Тип</span>
-              <p className="rounded-lg border border-line bg-neutral-50 px-3 py-2.5 text-base text-muted sm:text-sm">
-                SelectAuto (фиксиран)
-              </p>
+            <div className="sa-fld">
+              <span className="sa-lbl">Тип</span>
+              <p className="ad-fixed">SelectAuto (фиксиран)</p>
             </div>
           ) : (
-            <Field id={field("kind")} label="Тип">
-              <select
-                id={field("kind")}
-                value={kind}
-                onChange={(e) => setKind(e.target.value as RecipientKind)}
-                className={ADMIN_SELECT}
-              >
-                {CREATABLE_KINDS.map((k) => (
-                  <option key={k} value={k}>
-                    {RECIPIENT_KIND_META[k].label}
-                  </option>
-                ))}
-              </select>
+            <Field id={`${id}-kind`} label="Тип">
+              <span className="sa-selw">
+                <select
+                  id={`${id}-kind`}
+                  value={kind}
+                  onChange={(e) => setKind(e.target.value as RecipientKind)}
+                  className={ADMIN_INPUT}
+                >
+                  {CREATABLE_KINDS.map((k) => (
+                    <option key={k} value={k}>
+                      {RECIPIENT_KIND_META[k].label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDownIcon />
+              </span>
             </Field>
           )}
 
-          <Field id={field("name")} label="Наименование *">
-            <input
-              id={field("name")}
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              className={ADMIN_INPUT}
-            />
+          <Field
+            id={fieldIds.name}
+            label={
+              <>
+                Наименование <i>*</i>
+              </>
+            }
+            error={errors.name}
+          >
+            {text("name", name, setName, { ref: nameRef, required: true })}
           </Field>
 
-          <Field id={field("country")} label="Държава">
-            <input
-              id={field("country")}
-              type="text"
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              className={ADMIN_INPUT}
-            />
+          <Field id={fieldIds.country} label="Държава" error={errors.country}>
+            {text("country", country, setCountry)}
           </Field>
 
-          <Field id={field("vat")} label="ДДС / рег. номер">
-            <input
-              id={field("vat")}
-              type="text"
-              value={vatNumber}
-              onChange={(e) => setVatNumber(e.target.value)}
-              {...CODE}
-              className={ADMIN_INPUT}
-            />
+          <Field id={fieldIds.vatNumber} label="ДДС / рег. номер" error={errors.vatNumber}>
+            {text("vatNumber", vatNumber, setVatNumber, CODE)}
           </Field>
 
-          <Field id={field("address")} label="Адрес" wide>
-            <input
-              id={field("address")}
-              type="text"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              className={ADMIN_INPUT}
-            />
+          <Field id={fieldIds.address} label="Адрес" error={errors.address} wide>
+            {text("address", address, setAddress)}
           </Field>
 
-          <Field id={field("bank")} label="Банка">
-            <input
-              id={field("bank")}
-              type="text"
-              value={bankName}
-              onChange={(e) => setBankName(e.target.value)}
-              className={ADMIN_INPUT}
-            />
+          <Field id={fieldIds.bankName} label="Банка" error={errors.bankName}>
+            {text("bankName", bankName, setBankName)}
           </Field>
 
-          <Field id={field("bankAddress")} label="Адрес на банката">
-            <input
-              id={field("bankAddress")}
-              type="text"
-              value={bankAddress}
-              onChange={(e) => setBankAddress(e.target.value)}
-              className={ADMIN_INPUT}
-            />
+          <Field id={fieldIds.bankAddress} label="Адрес на банката" error={errors.bankAddress}>
+            {text("bankAddress", bankAddress, setBankAddress)}
           </Field>
 
-          <Field id={field("iban")} label="IBAN / Сметка">
-            <input
-              id={field("iban")}
-              type="text"
-              value={iban}
-              onChange={(e) => setIban(e.target.value)}
-              {...CODE}
-              className={`${ADMIN_INPUT} font-mono`}
-            />
+          <Field id={fieldIds.iban} label="IBAN / Сметка" error={errors.iban}>
+            {text("iban", iban, setIban, { ...CODE, mono: true })}
           </Field>
 
-          <Field id={field("swift")} label="SWIFT / BIC">
-            <input
-              id={field("swift")}
-              type="text"
-              value={swiftBic}
-              onChange={(e) => setSwiftBic(e.target.value)}
-              {...CODE}
-              className={`${ADMIN_INPUT} font-mono`}
-            />
+          <Field id={fieldIds.swiftBic} label="SWIFT / BIC" error={errors.swiftBic}>
+            {text("swiftBic", swiftBic, setSwiftBic, { ...CODE, mono: true })}
           </Field>
 
-          <Field id={field("routing")} label="Routing code (за неевропейски преводи)">
-            <input
-              id={field("routing")}
-              type="text"
-              value={routingCode}
-              onChange={(e) => setRoutingCode(e.target.value)}
-              placeholder="напр. CC000100381"
-              {...CODE}
-              className={`${ADMIN_INPUT} font-mono`}
-            />
+          <Field id={fieldIds.routingCode} label="Routing code (за неевропейски преводи)" error={errors.routingCode}>
+            {text("routingCode", routingCode, setRoutingCode, { ...CODE, mono: true, placeholder: "напр. CC000100381" })}
           </Field>
 
-          <Field id={field("currency")} label="Валута">
-            <input
-              id={field("currency")}
-              type="text"
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-              placeholder="EUR / USD"
-              {...CODE}
-              className={ADMIN_INPUT}
-            />
+          <Field id={fieldIds.currency} label="Валута" error={errors.currency}>
+            {text("currency", currency, setCurrency, { ...CODE, placeholder: "EUR / USD" })}
           </Field>
 
-          <Field id={field("charges")} label="Разноски на превода">
-            <input
-              id={field("charges")}
-              type="text"
-              value={chargesInstruction}
-              onChange={(e) => setChargesInstruction(e.target.value)}
-              placeholder="напр. За сметка на изпращача (OUR)"
-              className={ADMIN_INPUT}
-            />
+          <Field id={fieldIds.chargesInstruction} label="Разноски на превода" error={errors.chargesInstruction}>
+            {text("chargesInstruction", chargesInstruction, setChargesInstruction, {
+              placeholder: "напр. За сметка на изпращача (OUR)",
+            })}
           </Field>
 
-          <Field id={field("method")} label="Вид плащане">
-            <input
-              id={field("method")}
-              type="text"
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-              placeholder="напр. BLINK"
-              className={ADMIN_INPUT}
-            />
+          <Field id={fieldIds.paymentMethod} label="Вид плащане" error={errors.paymentMethod}>
+            {text("paymentMethod", paymentMethod, setPaymentMethod, { placeholder: "напр. BLINK" })}
           </Field>
 
           {isSelectAuto ? null : (
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 self-end text-sm font-semibold text-ink">
-              <input
-                type="checkbox"
-                checked={active}
-                onChange={(e) => setActive(e.target.checked)}
-                className="size-5 accent-brand"
-              />
-              Активен — предлага се при генериране на известия
+            <label className={`${CHECKBOX} ${active ? "is-on" : ""}`}>
+              <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
+              <span className="sa-box">
+                <CheckIcon />
+              </span>
+              <span>Активен — предлага се при генериране на известия</span>
             </label>
           )}
         </div>
 
         {status.kind === "error" ? <AdminBanner tone="error">{status.message}</AdminBanner> : null}
 
-        <div className="flex flex-wrap gap-2">
-          <AdminButton type="submit" variant="primary" size="lg" disabled={busy}>
-            {busy ? "Запазване…" : "Запази"}
-          </AdminButton>
-          <AdminButton variant="secondary" size="lg" onClick={onCancel} disabled={busy}>
+        <div className="ad-form__f">
+          <Button type="submit" variant="pri" disabled={busy} busy={busy}>
+            {busy ? "Запазване…" : "Запазете"}
+          </Button>
+          <Button variant="sec" onClick={onCancel} disabled={busy}>
             Отказ
-          </AdminButton>
+          </Button>
         </div>
       </form>
     </section>
   );
 }
 
+/** A labelled control with its message under it. */
 function Field({
   id,
   label,
+  error,
   wide,
   children,
 }: {
   id: string;
-  label: string;
+  label: React.ReactNode;
+  error?: string;
   wide?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <div className={`flex min-w-0 flex-col gap-1 ${wide ? "@xl:col-span-2" : ""}`}>
-      <label htmlFor={id} className={ADMIN_LABEL}>
+    <div className={wide ? "sa-fld is-wide" : "sa-fld"}>
+      <label htmlFor={id} className="sa-lbl">
         {label}
       </label>
       {children}
+      {error ? (
+        <span id={`${id}-err`} className="sa-err">
+          <AlertIcon />
+          {error}
+        </span>
+      ) : null}
     </div>
   );
 }
