@@ -32,3 +32,7 @@
 | 20 | Signed in, every heart reads empty until the saved cars load; a tap then toggles on the server, so on a saved car it removes it, and on /lyubimi without the question (found 18.11.2026) | not drawn | Fixed: the tap waits for the saved cars, like row 8 |
 | 21 | A save that never reaches the server (offline) throws inside the transition, and the error boundary replaces the whole page with „This page couldn't load" (found 18.11.2026) | not drawn | Fixed: rolled back like a refused save, the page stays |
 | 22 | Signed in, a failed load of the saved cars (no connection, a server error) left every heart waiting for the rest of the visit, so with row 20 each tap did nothing (found 18.11.2026) | not drawn | Fixed: the load is tried again after 5, 10, 20 and 40 s, then every minute, and at once when the connection comes back; a tap meanwhile tries again and says „Възникна грешка. Опитайте отново." |
+
+**19.11.2026.** A keyboard focus on the card's photo or title link showed no ring at all: the photo link fills a box
+that clips, and the title sits in the two-line clamp, which clips too. The card shows the ring instead, just inside
+its edge, where no rail or scroller can cut it.

@@ -74,3 +74,9 @@ of either (an active car with no price and no sale ahead, which the boards don't
 strip, in the body face, and may take two lines: „Неизвестен" spilled from 360 to 414 px in the display face. Either
 way the bar keeps its height, so the countdown that replaces the status after hydration doesn't move it. Below 360 px
 the back-to-top button and the notifications sit above the two-row bar; they covered its top 14 px.
+
+**19.11.2026, owner's report.** The selected thumbnail's orange ring was cut off at the top and bottom, and on the
+first and last thumbnails at the sides: the strip scrolls, and a scroller clips what is drawn outside its items. The
+strip has 4px of room now (padding, with an equal negative margin, so nothing moves), and a thumbnail half past the
+strip's edge comes fully into view when it is clicked or reached by keyboard. Keyboard focus rings on the thumbnails
+were cut the same way and are whole now too.

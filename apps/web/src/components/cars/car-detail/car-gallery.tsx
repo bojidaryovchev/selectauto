@@ -177,13 +177,24 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
       {/* Thumbnail strip */}
       {count > 1 ? (
         // A mouse gets main's thin scrollbar back: without one, thumbnails past the strip's edge were out of a wheel
-        // user's reach (production review, 18.11.2026). Touch scrolls the strip by swiping, as drawn.
-        <div className="sa-gal__th pointer-fine:pb-1 pointer-fine:scrollbar-thin">
+        // user's reach (production review, 18.11.2026). Touch scrolls the strip by swiping, as drawn. The kit's 4px
+        // padding keeps the scrollbar off the thumbnails and gives the selected one's ring room.
+        <div className="sa-gal__th pointer-fine:scrollbar-thin">
           {images.map((thumb, i) => (
             <button
               key={thumb}
               type="button"
-              onClick={() => select(i)}
+              // A thumbnail half past the strip's edge comes fully into view (with the kit's 4px scroll padding, its
+              // ring too) once clicked, and when keyboard focus lands on it: the browser leaves a partly visible one
+              // where it is. After the click, not on press: scrolling between press and release would move another
+              // thumbnail under the pointer and lose the click.
+              onClick={(e) => {
+                select(i);
+                e.currentTarget.scrollIntoView({ block: "nearest", inline: "nearest" });
+              }}
+              onFocus={(e) => {
+                if (e.currentTarget.matches(":focus-visible")) e.currentTarget.scrollIntoView({ block: "nearest", inline: "nearest" });
+              }}
               aria-label={`Снимка ${i + 1}`}
               aria-current={i === active ? "true" : undefined}
               // 92 px thumbnails (the kit), 76 px on a phone (boards `cd-*`).
