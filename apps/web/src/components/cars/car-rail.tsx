@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Autoplay } from "swiper/modules";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Autoplay, FreeMode } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
 import type { Swiper as SwiperClass } from "swiper/types";
 import "swiper/css";
+import "swiper/css/free-mode";
 import { AuctionCard } from "@/components/cars/all-cars/auction-card";
 import { IconButton, LinkButton, SectionHeading } from "@/components/common";
-import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
+import { ChevronLeftIcon, ChevronRightIcon, PauseIcon, PlayIcon } from "@/components/icons";
 import { useMounted } from "@/hooks/use-mounted";
 import { useHasPainted } from "@/lib/after-first-paint";
 import type { CarView } from "@/types/car.type";
@@ -35,17 +36,22 @@ const BREAKPOINTS = {
 };
 
 /**
- * A rail of car cards under a section heading (boards `hm-home`, `hm-flow-cars`): the eyebrow, the title and the
- * lead; on tablets and desktops „Вижте всички …" and the arrows on the right; on a phone the arrows in the eyebrow
- * row and „Вижте всички …" full width under the rail.
+ * A rail of car cards under a section heading (boards `hm-home`, `hm-flow-cars`; the car page's „Подобни автомобили",
+ * `cd-*`).
  *
- * Behaviour, unchanged from the carousel it replaces (`car-cards-carousel.tsx`):
- * - Auto-advances every 2 s, only while the rail is on screen (an IntersectionObserver starts and stops it), and
- *   pauses while hovered.
+ * - With an `eyebrow` (the home rails): the eyebrow, the title and the lead; on tablets and desktops „Вижте всички …"
+ *   and the controls on the right; on a phone the controls in the eyebrow row and „Вижте всички …" full width under
+ *   the rail.
+ * - Without one (related cars): the title and the controls on one row at every width.
+ *
+ * Behaviour:
+ * - Auto-advances every 2 s, only while the rail is on screen (an IntersectionObserver starts and stops it). It pauses
+ *   while hovered, while focus is inside the rail, and — the button „Спрете превъртането", a toggle — until the
+ *   visitor starts it again (WCAG 2.2.2; README, carousels).
  * - An arrow click moves one card and holds autoplay off for 6 s.
  * - `rewind`, not `loop`: past the last card „Напред" returns to the first, so the arrows are never disabled. Swiper's
- *   loop can't navigate backwards at fractional `slidesPerView` (nolimits4web/swiper#6383); see the old carousel's
- *   note.
+ *   loop can't navigate backwards at fractional `slidesPerView` (nolimits4web/swiper#6383).
+ * - `freeMode` (related cars, as today) lets the track glide with a drag instead of snapping to a card.
  * - Autoplay is added after mount: Swiper's Autoplay reads the clock at construction, which the static-shell
  *   prerender forbids, so the rail remounts once on the client (`key`) with it.
  * - The photos wait for first paint, so the lazy ones nearest the fold don't count against the page's first paint.
@@ -60,26 +66,46 @@ export function CarRail({
   cars,
   moreHref,
   moreLabel,
+  freeMode = false,
 }: {
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
   /** Names the section (`aria-labelledby` on the caller's `<section>`). */
   titleId: string;
-  lead: string;
+  lead?: string;
   cars: CarView[];
-  moreHref: string;
-  moreLabel: string;
+  moreHref?: string;
+  moreLabel?: string;
+  freeMode?: boolean;
 }) {
   const [swiper, setSwiper] = useState<SwiperClass | null>(null);
+  const [paused, setPaused] = useState(false);
   const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inViewRef = useRef(false);
+  const pausedRef = useRef(false);
+  const focusInsideRef = useRef(false);
   const mounted = useMounted();
   const showImages = useHasPainted();
+
+  /** Whether autoplay may run now: on screen, not paused by the button, no focus inside, no arrow hold pending. */
+  const mayRun = useCallback(
+    () => inViewRef.current && !pausedRef.current && !focusInsideRef.current && !resumeTimerRef.current,
+    [],
+  );
+  const sync = useCallback(() => {
+    if (!swiper?.autoplay || swiper.destroyed) return;
+    if (mayRun()) {
+      if (!swiper.autoplay.running) swiper.autoplay.start();
+    } else if (swiper.autoplay.running) {
+      swiper.autoplay.stop();
+    }
+  }, [swiper, mayRun]);
 
   // Drop a pending "resume autoplay" timer on unmount, and when the client remount swaps the Swiper instance.
   useEffect(() => {
     return () => {
       if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+      resumeTimerRef.current = null;
     };
   }, [swiper]);
 
@@ -90,14 +116,17 @@ export function CarRail({
     if (!swiper?.autoplay) return;
     const observer = new IntersectionObserver(([entry]) => {
       inViewRef.current = entry.isIntersecting;
-      if (swiper.destroyed) return;
-      if (!entry.isIntersecting) swiper.autoplay.stop();
-      // Not while an arrow click is holding autoplay off: its timer restarts it.
-      else if (!swiper.autoplay.running && !resumeTimerRef.current) swiper.autoplay.start();
+      sync();
     });
     observer.observe(swiper.el);
     return () => observer.disconnect();
-  }, [swiper]);
+  }, [swiper, sync]);
+
+  const togglePause = () => {
+    pausedRef.current = !pausedRef.current;
+    setPaused(pausedRef.current);
+    sync();
+  };
 
   // Arrow click: one card, then autoplay off for AUTOPLAY_RESUME_DELAY_MS. The arrows sit outside the track, so
   // Swiper's own `pauseOnMouseEnter` doesn't cover them.
@@ -106,17 +135,19 @@ export function CarRail({
     if (direction === "prev") swiper.slidePrev();
     else swiper.slideNext();
     if (!swiper.autoplay) return;
-    swiper.autoplay.stop();
     if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
     resumeTimerRef.current = setTimeout(() => {
       resumeTimerRef.current = null;
-      // Scrolled away meanwhile → stay stopped; coming back into view restarts it (see the observer above).
-      if (!swiper.destroyed && inViewRef.current) swiper.autoplay?.start();
+      sync();
     }, AUTOPLAY_RESUME_DELAY_MS);
+    sync();
   };
 
-  const arrows = (
+  const controls = (
     <>
+      <IconButton label="Спрете превъртането" pressed={paused} onClick={togglePause}>
+        {paused ? <PlayIcon /> : <PauseIcon />}
+      </IconButton>
       <IconButton label="Назад" onClick={() => handleNav("prev")}>
         <ChevronLeftIcon />
       </IconButton>
@@ -127,30 +158,54 @@ export function CarRail({
   );
 
   return (
-    <>
-      <SectionHeading
-        eyebrow={eyebrow}
-        eyebrowEnd={<span className="sa-only-ph flex gap-2">{arrows}</span>}
-        title={title}
-        titleId={titleId}
-        lead={lead}
-        actions={
-          <>
-            <LinkButton href={moreHref} variant="sec" size="md">
-              {moreLabel}
-            </LinkButton>
-            {arrows}
-          </>
-        }
-        actionsClassName="sa-hide-ph"
-      />
+    <div
+      // Focus anywhere in the rail (the controls, a card's buttons) holds autoplay, so nothing moves under a keyboard.
+      onFocus={() => {
+        focusInsideRef.current = true;
+        sync();
+      }}
+      onBlur={(e) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+        focusInsideRef.current = false;
+        sync();
+      }}
+    >
+      {eyebrow ? (
+        <SectionHeading
+          eyebrow={eyebrow}
+          eyebrowEnd={<span className="sa-only-ph flex gap-2">{controls}</span>}
+          title={title}
+          titleId={titleId}
+          lead={lead}
+          actions={
+            <>
+              {moreHref && moreLabel ? (
+                <LinkButton href={moreHref} variant="sec" size="md">
+                  {moreLabel}
+                </LinkButton>
+              ) : null}
+              {controls}
+            </>
+          }
+          actionsClassName="sa-hide-ph"
+        />
+      ) : (
+        <SectionHeading
+          title={title}
+          titleId={titleId}
+          titleClassName="type-h2 max-sm:text-[21px]"
+          actions={controls}
+          className="flex-nowrap items-center"
+        />
+      )}
 
       <Swiper
         key={mounted ? "client" : "ssr"}
         onSwiper={setSwiper}
-        modules={mounted ? [Autoplay] : []}
+        modules={[...(mounted ? [Autoplay] : []), ...(freeMode ? [FreeMode] : [])]}
         {...BASE}
         breakpoints={BREAKPOINTS}
+        freeMode={freeMode}
         grabCursor
         watchOverflow
         rewind
@@ -167,9 +222,11 @@ export function CarRail({
         ))}
       </Swiper>
 
-      <LinkButton href={moreHref} variant="sec" block className="sa-only-ph mt-4">
-        {moreLabel}
-      </LinkButton>
-    </>
+      {eyebrow && moreHref && moreLabel ? (
+        <LinkButton href={moreHref} variant="sec" block className="sa-only-ph mt-4">
+          {moreLabel}
+        </LinkButton>
+      ) : null}
+    </div>
   );
 }

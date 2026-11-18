@@ -18,7 +18,18 @@ function initials(name: string): string {
  * A client component only for that fallback: an image that fails while the server HTML is still loading fires its
  * error before hydration, so the node is also probed once on mount.
  */
-export function MakePlate({ name, logo, size = "md" }: { name: string; logo: string | null; size?: PlateSize }) {
+export function MakePlate({
+  name,
+  logo,
+  size = "md",
+  alt,
+}: {
+  name: string;
+  logo: string | null;
+  size?: PlateSize;
+  /** The logo's alt text; the make's name by default (the car page says „{марка} лого"). */
+  alt?: string;
+}) {
   const [failed, setFailed] = useState(false);
   const probe = useCallback((node: HTMLImageElement | null) => {
     if (node && node.complete && node.naturalWidth === 0) setFailed(true);
@@ -34,7 +45,7 @@ export function MakePlate({ name, logo, size = "md" }: { name: string; logo: str
         <img
           ref={probe}
           src={logo ?? undefined}
-          alt={name}
+          alt={alt ?? name}
           loading="lazy"
           decoding="async"
           referrerPolicy="no-referrer"

@@ -3,15 +3,12 @@
 import { useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { CheckIcon, CopyIcon } from "@/components/icons";
+import { IconButton } from "./icon-button";
 
 /**
- * Compact inline copy-to-clipboard button for a single value (VIN, lot №, …).
- * Copies `value`, fires a top-right success toast (reusing the app-wide
- * <Toaster>), and flips its icon to a check for ~1.4s. `label` builds the
- * aria-label/title ("Копирай VIN"). Icon-only — sized to sit beside a spec value.
- *
- * A generic sibling of the contacts page's bespoke pill copy-button: this one is
- * the small, value-agnostic primitive that belongs in `common/`.
+ * Compact inline copy-to-clipboard button for a single value (VIN, lot №, …; boards `cd-*`, `cd-f-fav`). Copies
+ * `value`, shows a notification („Копирано: {value}", or „Копирането не бе успешно"), and flips its icon to a tick for
+ * ~1,4 s. `label` builds the name: „Копирайте {label}". Icon-only — sized by the kit to sit beside a value (`.sa-kv`).
  */
 export function CopyButton({ value, label }: { value: string; label: string }) {
   const [copied, setCopied] = useState(false);
@@ -31,18 +28,8 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
   };
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      aria-label={`Копирай ${label}`}
-      title={`Копирай ${label}`}
-      className="inline-flex size-6 shrink-0 items-center justify-center rounded-md border border-line bg-white text-muted transition-colors duration-150 hover:border-brand/40 hover:text-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand active:scale-[0.95]"
-    >
-      {copied ? (
-        <CheckIcon className="size-3.5 text-brand" />
-      ) : (
-        <CopyIcon className="size-3.5" />
-      )}
-    </button>
+    <IconButton label={`Копирайте ${label}`} title={`Копирайте ${label}`} onClick={handleClick}>
+      {copied ? <CheckIcon className="text-pos" /> : <CopyIcon />}
+    </IconButton>
   );
 }

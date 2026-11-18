@@ -1,6 +1,5 @@
 export { Button } from "./button";
 export { buttonClasses, type ButtonSize, type ButtonStyleProps, type ButtonVariant } from "./button-variants";
-export { CarouselNav } from "./carousel-nav";
 export { Combobox, type ComboboxOption } from "./combobox";
 export { ConfirmDialog } from "./confirm-dialog";
 export { Container } from "./container";

@@ -3,22 +3,25 @@
 import { useState } from "react";
 import { Button } from "@/components/common";
 import { CarfaxInquiryButton } from "@/components/carfax";
-import { ShieldIcon } from "@/components/icons";
+import { InfoIcon, ShieldCheckIcon, ShieldIcon } from "@/components/icons";
+
+/** Where the Korean note points: the wrapper of the Encar sections on the car page. */
+export const ENCAR_HISTORY_ID = "encar-history";
 
 /**
- * Per-car VIN history check on /avtomobil/[id]. A one-click button that looks up how
- * many Carfax / AutoCheck records exist for THIS car's VIN, then routes the buyer to
- * the full (paid, manually-run) Carfax report — the same lead funnel as the standalone
- * /proverka-vin tool, minus the VIN input (the VIN is already known here).
+ * Per-car VIN history check on /avtomobil/[id] (boards `cd-*`, `cd-f-vin`). A one-click button that looks up how many
+ * Carfax / AutoCheck records exist for THIS car's VIN, then routes the buyer to the full (paid, manually-run) Carfax
+ * report — the same lead funnel as the standalone /proverka-vin tool, minus the VIN input (the VIN is already known).
  *
- * Posts the car's `vin` to `/api/vin-check`, which serves the answer from the durable
- * `vin_report_checks` read-through cache (so a popular car clicked by many visitors
- * costs the shared AuctionsAPI ~3 req/s budget at most once per TTL — see
- * lib/vin-report-cache.ts). Rendered only when the car has a VIN (gated by the page).
+ * Posts the car's `vin` to `/api/vin-check`, which serves the answer from the durable `vin_report_checks` read-through
+ * cache (so a popular car clicked by many visitors costs the shared AuctionsAPI ~3 req/s budget at most once per TTL —
+ * see lib/vin-report-cache.ts). Rendered only when the car has a VIN (gated by the page).
  *
- * „Заяви пълен Carfax" opens the in-page CarfaxDialog pre-filled + locked with this
- * car's VIN (and make/model when known) — same funnel as the contact panel's button,
- * so the buyer never leaves the page.
+ * „Заявете пълен Carfax" opens the in-page CarfaxDialog pre-filled + locked with this car's VIN (and make/model when
+ * known) — same funnel as the contact panel's button, so the buyer never leaves the page.
+ *
+ * Korean cars add one line (owner decision 15): Carfax rarely has their records, so it points to the Encar history
+ * further down the page (`encarHistory`, shown only when an Encar section renders).
  */
 
 type State =
@@ -27,7 +30,18 @@ type State =
   | { kind: "error"; message: string }
   | { kind: "ok"; vehicle: string | null; carfax: number; autocheck: number };
 
-export function CarVinCheck({ vin, make, model }: { vin: string; make?: string; model?: string }) {
+export function CarVinCheck({
+  vin,
+  make,
+  model,
+  encarHistory = false,
+}: {
+  vin: string;
+  make?: string;
+  model?: string;
+  /** A Korean car whose Encar history renders below: show the line pointing to it. */
+  encarHistory?: boolean;
+}) {
   const [state, setState] = useState<State>({ kind: "idle" });
 
   async function runCheck() {
@@ -50,72 +64,68 @@ export function CarVinCheck({ vin, make, model }: { vin: string; make?: string; 
         autocheck: data.autocheck ?? 0,
       });
     } catch {
-      setState({ kind: "error", message: "Възникна грешка. Опитай отново." });
+      setState({ kind: "error", message: "Възникна грешка. Опитайте отново." });
     }
   }
 
   const total = state.kind === "ok" ? state.carfax + state.autocheck : 0;
 
   return (
-    <section className="rounded-2xl border border-line bg-white p-6 shadow-card max-md:p-5">
-      <div className="mb-3 flex items-center gap-2.5">
-        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand-dark">
-          <ShieldIcon className="size-5" />
+    <section className="sa-pnl cd-vin">
+      <div className="cd-vin__h">
+        <span className="sa-pnl__ic">
+          <ShieldIcon />
         </span>
-        <h2 className="text-lg font-black uppercase tracking-tight text-ink">История по VIN</h2>
+        <h2 className="sa-pnl__t">История по VIN</h2>
       </div>
 
-      <p className="mb-4 text-sm/relaxed text-[#5a5d64]">
-        Провери дали за този автомобил има налични Carfax / AutoCheck записи по неговия VIN номер.
-      </p>
+      <p className="sa-p">Проверете дали за този автомобил има налични Carfax / AutoCheck записи по неговия VIN номер.</p>
+
+      {encarHistory ? (
+        <p className="cd-vinkr">
+          <InfoIcon />
+          <span>
+            За автомобили от Корея Carfax рядко има записи — вижте <a href={`#${ENCAR_HISTORY_ID}`}>историята от Encar</a>{" "}
+            <span className="whitespace-nowrap">по-долу</span> на страницата.
+          </span>
+        </p>
+      ) : null}
 
       {state.kind !== "ok" ? (
-        <Button
-          type="button"
-          onClick={runCheck}
-          disabled={state.kind === "loading"}
-          rippleTheme="light"
-          className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand px-6 text-sm font-extrabold uppercase tracking-wide text-white transition-transform duration-200 hover:-translate-y-0.5 disabled:opacity-60 max-sm:w-full"
-        >
-          {state.kind === "loading" ? "Проверявам…" : "Провери историята"}
+        <Button variant="sec" onClick={runCheck} busy={state.kind === "loading"} disabled={state.kind === "loading"}>
+          {state.kind === "loading" ? null : <ShieldCheckIcon />}
+          {state.kind === "loading" ? "Проверявам…" : "Проверете историята"}
         </Button>
       ) : null}
 
       {state.kind === "error" ? (
-        <p className="mt-3 text-sm font-semibold text-red-600">{state.message}</p>
+        <p role="alert" className="text-sm font-semibold text-neg">
+          {state.message}
+        </p>
       ) : null}
 
       {state.kind === "ok" ? (
-        <div className="rounded-xl border border-line bg-[#fafafa] p-5">
-          {state.vehicle ? <p className="mb-3 text-lg font-black text-ink">{state.vehicle}</p> : null}
+        <div className="cd-vinres">
+          {state.vehicle ? <p className="cd-vinres__v">{state.vehicle}</p> : null}
 
           {total > 0 ? (
             <>
-              <div className="mb-4 flex flex-wrap gap-3">
-                <span className="inline-flex items-center gap-2 rounded-full bg-brand/10 px-4 py-1.5 text-sm font-bold text-brand-dark">
-                  Carfax записи: {state.carfax}
-                </span>
-                <span className="inline-flex items-center gap-2 rounded-full bg-brand/10 px-4 py-1.5 text-sm font-bold text-brand-dark">
-                  AutoCheck записи: {state.autocheck}
-                </span>
+              <div className="sa-row">
+                <span className="sa-tag sa-tag--info sa-tag--lg">Carfax записи: {state.carfax}</span>
+                <span className="sa-tag sa-tag--info sa-tag--lg">AutoCheck записи: {state.autocheck}</span>
               </div>
-              <p className="mb-4 text-sm/relaxed text-[#5a5d64]">
-                За този автомобил има налична история. Заяви пълен Carfax доклад през SelectAuto — ще получиш
+              <p className="sa-small">
+                За този автомобил има налична история. Заявете пълен Carfax доклад през SelectAuto — ще получите
                 подробния отчет (собственици, километри, инциденти, записи).
               </p>
-              <CarfaxInquiryButton
-                vin={vin}
-                make={make}
-                model={model}
-                rippleTheme="light"
-                className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand px-6 text-sm font-extrabold uppercase tracking-wide text-white transition-transform duration-200 hover:-translate-y-0.5"
-              >
-                Заяви пълен Carfax
+              <CarfaxInquiryButton vin={vin} make={make} model={model} variant="pri">
+                <ShieldCheckIcon />
+                Заявете пълен Carfax
               </CarfaxInquiryButton>
             </>
           ) : (
-            <p className="text-sm/relaxed text-[#5a5d64]">
-              За този VIN все още не са намерени Carfax или AutoCheck записи. Свържи се с нас за съдействие.
+            <p className="sa-small">
+              За този VIN все още не са намерени Carfax или AutoCheck записи. Свържете се с нас за съдействие.
             </p>
           )}
         </div>

@@ -1,25 +1,9 @@
-/** Copy / duplicate glyph (24×24). Used by the contacts-page copy-to-clipboard
- *  buttons (phone, email, address). Uses currentColor. */
+/** Lucide „copy" as drawn on the boards (kit/icons.json, stroke 1.8). Colour follows `currentColor`. */
 export function CopyIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
-      <rect
-        x="9"
-        y="9"
-        width="11"
-        height="11"
-        rx="2.5"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      <path
-        d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className}>
+      <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
     </svg>
   );
 }

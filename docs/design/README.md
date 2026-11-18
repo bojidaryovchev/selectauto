@@ -15,6 +15,7 @@ design canvases.
 |---|---|
 | Tokens, fonts, type styles | `apps/web/src/styles/tokens.css`; fonts load in `apps/web/src/app/layout.tsx` |
 | Component classes (`sa-btn`, `sa-car`, `sa-hdr` …) | `apps/web/src/styles/kit.css`, ported from the boards' kit; React components apply them |
+| A screen's own layout classes (`cd-*` on the car page) | `apps/web/src/styles/<screen>.css` (so far `car-page.css`), ported from that screen's board sources by `apps/web/scripts/port-board-css.mjs`: token names, `cqi` → `vw`, container queries → media queries |
 | Contrast test of every text and ground pair | `apps/web/tests/design-tokens.test.mts`, run by `pnpm test` |
 | The logo | `Logo` in `apps/web/src/components/common/logo.tsx` |
 | Why this direction, these fonts, this logo | [adr-0001-direction-type-logo.md](adr-0001-direction-type-logo.md) |
@@ -204,19 +205,31 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
 - **Fields:** the label above, never inside; 48 px; 16 px text so phones don't zoom; the error under the field as an icon
   and a sentence in `neg`. Forms use `noValidate`, so every message is the kit's, in Bulgarian and formal.
 - **Bars** hide on scroll down and return on scroll up. A sticky action bar hides while what it jumps to is on screen.
+  While the header and tabs are hidden, `<html>` carries `data-bars-hidden`, so a page's own bottom bar can follow the
+  tabs to the screen's edge. While such a bar shows, it sets `--page-bar` to its height (globals.css), and the
+  back-to-top button and the notifications sit above it.
+- **The car page's action bar** (`car-action-bar.tsx`, phones and tablets): the price or the countdown, „Направете
+  заявка" and the call („Обадете се"); a sold car's „Вижте активни обяви". It hides while the contact panel is on
+  screen.
 - **Toasts** sit bottom right on desktop and above the bottom tabs on a phone, close with ✕ and pause while hovered or
   focused. The admin keeps its inline feedback beside the control.
 - **Dropdowns** (`combobox.tsx`, Base UI's Combobox): `look="kit"` gives the field and list of the boards (`ct-dd-*`),
   with a search field above 8 options, counts on the right, a tick on the chosen row and, with `plates`, make plates.
   Without it the old light look stays until each page that uses one is rebuilt. Base UI's state attributes
   (`data-popup-open`, `data-highlighted`, `data-selected`, `data-disabled`) map onto the kit's states in `kit.css`.
-- **Make plates** (`make-plate.tsx`): the logo on a light plate, or two letters without one; sizes xs to xl.
+- **Make plates** (`make-plate.tsx`): the logo on a light plate, or two letters without one; sizes xs to xl. The car
+  page passes the logo's alt („{марка} лого"); elsewhere it is the make's name.
+- **Expandable panels** (`expandable-section.tsx`, the boards' `cd-exp`): a panel whose heading is a button with
+  `aria-expanded`, the chevron orange and turned while open; the body animates its height and stays in the page while
+  closed.
 - **Section headings** (`section-heading.tsx`, the kit's `.sa-sh`): the orange eyebrow, the title and a lead on the
   left, actions on the right that drop under the text when there's no room. It replaces the old centred
   `SectionHeader` page by page.
 - **Car rails** (`car-rail.tsx`): cards in a row with the next one peeking (1,15 on a phone up to 5,3 from 1800 px),
-  autoplay every 2 s only while on screen, a 6 s pause after an arrow click, rewind at the ends, and the arrows and
-  „Вижте всички …" in the heading (on a phone, the arrows beside the eyebrow and the link under the rail).
+  autoplay every 2 s only while on screen, held while hovered, while focus is inside, and by the pause button
+  „Спрете превъртането"; a 6 s pause after an arrow click, rewind at the ends, and the controls and „Вижте всички …" in
+  the heading (on a phone, the controls beside the eyebrow and the link under the rail). Without an eyebrow (the car
+  page's „Подобни автомобили") the title and the controls share one row, and `freeMode` lets the track glide.
 - **The catalog's filters** sit in one console above the results on tablets and desktops, and in a full-height sheet on
   phones, behind „Филтри" (decision 5). They apply as they change; the tab Активни / Приключили is not a filter.
 - **Carousels** keep advancing on their own, pause on hover and focus, and have a pause button („Спрете превъртането").
@@ -236,9 +249,10 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
 - **The shell is rebuilt** (17–18 November): the page ground is night, the header, phone top bar, bottom tabs, drawer,
   footer, Viber popup, back-to-top and notifications follow their boards, and the focus ring and the dark colour scheme
   are global. Pages not rebuilt yet look broken on the dark ground until their turn.
-- **Rebuilt so far:** the car card and the confirm dialog, the catalog (`/vsichki-avtomobili`) and the home page. Each
-  has its parity file in [parity/](parity/README.md). The car page's related cars still use the old
-  `car-cards-carousel.tsx` until that page is rebuilt with `CarRail`.
+- **Rebuilt so far:** the car card and the confirm dialog, the catalog (`/vsichki-avtomobili`), the home page and the
+  car page (`/avtomobil/[id]`) with its gallery, full-screen photo viewer, media dialogs and action bar. Each has its
+  parity file in [parity/](parity/README.md). The car page's calculator, inquiry and Carfax dialogs open as they are
+  until their own steps.
 - **Montserrat** still loads, only for the /proces particle title. Remove it when /proces is rebuilt.
 - **Fonts:** four font files are preloaded once Montserrat goes (Manrope and Unbounded, Latin and Cyrillic), against two
   today. Measure LCP on a phone after the shell's rebuild.

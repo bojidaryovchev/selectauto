@@ -1,30 +1,27 @@
 import type { CarFactoryOptions as CarFactoryOptionsData } from "@/types/car-detail.type";
 
-/** A chip list of option names under a small section heading. */
+/** A chip list of option names under a small sub-heading. */
 function OptionGroup({ title, names }: { title: string; names: string[] }) {
   if (names.length === 0) return null;
   return (
-    <div>
-      <span className="mb-2 block text-[12px] font-semibold uppercase tracking-wide text-muted">{title}</span>
-      <div className="flex flex-wrap gap-2">
+    <>
+      <span className="cd-sub">{title}</span>
+      <div className="cd-chips">
         {names.map((n) => (
-          <span
-            key={n}
-            className="inline-flex items-center rounded-lg bg-[#f7f8fa] px-3 py-1.5 text-[13px] font-semibold text-ink ring-1 ring-line"
-          >
+          <span key={n} className="cd-opt">
             {n}
           </span>
         ))}
       </div>
-    </div>
+    </>
   );
 }
 
 /**
- * ENCAR factory options — the "Фабрични пакети" section. Standard equipment
- * (`details.options.standard[]` decoded via the korea-options dictionary, grouped by
- * section) plus the dealer/priced extras (`options_extra[]`, already English). Present
- * on ~71% of active ENCAR lots. Renders nothing when neither list has content.
+ * ENCAR factory options — „Фабрични пакети" with the total (boards `cd-korea*`). Standard equipment
+ * (`details.options.standard[]` decoded via the korea-options dictionary, grouped by section) plus the dealer/priced
+ * extras (`options_extra[]`, already English) under „Допълнителни пакети". Present on ~71% of active ENCAR lots.
+ * Renders nothing when neither list has content.
  */
 export function CarFactoryOptions({ options }: { options: CarFactoryOptionsData }) {
   const { standard, extras } = options;
@@ -32,19 +29,17 @@ export function CarFactoryOptions({ options }: { options: CarFactoryOptionsData 
   if (total === 0) return null;
 
   return (
-    <section className="rounded-2xl border border-line bg-white p-6 shadow-card max-md:p-5">
-      <h2 className="mb-5 text-lg font-black uppercase tracking-tight text-ink">
-        Фабрични пакети
-        <span className="ml-2 text-sm font-bold text-muted">({total})</span>
-      </h2>
-
-      <div className="flex flex-col gap-5">
+    <section className="sa-pnl">
+      <div className="sa-pnl__h">
+        <h2 className="sa-pnl__t">
+          Фабрични пакети <small className="text-sm font-bold text-tx3">({total})</small>
+        </h2>
+      </div>
+      <div className="cd-opts">
         {standard.map((g) => (
           <OptionGroup key={g.section} title={g.section} names={g.names} />
         ))}
-        {extras.length > 0 ? (
-          <OptionGroup title="Допълнителни пакети" names={extras.map((e) => e.name)} />
-        ) : null}
+        {extras.length > 0 ? <OptionGroup title="Допълнителни пакети" names={extras.map((e) => e.name)} /> : null}
       </div>
     </section>
   );

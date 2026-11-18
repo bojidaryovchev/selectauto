@@ -26,6 +26,7 @@ import { MobileBottomNav } from "./mobile-bottom-nav";
  * here and published to `--header-h`, so the offset is pixel-exact at every width.
  *
  * Both bars and the bottom tabs hide on scroll down and come back on scroll up, and are always shown near the top.
+ * While they're hidden, `<html>` carries `data-bars-hidden`.
  */
 export function SiteHeader() {
   const { open: openInquiry } = useInquiry();
@@ -105,6 +106,13 @@ export function SiteHeader() {
     setLastPath(pathname);
     setHidden(false);
   }
+
+  // Mark <html> while the bars are hidden, so a page's own bottom bar (the car page's action bar) can slide down to
+  // the edge with the tabs.
+  useEffect(() => {
+    document.documentElement.toggleAttribute("data-bars-hidden", hidden);
+  }, [hidden]);
+  useEffect(() => () => document.documentElement.removeAttribute("data-bars-hidden"), []);
 
   // Hide the bars when scrolling down past them, reveal them when scrolling up. rAF-throttled.
   useEffect(() => {

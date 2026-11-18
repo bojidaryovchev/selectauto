@@ -25,7 +25,7 @@ import { useCallback, useState } from "react";
  *
  * `deferred` holds the photo back entirely — an empty box of the same size, still
  * named by `alt` for the card link around it — until the caller clears it. See
- * CarCardsCarousel for why lazy-loading alone is not enough there.
+ * CarRail (`useHasPainted`) for why lazy-loading alone is not enough there.
  */
 export function CarCardImage({
   src,

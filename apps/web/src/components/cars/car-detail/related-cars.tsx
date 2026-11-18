@@ -1,24 +1,19 @@
-import { CarCardsCarousel } from "@/components/cars/car-cards-carousel";
+import { CarRail } from "@/components/cars/car-rail";
 import type { CarView } from "@/types/car.type";
 
 /**
- * "Подобни автомобили" — same-model (else same-brand) active cars at the bottom of
- * the detail page. The shared `CarCardsCarousel` with a titled header and
- * `freeMode` (no snapping — the row flows with the drag/wheel). Renders nothing
- * when there are no related cars.
+ * „Подобни автомобили" — same-model (else same-brand) active cars at the bottom of the car page (boards `cd-*`): a
+ * `CarRail` with the title and its controls on one row, gliding freely with a drag (`freeMode`, as before). Renders
+ * nothing when there are no related cars.
  */
 export function RelatedCars({ cars }: { cars: CarView[] }) {
   if (cars.length === 0) return null;
 
   return (
-    <section className="mt-12">
-      <CarCardsCarousel
-        cars={cars}
-        title="Подобни автомобили"
-        freeMode
-        headerClassName="mb-5"
-        spaceBetween={{ base: 20, sm: 20, lg: 20 }}
-      />
+    <section className="sa-band sa-band--line sa-band--tight" aria-labelledby="cd-rel-h">
+      <div className="sa-wrap">
+        <CarRail title="Подобни автомобили" titleId="cd-rel-h" cars={cars} freeMode />
+      </div>
     </section>
   );
 }

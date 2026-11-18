@@ -1,29 +1,28 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { Button } from "@/components/common";
-import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
+import { IconButton } from "@/components/common";
+import { CameraIcon, ChevronLeftIcon, ChevronRightIcon, Maximize2Icon, ZoomInIcon } from "@/components/icons";
+import { CarPhotoViewer } from "./car-photo-viewer";
 
 /**
- * The detail-page image gallery — a premium e-commerce experience: a large main
- * image that **zooms in place on hover** (the cursor pans a magnified view
- * directly over the image, no popup/lightbox), plus a thumbnail strip and arrow
- * navigation. The image list comes from the lot's raw_json (5-20 photos for almost
- * every car). The active image eager-loads (LCP candidate); the rest lazy-load.
+ * The car page's photo gallery (boards `cd-*`, `cd-f-gallery`, `cd-f-gallery-d`): a large photo that **zooms in place**
+ * (the pointer pans a magnified view over the photo, no popup), the arrows, the counter, the thumbnails, and the
+ * full-screen viewer (owner decision 22). The photo list comes from the lot's raw_json (5–20 photos for almost every
+ * car). The active photo eager-loads (LCP candidate); the rest lazy-load.
  *
- * The magnifier is a second layer with the same image as a scaled
- * `background-image`, its `background-position` driven by the pointer:
+ * The magnifier is a second layer with the same image as a scaled `background-image`, its `background-position`
+ * driven by the pointer:
  *
- * - **Mouse (pointer: fine)** — it fades in on hover and pans with the cursor.
- * - **Touch (pointer: coarse)** — a *tap* toggles it on/off and a drag pans it,
- *   with the finger acting as the lens. Everything runs on pointer events gated
- *   by `pointerType`, because a tap also makes the browser synthesise
- *   `mouseenter`/`mousemove`: on mouse-only handlers that turned zoom on, faded
- *   the base `<img>` out, and left a blank frame (the zoom layer used to be
- *   desktop-only) — the image "disappeared" on tap.
+ * - **Mouse (pointer: fine)** — it fades in on hover and pans with the cursor; a click opens the viewer.
+ * - **Touch (pointer: coarse)** — a *tap* toggles it on/off and a drag pans it, with the finger acting as the lens.
+ *   Everything runs on pointer events gated by `pointerType`, because a tap also makes the browser synthesise
+ *   `mouseenter`/`mousemove`: on mouse-only handlers that turned zoom on, faded the base `<img>` out, and left a blank
+ *   frame — the image "disappeared" on tap.
+ * - **„Отворете снимките на цял екран"** (top right) opens the viewer on every device. Whether a phone tap should
+ *   open the viewer instead of zooming here is owner point 5 (REDESIGN.md), still open, so the tap keeps today's zoom.
  *
- * Client component (the page's only interactive part) — it owns the selected-index
- * and zoom state.
+ * Client component — it owns the selected-index, zoom and viewer state.
  */
 
 /** How far the hover lens magnifies (2.4× reads as "premium store" without losing context). */
@@ -35,12 +34,17 @@ const TAP_SLOP = 10;
 export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
   const [active, setActive] = useState(0);
   const [zooming, setZooming] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
   // Pointer position as a 0-100% fraction within the frame (drives background-position).
   const [lens, setLens] = useState({ x: 50, y: 50 });
   const frameRef = useRef<HTMLDivElement | null>(null);
+  const openerRef = useRef<HTMLButtonElement | null>(null);
   // Live touch gesture: where it started, whether it has moved past the tap slop,
   // and whether zoom was already on when it began (so a tap can toggle correctly).
   const touch = useRef<{ x: number; y: number; moved: boolean; wasZooming: boolean } | null>(null);
+  // The last pointer that pressed the photo: a click opens the viewer only for a mouse (Safari's click events carry
+  // no pointerType, so it's read from pointerdown).
+  const lastPointer = useRef("");
 
   const count = images.length;
   const clamp = useCallback((i: number) => (i + count) % count, [count]);
@@ -76,6 +80,7 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
   // gesture mid-way, leaving the lens stuck on. It's decided on pointerup instead.
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
+      lastPointer.current = e.pointerType;
       if (e.pointerType === "mouse") return;
       touch.current = { x: e.clientX, y: e.clientY, moved: false, wasZooming: zooming };
       // Capture so a pan keeps tracking even if the finger strays over the arrows
@@ -123,9 +128,16 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
     touch.current = null;
   }, []);
 
+  const openViewer = (opener: HTMLButtonElement | null) => {
+    openerRef.current = opener;
+    setZooming(false);
+    setViewerOpen(true);
+  };
+
   if (count === 0) {
     return (
-      <div className="flex aspect-4/3 w-full items-center justify-center rounded-2xl bg-linear-to-br from-[#2a2d33] to-[#15171b] text-sm font-semibold uppercase tracking-wider text-white/35">
+      <div className="flex aspect-4/3 flex-col items-center justify-center gap-2.5 rounded-lg bg-s2 text-sm font-bold text-tx3 max-sm:-mx-gutter max-sm:rounded-none [&_svg]:size-7.5">
+        <CameraIcon />
         Снимка при поискване
       </div>
     );
@@ -134,8 +146,9 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
   const src = images[active];
 
   return (
-    <div className="flex flex-col gap-3">
-      {/* Main image (hover to zoom on mouse, tap to zoom on touch) */}
+    <div className="sa-gal">
+      {/* Main photo: hover to zoom with a mouse (a click opens the viewer), tap to zoom on touch. Full bleed on a
+          phone. */}
       <div
         ref={frameRef}
         onPointerEnter={onPointerEnter}
@@ -144,12 +157,14 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
+        onClick={() => {
+          // A mouse click opens the viewer; taps are handled by the pointer handlers above.
+          if (lastPointer.current === "mouse") openViewer(null);
+        }}
         // While zoomed, the frame owns touch moves (so a drag pans the lens instead
         // of scrolling the page); un-zoomed it stays out of the way of page scroll.
         style={{ touchAction: zooming ? "none" : undefined }}
-        className={`group relative select-none overflow-hidden rounded-2xl border border-line bg-[#f4f4f4] ${
-          zooming ? "cursor-zoom-out" : "cursor-zoom-in"
-        }`}
+        className={`sa-gal__main select-none max-sm:-mx-gutter max-sm:rounded-none ${zooming ? "cursor-zoom-out" : "cursor-zoom-in"}`}
       >
         {/* Served directly from the source CDN — no Vercel optimizer. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -164,18 +179,14 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
           decoding="async"
           referrerPolicy="no-referrer"
           draggable={false}
-          className={`block aspect-4/3 w-full object-cover transition-opacity duration-200 ${
-            zooming ? "opacity-0" : "opacity-100"
-          }`}
+          className={`transition-opacity duration-200 ease-out motion-reduce:transition-none ${zooming ? "opacity-0" : "opacity-100"}`}
         />
 
-        {/* Zoom layer: the same image as a magnified background, panned by the
-            pointer (cursor on desktop, finger on touch). Faded in only while
-            zooming — it must render on every pointer type, since it's what
-            replaces the base image once that fades out. */}
+        {/* Zoom layer: the same image as a magnified background, panned by the pointer (cursor on desktop, finger on
+            touch). It must render on every pointer type, since it's what replaces the base image once that fades. */}
         <div
           aria-hidden="true"
-          className={`pointer-events-none absolute inset-0 bg-no-repeat transition-opacity duration-200 ${
+          className={`pointer-events-none absolute inset-0 bg-no-repeat transition-opacity duration-200 ease-out motion-reduce:transition-none ${
             zooming ? "opacity-100" : "opacity-0"
           }`}
           style={{
@@ -185,55 +196,59 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
           }}
         />
 
-        {/* Prev/next arrows (only with >1 image). Kept visible DURING zoom: on a
-            fine pointer the main image is only reachable while hovering — which is
-            exactly when zoom is active — so fading them out made them unclickable
-            by mouse. They render above the zoom layer (z-2, and that layer is
-            pointer-events-none) on a translucent, ringed backdrop, so they stay
-            legible and clickable over the magnified photo. */}
+        {/* Controls sit above the zoom layer and stay usable during zoom: with a mouse the photo is only reachable
+            while hovering, which is exactly when zoom is on. Hovering one drops the zoom, like leaving the photo;
+            pressing one is never a tap-to-zoom. */}
         {count > 1 ? (
           <>
-            <GalleryArrow side="left" onClick={prev} onHoverChange={setZooming} />
-            <GalleryArrow side="right" onClick={next} onHoverChange={setZooming} />
+            <GalleryControl label="Предишна снимка" className="sa-gal__nav is-l" onHoverChange={setZooming} onClick={prev}>
+              <ChevronLeftIcon />
+            </GalleryControl>
+            <GalleryControl label="Следваща снимка" className="sa-gal__nav is-r" onHoverChange={setZooming} onClick={next}>
+              <ChevronRightIcon />
+            </GalleryControl>
+            <span className="sa-gal__n pointer-events-none">
+              {active + 1} / {count}
+            </span>
           </>
         ) : null}
 
-        {/* Image counter */}
-        {count > 1 ? (
-          <span className="pointer-events-none absolute bottom-3 right-3 rounded-full bg-black/60 px-3 py-1 text-xs font-bold text-white">
-            {active + 1} / {count}
-          </span>
-        ) : null}
+        <GalleryControl
+          label="Отворете снимките на цял екран"
+          className="sa-gal__fs"
+          onHoverChange={setZooming}
+          onClick={(e) => openViewer(e.currentTarget)}
+        >
+          <Maximize2Icon />
+        </GalleryControl>
 
         {/* Zoom hint — worded per pointer type, and gone once the lens is open. */}
         <span
-          className={`pointer-events-none absolute bottom-3 left-3 hidden rounded-full bg-black/55 px-3 py-1 text-[11px] font-semibold text-white/90 transition-opacity duration-200 group-hover:opacity-0 pointer-fine:block ${
-            zooming ? "opacity-0" : "opacity-100"
-          }`}
+          className={`sa-gal__hint pointer-events-none hidden transition-opacity duration-200 ease-out pointer-fine:inline-flex ${zooming ? "opacity-0" : "opacity-100"}`}
         >
-          Задръж за увеличение
+          <ZoomInIcon />
+          Задръжте за увеличение
         </span>
         <span
-          className={`pointer-events-none absolute bottom-3 left-3 hidden rounded-full bg-black/55 px-3 py-1 text-[11px] font-semibold text-white/90 transition-opacity duration-200 pointer-coarse:block ${
-            zooming ? "opacity-0" : "opacity-100"
-          }`}
+          className={`sa-gal__hint pointer-events-none hidden transition-opacity duration-200 ease-out pointer-coarse:inline-flex ${zooming ? "opacity-0" : "opacity-100"}`}
         >
-          Докосни за увеличение
+          <ZoomInIcon />
+          Докоснете за увеличение
         </span>
       </div>
 
       {/* Thumbnail strip */}
       {count > 1 ? (
-        <div className="grid grid-flow-col auto-cols-22 gap-2 overflow-x-auto pb-1 scrollbar-thin">
+        <div className="sa-gal__th">
           {images.map((thumb, i) => (
-            <Button
+            <button
               key={thumb}
+              type="button"
               onClick={() => select(i)}
               aria-label={`Снимка ${i + 1}`}
-              aria-current={i === active}
-              className={`rounded-lg border-2 transition ${
-                i === active ? "border-brand" : "border-transparent opacity-70 hover:opacity-100"
-              }`}
+              aria-current={i === active ? "true" : undefined}
+              // 92 px thumbnails (the kit), 76 px on a phone (boards `cd-*`).
+              className={`max-sm:w-19! ${i === active ? "is-on" : ""}`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -244,46 +259,53 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
                 loading="lazy"
                 decoding="async"
                 referrerPolicy="no-referrer"
-                className="block aspect-4/3 w-22 object-cover"
               />
-            </Button>
+            </button>
           ))}
         </div>
+      ) : null}
+
+      {viewerOpen ? (
+        <CarPhotoViewer
+          images={images}
+          title={alt}
+          start={active}
+          onClose={(index) => {
+            setViewerOpen(false);
+            setActive(index);
+            openerRef.current?.focus();
+          }}
+        />
       ) : null}
     </div>
   );
 }
 
 /**
- * A circular prev/next control overlaid on the gallery. The chevron icon is
- * centered via `grid place-items-center` so it sits dead-center in the button.
+ * A control over the photo (an arrow, the viewer opener). Hovering one with a mouse drops the image zoom (like leaving
+ * the picture), so the magnified lens isn't panning under the control you're aiming at; moving back onto the photo
+ * re-arms it. Gated to `pointerType === "mouse"`: a tap also synthesises enter/leave. `pointerdown` stops here, so
+ * pressing a control is never read as a tap-to-zoom on the photo behind it, and the click doesn't reach the photo.
  */
-function GalleryArrow({
-  side,
-  onClick,
+function GalleryControl({
+  label,
+  className,
   onHoverChange,
+  onClick,
+  children,
 }: {
-  side: "left" | "right";
-  onClick: () => void;
+  label: string;
+  className: string;
   /** Called with `false` when the mouse enters the control, `true` when it leaves. */
   onHoverChange: (zooming: boolean) => void;
+  onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  children: React.ReactNode;
 }) {
-  // Positioning lives on a wrapper, NOT on the Button. The shared <Button> hardcodes
-  // `relative` (its ripple needs a positioned host); since Tailwind emits `.relative`
-  // AFTER `.absolute`, an `absolute` passed straight to Button loses the cascade tie
-  // and the control collapses into normal flow. The wrapper owns the absolute
-  // placement; the Button stays purely the circular hit-target.
-  //
-  // The wrapper also owns the hover handlers: while the cursor is over an arrow we
-  // drop the image zoom (like leaving the picture) so the magnified lens isn't panning
-  // under the control you're aiming at; moving back onto the image re-arms it. Relies
-  // on React firing leave inner→outer / enter outer→inner, so an arrow↔frame crossing
-  // settles on the correct final state. Gated to `pointerType === "mouse"`: a tap also
-  // synthesises enter/leave, and acting on those would zoom the frame after every
-  // touch on an arrow. `pointerdown` stops here too, so tapping an arrow is never
-  // read as a tap-to-zoom on the frame behind it.
   return (
-    <div
+    <IconButton
+      label={label}
+      title={label}
+      variant="over"
       onPointerEnter={(e) => {
         if (e.pointerType === "mouse") onHoverChange(false);
       }}
@@ -291,23 +313,13 @@ function GalleryArrow({
         if (e.pointerType === "mouse") onHoverChange(true);
       }}
       onPointerDown={(e) => e.stopPropagation()}
-      className={`absolute top-1/2 z-2 -translate-y-1/2 ${side === "left" ? "left-3" : "right-3"}`}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick(e);
+      }}
+      className={`z-2 ${className}`}
     >
-      <Button
-        rippleTheme="light"
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick();
-        }}
-        aria-label={side === "left" ? "Предишна снимка" : "Следваща снимка"}
-        className="grid size-10 place-items-center rounded-full bg-black/55 text-white ring-1 ring-white/15 backdrop-blur-sm transition hover:bg-black/75"
-      >
-        {side === "left" ? (
-          <ChevronLeftIcon className="size-5" />
-        ) : (
-          <ChevronRightIcon className="size-5" />
-        )}
-      </Button>
-    </div>
+      {children}
+    </IconButton>
   );
 }

@@ -1,4 +1,4 @@
-import { LinkButton } from "@/components/common";
+import { LinkButton, buttonClasses } from "@/components/common";
 import { CarfaxInquiryButton } from "@/components/carfax";
 import { PhoneIcon, ShieldIcon, ViberIcon } from "@/components/icons";
 import { InquiryButton } from "@/components/inquiry";
@@ -8,22 +8,37 @@ import type { InquiryPrefill } from "@/types";
 
 const VIBER_HREF = SOCIALS.find((s) => s.label === "Viber")?.href ?? "";
 
+/** The contact panel's id: the phone action bar hides while this panel is on screen. */
+export const CONTACT_PANEL_ID = "car-contact";
+
 /**
- * The lead-capture panel on the detail page — three CTAs ("Обадете се сега" /
- * "Направете заявка" / "Влез във Viber групата"). The phone
- * + Viber are direct links; "Направете заявка" opens the site-wide inquiry modal
- * (`InquiryButton`, the only client part). Hidden for concluded/sold cars (a sold
- * lot is not a lead) — the page shows a "back to active inventory" CTA instead.
+ * The inquiry pre-answered for this car (brand/model steps skipped, a banner naming the car), when the car has a
+ * resolved brand and model; otherwise the generic quiz. Shared by the contact panel and the phone action bar.
+ */
+export function carInquiryPrefill(car: {
+  brand?: string;
+  model?: string;
+  year?: number;
+  lotNumber?: string;
+}): InquiryPrefill | undefined {
+  const { brand, model, year, lotNumber } = car;
+  return brand && model
+    ? { brand, model, carLabel: `${brand} ${model}${year ? ` (${year})` : ""}`, lotNumber }
+    : undefined;
+}
+
+/**
+ * The lead-capture panel on the car page (boards `cd-*`, `.cd-contact`): the phone as the main action (owner decision
+ * 13), „Направете заявка", „Заявете Carfax проверка" for US and Canadian cars, and „Viber група". The phone and Viber
+ * are direct links; „Направете заявка" opens the site-wide inquiry modal. Hidden for concluded/sold cars (a sold lot
+ * is not a lead) — the page shows „Вижте активни обяви" instead.
  *
- * When the car has a resolved brand + model, the inquiry opens PRE-ANSWERED for
- * this car (skipping the brand/model quiz steps, starting at budget, with a banner
- * naming the car). Missing brand/model → the button opens the generic quiz.
+ * When the car has a resolved brand + model, the inquiry opens PRE-ANSWERED for this car (skipping the brand/model quiz
+ * steps, starting at budget, with a banner naming the car). Missing brand/model → the generic quiz.
  *
- * A „Заяви Carfax проверка" CTA opens the in-page CarfaxDialog pre-filled (and
- * locked) with this car's VIN/make/model, so the buyer only adds their contact
- * details without leaving the page. Shown only for US/Canada cars (`market !== "kr"`)
- * — Carfax is a North-American vehicle-history product, and Encar (KR) lots already
- * render their own built-in insurance/inspection history further down the page.
+ * „Заявете Carfax проверка" opens the in-page CarfaxDialog pre-filled (and locked) with this car's VIN/make/model, so
+ * the buyer only adds their contact details. Only for US/Canada cars (`market !== "kr"`): Carfax is a North-American
+ * vehicle-history product, and Encar (KR) lots already render their own insurance/inspection history further down.
  */
 export function CarContactPanel({
   title,
@@ -42,74 +57,47 @@ export function CarContactPanel({
   vin?: string;
   market?: CarMarket;
 }) {
-  const prefill: InquiryPrefill | undefined =
-    brand && model
-      ? {
-          brand,
-          model,
-          carLabel: `${brand} ${model}${year ? ` (${year})` : ""}`,
-          lotNumber,
-        }
-      : undefined;
+  const prefill = carInquiryPrefill({ brand, model, year, lotNumber });
 
   const showCarfax = market !== "kr";
 
   return (
-    <section className="rounded-2xl border border-line bg-white p-6 shadow-card max-md:p-5">
-      <p className="mb-1 text-[13px] font-semibold uppercase tracking-wide text-muted">
-        Заинтересован от този автомобил?
-      </p>
-      <p className="mb-4 text-sm text-ink">
-        Свържи се с нас за оферта, оглед на снимки или въпроси по вноса.
-      </p>
+    <section id={CONTACT_PANEL_ID} className="sa-pnl cd-contact">
+      <p className="cd-ch">Заинтересовани ли сте от този автомобил?</p>
+      <p className="sa-small">Свържете се с нас за оферта, оглед на снимки или въпроси по вноса.</p>
 
-      <div className="flex flex-col gap-2.5">
-        <LinkButton
-          href={CONTACT.phoneHref}
-          rippleTheme="light"
-          className="inline-flex min-h-13 items-center justify-center gap-2.5 rounded-full bg-linear-to-r from-brand-dark to-brand px-5 text-sm font-extrabold uppercase tracking-wide text-white shadow-[0_10px_24px_rgba(216,111,22,0.22)] transition-transform duration-200 hover:-translate-y-0.5"
-        >
-          <PhoneIcon className="size-5" />
+      <div className="cd-cta">
+        <LinkButton href={CONTACT.phoneHref} variant="pri" block>
+          <PhoneIcon />
           {CONTACT.phone}
         </LinkButton>
 
-        <InquiryButton
-          prefill={prefill}
-          className="inline-flex min-h-13 items-center justify-center rounded-full border-2 border-brand bg-white px-5 text-sm font-extrabold uppercase tracking-wide text-brand-dark transition-transform duration-200 hover:-translate-y-0.5"
-        >
+        <InquiryButton prefill={prefill} variant="sec" block>
           Направете заявка
         </InquiryButton>
 
         {showCarfax ? (
-          <CarfaxInquiryButton
-            vin={vin}
-            make={brand}
-            model={model}
-            lotNumber={lotNumber}
-            rippleTheme="dark"
-            className="inline-flex min-h-13 items-center justify-center gap-2.5 rounded-full border border-line bg-white px-5 text-sm font-extrabold uppercase tracking-wide text-[#333] transition-transform duration-200 hover:-translate-y-0.5 hover:text-brand-dark"
-          >
-            <ShieldIcon className="size-5" />
-            Заяви Carfax проверка
+          <CarfaxInquiryButton vin={vin} make={brand} model={model} lotNumber={lotNumber} variant="ton" block>
+            <ShieldIcon />
+            Заявете Carfax проверка
           </CarfaxInquiryButton>
         ) : null}
 
         {VIBER_HREF ? (
-          <LinkButton
+          <a
             href={VIBER_HREF}
-            rippleTheme="light"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-13 items-center justify-center gap-2.5 rounded-full bg-[#7360f2] px-5 text-sm font-extrabold uppercase tracking-wide text-white transition-transform duration-200 hover:-translate-y-0.5"
+            className={buttonClasses({ variant: "vb", block: true })}
           >
-            <ViberIcon className="size-5" />
+            <ViberIcon />
             Viber група
-          </LinkButton>
+          </a>
         ) : null}
       </div>
 
-      <p className="mt-4 text-center text-xs text-muted">
-        Цитирай лот №, за да намерим бързо {title.length > 40 ? "автомобила" : `„${title}“`}.
+      <p className="cd-quote">
+        Цитирайте лот №, за да намерим бързо {title.length > 40 ? "автомобила" : `„${title}“`}.
       </p>
     </section>
   );

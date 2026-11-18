@@ -1,45 +1,38 @@
 import type { CarHistoryEntry } from "@/types/car-detail.type";
 
+/** Recall flags carry their state's tone, always beside the word (board `cd-korea-full`); the rest are neutral. */
+const FLAG_TONE: Record<string, string> = {
+  "Отзоваване (изпълнено)": "sa-tag--pos",
+  "Отзоваване (необходимо)": "sa-tag--warn",
+};
+
 /**
- * ENCAR vehicle-history timeline (`details.history[]`) — the "История на автомобила"
- * section: a dated vertical list of ownership/insurance/recall events, each with a
- * coloured flag pill (Дилър / Частно лице / Отзоваване …) and an optional detail
- * line. Server-rendered; renders nothing when the car has no history (common — the
- * data is present on ~78% of active ENCAR lots and never on archived ones).
+ * ENCAR vehicle-history timeline (`details.history[]`) — „История на автомобила" with the count (boards `cd-korea*`):
+ * a dated list of ownership, insurance and recall events in two columns from 640 px, each with its flag (Дилър, Частно
+ * лице, Отзоваване …) on the date line and an optional detail. Server-rendered; renders nothing when the car has no
+ * history (present on ~78% of active ENCAR lots, never on archived ones).
  */
-export function CarHistoryTimeline({ history }: { history: CarHistoryEntry[] }) {
+export function CarHistoryTimeline({ history, id }: { history: CarHistoryEntry[]; id?: string }) {
   if (history.length === 0) return null;
 
   return (
-    <section className="rounded-2xl border border-line bg-white p-6 shadow-card max-md:p-5">
-      <h2 className="mb-5 text-lg font-black uppercase tracking-tight text-ink">
-        История на автомобила
-        <span className="ml-2 text-sm font-bold text-muted">({history.length})</span>
-      </h2>
-      <ol className="relative ml-1.5 border-l-2 border-line">
+    <section id={id} className="sa-pnl scroll-mt-[calc(var(--header-h)+16px)]">
+      <div className="sa-pnl__h">
+        <h2 className="sa-pnl__t">
+          История на автомобила <small className="text-sm font-bold text-tx3">({history.length})</small>
+        </h2>
+      </div>
+      <ol className="sa-tl cd-tl2">
         {history.map((entry, i) => (
-          <li key={i} className="relative pb-6 pl-6 last:pb-0">
-            <span className="absolute -left-1.75 top-1 size-3 rounded-full border-2 border-brand bg-white" />
-            {entry.date ? (
-              <span className="block text-[13px] font-bold uppercase tracking-wide text-brand-dark">
-                {entry.date}
-              </span>
+          <li key={i}>
+            {entry.date || entry.flag ? (
+              <div className="cd-tlh">
+                {entry.date ? <time>{entry.date}</time> : null}
+                {entry.flag ? <span className={`sa-tag ${FLAG_TONE[entry.flag] ?? ""}`}>{entry.flag}</span> : null}
+              </div>
             ) : null}
-            {entry.title ? (
-              <span className="mt-0.5 block text-sm font-bold text-ink">{entry.title}</span>
-            ) : null}
-            {entry.flag ? (
-              // #a24b1c on the peach is ~5.1:1; the earlier #b4531f was 4.31:1,
-              // under the 4.5:1 that 11px text needs.
-              <span className="mt-1.5 inline-flex items-center rounded-full bg-[#fbebe3] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#a24b1c]">
-                {entry.flag}
-              </span>
-            ) : null}
-            {entry.sub && entry.sub !== entry.title ? (
-              <span className="mt-1.5 block whitespace-pre-line text-[13px]/relaxed text-muted">
-                {entry.sub}
-              </span>
-            ) : null}
+            {entry.title ? <b>{entry.title}</b> : null}
+            {entry.sub && entry.sub !== entry.title ? <p>{entry.sub}</p> : null}
           </li>
         ))}
       </ol>

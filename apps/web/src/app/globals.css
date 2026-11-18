@@ -4,6 +4,7 @@
 @import "../styles/tokens.css";
 /* Its component classes (sa-*), ported from the boards' kit. */
 @import "../styles/kit.css";
+@import "../styles/car-page.css";
 
 /*
   Legacy: the light theme's tokens, ported from the old site's theme.css. The
@@ -122,7 +123,12 @@ body {
 }
 @media (max-width: 1023.98px) {
   :root:has(.sa-bnav) {
-    --toast-bottom: calc(var(--bottom-nav) + 16px + env(safe-area-inset-bottom));
+    --toast-bottom: calc(var(--bottom-nav) + var(--page-bar, 0px) + 16px + env(safe-area-inset-bottom));
+  }
+  /* A page's own bottom bar while it shows (the car page's action bar, .cd-bar.is-on): the notifications and the
+     back-to-top button sit above it. 65px is the bar: 10px padding, a 44px button, 10px, the 1px top line. */
+  :root:has(.cd-bar.is-on) {
+    --page-bar: 65px;
   }
   :root:has(.sa-totop.is-on) {
     --toast-right: 76px;

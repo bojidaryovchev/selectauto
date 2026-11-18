@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/common";
+import { CalculatorIcon } from "@/components/icons";
 import type { MarketId, UsAuction, VehicleType } from "@/data/import-rates";
 import { CalculatorDialog } from "./calculator-dialog";
 
@@ -39,12 +40,10 @@ export function CarImportCalculator({
 
   return (
     <>
-      <Button
-        onClick={() => setOpen(true)}
-        rippleTheme="dark"
-        className="inline-flex min-h-12 w-full items-center justify-center rounded-full border border-line bg-white px-5 text-sm font-extrabold uppercase tracking-wide text-[#333] transition-transform duration-200 hover:-translate-y-0.5 hover:text-brand-dark"
-      >
-        Калкулирай вноса до България
+      {/* Board `cd-*`: a tonal button under the price panel. */}
+      <Button variant="ton" size="md" block onClick={() => setOpen(true)}>
+        <CalculatorIcon />
+        Калкулирайте вноса до България
       </Button>
       <CalculatorDialog
         isOpen={open}

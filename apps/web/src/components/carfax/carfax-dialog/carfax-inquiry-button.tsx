@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/common";
+import type { ButtonStyleProps } from "@/components/common";
 import { CarfaxDialog } from "./carfax-dialog";
 
 /**
@@ -9,8 +10,9 @@ import { CarfaxDialog } from "./carfax-dialog";
  * pre-filled (and locked) with the car's VIN/make/model, so the visitor stays on
  * the page. Bundles its own open state (only two trigger sites — the car-detail
  * contact panel and the VIN-check tool — so a self-contained button beats a
- * site-wide context). Style the trigger via `className`, matching the surrounding
- * buttons; `children` is its label.
+ * site-wide context). Pass a `variant` (and `size`, `block`) for a „Нощно шосе"
+ * button; without one it keeps the legacy look, styled by `className`, until its
+ * page is rebuilt. `children` is its label.
  */
 export function CarfaxInquiryButton({
   vin,
@@ -20,6 +22,9 @@ export function CarfaxInquiryButton({
   className,
   rippleTheme,
   children,
+  variant,
+  size,
+  block,
 }: {
   vin?: string;
   make?: string;
@@ -28,12 +33,19 @@ export function CarfaxInquiryButton({
   className?: string;
   rippleTheme?: "dark" | "light";
   children: React.ReactNode;
-}) {
+} & ButtonStyleProps) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <Button onClick={() => setOpen(true)} className={className} rippleTheme={rippleTheme}>
+      <Button
+        onClick={() => setOpen(true)}
+        className={className}
+        rippleTheme={rippleTheme}
+        variant={variant}
+        size={size}
+        block={block}
+      >
         {children}
       </Button>
       <CarfaxDialog

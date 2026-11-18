@@ -18,7 +18,7 @@ export const vinCheckSchema = z.object({
     .trim()
     .toUpperCase()
     .regex(/^[A-HJ-NPR-Z0-9]{17}$/, {
-      message: "Въведи валиден 17-значен VIN номер (без I, O, Q).",
+      message: "Въведете валиден 17-значен VIN номер (без I, O, Q).",
     }),
 });
 

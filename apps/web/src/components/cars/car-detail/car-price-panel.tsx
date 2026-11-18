@@ -9,12 +9,11 @@ function formatUpdated(iso: string | undefined): string {
 }
 
 /**
- * The price block: the primary price big and bold, the appraisal context
- * (ACV / repair estimate / wholesale / pre-accident) listed underneath as
- * secondary rows. For a salvage buyer the gap between the sale price and the
- * pre-loss value IS the deal, so we surface all of it when raw_json has it. Active
- * US auction lots also show the live current bid + its freshness. Renders nothing
- * when there's no price at all (auction with no bid yet).
+ * The price block (boards `cd-*`, `.cd-price`): the primary price big, the live current bid with its freshness
+ * (active US auction lots), the appraisal context (ACV / repair estimate / wholesale / pre-accident) as rows, and the
+ * market average for the model and year. For a salvage buyer the gap between the sale price and the pre-loss value IS
+ * the deal, so all of it shows when raw_json has it. Renders nothing when there's no price at all (an auction with no
+ * bid yet and no average).
  */
 export function CarPricePanel({
   prices,
@@ -32,49 +31,41 @@ export function CarPricePanel({
   const updated = formatUpdated(liveBid?.updatedAt);
 
   return (
-    <section className="rounded-2xl border border-line bg-white p-6 shadow-card max-md:p-5">
+    <section className="sa-pnl cd-price">
       {primary ? (
-        <div className="mb-3">
-          <span className="block text-[13px] font-semibold uppercase tracking-wide text-muted">
-            {primary.label}
-          </span>
-          <span className="text-3xl/tight font-black text-brand">{primary.value}</span>
+        <div className="cd-pmain">
+          <span>{primary.label}</span>
+          <b className="cd-pval">{primary.value}</b>
         </div>
       ) : null}
 
       {liveBid ? (
-        <div className={`flex items-baseline justify-between gap-4 ${primary ? "border-t border-line pt-3" : ""} pb-1`}>
-          <span className="text-[13px] font-semibold uppercase tracking-wide text-muted">
-            Текуща оферта{updated ? <span className="ml-1 normal-case font-normal text-muted">· {updated}</span> : null}
+        <div className={`cd-bid ${primary ? "cd-sep" : ""}`}>
+          <span>
+            Текуща оферта{updated ? <small> · {updated}</small> : null}
           </span>
-          <span className="text-lg font-black text-ink">{liveBid.value}</span>
+          <b>{liveBid.value}</b>
         </div>
       ) : null}
 
       {rest.length > 0 ? (
-        <dl className={primary ? "border-t border-line pt-3" : ""}>
+        <dl className={`cd-prows ${primary || liveBid ? "cd-sep" : ""}`}>
           {rest.map((p) => (
-            <div key={p.label} className="flex items-baseline justify-between gap-4 py-1.5">
-              <dt className="text-[13px] text-muted">{p.label}</dt>
-              <dd className="text-sm font-bold text-ink">{p.value}</dd>
+            <div key={p.label}>
+              <dt>{p.label}</dt>
+              <dd>{p.value}</dd>
             </div>
           ))}
         </dl>
       ) : null}
 
       {marketAvg ? (
-        <div className="mt-3 rounded-xl bg-[#f7f8fa] px-4 py-3 ring-1 ring-line">
-          <div className="flex items-baseline justify-between gap-3">
-            <span className="text-[12px] font-semibold uppercase tracking-wide text-muted">
-              Средна продажна цена
-            </span>
-            <span className="text-sm font-black text-ink">{marketAvg.value}</span>
+        <div className="cd-avg">
+          <div>
+            <span>Средна продажна цена</span>
+            <b>{marketAvg.value}</b>
           </div>
-          {/* Full `text-muted`: faded to /80 this note was 3.56:1, under the 4.5:1
-              small text needs. */}
-          <span className="text-[11px] text-muted">
-            за модела/годината · {marketAvg.count.toLocaleString("bg-BG")} продажби от архива
-          </span>
+          <small>за модела/годината · {marketAvg.count.toLocaleString("bg-BG")} продажби от архива</small>
         </div>
       ) : null}
     </section>

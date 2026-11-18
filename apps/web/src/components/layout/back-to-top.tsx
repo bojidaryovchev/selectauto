@@ -12,7 +12,8 @@ import { ArrowUpIcon } from "@/components/icons";
  *
  * Positioning: fixed to the bottom-right (boards `ac-float`, `ac-float-desk`). On
  * phones and tablets it's lifted above the bottom tab bar and the iOS
- * home-indicator safe area, so the two never overlap. Its `z-10030` sits *below*
+ * home-indicator safe area, so the two never overlap, and above a page's own bottom bar while one shows
+ * (`--page-bar`, globals.css; the car page's action bar). Its `z-10030` sits *below*
  * the drawer overlay (`z-10040`), so an open menu covers it.
  *
  * Motion: scale + fade + slide-up on reveal. The scroll itself uses
@@ -44,7 +45,7 @@ export function BackToTop() {
     <div
       // `pointer-events-none` on the wrapper so the empty gutter never eats presses; the button re-enables them for
       // itself only while visible. On phones and tablets it sits above the bottom tab bar.
-      className="pointer-events-none fixed bottom-[calc(var(--bottom-nav)+16px+env(safe-area-inset-bottom))] right-4 z-10030 lg:bottom-6 lg:right-6"
+      className="pointer-events-none fixed bottom-[calc(var(--bottom-nav)+var(--page-bar,0px)+16px+env(safe-area-inset-bottom))] right-4 z-10030 lg:bottom-6 lg:right-6"
     >
       <IconButton
         label="Обратно нагоре"

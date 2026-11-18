@@ -2,33 +2,43 @@ import { CopyButton } from "@/components/common";
 import type { CarDetailSpec } from "@/types/car-detail.type";
 
 /**
- * The full specification sheet — a two-column labelled list (label left, value
- * right) of every present spec for the car — the „📋 Основна информация" table.
- * Server-rendered. Long values wrap; the layout collapses to a single column on
- * narrow screens.
+ * The full specification sheet (boards `cd-*`, `.cd-spec`): every present spec as label and value, two columns where
+ * there's room; then the copyable identifiers (Лот №, VIN) in their own box, in mono, each with „Копирайте …".
+ * Server-rendered. Long values wrap.
  */
 export function CarSpecSheet({ specs }: { specs: CarDetailSpec[] }) {
   if (specs.length === 0) return null;
+  const plain = specs.filter((s) => !s.copyable);
+  const ids = specs.filter((s) => s.copyable);
 
   return (
-    <section className="rounded-2xl border border-line bg-white p-6 shadow-card max-md:p-5">
-      <h2 className="mb-4 text-lg font-black uppercase tracking-tight text-ink">Спецификации</h2>
-      <dl className="grid grid-cols-1 gap-x-8 gap-y-0 sm:grid-cols-2">
-        {specs.map((spec) => (
-          <div
-            key={spec.label}
-            className="flex items-baseline justify-between gap-4 border-b border-line/70 py-2.5 last:border-b-0"
-          >
-            <dt className="shrink-0 text-[13px] font-semibold uppercase tracking-wide text-muted">
-              {spec.label}
-            </dt>
-            <dd className="flex min-w-0 items-center justify-end gap-2 text-right text-sm font-bold text-ink">
-              <span className="break-all">{spec.value}</span>
-              {spec.copyable ? <CopyButton value={spec.value} label={spec.label} /> : null}
-            </dd>
-          </div>
-        ))}
-      </dl>
+    <section className="sa-pnl cd-spec">
+      <div className="sa-pnl__h">
+        <h2 className="sa-pnl__t">Спецификации</h2>
+      </div>
+      {plain.length > 0 ? (
+        <dl className="sa-kv">
+          {plain.map((spec) => (
+            <div key={spec.label}>
+              <dt>{spec.label}</dt>
+              <dd>{spec.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+      {ids.length > 0 ? (
+        <dl className="sa-kv cd-ids">
+          {ids.map((spec) => (
+            <div key={spec.label}>
+              <dt>{spec.label}</dt>
+              <dd>
+                <span className="sa-mono">{spec.value}</span>
+                <CopyButton value={spec.value} label={spec.label} />
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
     </section>
   );
 }

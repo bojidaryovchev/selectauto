@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
   if (rateLimited(ip)) {
     return NextResponse.json(
-      { success: false, message: "Твърде много заявки. Опитай отново след минута." },
+      { success: false, message: "Твърде много заявки. Опитайте отново след минута." },
       { status: 429 },
     );
   }
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("[vin-check] lookup failed", error);
     return NextResponse.json(
-      { success: false, message: "В момента проверката не е достъпна. Опитай отново по-късно." },
+      { success: false, message: "В момента проверката не е достъпна. Опитайте отново по-късно." },
       { status: 502 },
     );
   }

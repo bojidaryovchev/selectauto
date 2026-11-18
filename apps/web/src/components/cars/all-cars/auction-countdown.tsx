@@ -20,7 +20,16 @@ import { StatusValue } from "./status-value";
  *
  * `saleDate` is an ISO string (or undefined). `status` is the already-localized BG status label.
  */
-export function AuctionCountdown({ saleDate, status }: { saleDate?: string; status?: string }) {
+export function AuctionCountdown({
+  saleDate,
+  status,
+  labelAs: Label = "span",
+}: {
+  saleDate?: string;
+  status?: string;
+  /** The label's element: `small` in the phone action bar (the kit's `.sa-bar`), `span` in the strips. */
+  labelAs?: "span" | "small";
+}) {
   const target = saleDate ? new Date(saleDate).getTime() : NaN;
   const [now, setNow] = useState<number | null>(null);
 
@@ -42,7 +51,7 @@ export function AuctionCountdown({ saleDate, status }: { saleDate?: string; stat
   // Before hydration (now === null) we can't know if the date is future or past, so render the neutral status to
   // avoid a hydration mismatch and a countdown flash. Both sides stay on one line: the strip's height never changes
   // (uniform card heights keep the virtualized grid jump-free).
-  if (!isLive) return <StatusValue status={status} />;
+  if (!isLive) return <StatusValue status={status} labelAs={Label} />;
 
   const totalSeconds = Math.floor(diff / 1000);
   const days = Math.floor(totalSeconds / 86400);
@@ -52,7 +61,7 @@ export function AuctionCountdown({ saleDate, status }: { saleDate?: string; stat
 
   return (
     <>
-      <span>Време до търга</span>
+      <Label>Време до търга</Label>
       <b className={days === 0 ? "is-soon" : undefined}>
         {days > 0 ? (
           <>
