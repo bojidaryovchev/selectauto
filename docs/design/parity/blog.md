@@ -25,3 +25,7 @@
 | 9 | CTA after the article: „Искаш точна сметка за конкретен автомобил?", „Използвай … кажи ни…", „Калкулатор за внос" → /kalkulator and „Направи запитване" (capitals through CSS) → the inquiry modal ([slug]/page.tsx:147-170) | an aside beside the article, sticky on a desktop, under it below 1024 px | Formal „Искате…", „Използвайте … кажете ни…", „Направете запитване" |
 | 10 | The 12 posts speak to the reader as „ти" (`content/blog/*.md`) | the drawn post and every title and description in „вие" | Owner decision 20: every post in formal „вие", lowercase as the decision says; 61 lines in 12 files, word for word otherwise. Four titles change (their `<title>` and share text too); the URLs don't, they come from the file names |
 | 11 | A light page ground | the night ground | The shell's |
+
+**18.11.2026.** „Корея или Америка" and the Japan post give the sea leg from Korea as ≈5–7 weeks and ≈8–10 weeks to
+Bulgaria, without the Cape of Good Hope (point 6, decision 34); the post's description says „морски превоз 5–7 срещу
+4–7 седмици".

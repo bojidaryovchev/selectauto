@@ -23,3 +23,6 @@
 | 9 | „Свързани инструменти": the leasing and import calculators | link cards | As drawn |
 | 10 | CTA „Готов да намериш своя автомобил?", „Кажи ни бюджета…", „Направи запитване" | a panel beside the links | Formal: „Готови ли сте да намерите своя автомобил?", „Кажете ни…", „Направете запитване" |
 | 11 | Sections fade in on scroll (`Reveal`) | — | Kept |
+
+**18.11.2026.** „Автомобили в този бюджет" converts the euro budget into the catalog's dollar price filter at the import
+calculator's rate (`eurUsd`, /api/calc-config); it passed the euro amount as dollars (REDESIGN.md bug list).

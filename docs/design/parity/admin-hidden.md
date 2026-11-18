@@ -30,3 +30,6 @@
 | 8 | The fee: digits with a dot only, else „Невалидна сума." (apply-deindex.mutation.ts:76-79) | „50,5" accepted; „-5" → „Невалидна сума." | Changed: the money parser the contracts use (comma or dot, spaces), notes ab §4 decision 5 |
 | 9 | „Заявки (N)"; each request: VIN, „Заявител" (+ contact), „Доказателство", „Такса" („50.00 EUR"), „Обяви" hidden/all (amber with „не всички са скрити" when an active request misses some), „Създадена" (+ e-mail), „Активна" / „Отменена" (+ date · e-mail); „Няма заявки за скриване."; cards below 56rem, a table above (capitals through CSS); the pager (page.tsx; deindex-request-list.tsx) | `ab-reg` cards and the kit's table; the VIN in mono; „50,00 EUR"; „Активна" red, „Отменена" neutral | As drawn: the fee in the bg-BG format (decision 11), sentence case |
 | 10 | Light panels | the night ground | The kit's |
+
+**18.11.2026.** „Скрита 1 обява" and „Възстановена 1 обява. Търсачките ще я обходят…" for one car (they read
+„Скрити 1 обяви", „Възстановени 1 обяви").

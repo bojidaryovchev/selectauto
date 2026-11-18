@@ -42,3 +42,5 @@
 | 16 | The composer: „Отговор", „До {Reply-To or the participant} · от info@selectauto.bg", 8 rows, „Напишете отговора си…", locked while sending; „Изпрати", off while empty or sending, „Изпраща се…"; „Съобщението не може да е празно."; the server's errors („Изпращането не бе успешно. Съобщението е запазено, но НЕ е изпратено." …) and, without a connection, „Връзката прекъсна, докато отговорът се изпращаше. Проверете дали се появи в разговора, преди да изпратите отново." in a red banner under the field, the text kept; sent: the box clears and the page refreshes (reply-composer.tsx) | `ad-comp` on a panel; the primary button with a spinner while sending; the error above the button (`ad-thread-reply` 1–6) | Formal „Изпратете" (decision 1); as drawn |
 | 17 | The actions' messages: „Нямате достъп до тази операция.", „Съобщението е твърде дълго.", „Възникна грешка при запазването. Моля опитайте отново.", and the ones only a forged request reaches (send-reply.mutation.ts) | `ad-errors` | Kept as written |
 | 18 | White rows and cards | the night ground, the kit's surfaces | The kit's |
+
+**18.11.2026.** One message reads „1 съобщение" (it read „1 съобщения").

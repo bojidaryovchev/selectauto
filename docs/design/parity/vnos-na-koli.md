@@ -44,3 +44,7 @@ Line numbers are Korea's page unless a row names another; the three pages share 
 | 21 | CTA: „Искаш кола от Корея?", „Кажи ни марка, модел и бюджет — …", „Направи запитване" (capitals through CSS) → the inquiry modal (page.tsx:422-434) | a panel under the chips, the primary xl button | Formal „Искате…", „Кажете ни…", „Направете запитване" |
 | 22 | — | on a phone, a bar with the calculator jump (named „Калкулатор за внос") and „Направете запитване" (`im-hub-flow` frame 1) | As drawn (design-run question 5), with the README's bar rules: it hides while the hero's actions, the calculator or the closing CTA is on screen, so a view never shows two of the same primary button; it follows the tabs and lifts back-to-top and the notifications. The page keeps its height free after the footer |
 | 23 | A light page ground (`bg-[#fafafa]`) | the night ground | The shell's (decision 4) |
+
+**18.11.2026.** Korea's shipping time reads „5–7 седмици" by sea and „8–10 седмици" to Bulgaria, in the body and the
+FAQ; the Cape of Good Hope is gone (point 6, decision 34: most Asia–Europe lines are back on Suez). The US and Canada
+pages were already right.

@@ -24,3 +24,8 @@
 | 6 | The details: statuses, stages, markets, kinds and roles in Bulgarian; an edit lists only what changed („before → after"); ids and hashes left out; amounts, dates and rates as stored („11330.00", „50", „2026-10-25", „0.9259"); the key „depositDeductionCurrency" printed raw (lib/audit-details.ts:27-178) | „11 330,00", „1910,00", „50,00", „25.10.2026 г.", „0,9259"; „Валута на приспаднатия депозит" | Decision 3 (notes ad §4): amounts with two decimals in bg-BG, dates as „25.10.2026 г.", rates up to six decimals, both sides of an edit; owner decision 12 for the label |
 | 7 | The pager, 100 a page (page.tsx:124; constants/audit.ts:55) | `ad-pager` | — |
 | 8 | Light cards | the night ground | The kit's |
+
+**18.11.2026.** A contract's amounts carry their own market's point numbers („Точка 2 — Мито и ДДС" on a Canadian
+contract, the European delivery contract's own names), from the contract's market or, on new edits, the logged one; an
+unknown market gets the plain names. A field the old values never recorded (Canada's CAD value and rate on edits before
+this day) is no longer listed as a change, and edits now record both.

@@ -41,3 +41,7 @@
 | 14 | „Административни действия": „Номер на договора", „Запази номера", its hint; „Изтриване на договора", its two texts, „Изтрий договора" (only when cancelled); the result in a banner; the delete dialog → back to the register (contract-admin-tools.tsx) | `ab-disc` with a settings icon, `ab-tools`, the number in mono, a secondary „Запазете номера", „Изтрийте договора" with a bin icon | Formal forms (decision 1). **Fixed:** a delete that loses the connection closes the dialog and says so |
 | 15 | „История": time, action label, „(плащане)" / „(депозит)" / „(клиент)"; „Няма записани събития." (page.tsx:228-256) | `ab-hist` | As drawn |
 | 16 | Light cards | the night ground | The kit's |
+
+**18.11.2026.** The payment-notice note's hint reads „Само за вас — вижда се тук и в Дневник, не се печата в
+известието." (the contract's „История" doesn't show it). New contract and notice documents use template revision 2
+(decisions 30–32); documents generated earlier render as signed.

@@ -35,3 +35,6 @@
 | 10 | Empty: „Няма договори по зададените филтри." or „Няма договори.", with „Създайте първия с „+ Нов договор“." for `contracts.create` (page.tsx:68-72) | `ab-empty` with a search or a document icon | As drawn; the hint keeps its „+" (it quotes the code) |
 | 11 | The pager, keeping the filters (page.tsx:38-45, 74) | `ad-pager` | Built with the shell |
 | 12 | Light cards and table | the night ground | The kit's |
+
+**18.11.2026.** A status tag's prefix („Кола:") is set apart by weight only: at 82 % opacity the red one was 4.15:1 on
+its tag (axe), under the 4.5:1 text needs.

@@ -40,7 +40,7 @@
 |---|---|---|---|
 | 15 | No top bar: the header is hidden; `--header-h` is 0 | a slim top bar with the logo, which hides and returns with the tabs · `kit-layout`, `ac-float` 2–3 | New from the board (README, layout). `--header-h` becomes the bar's height |
 | 16 | Bottom tabs Начало · Автомобили · Carfax · Меню; active by path (home exact, others by prefix); hide with the header; safe-area padding; `aria-label="Основна навигация"` | yes · `ac-drawer` | — |
-| 17 | Меню: animated hamburger; `aria-label` „Отвори менюто"/„Затвори менюто", `aria-expanded` | menu icon, orange while open; „Отворете менюто"/„Затворете менюто" · `ac-drawer` 1–2 | Formal address (decision 1); the board's icon replaces the hamburger animation |
+| 17 | Меню: animated hamburger; `aria-label` „Отвори менюто"/„Затвори менюто", `aria-expanded` | menu icon, orange while open; „Отворете менюто"/„Затворете менюто" · `ac-drawer` 1–2 | Formal address (decision 1); the board's icon replaces the hamburger animation. Since 18.11.2026 the button is named by its visible word „Меню" and `aria-expanded` gives the state: the label didn't contain the visible text (axe, WCAG 2.5.3 label in name; main had the same) |
 | 18 | Drawer from the right, `min(88vw, 380px)`, over a dimmed page; tap outside closes; body scroll locked while open | yes · `ac-drawer` 2, `ac-drawer-tab` 1 | — |
 | 19 | Drawer head „Меню" (capitals through CSS) and close „Затвори менюто" | „Меню" in sentence case, „Затворете менюто" · `ac-drawer` 2 | Sentence case and formal address (decision 10, 1) |
 | 20 | Groups (Внос, Инструменти, За нас) expand in place with `aria-expanded`; their pages stay in the DOM | yes · `ac-drawer` 4 | — |

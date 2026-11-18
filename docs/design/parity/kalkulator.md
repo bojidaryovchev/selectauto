@@ -33,3 +33,8 @@
 | 15 | CTA „Искаш точна оферта?", „Кажи ни…", „Направи запитване" (capitals through CSS) → the inquiry modal (page.tsx:206-218) | a panel beside the links, the primary button | Formal address |
 | 16 | Phone: the same single form | a six-step guided sequence with a running total (`im-calc-flow`, `-flow2`) | Not built: it changes how the calculator works on a phone and no decision covers it (design-run question 4). Phones keep the single form in the kit look; REDESIGN.md, open points |
 | 17 | Car page dialog: portalled, a press outside or Esc closes it, body scroll locked, focus to the close button; „Калкулатор за внос", the car and „ · Лот № …" or „Ориентировъчна оценка на разходите до България."; close „Затвори"; full screen on a phone (calculator-dialog.tsx) | `im-dialog*`: the kit dialog; on a phone a footer with the running total or the prompt | Formal „Затворете"; the phone footer as drawn (design-run question 12). Focus goes back to „Калкулирайте вноса до България" on close |
+
+**18.11.2026.** The FAQ „Колко време отнема доставката?" gives Korea's 8–10 weeks to Bulgaria and names the US and
+Canada figures as the sea leg they are (point 6, decision 34). On a phone the Canadian province choice stacks as
+decided, now with full-height buttons: the stack's `flex:none` lost to a later `.im-seg>button{flex:1 1 0}` and each
+button shrank to 14 px (axe target-size).
