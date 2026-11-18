@@ -6,6 +6,10 @@ import type { ContractDocSnapshot } from "@/types/contract-snapshot.type";
  * Wording follows the client's signed original № 2026-047 verbatim — the
  * preliminary contract signed before the mediation contract, with its own
  * number series. Ends with the same payment table the original carries.
+ *
+ * Template revision 2 (`snapshot.template`, owner decision 30): both parties' e-mail and phone in the parties' block,
+ * since чл. 8 makes correspondence valid at „посочените по–горе електронни адреси" and the text gave none. A
+ * revision-1 snapshot renders exactly as it was signed.
  */
 
 const s = StyleSheet.create({
@@ -47,6 +51,9 @@ export function DepositContractPdf({
   const c = d.company;
   const cl = d.client;
   const deposit = d.lines[0];
+  const v2 = d.template === 2;
+  /** A blank to fill in by hand when the client gave no e-mail or phone (as the mediation contract prints it). */
+  const blank = "...............................";
 
   return (
     <Document title={`Договор за депозит № ${d.number}`}>
@@ -61,15 +68,18 @@ export function DepositContractPdf({
 
         <Text style={s.p}>
           <Text style={s.bold}>”{c.name.replace(" ЕООД", "”")} ЕООД</Text>, ЕИК {c.eik}, със седалище и адрес на
-          управление: {c.address}, представлявано от {c.manager} - управител, от една страна, като и наричан в
-          настоящия договор ТЪРГОВЕЦ
+          управление: {c.address}, представлявано от {c.manager} - управител
+          {v2 ? `, имейл: ${c.email}, телефон: ${c.phone}` : ""}, от една страна, като и наричан в настоящия договор
+          ТЪРГОВЕЦ
         </Text>
 
         <Text style={s.p}>и</Text>
 
         <Text style={s.p}>
           <Text style={s.bold}>{cl.name}</Text>
-          {cl.isCompany ? `, ЕИК ${cl.idNumber}` : `, ЕГН ${cl.idNumber}`}, от друга страна като и наричан КЛИЕНТ.
+          {cl.isCompany ? `, ЕИК ${cl.idNumber}` : `, ЕГН ${cl.idNumber}`}
+          {v2 ? `, имейл: ${cl.email || blank}, телефон: ${cl.phone || blank}` : ""}, от друга страна като и наричан
+          КЛИЕНТ.
         </Text>
 
         <Text style={[s.p, s.bold]}>Страните постигнаха съгласие за следното:</Text>

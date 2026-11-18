@@ -7,6 +7,9 @@ import type { ContractDocSnapshot } from "@/types/contract-snapshot.type";
  * пера, the currency, the auction platforms and the Canadian dual-currency line
  * vary by market. The форсмажор clause is included in ALL contracts (owner,
  * 07.2026 — it appeared only in 2026-086 before).
+ *
+ * Template revision 2 (`snapshot.template`, owner decision 30): the manager is named without his ЕГН and home
+ * address, and „Обща сума" stands above the signatures. A revision-1 snapshot renders exactly as it was signed.
  */
 
 const s = StyleSheet.create({
@@ -20,6 +23,8 @@ const s = StyleSheet.create({
   signCol: { width: "45%" },
   stamp: { width: 190, marginTop: 4 },
   total: { marginTop: 28, fontWeight: "bold", textAlign: "center" },
+  /** Revision 2: the total above the signatures, in one unbreakable block with them. */
+  totalAbove: { marginTop: 20, fontWeight: "bold", textAlign: "center" },
   footer: { position: "absolute", bottom: 24, left: 56, right: 56, textAlign: "center", fontSize: 8, color: "#666" },
 });
 
@@ -31,6 +36,24 @@ function bgDate(iso: string): string {
 export function MediationContractPdf({ snapshot: d, stampSrc }: { snapshot: ContractDocSnapshot; stampSrc?: { data: Buffer; format: "png" } }) {
   const c = d.company;
   const cl = d.client;
+  const v2 = d.template === 2;
+  // „Обща сума: 20 150 (двадесет хиляди сто и петдесет) евро." — above the signatures from revision 2 (M11), so they
+  // plainly cover it; below them on the documents signed before.
+  const total = <Text style={v2 ? s.totalAbove : s.total}>Обща сума: {d.totalInWords}.</Text>;
+  const signatures = (
+    <View style={s.signRow}>
+      <View style={s.signCol}>
+        <Text style={s.bold}>ЗА ИЗПЪЛНИТЕЛЯ:</Text>
+        <Text style={s.bold}>{d.company.manager.toUpperCase()}</Text>
+        <Text>УПРАВИТЕЛ</Text>
+        {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf's <Image> draws into a PDF, it has no alt attribute */}
+        {stampSrc ? <Image src={stampSrc} style={s.stamp} /> : null}
+      </View>
+      <View style={s.signCol}>
+        <Text style={s.bold}>ЗА ВЪЗЛОЖИТЕЛЯ:</Text>
+      </View>
+    </View>
+  );
 
   return (
     <Document title={`Договор за посредничество № ${d.number}`}>
@@ -50,7 +73,8 @@ export function MediationContractPdf({ snapshot: d, stampSrc }: { snapshot: Cont
 
         <Text style={s.p}>
           <Text style={s.bold}>”{c.name.replace(" ЕООД", "”")} ЕООД</Text>, ЕИК {c.eik}, с адрес на управление: {c.address}, с
-          управител {c.manager} с ЕГН {c.managerEgn} и адрес {c.managerAddress}, наричано „ИЗПЪЛНИТЕЛ“, наричани заедно
+          управител {c.manager}
+          {v2 ? "" : ` с ЕГН ${c.managerEgn} и адрес ${c.managerAddress}`}, наричано „ИЗПЪЛНИТЕЛ“, наричани заедно
           по-долу „СТРАНИТЕ“ СЕ СКЛЮЧИ НАСТОЯЩИЯТ ДОГОВОР ЗА СЛЕДНОТО:
         </Text>
 
@@ -204,21 +228,18 @@ export function MediationContractPdf({ snapshot: d, stampSrc }: { snapshot: Cont
 
         <Text style={s.p}>Настоящият договор се състави в два еднообразни екземпляра, по един за всяка от страните.</Text>
 
-        <View style={s.signRow}>
-          <View style={s.signCol}>
-            <Text style={s.bold}>ЗА ИЗПЪЛНИТЕЛЯ:</Text>
-            <Text style={s.bold}>{d.company.manager.toUpperCase()}</Text>
-            <Text>УПРАВИТЕЛ</Text>
-            {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf's <Image> draws into a PDF, it has no alt attribute */}
-            {stampSrc ? <Image src={stampSrc} style={s.stamp} /> : null}
+        {v2 ? (
+          // One unbreakable block, so the total never ends a page the signatures don't reach.
+          <View wrap={false}>
+            {total}
+            {signatures}
           </View>
-          <View style={s.signCol}>
-            <Text style={s.bold}>ЗА ВЪЗЛОЖИТЕЛЯ:</Text>
-          </View>
-        </View>
-
-        {/* „Обща сума: 20 150 (двадесет хиляди сто и петдесет) евро." */}
-        <Text style={s.total}>Обща сума: {d.totalInWords}.</Text>
+        ) : (
+          <>
+            {signatures}
+            {total}
+          </>
+        )}
 
         <Text style={s.footer} fixed render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
       </Page>

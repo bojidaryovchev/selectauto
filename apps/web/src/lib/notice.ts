@@ -180,6 +180,9 @@ export function buildNoticeSnapshot(args: {
   const isCompany = clientSnap.kind === "company";
 
   return {
+    // Revision 2: no repealed-law footer; a person's ЕГН is left out (owner decisions 30 and 32 — a payment request
+    // doesn't need it, GDPR art. 5(1)(c)); a company keeps its ЕИК.
+    template: 2,
     noticeDate,
     contractNumber: contract.number,
     carTitle: [contract.carYear, contract.carMake, contract.carModel].filter(Boolean).join(" "),
@@ -193,7 +196,7 @@ export function buildNoticeSnapshot(args: {
     },
     client: {
       name: clientSnap.name ?? "",
-      egnOrEik: (isCompany ? clientSnap.eik : clientSnap.egn) ?? "",
+      egnOrEik: isCompany ? (clientSnap.eik ?? "") : "",
       isCompany,
       address: clientSnap.address ?? "",
     },

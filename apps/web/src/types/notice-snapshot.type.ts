@@ -25,6 +25,12 @@ export type NoticeLine = {
 };
 
 export type NoticeSnapshot = {
+  /**
+   * Template revision. Absent on notices generated before 18.11.2026 (revision 1): those re-render as issued.
+   * Revision 2 (owner decisions 30 and 32): no footer citing the repealed 2001 Accounting Act, and the Получил block
+   * names a company by its ЕИК but a person without the ЕГН (`egnOrEik` is then empty).
+   */
+  template?: 2;
   /** Notice date, ISO YYYY-MM-DD (formatted DD.MM.YYYY at render). */
   noticeDate: string;
   contractNumber: string;
@@ -33,7 +39,7 @@ export type NoticeSnapshot = {
   vin: string;
   /** Издал block — SELECTAUTO IMPORT company data at generation time. */
   issuer: { name: string; vatNumber: string; companyId: string; address: string };
-  /** Получил block — the client, from the contract's frozen snapshot. */
+  /** Получил block — the client, from the contract's frozen snapshot. Revision 2 keeps only a company's ЕИК. */
   client: { name: string; egnOrEik: string; isCompany: boolean; address: string };
   stage: string;
   variant: NoticeVariant;

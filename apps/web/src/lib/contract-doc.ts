@@ -1,3 +1,4 @@
+import { CONTACT } from "@/constants";
 import { CONTRACT_MARKET_META, type ContractMarket } from "@/constants/contracts";
 import { amountToBgWords, numberToBgWords } from "@/lib/bg-amount-words";
 import type { schema } from "@/lib/db";
@@ -11,19 +12,24 @@ import type { ContractDocLine, ContractDocSnapshot } from "@/types/contract-snap
  * contracts, including the Европа delivery template).
  */
 
-/** Fixed issuer data as printed on the signed contracts. */
+/**
+ * Fixed issuer data for new documents (template revision 2). The manager's ЕГН and home address are no longer printed
+ * (owner decision 30: the ЕИК identifies the company, GDPR art. 5(1)(c)), and the contacts are SelectAuto's own
+ * (decision 31; they were КВ Ауто Груп's). Documents generated earlier keep their data in their frozen snapshots.
+ */
 export const CONTRACT_COMPANY = {
   name: "СЕЛЕКТАУТО ИМПОРТ ЕООД",
   eik: "208786079",
   address: "гр. Пловдив, ул. Лазо Войвода 19",
   manager: "Валентин Милков Кичуков",
-  managerEgn: "0248084529",
-  managerAddress: "гр. Пловдив, ул. Бистрица 15",
   bankName: "ОББ",
   iban: "BG38UBBS80021477259910",
-  email: "info.kvgroup888@gmail.com",
-  phone: "+359899820982",
+  email: CONTACT.email,
+  phone: CONTACT.phone,
 } as const;
+
+/** The template revision new contract documents are generated with (see `ContractDocSnapshot.template`). */
+const CONTRACT_TEMPLATE = 2 as const;
 
 /** Printed on the deposit contract's payment box, as on the signed original. */
 export const SELECTAUTO_SWIFT = "UBBSBGSF";
@@ -99,6 +105,7 @@ export function buildDepositDocSnapshot(
   const budgetCents = dbToCents(deposit.budgetAmount);
 
   return {
+    template: CONTRACT_TEMPLATE,
     kind: "deposit",
     number: deposit.number,
     date: deposit.depositDate,
@@ -174,6 +181,7 @@ export function buildContractDocSnapshot(contract: typeof schema.contracts.$infe
   const totalCents = dbToCents(contract.totalAmount);
 
   return {
+    template: CONTRACT_TEMPLATE,
     kind: meta.documentType,
     number: contract.number,
     date: contract.contractDate,

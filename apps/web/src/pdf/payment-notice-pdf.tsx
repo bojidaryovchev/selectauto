@@ -16,6 +16,10 @@ import type { NoticeSnapshot } from "@/types/notice-snapshot.type";
  *                    (Auto America / Lean Customs / partners) + разноски row.
  *
  * Fonts are registered in render.ts (PT Sans — full Cyrillic, OFL).
+ *
+ * Template revision 2 (`snapshot.template`, owner decisions 30 and 32): the footer citing the 2001 Accounting Act
+ * (repealed from 1.1.2016, § 6 of the current act) is gone, and the Получил block prints a company's ЕИК but no ЕГН
+ * for a person. A revision-1 snapshot renders exactly as it was issued.
  */
 
 const s = StyleSheet.create({
@@ -64,6 +68,7 @@ export function PaymentNoticePdf({ snapshot }: { snapshot: NoticeSnapshot }) {
   const isUsd = snapshot.showRateColumns ?? snapshot.variant === "selectauto_usd";
   const isSelectAuto = snapshot.variant !== "external";
   const r = snapshot.recipient;
+  const v2 = snapshot.template === 2;
 
   const totalLabel = `${formatCentsDoc(snapshot.totalCents)} ${snapshot.totalCurrencyLabel}`;
 
@@ -119,9 +124,11 @@ export function PaymentNoticePdf({ snapshot }: { snapshot: NoticeSnapshot }) {
           <View style={[s.party, s.partyDivider]}>
             <Text style={[s.bold, s.line]}>Получил:</Text>
             <Text style={s.line}>Име: {snapshot.client.name}</Text>
-            <Text style={s.line}>
-              {snapshot.client.isCompany ? "ЕИК" : "ЕГН"}: {snapshot.client.egnOrEik}
-            </Text>
+            {v2 && !snapshot.client.isCompany ? null : (
+              <Text style={s.line}>
+                {snapshot.client.isCompany ? "ЕИК" : "ЕГН"}: {snapshot.client.egnOrEik}
+              </Text>
+            )}
             <Text style={s.line}>Адрес: {snapshot.client.address}</Text>
           </View>
         </View>
@@ -189,11 +196,13 @@ export function PaymentNoticePdf({ snapshot }: { snapshot: NoticeSnapshot }) {
           ))}
         </View>
 
-        <Text style={s.footer}>
-          Съгласно чл.7 ал.1 и чл.8 от Закона за счетоводството и Писмо на МФ ГДД 91-00-46 от 25.03.2002 г., печатът
-          не е задължителен реквизит на първичните счетоводни документи, а подписът може да се замени с
-          идентификационни шифри.
-        </Text>
+        {v2 ? null : (
+          <Text style={s.footer}>
+            Съгласно чл.7 ал.1 и чл.8 от Закона за счетоводството и Писмо на МФ ГДД 91-00-46 от 25.03.2002 г., печатът
+            не е задължителен реквизит на първичните счетоводни документи, а подписът може да се замени с
+            идентификационни шифри.
+          </Text>
+        )}
       </Page>
     </Document>
   );

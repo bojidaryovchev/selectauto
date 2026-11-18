@@ -23,6 +23,13 @@ export type ContractDocLine = {
 };
 
 export type ContractDocSnapshot = {
+  /**
+   * Template revision. Absent on documents generated before 18.11.2026 (revision 1): those re-render exactly as they
+   * were signed. Revision 2 carries the owner's fixes (decisions 30–31): no manager ЕГН or home address, SelectAuto's
+   * own contacts, „Обща сума" above the signatures, КУПУВАЧ/ДОСТАВЧИК throughout the delivery contract, „българското
+   * законодателство", and both parties' e-mail and phone in the deposit contract.
+   */
+  template?: 2;
   kind: ContractDocKind;
   /** "2026-094". */
   number: string;
@@ -35,8 +42,9 @@ export type ContractDocSnapshot = {
     eik: string;
     address: string;
     manager: string;
-    managerEgn: string;
-    managerAddress: string;
+    /** Revision 1 only: the manager's ЕГН and home address, printed on the documents signed before 18.11.2026. */
+    managerEgn?: string;
+    managerAddress?: string;
     bankName: string;
     iban: string;
     email: string;

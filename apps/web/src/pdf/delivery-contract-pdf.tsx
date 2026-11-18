@@ -8,6 +8,11 @@ import type { ContractDocSnapshot } from "@/types/contract-snapshot.type";
  * and the total is quoted „с ДДС". Wording follows the client's signed original
  * (№ 2025-025), with СЕЛЕКТАУТО ИМПОРТ's data replacing the old КВ АУТО ГРУП
  * entity and the форсмажор clause added (owner, 07.2026).
+ *
+ * Template revision 2 (`snapshot.template`, owner decision 30): КУПУВАЧ/ДОСТАВЧИК throughout (the payment, cost and
+ * contact clauses still said възложител/изпълнител, who don't exist in this contract), clause 12 names „българското
+ * законодателство", the manager is named without his ЕГН and home address, and „Обща сума" stands above the
+ * signatures. A revision-1 snapshot renders exactly as it was signed.
  */
 
 const s = StyleSheet.create({
@@ -21,6 +26,8 @@ const s = StyleSheet.create({
   signCol: { width: "45%" },
   stamp: { width: 190, marginTop: 4 },
   total: { marginTop: 28, fontWeight: "bold", textAlign: "center" },
+  /** Revision 2: the total above the signatures, in one unbreakable block with them. */
+  totalAbove: { marginTop: 20, fontWeight: "bold", textAlign: "center" },
   footer: { position: "absolute", bottom: 24, left: 56, right: 56, textAlign: "center", fontSize: 8, color: "#666" },
 });
 
@@ -32,6 +39,30 @@ function bgDate(iso: string): string {
 export function DeliveryContractPdf({ snapshot: d, stampSrc }: { snapshot: ContractDocSnapshot; stampSrc?: { data: Buffer; format: "png" } }) {
   const c = d.company;
   const cl = d.client;
+  const v2 = d.template === 2;
+  /** Revision 2 names the parties this contract defines; revision 1 printed the mediation contract's. */
+  const buyer = v2 ? "КУПУВАЧА" : "възложителя";
+  const supplier = v2 ? "ДОСТАВЧИКА" : "изпълнителя";
+  const total = (
+    <Text style={v2 ? s.totalAbove : s.total}>
+      Обща сума: {d.totalInWords}
+      {d.vatIncluded ? " с ДДС" : ""}.
+    </Text>
+  );
+  const signatures = (
+    <View style={s.signRow}>
+      <View style={s.signCol}>
+        <Text style={s.bold}>ДОСТАВЧИК:</Text>
+        <Text style={s.bold}>{c.manager.toUpperCase()}</Text>
+        <Text>УПРАВИТЕЛ</Text>
+        {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf's <Image> draws into a PDF, it has no alt attribute */}
+        {stampSrc ? <Image src={stampSrc} style={s.stamp} /> : null}
+      </View>
+      <View style={s.signCol}>
+        <Text style={s.bold}>ЗА КУПУВАЧ:</Text>
+      </View>
+    </View>
+  );
 
   return (
     <Document title={`Договор за доставка № ${d.number}`}>
@@ -44,8 +75,9 @@ export function DeliveryContractPdf({ snapshot: d, stampSrc }: { snapshot: Contr
           <Text style={s.bold}>{cl.name}</Text>
           {cl.isCompany ? `, с ЕИК: ${cl.idNumber}` : `, с ЕГН: ${cl.idNumber}`}
           {cl.address ? `, адрес: ${cl.address}` : ""}, наричан „КУПУВАЧ“ и <Text style={s.bold}>{c.name}</Text> с ЕИК{" "}
-          {c.eik}, с адрес на управление: {c.address}, с управител {c.manager} с ЕГН {c.managerEgn} и адрес{" "}
-          {c.managerAddress}, наричано „ДОСТАВЧИК“, наричани заедно по-долу „СТРАНИТЕ“ СЕ СКЛЮЧИ ДОГОВОР:
+          {c.eik}, с адрес на управление: {c.address}, с управител {c.manager}
+          {v2 ? "" : ` с ЕГН ${c.managerEgn} и адрес ${c.managerAddress}`}, наричано „ДОСТАВЧИК“, наричани заедно по-долу
+          „СТРАНИТЕ“ СЕ СКЛЮЧИ ДОГОВОР:
         </Text>
 
         <Text style={s.heading}>ПРЕДМЕТ НА ДОГОВОРА</Text>
@@ -66,13 +98,13 @@ export function DeliveryContractPdf({ snapshot: d, stampSrc }: { snapshot: Contr
         ))}
 
         <Text style={s.p}>
-          Описаните по-горе суми се превеждат поетапно от възложителя по сметка на изпълнителя, взимайки предвид курс
-          „купува“ безкасово на обслужващата изпълнителя банка към датата на превода след представено известие за
+          Описаните по-горе суми се превеждат поетапно от {buyer} по сметка на {supplier}, взимайки предвид курс
+          „купува“ безкасово на обслужващата {supplier} банка към датата на превода след представено известие за
           дължима сума.
         </Text>
 
         <Text style={s.p}>
-          Основанието за постъпването на преводите в банковата сметка на изпълнителя - <Text style={s.bold}>{c.iban}</Text>,
+          Основанието за постъпването на преводите в банковата сметка на {supplier} - <Text style={s.bold}>{c.iban}</Text>,
           открита в Банка {c.bankName}, е: <Text style={s.bold}>{d.basis}</Text> и следва да бъде посочено в платежното
           нареждане.
         </Text>
@@ -111,8 +143,8 @@ export function DeliveryContractPdf({ snapshot: d, stampSrc }: { snapshot: Contr
 
         <Text style={s.heading}>ДРУГИ</Text>
         <Text style={s.item}>
-          9. Всички допълнителни разходи, които възникват по изпълнението на договора и не са по вина на изпълнителя, са
-          за сметка на възложителя.
+          9. Всички допълнителни разходи, които възникват по изпълнението на договора и не са по вина на {supplier}, са
+          за сметка на {buyer}.
         </Text>
         <Text style={s.item}>
           10. Предаването на автомобила ще се извърши след пълното му заплащане по настоящия договор.
@@ -131,11 +163,11 @@ export function DeliveryContractPdf({ snapshot: d, stampSrc }: { snapshot: Contr
           на адресите на страните за отправяне на уведомления, връчвания и съобщения, както следва:
         </Text>
         <Text style={s.item}>
-          За Възложителя:{"\n"}email: {cl.email || "..............................."}
+          {v2 ? "За КУПУВАЧА" : "За Възложителя"}:{"\n"}email: {cl.email || "..............................."}
           {"\n"}телефон: {cl.phone || "..............................."}
         </Text>
         <Text style={s.item}>
-          За изпълнителя:{"\n"}email: {c.email}
+          {v2 ? "За ДОСТАВЧИКА" : "За изпълнителя"}:{"\n"}email: {c.email}
           {"\n"}телефон: {c.phone}
         </Text>
 
@@ -148,28 +180,25 @@ export function DeliveryContractPdf({ snapshot: d, stampSrc }: { snapshot: Contr
           чл. 117 ГПК.
         </Text>
         <Text style={s.item}>
-          12. За неуредени от настоящия договор въпроси ще се прилагат съответните разпоредби, предвидени от Закона.
+          {v2
+            ? "12. За неуредените с настоящия договор въпроси се прилага българското законодателство."
+            : "12. За неуредени от настоящия договор въпроси ще се прилагат съответните разпоредби, предвидени от Закона."}
         </Text>
 
         <Text style={s.p}>Настоящият договор се състави в два еднообразни екземпляра, по един за всяка от страните.</Text>
 
-        <View style={s.signRow}>
-          <View style={s.signCol}>
-            <Text style={s.bold}>ДОСТАВЧИК:</Text>
-            <Text style={s.bold}>{c.manager.toUpperCase()}</Text>
-            <Text>УПРАВИТЕЛ</Text>
-            {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf's <Image> draws into a PDF, it has no alt attribute */}
-            {stampSrc ? <Image src={stampSrc} style={s.stamp} /> : null}
+        {v2 ? (
+          // One unbreakable block, so the total never ends a page the signatures don't reach.
+          <View wrap={false}>
+            {total}
+            {signatures}
           </View>
-          <View style={s.signCol}>
-            <Text style={s.bold}>ЗА КУПУВАЧ:</Text>
-          </View>
-        </View>
-
-        <Text style={s.total}>
-          Обща сума: {d.totalInWords}
-          {d.vatIncluded ? " с ДДС" : ""}.
-        </Text>
+        ) : (
+          <>
+            {signatures}
+            {total}
+          </>
+        )}
 
         <Text style={s.footer} fixed render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
       </Page>
