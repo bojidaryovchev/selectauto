@@ -21,16 +21,16 @@ export const metadata: Metadata = {
  * /obshti-usloviya — Общи условия (Terms & Conditions). Required for a BG service
  * business under Закона за електронната търговия (ЗЕТ) + Закона за защита на
  * потребителите (ЗЗП). Also carries the ЗЕТ чл. 4 „provider identification"
- * (наименование/ЕИК/седалище/ДДС), rendered from BUSINESS.
- *
- * ⚠️ The legal-entity fields (registeredName/companyId/vatId) are PLACEHOLDERS in
- * `@/constants` until the owner supplies them — section 1 falls back to the contact
- * details + a note while they're blank. This is a solid, BG-law-aware draft, but
- * Общи условия should get a lawyer's review before launch.
+ * (наименование/ЕИК/седалище/ДДС), rendered from BUSINESS (verified against the
+ * Търговски регистър). Section 1 falls back to the contact details if those
+ * fields are ever blank.
  *
  * Static; NAP + entity data from `@/constants`. Look: board `in-terms` (components/legal; parity check
  * docs/design/parity/legal.md): the provider's details as an identity card. The text is word for word (owner
- * decision 25).
+ * decision 25), except §10 (decision 30, T1, checked 18.11.2026): the EU ODR platform closed on 20.07.2025
+ * (Regulation (EU) 2024/3228, art. 1–2), so its link gave way to the КЗП's general conciliation commissions, the ADR
+ * bodies whose scope covers sales and services (ЗЗП чл. 181н, ал. 1–2; чл. 182, ал. 2–3), and the КЗП's address is
+ * its current one (kzp.bg, „Контакти").
  */
 export default function TermsPage() {
   return (
@@ -39,7 +39,7 @@ export default function TermsPage() {
       <main className="in-legal-pg flex-1 pt-(--header-h)">
         <LegalDocument
           title="Общи условия"
-          updated="Последна актуализация: юли 2026 г."
+          updated="Последна актуализация: ноември 2026 г."
           sections={[
             {
               id: "razdel-1",
@@ -213,11 +213,17 @@ export default function TermsPage() {
               content: (
                 <p>
                   За неуредените въпроси се прилага българското законодателство. Компетентен орган за защита на
-                  потребителите е Комисията за защита на потребителите (КЗП) — гр. София, пл. „Славейков&ldquo; № 4а,
-                  тел. 0700 111 22. При потребителски спорове можете да използвате и платформата за онлайн решаване на
-                  спорове на Европейската комисия (ODR):{" "}
-                  <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener noreferrer" className="underline underline-offset-3">
-                    ec.europa.eu/consumers/odr
+                  потребителите е Комисията за защита на потребителите (КЗП) — гр. София, ул. „Врабча&ldquo; № 1,
+                  тел. 0700 111 22. При потребителски спор, който не сме решили заедно, можете да се обърнете към
+                  общите помирителни комисии към КЗП — органи за алтернативно решаване на спорове, в чийто обхват
+                  попадаме:{" "}
+                  <a
+                    href="https://kzp.bg/bg/koi-sa-vidovete-pomiritelni-komisii"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-3"
+                  >
+                    kzp.bg
                   </a>
                   .
                 </p>

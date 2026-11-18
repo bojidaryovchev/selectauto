@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { Button, IconButton, MakePlate } from "@/components/common";
 import { INQUIRY_LOGO } from "@/constants";
 import { AlertIcon, CheckIcon, ChevronLeftIcon, CloseIcon } from "@/components/icons";
+import { PrivacyNote } from "@/components/legal/privacy-note";
 import {
   INQUIRY_BRAND_LOGOS,
   INQUIRY_BRANDS,
@@ -478,6 +479,7 @@ export function InquiryModal({
               >
                 {isSubmitting ? "Изпращаме заявката..." : "Изпратете"}
               </Button>
+              <PrivacyNote />
 
               {error ? (
                 <div className="sa-alert sa-alert--neg" role="alert">

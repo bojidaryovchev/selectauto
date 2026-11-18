@@ -5,6 +5,7 @@ import { useId, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/common";
 import { AlertIcon, CircleCheckIcon, MailIcon, SendIcon } from "@/components/icons";
+import { PrivacyNote } from "@/components/legal/privacy-note";
 import type { ImportCostInputs } from "@/data/import-rates";
 import {
   calculatorOfferContactSchema,
@@ -153,7 +154,9 @@ export function CalculatorOfferForm({ inputs }: { inputs: ImportCostInputs }) {
         {isSubmitting ? null : <SendIcon />}
         {isSubmitting ? "Изпращане…" : "Изпратете ми разбивката"}
       </Button>
-      <p className="im-consent">С изпращането се съгласявате да се свържем с Вас относно калкулацията.</p>
+      <p className="im-consent">
+        С изпращането се съгласявате да се свържем с Вас относно калкулацията. <PrivacyNote bare />
+      </p>
     </form>
   );
 }

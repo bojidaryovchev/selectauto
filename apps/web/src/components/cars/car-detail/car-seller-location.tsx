@@ -1,10 +1,13 @@
+import { MapEmbed } from "@/components/contacts/map-embed";
+
 /**
  * The seller and the location in one panel (boards `cd-*`, `.cd-sl`): „Продавач" with the insurer's or seller's logo
  * on a light plate (IAAI) and the name, „Локация" with the place, and under them a Google map of the lot's coordinates
- * when it has them (US Copart/IAAI branches). The map is the keyless `maps?q=lat,lng&output=embed` iframe (same pattern
- * as the contacts-page map — no API key, no client JS), region-level (z=11): enough to place the branch without
- * implying a precise street pin, and lazy-loaded so it never competes with the gallery. ENCAR lots have no coordinates,
- * so they show the place only. Renders nothing when there is neither a seller nor a place.
+ * when it has them (US Copart/IAAI branches, Copart Canada). The map is the keyless `maps?q=lat,lng&output=embed`
+ * iframe, region-level (z=11): enough to place the branch without implying a precise street pin. It loads only when
+ * the visitor presses „Заредете картата" — the contacts page's click-to-load map, because Google sets its cookies the
+ * moment the iframe loads (owner decision 33, C1; it loaded on scroll before). ENCAR lots have no coordinates, so they
+ * show the place only. Renders nothing when there is neither a seller nor a place.
  */
 export function CarSellerLocation({
   seller,
@@ -46,15 +49,11 @@ export function CarSellerLocation({
         </div>
       ) : null}
       {geo ? (
-        <div className="sa-map">
-          <iframe
-            src={`https://www.google.com/maps?q=${geo.lat},${geo.lng}&z=11&output=embed`}
-            title={location ? `Локация — ${location}` : "Локация на автомобила"}
-            className="absolute inset-0 size-full border-0"
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-          />
-        </div>
+        <MapEmbed
+          look="panel"
+          src={`https://www.google.com/maps?q=${geo.lat},${geo.lng}&z=11&output=embed`}
+          title={location ? `Локация — ${location}` : "Локация на автомобила"}
+        />
       ) : null}
     </section>
   );

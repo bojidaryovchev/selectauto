@@ -19,21 +19,25 @@ export const metadata: Metadata = {
 
 /**
  * /politika-za-biskvitki — standalone Cookie Policy (previously only a §7 blurb in
- * the privacy page). Required under the ePrivacy Directive Art. 5(3) → Закона за
- * електронните съобщения: consent for non-essential cookies.
+ * the privacy page). Bulgaria transposes the ePrivacy Directive art. 5(3) in the
+ * Закон за електронната търговия, чл. 4а: storing or reading anything on a visitor's
+ * device needs the GDPR art. 13 information and a way to refuse, unless it is needed
+ * for a service the visitor explicitly asked for (ал. 4, т. 2).
  *
- * Accurately scoped to what the site actually sets TODAY (verified in code):
- *  - technically-necessary auth/session cookies (Auth.js JWT) — no consent needed;
- *  - a Google Maps <iframe> on /kontakti (components/contacts/contact-map.tsx) —
- *    third-party cookies that DO require consent.
- *
- * ⚠️ FOLLOW-UP: the Maps embed currently loads unconditionally. To be fully
- * consent-compliant it should be gated behind a cookie-consent choice (or a
- * click-to-load placeholder), and any future analytics/pixel MUST be added behind
- * a consent banner. Keep this page in sync with what actually ships.
+ * Scoped to what the site actually does (verified in code 18.11.2026):
+ *  - technically necessary Auth.js cookies (session, CSRF, callback URL);
+ *  - browser storage that never reaches the server: the last sign-in method
+ *    (localStorage, hooks/use-last-auth-method.ts) and the closed Viber invite
+ *    (sessionStorage, components/layout/viber-group-popup.tsx);
+ *  - Google Maps on /kontakti and on US/Canada car pages, loaded only on a click
+ *    (components/contacts/map-embed.tsx);
+ *  - the auction's own 360° viewer and engine video, loaded only when opened;
+ *  - Vercel Web Analytics, which sets no cookies (vercel.com/docs/analytics/privacy-policy).
+ * Any future analytics or pixel that sets cookies needs a consent banner first. Keep this page in sync.
  *
  * Static. Look: board `in-cookies` (components/legal; parity check docs/design/parity/legal.md). The text is word for
- * word (owner decision 25).
+ * word (owner decision 25), with the owner's later fixes: the law named in §1 (decision 30, C3) and §2 brought in line
+ * with what the site does (decision 33, C1–C2).
  */
 export default function CookiePolicyPage() {
   return (
@@ -42,7 +46,7 @@ export default function CookiePolicyPage() {
       <main className="in-legal-pg flex-1 pt-(--header-h)">
         <LegalDocument
           title="Политика за бисквитки"
-          updated="Последна актуализация: юли 2026 г."
+          updated="Последна актуализация: ноември 2026 г."
           sections={[
             {
               id: "razdel-1",
@@ -53,7 +57,7 @@ export default function CookiePolicyPage() {
                   Бисквитките (cookies) са малки текстови файлове, които се съхраняват на Вашето устройство, когато
                   посещавате уебсайт. Те помагат сайтът да функционира, да запомня Вашата сесия и да работи по-удобно.
                   {" "}
-                  {SITE_NAME} използва бисквитки съгласно приложимото законодателство (Закона за електронните съобщения и
+                  {SITE_NAME} използва бисквитки съгласно приложимото законодателство (Закона за електронната търговия и
                   GDPR).
                 </p>
               ),
@@ -71,16 +75,27 @@ export default function CookiePolicyPage() {
                     сесията). Тези бисквитки не изискват съгласие, тъй като без тях сайтът не може да предостави
                     заявената услуга.
                   </p>
+                  <h3>Запомнени в браузъра</h3>
+                  <p>
+                    Освен бисквитки сайтът запазва в браузъра Ви две отметки, които не се изпращат до нас: начина, по
+                    който сте влезли последно (с имейл или с Google), за да Ви го подскаже при следващия вход, и — до
+                    затварянето на раздела — че сте затворили поканата за Viber групата.
+                  </p>
                   <h3>От трети страни</h3>
                   <p>
                     На страницата{" "}
                     <Link href="/kontakti" className="underline underline-offset-3">
                       Контакти
                     </Link>{" "}
-                    зареждаме вградена карта на Google Maps, за да покажем локацията на шоурума. Google може да постави
-                    собствени бисквитки при зареждане на картата. Тези бисквитки се управляват от Google съгласно
-                    неговата политика за поверителност. Ако не желаете такива бисквитки, можете да не отваряте картата и
-                    да управлявате настройките през браузъра си.
+                    и на страниците на автомобилите от САЩ и Канада показваме карта на Google Maps. Тя се зарежда едва
+                    след като натиснете „Заредете картата&ldquo;; тогава Google може да постави собствени бисквитки,
+                    които се управляват от Google съгласно неговата политика за поверителност. Ако не желаете такива
+                    бисквитки, не зареждайте картата.
+                  </p>
+                  <p>
+                    Изгледите 360° и видеата на автомобилите се зареждат от сайта на аукциона само когато ги отворите и
+                    могат да поставят негови бисквитки. Статистиката за посещенията (Vercel Web Analytics) не използва
+                    бисквитки: посетителят се разпознава по хеш на заявката, а сесията му се изтрива след 24 часа.
                   </p>
                 </>
               ),

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/common";
+import { PrivacyNote } from "@/components/legal/privacy-note";
 import { signUp } from "@/mutations/auth";
 import { signUpSchema, type SignUpValues } from "@/schemas/auth.schema";
 import { AuthAlert, AuthField, fieldErrorProps } from "./auth-field";
@@ -106,6 +107,7 @@ export function SignUpForm({ redirectTo = "/" }: { redirectTo?: string }) {
         <Button type="submit" variant="pri" block busy={isSubmitting} disabled={isSubmitting} className="opacity-100">
           Регистрация
         </Button>
+        <PrivacyNote />
       </form>
 
       <p className="ac-alt">

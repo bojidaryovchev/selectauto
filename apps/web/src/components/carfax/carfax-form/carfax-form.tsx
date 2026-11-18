@@ -5,6 +5,7 @@ import { type ReactNode, useId, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/common";
 import { AlertIcon, CircleCheckIcon, LockIcon } from "@/components/icons";
+import { PrivacyNote } from "@/components/legal/privacy-note";
 import { normalizePhone } from "@/lib/phone";
 import { carfaxSchema, type CarfaxFormValues } from "@/schemas/carfax.schema";
 
@@ -248,6 +249,7 @@ export function CarfaxForm({
       <Button type="submit" variant="pri" size="xl" block busy={isSubmitting} disabled={isSubmitting} className="opacity-100">
         Изпратете запитването
       </Button>
+      <PrivacyNote />
     </form>
   );
 }

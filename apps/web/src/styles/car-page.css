@@ -69,6 +69,10 @@
   .cd-slogo{display:inline-flex;align-items:center;height:36px;padding:0 10px;border-radius:var(--radius-sm);background:var(--color-plate);flex:none}
   .cd-slogo img{height:14px;width:auto;max-width:130px;object-fit:contain}
   .cd-sl .sa-map{height:200px}
+  /* The map before it loads (owner decision 33, C1): the pin, „Заредете картата" and the cookie notice; it grows
+     rather than clip on a narrow phone. */
+  .cd-sl .cd-map{height:auto;min-height:200px;padding:16px;gap:12px;align-content:center;text-align:center}
+  .cd-map__n{font-size:12.5px;line-height:1.5;color:var(--color-tx2);max-width:42ch}
   .cd-vin{display:flex;flex-direction:column;align-items:flex-start;gap:14px}
   .cd-vin__h{display:flex;align-items:center;gap:12px}
   @media (max-width:639.98px){.cd-vin>.sa-btn{width:100%}}
