@@ -43,7 +43,7 @@ import { CalculatorOfferForm } from "./calculator-offer-form";
  *  - 🇨🇦 Canada: same as USA but a flat transport figure (no location lookup).
  *
  * The customs-base % field lowers only the duty/VAT base. Still an ESTIMATE, not
- * an offer. The gated „Получете разбивката на имейл" form re-computes the same
+ * an offer. The gated „Разбивката на имейл" form re-computes the same
  * breakdown server-side from the raw inputs.
  *
  * Look (boards `im-calc*`, `im-dialog*`; parity check docs/design/parity/kalkulator.md): the inputs on the left — the

@@ -101,7 +101,7 @@ export function CalculatorOfferForm({ inputs }: { inputs: ImportCostInputs }) {
     return (
       <Button variant="pri" block onClick={() => setOpen(true)} className="sa-btn--long">
         <MailIcon />
-        Получете разбивката на имейл
+        Разбивката на имейл
       </Button>
     );
   }

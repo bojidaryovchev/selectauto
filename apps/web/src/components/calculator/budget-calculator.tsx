@@ -147,7 +147,7 @@ export function BudgetCalculator() {
           </div>
 
           <LinkButton href={catalogHref} variant="pri" size="xl" block className="sa-btn--long">
-            Вижте автомобили в този бюджет
+            Автомобили в този бюджет
           </LinkButton>
           <p className="im-small">
             Изчисленията са ориентировъчни и не представляват оферта за кредит. Реалните условия могат да варират според

@@ -82,7 +82,7 @@ export default async function HomePage() {
           subtitle="Аукционните автомобили дават силни възможности, когато зад избора има правилен подход и реална експертиза."
           cars={auctionCars}
           ctaHref="/vsichki-avtomobili?channel=auction"
-          ctaLabel="Вижте всички аукционни автомобили"
+          ctaLabel="Всички аукционни автомобили"
         />
 
         <PopularBrandsSection />
