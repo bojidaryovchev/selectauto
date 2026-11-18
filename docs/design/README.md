@@ -273,9 +273,11 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
   calculator dialog), the leasing and budget calculators, the import hubs (`/vnos-na-koli-ot-…`), the FAQ, contacts,
   about and reviews pages, the Carfax and VIN check pages with the Carfax dialog, /proces, the blog, the three
   legal pages, the 404, 410 and error pages, the sign-in and account pages (`/sign-in` to `/greshka-pri-vhod`) and
-  the favourites (`/lyubimi`), the inquiry dialog, and the admin's shell (sidebar, phone top bar and drawer, account
-  card), dashboard, loading, error and 404 states and shared parts (`components/admin/ui`). Each has its parity file in
-  [parity/](parity/README.md).
+  the favourites (`/lyubimi`), the inquiry dialog, the admin's shell (sidebar, phone top bar and drawer, account
+  card), dashboard, loading, error and 404 states and shared parts (`components/admin/ui`), and the three lead inboxes
+  (Carfax, consultations, offers) with their drawer. Each has its parity file in [parity/](parity/README.md).
+- **Make plates in the admin** come from `getMakeLogoLookup` (`lib/admin-lead-view.ts`): leads store the make as text,
+  so it is matched by name against the makes the car cards use, then against the inquiry quiz's own logos.
 - **Admin pages not rebuilt yet** already get the kit's buttons, panels, fields, chips, pager and banners through the
   shared parts, but keep their own light classes until their turn, so they look half-dark until then.
 - **The fonts are defined once,** in `src/styles/fonts.ts`: the root layout and `app/global-error.tsx`, which replaces

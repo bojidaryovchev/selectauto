@@ -12,7 +12,8 @@ export const metadata: Metadata = { title: LEAD_TYPE_META.calculator.label };
 /**
  * /admin/oferti — the /kalkulator gated-offer lead inbox over `calculator_offers`.
  * The drawer renders each lead's stored `breakdown_json` (the exact estimate the
- * visitor received). `requireAdminPage()` is the gate — the /admin layout (and
+ * visitor received; boards `ad-offers`, `ad-offers-drawer`, `ad-offers-markets`;
+ * parity check docs/design/parity/admin-leads.md). `requireAdminPage()` is the gate — the /admin layout (and
  * the proxy) only require back-office access.
  */
 export default async function AdminOffersPage({

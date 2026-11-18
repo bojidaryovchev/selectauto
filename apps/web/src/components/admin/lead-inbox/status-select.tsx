@@ -1,15 +1,16 @@
 "use client";
 
 import { Combobox } from "@/components/common";
+import { AlertIcon } from "@/components/icons";
 import { LEAD_STATUSES, LEAD_STATUS_META, type LeadStatus, type LeadType } from "@/constants/admin";
 import { updateLead } from "@/mutations/admin";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 /**
- * Dropdown that changes a lead's status via the `updateLead` action, then
- * refreshes the route so the table + dashboard counts re-render. Optimistic-ish:
- * shows the chosen value immediately, reverts on failure.
+ * Dropdown that changes a lead's status via the `updateLead` action, then refreshes the route so the table +
+ * dashboard counts re-render (the kit's dropdown; board `ad-inquiries-status`). Optimistic-ish: shows the chosen value
+ * immediately, locked while it saves, and reverts on failure with the message under it.
  */
 export function StatusSelect({
   type,
@@ -53,8 +54,9 @@ export function StatusSelect({
   }
 
   return (
-    <div className="flex flex-col gap-1">
+    <>
       <Combobox
+        look="kit"
         aria-label="Статус на заявката"
         options={LEAD_STATUSES.map((s) => ({ value: s, label: LEAD_STATUS_META[s].label }))}
         value={current}
@@ -62,10 +64,11 @@ export function StatusSelect({
         disabled={pending}
       />
       {error && (
-        <span role="alert" className="text-xs text-rose-600">
+        <p role="alert" className="sa-err">
+          <AlertIcon />
           {error}
-        </span>
+        </p>
       )}
-    </div>
+    </>
   );
 }

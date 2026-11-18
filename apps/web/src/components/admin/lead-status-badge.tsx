@@ -1,16 +1,16 @@
 import { LEAD_STATUS_META, type LeadStatus } from "@/constants/admin";
 
 /**
- * Presentational status pill (BG label + palette from LEAD_STATUS_META). Plain
- * component — usable from both server (dashboard) and client (inbox) trees.
+ * A lead's status as the kit's tag with its dot (boards `ad-carfax`, `ad-inquiries`, `ad-offers`): Ново amber, В процес
+ * blue, Спечелено green, Загубено red, Архив neutral (`LEAD_STATUS_META[status].tone`). Plain component — usable from
+ * both server and client trees.
  */
 export function LeadStatusBadge({ status }: { status: LeadStatus }) {
-  const meta = LEAD_STATUS_META[status];
+  const { label, tone } = LEAD_STATUS_META[status];
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ring-1 ring-inset ${meta.badgeClass}`}
-    >
-      {meta.label}
+    <span className={tone ? `sa-tag shrink-0 sa-tag--${tone}` : "sa-tag shrink-0"}>
+      <span className={tone ? `sa-dot sa-dot--${tone}` : "sa-dot"} aria-hidden="true" />
+      {label}
     </span>
   );
 }

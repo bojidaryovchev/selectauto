@@ -3,20 +3,27 @@
 import { LeadFilters } from "@/components/admin/lead-filters";
 import { LeadStatusBadge } from "@/components/admin/lead-status-badge";
 import { AdminEmptyState, AdminPagination } from "@/components/admin/ui";
-import type { AdminLeadView } from "@/types/admin.type";
+import { InboxIcon } from "@/components/icons";
+import type { AdminLeadCell, AdminLeadColumn, AdminLeadView } from "@/types/admin.type";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { LeadDetailDrawer } from "./lead-detail-drawer";
+import { LeadValue } from "./lead-value";
+
+function Cell({ cell }: { cell: AdminLeadCell }) {
+  if (cell.mono) return <span className="sa-mono">{cell.text}</span>;
+  return <LeadValue text={cell.text} make={cell.make} market={cell.market} />;
+}
 
 /**
- * The generic lead inbox: filter bar + a list of leads + a detail drawer, plus
- * pagination. Type-agnostic — the server maps each lead type's rows to the
- * shared `AdminLeadView` (compact `cells` aligned to `columns`, full `details`
- * for the drawer). Opening a lead shows the drawer where status/notes are edited.
+ * The generic lead inbox (boards `ad-carfax`, `ad-inquiries`, `ad-offers` and their states; parity check
+ * docs/design/parity/admin-leads.md): filter bar + a list of leads + a detail drawer, plus pagination. Type-agnostic —
+ * the server maps each lead type's rows to the shared `AdminLeadView` (compact `cells` aligned to `columns`, the
+ * drawer's field lists). Opening a lead shows the drawer where status/notes are edited.
  *
- * Cards while the list is narrower than 48rem, a table above — a container
- * query on the list's own wrapper, not the window: next to the sidebar a
- * laptop leaves less room than a tablet.
+ * Cards while the list is narrower than 48rem, a table above — a container query on the list's own wrapper, not the
+ * window: next to the sidebar a laptop leaves less room than a tablet. (The boards switch at a 1100 px window, which
+ * with the sidebar is the same width.)
  */
 export function LeadInbox({
   basePath,
@@ -27,7 +34,7 @@ export function LeadInbox({
   total,
 }: {
   basePath: string;
-  columns: string[];
+  columns: AdminLeadColumn[];
   leads: AdminLeadView[];
   page: number;
   pageCount: number;
@@ -56,39 +63,37 @@ export function LeadInbox({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <LeadFilters basePath={basePath} />
 
-      <p className="text-sm text-muted">
-        Намерени: <span className="font-bold text-ink">{total}</span>
+      <p className="ad-count">
+        Намерени: <b>{total}</b>
       </p>
 
       {leads.length === 0 ? (
-        <AdminEmptyState title="Няма заявки за този филтър." />
+        <AdminEmptyState title="Няма заявки за този филтър." icon={<InboxIcon />} />
       ) : (
         <div className="@container">
-          <ul className="m-0 grid list-none gap-2 p-0 @xl:grid-cols-2 @3xl:hidden">
+          <ul className="ad-grid @3xl:hidden">
             {leads.map((lead) => (
               <li key={lead.id} className="min-w-0">
-                <button
-                  type="button"
-                  onClick={() => openLead(lead)}
-                  className="flex size-full flex-col gap-2 rounded-xl border border-line bg-white p-4 text-left transition-colors hover:border-brand/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand active:bg-[#fafafa]"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="min-w-0 font-bold wrap-anywhere text-ink">{lead.cells[0]}</span>
+                <button type="button" onClick={() => openLead(lead)} className="ad-lc">
+                  <span className="ad-lc__h">
+                    <b>{lead.cells[0].text}</b>
                     <LeadStatusBadge status={lead.status} />
-                  </div>
-                  <dl className="m-0 flex flex-col gap-1 text-sm">
+                  </span>
+                  <dl>
                     {columns.slice(1).map((col, i) => (
-                      <div key={col} className="flex justify-between gap-3">
-                        <dt className="shrink-0 text-muted">{col}</dt>
-                        <dd className="m-0 min-w-0 text-right wrap-anywhere text-ink">{lead.cells[i + 1]}</dd>
+                      <div key={col.label}>
+                        <dt>{col.label}</dt>
+                        <dd>
+                          <Cell cell={lead.cells[i + 1]} />
+                        </dd>
                       </div>
                     ))}
-                    <div className="flex justify-between gap-3">
-                      <dt className="shrink-0 text-muted">Получено</dt>
-                      <dd className="m-0 text-right text-muted">{lead.createdAt}</dd>
+                    <div>
+                      <dt>Получено</dt>
+                      <dd className="is-dim">{lead.createdAt}</dd>
                     </div>
                   </dl>
                 </button>
@@ -96,21 +101,17 @@ export function LeadInbox({
             ))}
           </ul>
 
-          <div className="hidden overflow-hidden rounded-xl border border-line bg-white @3xl:block">
-            <table className="w-full text-left text-sm">
+          <div className="sa-tbl-wrap hidden @3xl:block">
+            <table className="sa-tbl">
               <thead>
-                <tr className="border-b border-line text-xs tracking-wide text-muted uppercase">
+                <tr>
                   {columns.map((c) => (
-                    <th key={c} scope="col" className="px-4 py-3 font-bold">
-                      {c}
+                    <th key={c.label} scope="col" className={c.num ? "num" : undefined}>
+                      {c.label}
                     </th>
                   ))}
-                  <th scope="col" className="px-4 py-3 font-bold">
-                    Получено
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-bold">
-                    Статус
-                  </th>
+                  <th scope="col">Получено</th>
+                  <th scope="col">Статус</th>
                 </tr>
               </thead>
               <tbody>
@@ -120,28 +121,24 @@ export function LeadInbox({
                   <tr
                     key={lead.id}
                     onClick={() => openLead(lead)}
-                    className="cursor-pointer border-b border-line/60 align-top transition-colors last:border-0 hover:bg-[#fafafa]"
+                    className={`cursor-pointer ${open && shown?.type === lead.type && shown.id === lead.id ? "ad-tr-sel" : ""}`}
                   >
-                    {lead.cells.map((cell, i) => (
-                      <td
-                        key={i}
-                        className={`px-4 py-3 wrap-anywhere ${i === 0 ? "font-semibold text-ink" : "text-muted"}`}
-                      >
-                        {i === 0 ? (
-                          <button
-                            type="button"
-                            onClick={() => openLead(lead)}
-                            className="text-left font-semibold text-ink hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-                          >
-                            {cell}
+                    {lead.cells.map((cell, i) =>
+                      i === 0 ? (
+                        <td key={i}>
+                          <button type="button" onClick={() => openLead(lead)} className="ad-link">
+                            {cell.text}
                           </button>
-                        ) : (
-                          cell
-                        )}
-                      </td>
-                    ))}
-                    <td className="px-4 py-3 whitespace-nowrap text-muted">{lead.createdAt}</td>
-                    <td className="px-4 py-3">
+                        </td>
+                      ) : (
+                        // A VIN stays on one line (the name and the car wrap instead); an amount is right-aligned.
+                        <td key={i} className={columns[i]?.num ? "num" : cell.mono ? "ad-dim ad-nowrap" : "ad-dim wrap-anywhere"}>
+                          <Cell cell={cell} />
+                        </td>
+                      ),
+                    )}
+                    <td className="ad-dim ad-nowrap">{lead.createdAt}</td>
+                    <td>
                       <LeadStatusBadge status={lead.status} />
                     </td>
                   </tr>

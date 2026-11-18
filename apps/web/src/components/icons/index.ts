@@ -42,6 +42,7 @@ export { GoogleIcon } from "./google-icon";
 export { HeartIcon } from "./heart-icon";
 export { HistoryIcon } from "./history-icon";
 export { HomeIcon } from "./home-icon";
+export { InboxIcon } from "./inbox-icon";
 export { InfoIcon } from "./info-icon";
 export { InstagramIcon } from "./instagram-icon";
 export { LandmarkIcon } from "./landmark-icon";

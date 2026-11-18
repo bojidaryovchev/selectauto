@@ -1,15 +1,16 @@
 "use client";
 
-import { ADMIN_INPUT, AdminButton } from "@/components/admin/ui";
+import { Button } from "@/components/common";
+import { AlertIcon, CheckIcon } from "@/components/icons";
 import type { LeadType } from "@/constants/admin";
 import { updateLead } from "@/mutations/admin";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 /**
- * Free-text follow-up notes for a lead. Textarea + save button; saves via
- * `updateLead` and refreshes. Dirty-tracked (save disabled until changed), and
- * the dirty flag is reported up so the drawer can ask before closing.
+ * Free-text follow-up notes for a lead (`ad-notes`; board `ad-inquiries-notes`). Textarea + save button; saves via
+ * `updateLead` and refreshes. Dirty-tracked (save disabled until changed), and the dirty flag is reported up so the
+ * drawer can ask before closing.
  */
 export function NotesEditor({
   type,
@@ -23,7 +24,6 @@ export function NotesEditor({
   onDirtyChange?: (dirty: boolean) => void;
 }) {
   const router = useRouter();
-  const fieldId = useId();
   const [text, setText] = useState(value ?? "");
   const [saved, setSaved] = useState(value ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -60,32 +60,33 @@ export function NotesEditor({
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <label htmlFor={fieldId} className="text-xs font-bold tracking-wide text-muted uppercase">
-        Бележки
+    <div className="ad-notes">
+      <label className="ad-notes__l">
+        <span className="sa-lbl">Бележки</span>
+        <textarea
+          value={text}
+          onChange={(e) => {
+            setText(e.target.value);
+            setOk(false);
+          }}
+          rows={4}
+          placeholder="Добавете бележки за проследяване на този контакт…"
+          className="sa-in w-full"
+        />
       </label>
-      <textarea
-        id={fieldId}
-        value={text}
-        onChange={(e) => {
-          setText(e.target.value);
-          setOk(false);
-        }}
-        rows={4}
-        placeholder="Добавете бележки за проследяване на този контакт…"
-        className={`${ADMIN_INPUT} min-h-28 resize-y`}
-      />
-      <div className="flex flex-wrap items-center gap-3">
-        <AdminButton variant="primary" onClick={save} disabled={!dirty || pending}>
-          {pending ? "Запазване…" : "Запази бележки"}
-        </AdminButton>
+      <div className="ad-notes__f">
+        <Button variant="pri" size="md" onClick={save} disabled={!dirty || pending} busy={pending}>
+          {pending ? "Запазване…" : "Запазете бележки"}
+        </Button>
         {ok && !dirty && (
-          <span role="status" className="text-xs font-semibold text-emerald-600">
+          <span role="status" className="ad-ok">
+            <CheckIcon />
             Запазено
           </span>
         )}
         {error && (
-          <span role="alert" className="text-xs text-rose-600">
+          <span role="alert" className="sa-err">
+            <AlertIcon />
             {error}
           </span>
         )}

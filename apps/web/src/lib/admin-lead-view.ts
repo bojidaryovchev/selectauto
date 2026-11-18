@@ -1,8 +1,10 @@
 import type { LeadStatus } from "@/constants/admin";
-import type { AdminDetailField, AdminLeadView } from "@/types/admin.type";
+import { INQUIRY_BRAND_LOGOS } from "@/data/inquiry-brands";
+import type { AdminDetailField, AdminLeadColumn, AdminLeadView, LeadMake, LeadMarket } from "@/types/admin.type";
 import type { CarfaxRequestRow } from "@/queries/admin/list-carfax-requests.query";
 import type { InquiryRow } from "@/queries/admin/list-inquiries.query";
 import type { CalculatorOfferRow } from "@/queries/admin/list-calculator-offers.query";
+import { getMakeIndex } from "@/queries/cars/get-make-index.query";
 import { formatSofiaDateTime } from "@/lib/sofia-time";
 
 /**
@@ -10,6 +12,30 @@ import { formatSofiaDateTime } from "@/lib/sofia-time";
  * the generic inbox renders. Formatting (dates, EUR) happens here on the server
  * so the client component stays presentation-only and type-agnostic.
  */
+
+/** A make's logo by its name, as typed or picked on the site; null when none is known. */
+export type MakeLogoLookup = (name: string) => string | null;
+
+/**
+ * The logo for a lead's make (boards `ad-carfax`, `ad-inquiries`: the plate beside the car; decision 8). Leads store
+ * the make as text: the car page's make, a name typed into the Carfax form, or the inquiry quiz's label. So it is
+ * matched by name, ignoring case, against the makes the car cards use (`manufacturers`, cached for days), then against
+ * the quiz's own labels and logos („Mercedes"). A make neither knows shows its two letters.
+ */
+export async function getMakeLogoLookup(): Promise<MakeLogoLookup> {
+  const index = await getMakeIndex();
+  const byName = new Map<string, string>();
+  for (const { name, logo } of Object.values(index)) {
+    if (logo) byName.set(name.trim().toLowerCase(), logo);
+  }
+  return (name) => byName.get(name.trim().toLowerCase()) ?? INQUIRY_BRAND_LOGOS[name.trim()] ?? null;
+}
+
+/** The plate for a make, or none without one. */
+function makeOf(name: string | null, logoFor: MakeLogoLookup): LeadMake | undefined {
+  const trimmed = name?.trim();
+  return trimmed ? { name: trimmed, logo: logoFor(trimmed) } : undefined;
+}
 
 /** Sofia time — the formatter used to have no time zone, so the server (UTC) printed every lead 2–3 h early. */
 function fmtDate(d: Date): string {
@@ -36,14 +62,34 @@ const MARKET_LABEL: Record<string, string> = {
   ca: "Канада",
 };
 
+/** A stored market the calculator knows, for its flag. */
+function marketOf(market: string): LeadMarket | undefined {
+  return market === "kr" || market === "us" || market === "ca" ? market : undefined;
+}
+
 const dash = "—";
 
-/** The table column headers for each lead type (aligned to `cells`). */
-export const CARFAX_COLUMNS = ["Име", "Телефон", "VIN", "Автомобил"];
-export const INQUIRY_COLUMNS = ["Име", "Телефон", "Интерес", "Бюджет"];
-export const CALCULATOR_COLUMNS = ["Име", "Телефон", "Пазар", "Оферта"];
+/** The table column headers for each lead type (aligned to `cells`); the offer's amount is right-aligned. */
+export const CARFAX_COLUMNS: AdminLeadColumn[] = [
+  { label: "Име" },
+  { label: "Телефон" },
+  { label: "VIN" },
+  { label: "Автомобил" },
+];
+export const INQUIRY_COLUMNS: AdminLeadColumn[] = [
+  { label: "Име" },
+  { label: "Телефон" },
+  { label: "Интерес" },
+  { label: "Бюджет" },
+];
+export const CALCULATOR_COLUMNS: AdminLeadColumn[] = [
+  { label: "Име" },
+  { label: "Телефон" },
+  { label: "Пазар" },
+  { label: "Оферта", num: true },
+];
 
-/** Common trailing detail rows (page, IP, timestamps). */
+/** The drawer's last list: page, IP, timestamps. */
 function metaDetails(row: {
   pageUrl: string | null;
   userIp: string | null;
@@ -58,18 +104,18 @@ function metaDetails(row: {
   return fields;
 }
 
-export function toCarfaxView(row: CarfaxRequestRow): AdminLeadView {
+export function toCarfaxView(row: CarfaxRequestRow, logoFor: MakeLogoLookup): AdminLeadView {
   const car = [row.carMake, row.carModel].filter(Boolean).join(" ") || dash;
+  const make = makeOf(row.carMake, logoFor);
   const details: AdminDetailField[] = [
     { label: "Име", value: row.fullName },
     { label: "Телефон", value: row.phone, href: `tel:${row.phone}` },
   ];
   if (row.email) details.push({ label: "Имейл", value: row.email, href: `mailto:${row.email}` });
   details.push({ label: "VIN", value: row.vin, mono: true });
-  if (row.carMake) details.push({ label: "Марка", value: row.carMake });
+  if (row.carMake) details.push({ label: "Марка", value: row.carMake, make });
   if (row.carModel) details.push({ label: "Модел", value: row.carModel });
   if (row.message) details.push({ label: "Съобщение", value: row.message });
-  details.push(...metaDetails(row));
 
   return {
     type: "carfax",
@@ -78,27 +124,29 @@ export function toCarfaxView(row: CarfaxRequestRow): AdminLeadView {
     createdAt: fmtDate(row.createdAt),
     updatedAt: fmtDate(row.updatedAt),
     adminNotes: row.adminNotes,
-    cells: [row.fullName, row.phone, row.vin, car],
+    cells: [{ text: row.fullName }, { text: row.phone }, { text: row.vin, mono: true }, { text: car, make }],
     details,
+    amounts: [],
+    meta: metaDetails(row),
   };
 }
 
-export function toInquiryView(row: InquiryRow): AdminLeadView {
+export function toInquiryView(row: InquiryRow, logoFor: MakeLogoLookup): AdminLeadView {
   // „Интерес" is the car asked about. `specific_model` is not a model: it is the
   // modal's answer to „Търсите ли конкретен модел?" — „Да"/„Не" — and taking it
   // first put „Да"/„Не" in this column for every inquiry.
   const interest = [row.brand, row.model].filter(Boolean).join(" ") || dash;
+  const make = makeOf(row.brand, logoFor);
   const details: AdminDetailField[] = [
     { label: "Име", value: row.name },
     { label: "Телефон", value: row.phone, href: `tel:${row.phone}` },
   ];
   if (row.specificModel) details.push({ label: "Търси конкретен модел", value: row.specificModel });
-  if (row.brand) details.push({ label: "Марка", value: row.brand });
+  if (row.brand) details.push({ label: "Марка", value: row.brand, make });
   if (row.model) details.push({ label: "Модел", value: row.model });
   if (row.budgetRange) details.push({ label: "Бюджет", value: row.budgetRange });
   if (row.purchaseTimeframe) details.push({ label: "Срок", value: row.purchaseTimeframe });
   if (row.financingOption) details.push({ label: "Финансиране", value: row.financingOption });
-  details.push(...metaDetails(row));
 
   return {
     type: "inquiry",
@@ -107,8 +155,10 @@ export function toInquiryView(row: InquiryRow): AdminLeadView {
     createdAt: fmtDate(row.createdAt),
     updatedAt: fmtDate(row.updatedAt),
     adminNotes: row.adminNotes,
-    cells: [row.name, row.phone, interest, row.budgetRange || dash],
+    cells: [{ text: row.name }, { text: row.phone }, { text: interest, make }, { text: row.budgetRange || dash }],
     details,
+    amounts: [],
+    meta: metaDetails(row),
   };
 }
 
@@ -135,13 +185,14 @@ const AUCTION_LABEL: Record<string, string> = { copart: "Copart", iaai: "IAAI" }
 
 export function toCalculatorView(row: CalculatorOfferRow): AdminLeadView {
   const marketLabel = MARKET_LABEL[row.market] ?? row.market;
+  const market = marketOf(row.market);
   const breakdown = (row.breakdownJson ?? {}) as BreakdownJson;
   const inputs = breakdown.inputs ?? {};
   const details: AdminDetailField[] = [
     { label: "Име", value: row.name },
     { label: "Телефон", value: row.phone, href: `tel:${row.phone}` },
     { label: "Имейл", value: row.email, href: `mailto:${row.email}` },
-    { label: "Пазар", value: marketLabel },
+    { label: "Пазар", value: marketLabel, market },
   ];
   // What the visitor chose — stored with every offer, and the transport line of
   // a САЩ quote depends on the auction and the yard, yet none of it was shown.
@@ -159,20 +210,22 @@ export function toCalculatorView(row: CalculatorOfferRow): AdminLeadView {
     details.push({ label: "Декларация за произход", value: inputs.originDeclaration ? "Да" : "Не" });
   }
   if (inputs.technotest) details.push({ label: "Технотест", value: "Да" });
-  details.push({ label: "Цена на автомобил", value: usd(row.carPriceEur) });
-  details.push({ label: "Обща оферта", value: usd(row.totalEur) });
 
+  // The amounts get a list of their own, right-aligned (board `ad-offers-drawer`), in the order they always had.
+  const amounts: AdminDetailField[] = [
+    { label: "Цена на автомобил", value: usd(row.carPriceEur) },
+    { label: "Обща оферта", value: usd(row.totalEur), big: true },
+  ];
   // Itemised breakdown snapshot — exactly what the visitor saw/received.
   for (const line of breakdown.lines ?? []) {
-    details.push({
+    amounts.push({
       label: line.label,
       value: line.amountEur != null ? eur(line.amountEur) : usd(line.amountUsd),
     });
   }
   if (breakdown.ratesVerifiedAt) {
-    details.push({ label: "Тарифи към", value: breakdown.ratesVerifiedAt });
+    amounts.push({ label: "Тарифи към", value: breakdown.ratesVerifiedAt });
   }
-  details.push(...metaDetails(row));
 
   return {
     type: "calculator",
@@ -181,7 +234,9 @@ export function toCalculatorView(row: CalculatorOfferRow): AdminLeadView {
     createdAt: fmtDate(row.createdAt),
     updatedAt: fmtDate(row.updatedAt),
     adminNotes: row.adminNotes,
-    cells: [row.name, row.phone, marketLabel, usd(row.totalEur)],
+    cells: [{ text: row.name }, { text: row.phone }, { text: marketLabel, market }, { text: usd(row.totalEur) }],
     details,
+    amounts,
+    meta: metaDetails(row),
   };
 }

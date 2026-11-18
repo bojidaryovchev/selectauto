@@ -139,22 +139,20 @@ export const LEAD_STATUSES = ["new", "contacted", "won", "lost", "archived"] as 
 
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
 
-/** BG label + a tailwind badge palette for each status. */
+/** BG label and the kit tone for each status. */
 export const LEAD_STATUS_META: Record<
   LeadStatus,
   {
     label: string;
-    /** The old light badge, until the inboxes are rebuilt. */
-    badgeClass: string;
     /** The kit's colour for the status's dot and tag (`sa-dot--…`, `sa-tag--…`); null is the neutral one. */
     tone: "warn" | "info" | "pos" | "neg" | null;
   }
 > = {
-  new: { label: "Ново", badgeClass: "bg-amber-100 text-amber-800 ring-amber-200", tone: "warn" },
-  contacted: { label: "В процес", badgeClass: "bg-blue-100 text-blue-800 ring-blue-200", tone: "info" },
-  won: { label: "Спечелено", badgeClass: "bg-emerald-100 text-emerald-800 ring-emerald-200", tone: "pos" },
-  lost: { label: "Загубено", badgeClass: "bg-rose-100 text-rose-800 ring-rose-200", tone: "neg" },
-  archived: { label: "Архив", badgeClass: "bg-neutral-200 text-neutral-700 ring-neutral-300", tone: null },
+  new: { label: "Ново", tone: "warn" },
+  contacted: { label: "В процес", tone: "info" },
+  won: { label: "Спечелено", tone: "pos" },
+  lost: { label: "Загубено", tone: "neg" },
+  archived: { label: "Архив", tone: null },
 };
 
 /** The three lead sources the back office manages. */

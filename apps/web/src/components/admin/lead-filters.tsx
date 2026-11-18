@@ -1,15 +1,16 @@
 "use client";
 
-import { ADMIN_INPUT, AdminButton, adminChipClass } from "@/components/admin/ui";
+import { ADMIN_INPUT, adminChipClass } from "@/components/admin/ui";
+import { Button } from "@/components/common";
+import { SearchIcon } from "@/components/icons";
 import { LEAD_STATUS_META, LEAD_STATUSES } from "@/constants/admin";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useId, useState } from "react";
 
 /**
- * Inbox filter bar: a status tab row + a free-text search box. Both write to the
- * URL search params (`status`, `q`) and reset `page`, so the server component
- * re-queries. "Всички" clears the status filter (server then hides `archived`);
- * an explicit "Архив" tab surfaces filed leads.
+ * Inbox filter bar (boards `ad-carfax`, `ad-inquiries-list`): a search field with its button, and a row of status
+ * chips. Both write to the URL search params (`status`, `q`) and reset `page`, so the server component re-queries.
+ * "Всички" clears the status filter (server then hides `archived`); an explicit "Архив" chip surfaces filed leads.
  */
 export function LeadFilters({ basePath }: { basePath: string }) {
   const router = useRouter();
@@ -39,10 +40,10 @@ export function LeadFilters({ basePath }: { basePath: string }) {
   ];
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="ad-tools">
       <form
         role="search"
-        className="flex flex-col gap-2 sm:flex-row"
+        className="ad-search"
         onSubmit={(e) => {
           e.preventDefault();
           apply({ q });
@@ -51,23 +52,26 @@ export function LeadFilters({ basePath }: { basePath: string }) {
         <label htmlFor={searchId} className="sr-only">
           Търсене
         </label>
-        <input
-          id={searchId}
-          type="search"
-          enterKeyHint="search"
-          autoCapitalize="off"
-          autoCorrect="off"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Търси по име, телефон, VIN…"
-          className={`${ADMIN_INPUT} sm:max-w-md`}
-        />
-        <AdminButton type="submit" variant="primary" className="shrink-0">
-          Търси
-        </AdminButton>
+        <span className="sa-inw ad-grow">
+          <SearchIcon />
+          <input
+            id={searchId}
+            type="search"
+            enterKeyHint="search"
+            autoCapitalize="off"
+            autoCorrect="off"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Търсете по име, телефон, VIN…"
+            className={ADMIN_INPUT}
+          />
+        </span>
+        <Button type="submit" variant="sec" size="md" className="ad-search__b shrink-0">
+          Търсете
+        </Button>
       </form>
 
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Филтър по статус">
+      <div className="sa-chips" role="group" aria-label="Филтър по статус">
         {tabs.map((t) => {
           const active = currentStatus === t.key;
           return (
