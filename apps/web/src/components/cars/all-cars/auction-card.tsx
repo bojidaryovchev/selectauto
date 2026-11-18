@@ -84,7 +84,7 @@ function AuctionCardImpl({
           <FavoriteButton carId={car.id} variant="overlay" confirmOnRemove={confirmRemove} className="sa-car__fav" />
         ) : null}
         {isPast ? (
-          <span className="sa-tag sa-tag--sold sa-car__mk">ПРОДАДЕН</span>
+          <span className="sa-tag sa-tag--sold sa-car__mk">{car.isUnsold ? "НЕПРОДАДЕН" : "ПРОДАДЕН"}</span>
         ) : car.hasBuyNow ? (
           <span className="sa-tag sa-tag--buy sa-car__mk">BUY NOW</span>
         ) : null}
@@ -120,7 +120,7 @@ function AuctionCardImpl({
 
         {/* The price row ALWAYS renders („—" for auction lots priced at the sale): deterministic height again. */}
         <div className="sa-car__pr">
-          <span>{isPast ? "Продаден за" : car.hasBuyNow ? "Buy Now" : "Цена"}</span>
+          <span>{isPast ? (car.isUnsold ? "Последна оферта" : "Продаден за") : car.hasBuyNow ? "Buy Now" : "Цена"}</span>
           <b className={car.price ? undefined : "is-none"}>{car.price || "—"}</b>
         </div>
 

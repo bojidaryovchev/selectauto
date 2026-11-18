@@ -170,6 +170,8 @@ export type CarDetail = {
   // ── State flags (drive UI + SEO) ──
   /** True for a concluded/archived lot → page renders as a result + noindex. */
   isPast: boolean;
+  /** A concluded lot that didn't sell (status `not_sold`): „НЕПРОДАДЕН" and „Последна оферта" instead of the sold words. */
+  isUnsold?: boolean;
   /** True for an active auction lot (countdown vs "Наличен"). */
   isAuction: boolean;
   /** True when the active lot has a valid buy-now price. */

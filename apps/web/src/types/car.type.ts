@@ -83,4 +83,9 @@ export type CarView = {
    * countdown or buy CTA (the lot is gone — it's price-research data).
    */
   isPast?: boolean;
+  /**
+   * A past lot whose auction ended without a sale (status `not_sold`, about 6 600 archived lots): its mark reads
+   * „НЕПРОДАДЕН" and its price „Последна оферта", not „ПРОДАДЕН" / „Продаден за" beside the status „Непродаден".
+   */
+  isUnsold?: boolean;
 };

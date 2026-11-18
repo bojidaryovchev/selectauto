@@ -89,11 +89,14 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const descBits = [
     detail.highlights.find((h) => h.label === "Пробег")?.value,
     detail.specs.find((sp) => sp.label === "Първична щета")?.value,
-    priceStr ? (detail.isPast ? `Продаден за ${priceStr}` : priceStr) : null,
+    priceStr ? (detail.isPast ? `${detail.isUnsold ? "Последна оферта" : "Продаден за"} ${priceStr}` : priceStr) : null,
   ].filter(Boolean);
-  const descCta = detail.isPast
-    ? "Автомобилът е продаден — вижте активните обяви на SelectAuto."
-    : "Свържете се със SelectAuto за оферта и внос.";
+  // An unsold lot says so: „Продаден" beside its status „Непродаден" contradicted itself (REDESIGN.md bug list).
+  const descCta = detail.isUnsold
+    ? "Търгът е приключил без продажба — вижте активните обяви на SelectAuto."
+    : detail.isPast
+      ? "Автомобилът е продаден — вижте активните обяви на SelectAuto."
+      : "Свържете се със SelectAuto за оферта и внос.";
 
   const description = `${detail.title} — внос от ${detail.sourceCountry ? `${detail.sourceCountry} (${detail.source})` : detail.source}. ${descBits.join(" · ")}. ${descCta}`;
 
@@ -302,7 +305,7 @@ async function CarDetailBody({ params }: { params: Params }) {
               ) : null}
               <span className="cd-src">{detail.source}</span>
               {detail.isPast ? (
-                <span className="sa-tag">ПРОДАДЕН</span>
+                <span className="sa-tag">{detail.isUnsold ? "НЕПРОДАДЕН" : "ПРОДАДЕН"}</span>
               ) : detail.hasBuyNow ? (
                 <span className="sa-tag sa-tag--buy">BUY NOW</span>
               ) : null}

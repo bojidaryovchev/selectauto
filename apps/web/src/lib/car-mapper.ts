@@ -178,6 +178,7 @@ export function carListingToView(row: AnyCarListing, isPast = false, makes?: Mak
     isNonCar: type.isNonCar,
     // Past cards are never "active auctions" → no countdown; never show buy badge.
     isAuction: isPast ? false : isAuction,
+    isUnsold: isPast && row.status === "not_sold" ? true : undefined,
     hasBuyNow: isPast ? false : row.buyNow === true && Number(row.buyNowPrice ?? 0) > 0,
     isPast,
   };

@@ -131,6 +131,8 @@ function buildGallery(rawLot: unknown, fallbackUrl: string | null): string[] {
  */
 function buildPrices(opts: {
   isPast: boolean;
+  /** A past lot that didn't sell: its price is the last bid, not a sale. */
+  isUnsold?: boolean;
   hasBuyNow: boolean;
   effective?: number;
   buyNowPrice?: number;
@@ -139,7 +141,8 @@ function buildPrices(opts: {
   const prices: CarDetailPrice[] = [];
 
   if (opts.isPast) {
-    if (opts.effective) prices.push({ label: "Продаден за", value: eur(opts.effective)!, primary: true });
+    if (opts.effective)
+      prices.push({ label: opts.isUnsold ? "Последна оферта" : "Продаден за", value: eur(opts.effective)!, primary: true });
   } else if (opts.hasBuyNow && opts.buyNowPrice) {
     prices.push({ label: "Купи сега", value: eur(opts.buyNowPrice)!, primary: true });
   } else if (opts.effective) {
@@ -228,8 +231,12 @@ export function carDetailFromRows(opts: {
 
   const images = buildGallery(rawLot, lot.imageUrl);
 
+  // An archived lot whose auction ended without a sale (status `not_sold`): its price is the last bid.
+  const isUnsold = isPast && lot.status === "not_sold";
+
   const prices = buildPrices({
     isPast,
+    isUnsold,
     hasBuyNow,
     effective: opts.effectivePrice,
     buyNowPrice,
@@ -433,6 +440,7 @@ export function carDetailFromRows(opts: {
     lotNumber: lot.lotNumber ?? undefined,
     status: statusLabel(lot.status),
     isPast,
+    isUnsold: isUnsold || undefined,
     isAuction: isPast ? false : isAuction,
     hasBuyNow: isPast ? false : hasBuyNow,
     saleDate: lot.saleDate ? lot.saleDate.toISOString() : undefined,
