@@ -1,17 +1,15 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { eur } from "@/lib/finance";
 
 /**
- * A range slider with min/max end labels, paired with a `CalcField` in the
- * calculators (the field shows the exact value, the slider gives quick coarse
- * control — same UX as the live „Инструменти" page). The orange fill/thumb is
- * styled in `globals.css` via the `.calc-range` class (accent-color + thumb),
- * kept out of Tailwind because pseudo-element thumb styling isn't expressible in
- * utilities.
+ * A range slider with its end labels, paired with a `CalcField` in the calculators (the field shows the exact value,
+ * the slider gives quick coarse control). The kit's slider (`sa-range`): an orange fill on a dark track and a light
+ * thumb — a native `<input type="range">` styled in globals.css (`.calc-range`), the fill drawn from `--pct`.
  *
- * `format` renders the end labels; defaults to the `eur` money formatter. Use
- * `formatMaxLabel` (e.g. „5000+", „Макс") when the top of the range is a cap.
+ * `format` renders the end labels; defaults to the `eur` money formatter. Use `minLabel` / `maxLabel` (e.g. „€0",
+ * „Макс", „€5000+") when an end reads differently.
  */
 export function CalcSlider({
   value,
@@ -34,19 +32,24 @@ export function CalcSlider({
   minLabel?: string;
   maxLabel?: string;
 }) {
+  const clamped = Math.min(Math.max(value, min), max);
+  const pct = max > min ? ((clamped - min) / (max - min)) * 100 : 0;
+
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="sa-range im-range">
       <input
         type="range"
         aria-label={ariaLabel}
         min={min}
         max={max}
         step={step}
-        value={Math.min(Math.max(value, min), max)}
+        value={clamped}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="calc-range w-full"
+        // 24 px tall for the thumb, laid out as the 6 px track (the kit's spacing to the end labels).
+        className="calc-range -my-2.25 w-full"
+        style={{ "--pct": `${pct}%` } as CSSProperties}
       />
-      <div className="flex items-center justify-between text-[13px] font-semibold text-muted">
+      <div className="sa-range__ends">
         <span>{minLabel ?? format(min)}</span>
         <span>{maxLabel ?? format(max)}</span>
       </div>

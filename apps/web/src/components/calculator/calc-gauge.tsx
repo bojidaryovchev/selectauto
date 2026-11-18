@@ -1,69 +1,41 @@
 import type { ReactNode } from "react";
 
+/** The ring's geometry, as drawn (`.im-gauge`, 208 px). */
+const SIZE = 208;
+const STROKE = 16;
+const R = (SIZE - STROKE) / 2;
+const C = 2 * Math.PI * R;
+
 /**
- * The circular „donut" gauge from the live „Инструменти" panels — a track ring
- * with a brand-orange arc filled to `fraction` (0–1, clamped), and free-form
- * center content (a big number + caption). Pure SVG, no deps. Presentational, so
- * no `"use client"`.
+ * The circular „donut" gauge of the financing calculators (boards `im-leasing`, `im-budget`; `.im-gauge`): a track
+ * ring with a light arc filled to `fraction` (0–1, clamped; white, not orange, which is kept for actions) and the
+ * centre's text — a caption, the big figure, a caption. Pure SVG, no `"use client"`.
  *
- * The arc starts at 12 o'clock (rotated −90°) and grows clockwise. `fraction`
- * above 1 is clamped to a full ring so an over-budget input still renders cleanly.
- *
- * Center content is confined to a box inside the ring (`maxWidth = size − 3·stroke`)
- * and wraps with tight leading + `overflow-wrap:anywhere`, so long labels and wide
- * values (e.g. a five-figure monthly payment) never collide with or spill past the
- * ring — the content always fits, at any input.
+ * The arc starts at 12 o'clock and grows clockwise; above 1 it is a full ring, and at 0 there is no arc at all (a
+ * round cap would otherwise leave a dot).
  */
-export function CalcGauge({
-  fraction,
-  children,
-  size = 208,
-}: {
-  fraction: number;
-  children: ReactNode;
-  size?: number;
-}) {
-  const stroke = 16;
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
+export function CalcGauge({ fraction, children }: { fraction: number; children: ReactNode }) {
   const f = Math.min(Math.max(Number.isFinite(fraction) ? fraction : 0, 0), 1);
-  const offset = c * (1 - f);
-  // Confine the center content well within the ring's inner diameter (size − 2·stroke)
-  // so wrapped label lines, which sit above/below centre where the circle is narrower,
-  // still clear the stroke.
-  const contentMax = size - stroke * 3;
 
   return (
-    <div className="relative grid place-items-center" style={{ width: size, height: size }}>
-      <svg
-        width={size}
-        height={size}
-        viewBox={`0 0 ${size} ${size}`}
-        className="-rotate-90"
-        aria-hidden="true"
-      >
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--color-line)" strokeWidth={stroke} />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          fill="none"
-          stroke="var(--color-brand)"
-          strokeWidth={stroke}
-          strokeLinecap="round"
-          strokeDasharray={c}
-          strokeDashoffset={offset}
-          style={{ transition: "stroke-dashoffset 350ms ease" }}
-        />
+    <div className="im-gauge">
+      <svg viewBox={`0 0 ${SIZE} ${SIZE}`} aria-hidden="true">
+        <circle className="im-gauge__tr" cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none" strokeWidth={STROKE} />
+        {f > 0 ? (
+          <circle
+            className="im-gauge__arc transition-[stroke-dashoffset] duration-300 ease-out motion-reduce:transition-none"
+            cx={SIZE / 2}
+            cy={SIZE / 2}
+            r={R}
+            fill="none"
+            strokeWidth={STROKE}
+            strokeLinecap="round"
+            strokeDasharray={C}
+            strokeDashoffset={C * (1 - f)}
+          />
+        ) : null}
       </svg>
-      <div className="absolute inset-0 grid place-items-center">
-        <div
-          className="grid place-items-center gap-0.5 text-center leading-tight wrap-anywhere"
-          style={{ maxWidth: contentMax }}
-        >
-          {children}
-        </div>
-      </div>
+      <div className="im-gauge__c">{children}</div>
     </div>
   );
 }

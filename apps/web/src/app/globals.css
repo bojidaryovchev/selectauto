@@ -139,6 +139,12 @@ body {
     max-width: none;
   }
 }
+@media (max-width: 639.98px) {
+  /* The calculators' result bar (phones only, .im-bar.is-on). */
+  :root:has(.im-bar.is-on) {
+    --page-bar: 65px;
+  }
+}
 @media (min-width: 1024px) {
   :root {
     --toast-left: auto;
@@ -226,40 +232,56 @@ body {
 }
 
 /*
-  Range slider for the „Инструменти" financing calculators (<CalcSlider>). The
-  orange fill + thumb can't be expressed as Tailwind utilities (pseudo-element
-  thumbs), so it lives here. `accent-color` paints the filled track + thumb in
-  supporting browsers; the explicit -webkit/-moz thumb rules guarantee the orange
-  circle everywhere. Track height/rounding match the live site's control.
+  Range slider for the financing calculators (<CalcSlider>), in the kit's look (`sa-range`): a 6px dark track with an
+  orange fill up to the value and a light 24px thumb ringed in orange. Pseudo-element thumbs and tracks can't be
+  written as Tailwind utilities, so they live here. The fill comes from `--pct` (set inline by CalcSlider) in WebKit
+  and Blink, and from `::-moz-range-progress` in Firefox.
 */
 .calc-range {
   -webkit-appearance: none;
   appearance: none;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--color-line);
-  accent-color: var(--color-brand);
+  height: 24px;
+  background: transparent;
   cursor: pointer;
+}
+.calc-range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, var(--color-or) var(--pct, 0%), var(--color-s3) var(--pct, 0%));
 }
 .calc-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 20px;
-  height: 20px;
-  border-radius: 999px;
-  background: var(--color-brand);
-  border: 3px solid #fff;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  width: 24px;
+  height: 24px;
+  margin-top: -9px;
+  border-radius: 50%;
+  background: var(--color-tx);
+  box-shadow:
+    0 0 0 4px var(--color-bg),
+    0 0 0 6px var(--color-or);
+}
+.calc-range::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-s3);
+}
+.calc-range::-moz-range-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-or);
 }
 .calc-range::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
-  border: 3px solid #fff;
-  border-radius: 999px;
-  background: var(--color-brand);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-tx);
+  box-shadow:
+    0 0 0 4px var(--color-bg),
+    0 0 0 6px var(--color-or);
 }
 .calc-range:focus-visible {
-  outline: 2px solid var(--color-brand);
-  outline-offset: 3px;
+  outline: 2px solid var(--color-ortx);
+  outline-offset: 6px;
 }

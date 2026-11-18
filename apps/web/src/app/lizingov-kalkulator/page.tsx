@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import { LeasingCalculator } from "@/components/calculator";
-import { Container, LinkButton, Reveal } from "@/components/common";
-import { InquiryButton } from "@/components/inquiry";
+import { FinanceToolPage, LeasingCalculator } from "@/components/calculator";
+import { BanknoteIcon, CalculatorIcon, CalendarIcon, PercentIcon, WalletIcon } from "@/components/icons";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
 import { buildBreadcrumbJsonLd, buildFaqJsonLd, buildWebApplicationJsonLd, type FaqEntry } from "@/lib/site-jsonld";
@@ -10,19 +9,19 @@ import { buildSocialMeta } from "@/lib/social-meta";
 export const metadata: Metadata = {
   title: "Лизингов калкулатор — месечна вноска за автомобил | SelectAuto",
   description:
-    "Изчисли месечната лизингова вноска за автомобил: цена, първоначална вноска, срок и ГПР. Прозрачна разбивка на кредита, лихвата и общата стойност. Онлайн калкулатор на SelectAuto.",
+    "Изчислете месечната лизингова вноска за автомобил: цена, първоначална вноска, срок и ГПР. Прозрачна разбивка на кредита, лихвата и общата стойност. Онлайн калкулатор на SelectAuto.",
   alternates: { canonical: `${SITE_URL}/lizingov-kalkulator` },
   ...buildSocialMeta({
     title: "Лизингов калкулатор — месечна вноска за автомобил | SelectAuto",
     description:
-      "Изчисли месечната лизингова вноска: цена, първоначална вноска, срок и ГПР — прозрачна разбивка на кредита.",
+      "Изчислете месечната лизингова вноска: цена, първоначална вноска, срок и ГПР — прозрачна разбивка на кредита.",
     path: "/lizingov-kalkulator",
   }),
 };
 
 /**
- * /lizingov-kalkulator — a standalone leasing/financing monthly-payment
- * calculator (one of the two „Инструменти" financial tools; the affordability
+ * /lizingov-kalkulator (boards `im-leasing*`; parity check docs/design/parity/lizingov-kalkulator.md) — a standalone
+ * leasing/financing monthly-payment calculator (one of the two „Инструменти" financial tools; the affordability
  * tool lives at /byudzheten-kalkulator). Server component holding the SEO copy +
  * FAQ + JSON-LD; the interactive `<LeasingCalculator>` is a client island. Own
  * top-level slug (keyword „лизингов калкулатор") — cross-linked to the budget
@@ -69,107 +68,58 @@ export default function LeasingCalculatorPage() {
   return (
     <>
       <SiteHeader />
-      <main className="flex-1 bg-[#fafafa] pt-(--header-h) text-ink">
+      <main className="flex-1 pt-(--header-h)">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webAppJsonLd) }} />
 
-        <Container className="max-w-300 py-12 max-md:py-8">
-          <h1 className="mb-3 text-4xl font-black uppercase tracking-tight text-ink max-md:text-3xl">
-            Лизингов калкулатор
-          </h1>
-          <p className="mb-8 max-w-2xl text-[15px] leading-[1.8] text-[#3d4046]">
-            Изчислете ориентировъчната месечна вноска за лизинг на автомобил. Задайте цена, първоначална вноска, срок и
-            ГПР, а калкулаторът показва вноската, сумата на кредита, лихвата и общата стойност. За обвързваща оферта
-            направете запитване — изготвяме персонални условия за конкретния автомобил.
-          </p>
-
-          <LeasingCalculator />
-
-          {/* Explainer — real, indexable content */}
-          <Reveal className="mt-12">
-            <section>
-              <h2 className="mb-4 text-2xl font-black text-ink">Как да разчетете резултата</h2>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {[
-                  { t: "Сума на кредита", d: "Цената на автомобила минус първоначалната вноска — сумата, която финансирате." },
-                  { t: "Месечна вноска", d: "Равната сума, която плащате всеки месец през целия срок на лизинга." },
-                  { t: "Общо лихва", d: "Сборът на лихвата за целия срок — разликата между платеното и сумата на кредита." },
-                  { t: "Общо разходи", d: "Общата стойност на плащанията плюс първоначалната вноска." },
-                ].map((c) => (
-                  <div
-                    key={c.t}
-                    className="rounded-2xl border border-line bg-white p-5 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-card-strong"
-                  >
-                    <h3 className="mb-1.5 text-lg font-extrabold text-ink">{c.t}</h3>
-                    <p className="text-sm/relaxed text-[#5a5d64]">{c.d}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </Reveal>
-
-          {/* FAQ (visible — matches the FAQPage JSON-LD) */}
-          <Reveal className="mt-12">
-            <section>
-              <h2 className="mb-4 text-2xl font-black text-ink">Често задавани въпроси</h2>
-              <div className="flex flex-col gap-4">
-                {FAQ.map((f) => (
-                  <div
-                    key={f.question}
-                    className="rounded-2xl border border-line bg-white p-5 shadow-card transition-colors duration-200 hover:border-brand/40"
-                  >
-                    <h3 className="mb-1.5 text-base font-extrabold text-ink">{f.question}</h3>
-                    <p className="text-sm/relaxed text-[#5a5d64]">{f.answer}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </Reveal>
-
-          {/* Cross-links to the other tools */}
-          <Reveal className="mt-12">
-            <section>
-              <h2 className="mb-4 text-2xl font-black text-ink">Свързани инструменти</h2>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <LinkButton
-                  href="/byudzheten-kalkulator"
-                  rippleTheme="dark"
-                  className="group block rounded-2xl border border-line bg-white p-5 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-brand/50 hover:shadow-card-strong"
-                >
-                  <h3 className="mb-1.5 text-lg font-extrabold text-ink transition-colors group-hover:text-brand-dark">Бюджетен калкулатор</h3>
-                  <p className="text-sm/relaxed text-[#5a5d64]">Вижте каква цена автомобил отговаря на месечния Ви бюджет.</p>
-                </LinkButton>
-                <LinkButton
-                  href="/kalkulator"
-                  rippleTheme="dark"
-                  className="group block rounded-2xl border border-line bg-white p-5 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-brand/50 hover:shadow-card-strong"
-                >
-                  <h3 className="mb-1.5 text-lg font-extrabold text-ink transition-colors group-hover:text-brand-dark">Калкулатор за внос</h3>
-                  <p className="text-sm/relaxed text-[#5a5d64]">Ориентировъчна цена за внос от Корея, САЩ или Канада.</p>
-                </LinkButton>
-              </div>
-            </section>
-          </Reveal>
-
-          {/* CTA */}
-          <Reveal className="mt-12">
-            <section className="rounded-card bg-linear-to-r from-brand-dark to-brand p-8 text-center max-md:p-6">
-              <h2 className="mb-2 text-2xl font-black text-white max-md:text-xl">Искаш точни условия за лизинг?</h2>
-              <p className="mx-auto mb-5 max-w-xl text-sm/relaxed text-white/85">
-                Кажи ни марка, модел и бюджет — ще изготвим персонална калкулация и ще съдействаме за финансирането.
-              </p>
-              <InquiryButton
-                rippleTheme="dark"
-                className="inline-flex min-h-13.5 items-center justify-center rounded-full bg-white px-8 text-sm font-extrabold uppercase tracking-wide text-brand-dark transition-transform duration-200 hover:-translate-y-0.5"
-              >
-                Направи запитване
-              </InquiryButton>
-            </section>
-          </Reveal>
-        </Container>
+        <FinanceToolPage
+          crumb="Лизингов калкулатор"
+          title="Лизингов калкулатор"
+          lead="Изчислете ориентировъчната месечна вноска за лизинг на автомобил. Задайте цена, първоначална вноска, срок и ГПР, а калкулаторът показва вноската, сумата на кредита, лихвата и общата стойност. За обвързваща оферта направете запитване — изготвяме персонални условия за конкретния автомобил."
+          calculator={<LeasingCalculator />}
+          explainer={[
+            {
+              Icon: BanknoteIcon,
+              t: "Сума на кредита",
+              d: "Цената на автомобила минус първоначалната вноска — сумата, която финансирате.",
+            },
+            {
+              Icon: CalendarIcon,
+              t: "Месечна вноска",
+              d: "Равната сума, която плащате всеки месец през целия срок на лизинга.",
+            },
+            {
+              Icon: PercentIcon,
+              t: "Общо лихва",
+              d: "Сборът на лихвата за целия срок — разликата между платеното и сумата на кредита.",
+            },
+            { Icon: WalletIcon, t: "Общо разходи", d: "Общата стойност на плащанията плюс първоначалната вноска." },
+          ]}
+          faq={FAQ}
+          related={[
+            {
+              Icon: WalletIcon,
+              href: "/byudzheten-kalkulator",
+              t: "Бюджетен калкулатор",
+              d: "Вижте каква цена автомобил отговаря на месечния Ви бюджет.",
+            },
+            {
+              Icon: CalculatorIcon,
+              href: "/kalkulator",
+              t: "Калкулатор за внос",
+              d: "Ориентировъчна цена за внос от Корея, САЩ или Канада.",
+            },
+          ]}
+          cta={{
+            title: "Искате точни условия за лизинг?",
+            text: "Кажете ни марка, модел и бюджет — ще изготвим персонална калкулация и ще съдействаме за финансирането.",
+          }}
+        />
       </main>
       <SiteFooter />
+      {/* Room for the phone result bar at the page's end (phones only, with the bar). */}
+      <div className="sa-only-ph h-16.25" aria-hidden="true" />
     </>
   );
 }

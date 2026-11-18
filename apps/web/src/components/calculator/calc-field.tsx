@@ -1,23 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
+import { bgDecimal } from "@/data/import-rates";
+
+/** Round to the step's precision, so 6,5 + 0,1 reads 6,6 and not 6,6000000001. */
+function snap(n: number, step: number): number {
+  const digits = step < 1 ? (String(step).split(".")[1]?.length ?? 0) : 0;
+  return Number(n.toFixed(digits));
+}
 
 /**
- * A labeled numeric input for the financing calculators — a large, rounded box
- * with an optional „€" prefix or „%" suffix, matching the live selectauto.bg
- * „Инструменти" fields. Module-scoped (one component per file) so the `<input>`
- * keeps focus/caret across parent re-renders — a render-time definition would
- * remount it every keystroke.
+ * A labelled numeric field for the financing calculators (boards `im-leasing`, `im-budget`; the kit's `.im-cf`): the
+ * label above, a tall box with an optional „€" in front or „%" after, the hint under it. Module-scoped (one component
+ * per file) so the `<input>` keeps focus/caret across parent re-renders — a render-time definition would remount it
+ * every keystroke.
  *
- * `value` is a number owned by the parent; `onChange` receives a clamped number
- * (never NaN). `hint` is the small helper line under the field.
+ * `value` is a number owned by the parent; `onChange` receives a clamped number (never NaN). A decimal shows with a
+ * comma („6,5", decision 11), and a comma or a dot may be typed. ↑ and ↓ step by `step`, as a number input does.
  *
- * A local text `draft` lets the field be CLEARED or left partial while editing
- * instead of snapping to a number on every keystroke — the plain `value={number}`
- * control coerced an empty field to 0, which a `min`-clamp then bounced up to
- * `min`, making the input impossible to clear and retype. A parseable value is
- * still pushed up live (clamped); on blur the draft is dropped and the input
- * settles on the clamped numeric value.
+ * A local text `draft` lets the field be CLEARED or left partial while editing instead of snapping to a number on
+ * every keystroke — the plain `value={number}` control coerced an empty field to 0, which a `min`-clamp then bounced
+ * up to `min`, making the input impossible to clear and retype. A parseable value is still pushed up live (clamped);
+ * on blur the draft is dropped and the input settles on the clamped numeric value.
  */
 export function CalcField({
   label,
@@ -40,36 +44,54 @@ export function CalcField({
   max?: number;
   step?: number;
 }) {
+  const id = useId();
   const [draft, setDraft] = useState<string | null>(null);
 
+  const push = (n: number) => {
+    let v = n;
+    if (v < min) v = min;
+    if (max !== undefined && v > max) v = max;
+    onChange(v);
+  };
+
   return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-[15px] font-extrabold text-ink">{label}</span>
-      <div className="flex items-center gap-2 rounded-2xl border border-line bg-white px-4 py-3 transition-colors duration-200 focus-within:border-brand">
-        {prefix ? <span className="text-xl font-black text-brand">{prefix}</span> : null}
+    <div className="im-cf">
+      <label className="im-cf__l" htmlFor={id}>
+        {label}
+      </label>
+      <div className="im-cf__box focus-within:border-or focus-within:shadow-[0_0_0_3px_var(--color-or-ring)]">
+        {prefix ? <b aria-hidden="true">{prefix}</b> : null}
         <input
-          type="number"
+          id={id}
+          type="text"
           inputMode="decimal"
-          min={min}
-          max={max}
-          step={step}
-          value={draft ?? (Number.isFinite(value) ? String(value) : "")}
+          autoComplete="off"
+          value={draft ?? (Number.isFinite(value) ? bgDecimal(value) : "")}
           onChange={(e) => {
             const raw = e.target.value;
             setDraft(raw);
-            if (raw === "") return; // let the field sit empty mid-edit — don't push a number yet
-            let n = Number(raw);
-            if (!Number.isFinite(n)) return; // ignore un-parseable partials (e.g. "1.")
-            if (n < min) n = min;
-            if (max !== undefined && n > max) n = max;
-            onChange(n);
+            if (raw.trim() === "") return; // let the field sit empty mid-edit — don't push a number yet
+            const n = Number(raw.replace(",", "."));
+            if (!Number.isFinite(n)) return; // ignore un-parseable partials
+            push(n);
+          }}
+          onKeyDown={(e) => {
+            if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+            e.preventDefault();
+            const base = Number.isFinite(value) ? value : min;
+            push(snap(base + (e.key === "ArrowUp" ? step : -step), step));
+            setDraft(null);
           }}
           onBlur={() => setDraft(null)}
-          className="w-full min-w-0 bg-transparent text-2xl font-black tabular-nums text-ink outline-none max-md:text-xl"
+          aria-describedby={hint ? `${id}-hint` : undefined}
         />
-        {suffix ? <span className="text-lg font-black text-brand">{suffix}</span> : null}
+        {suffix ? <b aria-hidden="true">{suffix}</b> : null}
       </div>
-      {hint ? <span className="text-[13px] text-muted">{hint}</span> : null}
-    </label>
+      {hint ? (
+        <span id={`${id}-hint`} className="im-cf__h">
+          {hint}
+        </span>
+      ) : null}
+    </div>
   );
 }
