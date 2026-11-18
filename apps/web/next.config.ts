@@ -58,7 +58,15 @@ const nextConfig: NextConfig = {
   // rel="canonical" only in the <head>; Lighthouse fails the description (SEO
   // 92). Blocking metadata costs those pages ~35-45ms to first byte, and the
   // full HTML arrives no later (measured on production with a bot user agent).
-  htmlLimitedBots: /.*/,
+  //
+  // A LOCAL `next build` AND `next start` must run with SA_LOCAL_SERVER=1, which keeps Next's default bot list instead.
+  // With /.*/ every request is a "bot", and nothing sits in front of `next start` to serve the router's segment
+  // prefetches from the prerender, so they come back as full dynamic renders. The client then treats a prefetched page
+  // as complete: open the catalog from a link and every filter after that changes the URL but never fetches the results
+  // (found 18.11.2026, Next 16.3.1). On Vercel the CDN answers those prefetches from the `.segments` files, so production
+  // filters work (checked the same day). The build writes the bot list into the prerender manifest, and `next start`
+  // reads this file again, so both need the variable.
+  htmlLimitedBots: process.env.SA_LOCAL_SERVER === "1" ? undefined : /.*/,
   // The payment-notice PDF templates (src/pdf) register their Cyrillic TTFs by
   // filesystem path at runtime — nothing imports the .ttf files, so output
   // tracing would drop them from the serverless bundle. Include them for the

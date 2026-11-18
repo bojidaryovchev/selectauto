@@ -87,8 +87,10 @@ This step is the owner's rule (decision 26). Write `docs/design/parity/<screen>.
 ## 5. Look
 
 - **The local app talks to the live database and the real e-mail service.** Copy the root `.env` into the worktree if
-  it is missing. Run `pnpm --filter @selectauto/web build`, then `next start` on a free port; another project may hold
-  3100.
+  it is missing. Run `SA_LOCAL_SERVER=1 pnpm --filter @selectauto/web build`, then `SA_LOCAL_SERVER=1 next start` on a
+  free port; another project may hold 3100. Without the variable (at build AND start) a local server answers link
+  prefetches with full renders, and after a page is opened from a link its search-param changes (the catalog filters)
+  never reach the server; see `htmlLimitedBots` in `next.config.ts`. Vercel is not affected.
 - **Read only.** Drive the app with Playwright and abort every request that isn't a GET. Never submit a real form; mock
   the request under test instead. Never open `/admin/poshta/[id]`, which writes when viewed.
 - **Compare with the board:** screenshot the screen at 390, 820, 1440 and 1920 px, and compare each with the board's
