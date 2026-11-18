@@ -9,47 +9,46 @@
  * An id in neither map (a make added since) falls back to AuctionsAPI's link, and the plate falls back to the make's
  * two letters when that link fails.
  *
- * Ids from 500000 up that aren't in `manufacturers` yet are motorcycle makes: the reference sync reads only
- * AuctionsAPI's car makes (`/manufacturers/cars`), so their listings have no make row, no name and no plate until it
- * reads `/manufacturers/all`. Their logos are here for when it does.
+ * Until 19.11.2026 the reference sync read only AuctionsAPI's car makes (`/manufacturers/cars`), so the motorcycle
+ * makes (Harley-Davidson, Kawasaki, Yamaha…) had no make row, no name and no plate; it reads `/manufacturers/all` since.
  */
 export const MAKE_LOGOS: Readonly<Record<number, string>> = {
   254: "abarth.webp", // Abarth
   1: "ac.svg", // AC
   2: "acura.svg", // Acura
-  500841: "adly.webp", // ADLY (motorcycle make, not synced yet)
+  500841: "adly.webp", // ADLY
   3: "alfa-romeo.svg", // Alfa Romeo
   5: "alpine.webp", // Alpine
   195: "am-general.webp", // AM General
   227: "amc.webp", // AMC
-  500014: "aprilia.webp", // Aprilia (motorcycle make, not synced yet)
-  500016: "arctic-cat.svg", // Arctic Cat (motorcycle make, not synced yet)
+  500014: "aprilia.webp", // Aprilia
+  500016: "arctic-cat.svg", // Arctic Cat
   191: "ariel.webp", // Ariel
   6: "aro.webp", // Aro
   8: "aston-martin.svg", // Aston Martin
-  500017: "atk.webp", // ATK (motorcycle make, not synced yet)
+  500017: "atk.webp", // ATK
   9: "audi.svg", // Audi
   10: "austin.webp", // Austin
   255: "austin-healey.webp", // Austin-Healey
   11: "autobianchi.svg", // Autobianchi
   12: "baic.webp", // BAIC
   240: "bajaj.svg", // Bajaj
-  500019: "benelli.webp", // Benelli (motorcycle make, not synced yet)
+  500019: "benelli.webp", // Benelli
   13: "bentley.svg", // Bentley
-  500020: "beta.webp", // Beta (motorcycle make, not synced yet)
-  500022: "big-bear-choppers.webp", // Big Bear Choppers (motorcycle make, not synced yet)
-  500023: "big-dog.webp", // Big Dog (motorcycle make, not synced yet)
+  500020: "beta.webp", // Beta
+  500022: "big-bear-choppers.webp", // Big Bear Choppers
+  500023: "big-dog.webp", // Big Dog
   16: "bmw.svg", // BMW
-  500030: "bsa.webp", // BSA (motorcycle make, not synced yet)
-  500031: "buell.webp", // Buell (motorcycle make, not synced yet)
+  500030: "bsa.webp", // BSA
+  500031: "buell.webp", // Buell
   18: "bugatti.svg", // Bugatti
   19: "buick.webp", // Buick
   20: "byd.svg", // BYD
   21: "cadillac.svg", // Cadillac
-  500033: "can-am.svg", // Can-Am (motorcycle make, not synced yet)
-  500034: "cannondale.svg", // Cannondale (motorcycle make, not synced yet)
-  500035: "carver.webp", // Carver (motorcycle make, not synced yet)
-  500038: "cfmoto.webp", // CFMoto (motorcycle make, not synced yet)
+  500033: "can-am.svg", // Can-Am
+  500034: "cannondale.svg", // Cannondale
+  500035: "carver.webp", // Carver
+  500038: "cfmoto.webp", // CFMoto
   25: "chery.webp", // Chery
   26: "chevrolet.svg", // Chevrolet
   27: "chrysler.svg", // Chrysler
@@ -62,41 +61,41 @@ export const MAKE_LOGOS: Readonly<Record<number, string>> = {
   35: "daihatsu.png", // Daihatsu
   37: "datsun.webp", // Datsun
   38: "delorean.webp", // DeLorean
-  500047: "derbi.svg", // Derbi (motorcycle make, not synced yet)
+  500047: "derbi.svg", // Derbi
   221: "desoto.webp", // DeSoto
   41: "dodge.svg", // Dodge
   169: "dongfeng.webp", // DongFeng
   500196: "dr-automobiles.svg", // DR Automobiles
   213: "ds.webp", // DS
-  500049: "ducati.webp", // Ducati (motorcycle make, not synced yet)
+  500049: "ducati.webp", // Ducati
   44: "eagle.webp", // Eagle
-  500052: "energica.webp", // Energica (motorcycle make, not synced yet)
+  500052: "energica.webp", // Energica
   231: "excalibur.webp", // Excalibur
   46: "ferrari.svg", // Ferrari
   47: "fiat.svg", // Fiat
   196: "fisker.webp", // Fisker
   48: "ford.svg", // Ford
   500758: "forest-river.webp", // Forest River
-  500055: "gasgas.webp", // GasGas (motorcycle make, not synced yet)
+  500055: "gasgas.webp", // GasGas
   50: "geely.webp", // Geely
   232: "genesis.svg", // Genesis
-  500602: "genuine-scooters.svg", // Genuine Scooters (motorcycle make, not synced yet)
+  500602: "genuine-scooters.svg", // Genuine Scooters
   51: "geo.webp", // Geo
   52: "gmc.svg", // GMC
   53: "great-wall.webp", // Great Wall
-  500007: "harley-davidson.svg", // Harley-Davidson (motorcycle make, not synced yet)
-  500061: "hercules.webp", // Hercules (motorcycle make, not synced yet)
-  500063: "highland.webp", // Highland (motorcycle make, not synced yet)
+  500007: "harley-davidson.svg", // Harley-Davidson
+  500061: "hercules.webp", // Hercules
+  500063: "highland.webp", // Highland
   55: "holden.webp", // Holden
   56: "honda.svg", // Honda
   229: "hudson.webp", // Hudson
   57: "hummer.webp", // Hummer
-  500066: "husaberg.svg", // Husaberg (motorcycle make, not synced yet)
-  500067: "husqvarna.webp", // Husqvarna (motorcycle make, not synced yet)
-  500068: "hyosung.webp", // Hyosung (motorcycle make, not synced yet)
+  500066: "husaberg.svg", // Husaberg
+  500067: "husqvarna.webp", // Husqvarna
+  500068: "hyosung.webp", // Hyosung
   58: "hyundai.svg", // Hyundai
   500000: "ic.webp", // IC
-  500069: "indian.svg", // Indian (motorcycle make, not synced yet)
+  500069: "indian.svg", // Indian
   500153: "ineos.webp", // Ineos
   60: "infiniti.webp", // Infiniti
   262: "international.webp", // International
@@ -105,16 +104,16 @@ export const MAKE_LOGOS: Readonly<Record<number, string>> = {
   66: "jac.webp", // JAC
   500474: "jaecoo.svg", // Jaecoo
   67: "jaguar.svg", // Jaguar
-  500071: "janus.webp", // Janus (motorcycle make, not synced yet)
+  500071: "janus.webp", // Janus
   68: "jeep.svg", // Jeep
   500406: "jeis-mobility.webp", // Jeis Mobility
   69: "jensen.webp", // Jensen
-  500593: "jiajue.webp", // Jiajue (motorcycle make, not synced yet)
+  500593: "jiajue.webp", // Jiajue
   500240: "jonway.webp", // Jonway
-  500076: "kawasaki.svg", // Kawasaki (motorcycle make, not synced yet)
+  500076: "kawasaki.svg", // Kawasaki
   70: "kia.svg", // Kia
   162: "ktm.webp", // KTM
-  500077: "kymco.webp", // Kymco (motorcycle make, not synced yet)
+  500077: "kymco.webp", // Kymco
   72: "lamborghini.svg", // Lamborghini
   73: "lancia.webp", // Lancia
   74: "land-rover.svg", // Land Rover
@@ -123,7 +122,7 @@ export const MAKE_LOGOS: Readonly<Record<number, string>> = {
   500140: "li-xiang.svg", // Li Xiang
   170: "lifan.webp", // Lifan
   77: "lincoln.svg", // Lincoln
-  500082: "linhai.webp", // Linhai (motorcycle make, not synced yet)
+  500082: "linhai.webp", // Linhai
   78: "lotus.webp", // Lotus
   245: "lucid.webp", // Lucid
   500247: "m-hero.webp", // M-Hero
@@ -144,9 +143,9 @@ export const MAKE_LOGOS: Readonly<Record<number, string>> = {
   500288: "monte-carlo.webp", // Monte Carlo
   97: "morgan.svg", // Morgan
   98: "morris.webp", // Morris
-  500095: "moto-guzzi.webp", // Moto Guzzi (motorcycle make, not synced yet)
-  500096: "moto-morini.webp", // Moto Morini (motorcycle make, not synced yet)
-  500103: "mz.webp", // MZ (motorcycle make, not synced yet)
+  500095: "moto-guzzi.webp", // Moto Guzzi
+  500096: "moto-morini.webp", // Moto Morini
+  500103: "mz.webp", // MZ
   247: "nash.svg", // Nash
   99: "nissan.webp", // Nissan
   101: "oldsmobile.webp", // Oldsmobile
@@ -157,14 +156,14 @@ export const MAKE_LOGOS: Readonly<Record<number, string>> = {
   165: "piaggio.webp", // Piaggio
   500485: "pierce-arrow.webp", // Pierce-Arrow
   108: "plymouth.webp", // Plymouth
-  500108: "polaris.svg", // Polaris (motorcycle make, not synced yet)
+  500108: "polaris.svg", // Polaris
   279: "polestar.webp", // Polestar
   109: "pontiac.webp", // Pontiac
   110: "porsche.svg", // Porsche
   111: "premier.webp", // Premier
   112: "proton.webp", // Proton
   114: "puma.webp", // Puma
-  500600: "qjmotor.webp", // QJMOTOR (motorcycle make, not synced yet)
+  500600: "qjmotor.webp", // QJMOTOR
   500233: "rainbow.webp", // Rainbow
   275: "ram.svg", // RAM
   253: "rambler.webp", // Rambler
@@ -173,8 +172,8 @@ export const MAKE_LOGOS: Readonly<Record<number, string>> = {
   500001: "rivian.webp", // Rivian
   118: "rolls-royce.svg", // Rolls-Royce
   120: "rover.webp", // Rover
-  500110: "royal-enfield.webp", // Royal Enfield (motorcycle make, not synced yet)
-  500111: "ryvid.svg", // Ryvid (motorcycle make, not synced yet)
+  500110: "royal-enfield.webp", // Royal Enfield
+  500111: "ryvid.svg", // Ryvid
   121: "saab.webp", // Saab
   122: "saleen.svg", // Saleen
   124: "saturn.webp", // Saturn
@@ -187,32 +186,32 @@ export const MAKE_LOGOS: Readonly<Record<number, string>> = {
   500325: "ssc-north-america.svg", // SSC North America
   252: "studebaker.webp", // Studebaker
   132: "subaru.svg", // Subaru
-  500117: "super-soco.svg", // Super Soco (motorcycle make, not synced yet)
+  500117: "super-soco.svg", // Super Soco
   133: "suzuki.svg", // Suzuki
-  500119: "sym.webp", // SYM (motorcycle make, not synced yet)
-  500596: "talaria.webp", // Talaria (motorcycle make, not synced yet)
+  500119: "sym.webp", // SYM
+  500596: "talaria.webp", // Talaria
   500148: "tank.svg", // TANK
   500002: "tata-daewoo.webp", // Tata Daewoo
   187: "tesla.svg", // Tesla
-  500120: "tgb.svg", // TGB (motorcycle make, not synced yet)
+  500120: "tgb.svg", // TGB
   140: "toyota.svg", // Toyota
   142: "triumph.svg", // Triumph
   143: "tvr.webp", // TVR
-  500121: "ural.webp", // Ural (motorcycle make, not synced yet)
+  500121: "ural.webp", // Ural
   144: "vauxhall.webp", // Vauxhall
   154: "vaz-lada.webp", // VAZ (Lada)
   146: "venturi.webp", // Venturi
-  500126: "vespa.webp", // Vespa (motorcycle make, not synced yet)
-  500127: "victory.webp", // Victory (motorcycle make, not synced yet)
+  500126: "vespa.webp", // Vespa
+  500127: "victory.webp", // Victory
   500838: "vinfast.webp", // VinFast
   147: "volkswagen.webp", // Volkswagen
   148: "volvo.svg", // Volvo
   500282: "vpg.svg", // VPG
   233: "wanderer.webp", // Wanderer
   220: "willys.webp", // Willys
-  500759: "wolf.webp", // Wolf (motorcycle make, not synced yet)
+  500759: "wolf.webp", // Wolf
   500330: "workhorse.webp", // Workhorse
-  500135: "yamaha.webp", // Yamaha (motorcycle make, not synced yet)
+  500135: "yamaha.webp", // Yamaha
   157: "zil.svg", // ZIL
   175: "zx.webp", // ZX
 };

@@ -134,7 +134,7 @@ infra edit**. Build **before** `pulumi up`.
 | `syncArchivedLotsPage` | syncArchivedLotsPage | handler | 300s | 512 | merged fetch+archive page |
 | `syncReferenceData` | syncReferenceData | handler | 900s | 512 | legacy single-Lambda reference |
 | `referenceInit` | syncReferenceData | `referenceInitHandler` | 60s | 256 | loop: upsert mfgs + build worklist |
-| `referenceManufacturer` | syncReferenceData | `referenceManufacturerHandler` | 300s | 256 | loop: one manufacturer/step |
+| `referenceManufacturer` | syncReferenceData | `referenceManufacturerHandler` | 900s | 256 | loop: one manufacturer/step (Honda's 227 models ≈ 280 s) |
 | `referenceFinalize` | syncReferenceData | `referenceFinalizeHandler` | 30s | 256 | loop: mark succeeded |
 | `refreshListingDetail` | refreshListingDetail | handler | 30s | 256 | **reservedConcurrency 1**, `DETAIL_REFRESH_PACE_MS=1000` |
 | `createSyncRun` | syncRunLifecycle | `createHandler` | 30s | 256 | SFN InitSyncRun |

@@ -63,9 +63,9 @@ yet. A future model-level price-stats SEO page may use `/statistics`.)
 |---|---|---|---|
 | `GET /cars` | `getCarsPage({page, perPage, minutes?})` | full backfill, hourly cars sync | Active inventory. The primary feed. |
 | `GET /archived-lots` | `getArchivedLotsPage({page, perPage, minutes?})` | hourly archived sync | Detect sold/archived lots to mark inactive. |
-| `GET /manufacturers/cars` | `getManufacturers()` | reference sync | Brand list. |
-| `GET /models/{manufacturer_id}/cars` | `getModels(id)` | reference sync | Models for a brand. |
-| `GET /generations/{model_id}/cars` | `getGenerations(id)` | reference sync | Generations for a model. |
+| `GET /manufacturers/all` | `getManufacturers()` | reference sync | Every make, car and motorcycle (`/manufacturers/cars` alone left out the 150 motorcycle-only makes until 19.11.2026). |
+| `GET /models/{manufacturer_id}/all` | `getModels(id)` | reference sync | A make's car and motorcycle models, each with its `vehicle_type`. |
+| `GET /generations/{model_id}/{cars\|motorcycles}` | `getGenerations(id, group)` | reference sync | Generations for a model, from its own group. |
 | `GET /search-lot/{lot}/{domain}?prices_history=1` | `searchLot(lot, domain)` | detail refresh | One lot, fresh, with price history. |
 | `GET /search-vin/{vin}?prices_history=1` | `searchVin(vin)` | detail refresh | One car by VIN, with price history. |
 
@@ -247,23 +247,30 @@ wrapper. See [03](03-normalization-and-field-mapping.md#coercion-helpers).
 **Confirmed live.** Fields we map:
 
 ```jsonc
-// /manufacturers/cars
+// /manufacturers/all (/manufacturers/cars: the same, car makes only)
 { "id": 48, "name": "Ford", "cars_qty": 93791, "image": "...ford.svg",
   "models_qty": 119, "cars": true, "motorcycles": false }
 
-// /models/{manufacturer_id}/cars
+// /models/{manufacturer_id}/all
 { "id": 93, "name": "3er", "cars_qty": 4746, "manufacturer_id": 16,
-  "generations_qty": 7 }
+  "generations_qty": 7, "vehicle_type": { "name": "automobile", "id": 1 } }
 
-// /generations/{model_id}/cars
+// /generations/{model_id}/cars (a motorcycle model's: /generations/{model_id}/motorcycles)
 { "id": 397, "name": "V (E60/E61)", "cars_qty": 190,
   "from_year": 2002, "to_year": 2010, "manufacturer_id": 16, "model_id": 94 }
 ```
 
-Catalog scale: ~424 manufacturers, ~5.5k models upstream. ~3/4 of manufacturers
-have `cars_qty = 0`; the reference sync skips those by default (saves the rate
-budget), so we store **~3,462 models** in `vehicle_models` — fewer than the
-upstream ~5.5k. See [02](02-data-model-and-tables.md).
+A motorcycle-only make has `"cars": false, "motorcycles": true`, and its `cars_qty`
+counts its listings all the same. Its name, and its models' names, often come in
+lower case („kawasaki", „africa twin"); the sync stores the names in
+[`make-names.ts`](../packages/functions/shared/make-names.ts) and keeps AuctionsAPI's
+in `raw_json`. `/models/{id}/all` gives a make that builds both its car and its
+motorcycle models (Honda: 100 + 127). ATVs and UTVs are "motorcycle" there.
+
+Catalog scale (18.11.2026): `/manufacturers/all` lists 741 makes, 156 of them with
+listings (`cars_qty > 0`). The reference sync skips the rest by default (saves the
+rate budget) and expands those 156: 5,176 models at about 1.2 s each, so a daily
+run takes about 1 h 50 min. See [02](02-data-model-and-tables.md).
 
 ---
 

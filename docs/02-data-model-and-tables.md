@@ -242,17 +242,20 @@ facet ids into display names (`getCarFacets`, `getCarBrands`, the brand/model hu
 + sitemap queries). They are intentionally **not** joined into the projections at
 write time (see the [names-vs-ids invariant](#cross-cutting-invariants--gotchas)).
 
-### `manufacturers` — `/api/manufacturers/cars`
+### `manufacturers` — `/api/manufacturers/all`
 `id` (PK), `external_id` (bigint NN, **UNIQUE** — the join key), `name` (e.g.
-`BMW`), `image_url` (brand logo SVG), `cars_qty` (upstream count, used to skip
+`BMW`), `image_url` (AuctionsAPI's logo link; the site shows its own files, see
+[make-logos.md](make-logos.md)), `cars_qty` (upstream count, used to skip
 empty brands), `raw_json`, timestamps. Index: `manufacturers_external_id_ux`.
+Car and motorcycle makes; a motorcycle make's lower-case name is stored as the
+brand writes it (`shared/make-names.ts`), AuctionsAPI's stays in `raw_json`.
 
-### `vehicle_models` — `/api/models/{manufacturer_id}/cars`
+### `vehicle_models` — `/api/models/{manufacturer_id}/all`
 `external_id` (UNIQUE), `manufacturer_external_id` (parent brand, indexed
 `vehicle_models_manufacturer_idx`), `name` (`3er`), `image_url` (always NULL —
 endpoint has none), `cars_qty`, `raw_json`.
 
-### `vehicle_generations` — `/api/generations/{model_id}/cars`
+### `vehicle_generations` — `/api/generations/{model_id}/{cars|motorcycles}`
 `external_id` (UNIQUE), `model_external_id` (parent model, indexed
 `vehicle_generations_model_idx`), `name` (`V (E60/E61)`), `from_year`/`to_year`,
 `raw_json`.

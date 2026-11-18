@@ -15,9 +15,12 @@
  *     invocation runs long. This is what the daily schedule triggers.
  *
  * Endpoints:
- *   GET /api/manufacturers/cars
- *   GET /api/models/{manufacturer_id}/cars
- *   GET /api/generations/{model_id}/cars
+ *   GET /api/manufacturers/all                  car and motorcycle makes (since 19.11.2026; /cars missed 150)
+ *   GET /api/models/{manufacturer_id}/all        car and motorcycle models, each with its vehicle_type
+ *   GET /api/generations/{model_id}/{cars|motorcycles}   the model's own group
+ *
+ * Motorcycle makes and models come with lower-case names („kawasaki", „africa twin"); they are stored under the
+ * names in shared/make-names.ts, and AuctionsAPI's stays in raw_json.
  */
 import { AuctionsApiClient } from "../shared/auctionsApiClient.js";
 import {
@@ -29,6 +32,7 @@ import {
   upsertModel,
 } from "../shared/db.js";
 import { Logger } from "../shared/logger.js";
+import { makeDisplayName, modelDisplayName } from "../shared/make-names.js";
 import { normalizeGeneration, normalizeManufacturer, normalizeModel } from "../shared/normalize.js";
 import type {
   ReferenceInitOutput,
@@ -60,17 +64,19 @@ async function processManufacturerModels(
   for (const rawModel of rawModels) {
     const mod = normalizeModel(rawModel as Record<string, unknown>);
     if (mod.externalId === null) continue;
+    // `/models/{id}/all` tags each model; a motorcycle model's generations are only under /motorcycles.
+    const isMotorcycle = (rawModel as { vehicle_type?: { name?: unknown } }).vehicle_type?.name === "motorcycle";
     await upsertModel({
       externalId: mod.externalId,
       manufacturerExternalId: mod.manufacturerExternalId ?? manufacturerExternalId,
-      name: mod.name,
+      name: modelDisplayName(mod.name, isMotorcycle),
       imageUrl: mod.imageUrl,
       carsQty: mod.carsQty,
       rawJson: mod.rawJson,
     });
     models += 1;
 
-    const rawGens = await client.getGenerations(mod.externalId);
+    const rawGens = await client.getGenerations(mod.externalId, isMotorcycle ? "motorcycles" : "cars");
     await sleep(RATE_LIMIT_MS);
 
     for (const rawGen of rawGens) {
@@ -135,7 +141,7 @@ export const handler = async (
       if (m.externalId === null) continue;
       await upsertManufacturer({
         externalId: m.externalId,
-        name: m.name,
+        name: makeDisplayName(m.externalId, m.name, rawMfg as Record<string, unknown>),
         imageUrl: m.imageUrl,
         carsQty: m.carsQty,
         rawJson: m.rawJson,
@@ -214,7 +220,7 @@ export const referenceInitHandler = async (input: ReferenceInitInput = {}): Prom
       if (m.externalId === null) continue;
       await upsertManufacturer({
         externalId: m.externalId,
-        name: m.name,
+        name: makeDisplayName(m.externalId, m.name, raw as Record<string, unknown>),
         imageUrl: m.imageUrl,
         carsQty: m.carsQty,
         rawJson: m.rawJson,

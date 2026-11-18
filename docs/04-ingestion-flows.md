@@ -149,8 +149,9 @@ identical loop shape, but fetches `/archived-lots` and calls `archiveLots(page.d
 exports **two** ways to sync `manufacturers → models → generations`:
 
 1. **Legacy single-Lambda `handler`** — does the whole walk in one invocation,
-   bounded by `maxManufacturers`. The full catalog (~424 manufacturers, ~5.5k
-   models at 1 req/sec ≈ 1 hour) **exceeds the 15-min Lambda limit**, so this is
+   bounded by `maxManufacturers`. The full catalog (741 car and motorcycle makes,
+   5,176 models of the 156 with listings at ~1.2 s each ≈ 1 h 50 min) **exceeds
+   the 15-min Lambda limit**, so this is
    only for small/forced runs. It has a coarse skip gate: if `countManufacturers()
    > 0` and not `force`, it returns early (checks **presence, not completeness** —
    re-run with `{force:true}` after a partial failure).
@@ -165,7 +166,9 @@ exports **two** ways to sync `manufacturers → models → generations`:
    - `referenceFinalizeHandler` — mark the run succeeded.
 
 `processManufacturerModels` upserts each model then walks its generations,
-sleeping `RATE_LIMIT_MS` (1s) between every upstream call.
+sleeping `RATE_LIMIT_MS` (1s) between every upstream call: about 1.2 s a model.
+The largest make, Honda (227 car and motorcycle models), takes about 280 s, so the
+step's Lambda has 900 s.
 
 ---
 

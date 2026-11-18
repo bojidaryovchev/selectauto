@@ -142,18 +142,28 @@ export class AuctionsApiClient {
    * Reference data endpoints (typed loosely; shapes unconfirmed)
    * --------------------------------------------------------------------- */
 
+  /**
+   * GET /api/manufacturers/all — every make, car and motorcycle: 741 on 18.11.2026, one page (per_page 1000).
+   * `/manufacturers/cars` alone (591) left the 150 motorcycle-only makes (Harley-Davidson, Kawasaki, Yamaha, …)
+   * without a row, so their listings had no make name, filter option, hub or logo plate.
+   */
   async getManufacturers(): Promise<unknown[]> {
-    const json = await this.getJson("/manufacturers/cars");
+    const json = await this.getJson("/manufacturers/all");
     return extractArray(json);
   }
 
+  /**
+   * GET /api/models/{id}/all — a make's car AND motorcycle models, each with `vehicle_type.name` ("automobile",
+   * "motorcycle"; ATVs and UTVs count as "motorcycle"). Honda has 100 car and 127 motorcycle models.
+   */
   async getModels(manufacturerId: number): Promise<unknown[]> {
-    const json = await this.getJson(`/models/${manufacturerId}/cars`);
+    const json = await this.getJson(`/models/${manufacturerId}/all`);
     return extractArray(json);
   }
 
-  async getGenerations(modelId: number): Promise<unknown[]> {
-    const json = await this.getJson(`/generations/${modelId}/cars`);
+  /** GET /api/generations/{model_id}/{group}: a motorcycle model's generations are only under `motorcycles`. */
+  async getGenerations(modelId: number, group: "cars" | "motorcycles" = "cars"): Promise<unknown[]> {
+    const json = await this.getJson(`/generations/${modelId}/${group}`);
     return extractArray(json);
   }
 

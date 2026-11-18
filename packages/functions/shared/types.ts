@@ -142,9 +142,10 @@ export interface ApiArchivedLot {
 /**
  * Reference data shapes. CONFIRMED against the live API (2026-06).
  *
- * /api/manufacturers/cars -> { id, name, cars_qty, image, models_qty, cars, motorcycles }
- * /api/models/{mfg}/cars  -> { id, name, cars_qty, manufacturer_id, generations_qty, vehicle_type }
- * /api/generations/{model}/cars -> { id, name, cars_qty, from_year, to_year, manufacturer_id, model_id }
+ * /api/manufacturers/all -> { id, name, cars_qty, image, models_qty, cars, motorcycles }
+ * /api/models/{mfg}/all  -> { id, name, cars_qty, manufacturer_id, generations_qty, vehicle_type }
+ * /api/generations/{model}/{cars|motorcycles} -> { id, name, cars_qty, from_year, to_year, manufacturer_id, model_id }
+ * (the reference sync reads /all since 19.11.2026; /cars has the same shapes for car makes and models only)
  */
 export interface ApiManufacturer extends ApiNamedRef {
   cars_qty?: number | null;

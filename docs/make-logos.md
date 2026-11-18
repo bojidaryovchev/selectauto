@@ -10,11 +10,11 @@ with listings (active or sold), 111 had a link that loaded, 74 had a link that a
 
 - **All of AuctionsAPI's „brand-fill-20260918-…" images are gone** (57 links), and so are its 17 uploads with
   random names.
-- **49 makes have no `manufacturers` row at all.** They are motorcycle makes (Harley-Davidson, Kawasaki, Yamaha,
-  Polaris, Can-Am, Ducati, …; 10,170 active listings). The reference sync reads only `/manufacturers/cars`; AuctionsAPI
-  lists them under `/manufacturers/motorcycles` and `/manufacturers/all`. Without a row these listings have no make
-  name in the filter, no hub and no plate. 47 of their logos are in the set already; Baodiao and Zhilong have none
-  anywhere (below).
+- **49 makes had no `manufacturers` row at all.** They are motorcycle makes (Harley-Davidson, Kawasaki, Yamaha,
+  Polaris, Can-Am, Ducati, …; 10,170 active listings). The reference sync read only `/manufacturers/cars`; AuctionsAPI
+  lists them under `/manufacturers/motorcycles` and `/manufacturers/all`. Without a row their listings had no make
+  name in the filter, no hub and no plate. Since 19 November the sync reads `/manufacturers/all`; 47 of these makes
+  have their logo in the set, and Baodiao and Zhilong have none anywhere (below).
 - **Some links that load show the wrong logo:** Isuzu's is not Isuzu's, AM General's is American Motors'. Others are
   light grey on the plate (Mazda, Lexus, Infiniti, Jaguar) or outdated (Kia, Nissan, Volkswagen, Renault, Buick).
 - **36 makes hold another brand's listings.** AuctionsAPI matches a listing's make by name, so „Saleen" holds Forest

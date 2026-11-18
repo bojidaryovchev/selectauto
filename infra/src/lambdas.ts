@@ -172,9 +172,12 @@ export function createLambdas(
       name: "referenceManufacturer",
       bundleFile: "syncReferenceData.js",
       exportName: "referenceManufacturerHandler",
-      // One manufacturer = up to ~dozens of model+generation calls at 1 req/sec.
-      // 300s covers even the largest manufacturer comfortably.
-      timeoutSeconds: 300,
+      // One manufacturer = one /models call + one /generations call per model at
+      // 1 req/sec: 1.2 s a model (Toyota's 196 took 236 s on 18.11.2026). With the
+      // motorcycle models (/models/{id}/all) Honda has 227, ~280 s, too close to
+      // 300 s; 900 s (Lambda's maximum) leaves room for ~700 models. A timed-out
+      // step reruns from scratch (States.TaskFailed retry) and then fails the run.
+      timeoutSeconds: 900,
       memoryMb: 256,
     }),
     referenceFinalize: makeFn({

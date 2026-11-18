@@ -118,7 +118,7 @@ flowchart LR
 | 1. Full inventory backfill | Manual | `/cars` (no minutes, per_page=1000) | `fullInventoryBackfill` |
 | 2. Hourly active cars | EventBridge `rate(1 hour)` | `/cars?minutes=75&per_page=1000` | `hourlyCarsSync` (via combined) |
 | 3. Hourly archived lots | After cars | `/archived-lots?minutes=75&per_page=1000` | `archivedLotsSync` (via combined) |
-| 4. Reference data | Manual + daily | `/manufacturers/cars`, `/models/{id}/cars`, `/generations/{id}/cars` | `referenceSync` SM (loop) / `syncReferenceData` Lambda (tests) |
+| 4. Reference data | Manual + daily | `/manufacturers/all`, `/models/{id}/all`, `/generations/{id}/{cars\|motorcycles}` | `referenceSync` SM (loop) / `syncReferenceData` Lambda (tests) |
 | 5. Detail refresh | Internal, via SQS FIFO queue | `/search-lot/{lot}/{domain}` or `/search-vin/{vin}` | `refreshListingDetail` worker |
 | 6. Drift sweep | EventBridge `cron(0 3 ? * SUN *)` (weekly) | none — DB-only | `drift-sweep` SM |
 
@@ -807,11 +807,11 @@ Lambda.
 
 ## Reference-sync scaling
 
-The full upstream catalog (~424 manufacturers, ~5.5k models at 1 req/sec ≈ 1 hour)
-exceeds a single Lambda's 15-min limit, so there are **two** ways to sync reference
-data. (We don't store the whole upstream catalog: because the default run skips
-manufacturers with `cars_qty = 0`, we end up with roughly **~3,462** models — only
-the brands that actually have cars.)
+The full upstream catalog (741 car and motorcycle makes on 18.11.2026; the 156 with
+listings have 5,176 models, at ~1.2 s each ≈ 1 h 50 min) exceeds a single Lambda's
+15-min limit, so there are **two** ways to sync reference data. (We don't store the
+whole upstream catalog: the default run skips manufacturers with `cars_qty = 0`, so
+only the makes that actually have listings get their models.)
 
 - **`referenceSync` state machine (use this for the full catalog).** A Step
   Functions loop that processes **one manufacturer per invocation** (its models +

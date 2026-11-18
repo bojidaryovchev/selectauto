@@ -136,7 +136,7 @@ export const auctionLots = pgTable(
 );
 
 /**
- * manufacturers — reference data from /api/manufacturers/cars
+ * manufacturers — reference data from /api/manufacturers/all (car and motorcycle makes)
  */
 export const manufacturers = pgTable(
   "manufacturers",
@@ -156,7 +156,7 @@ export const manufacturers = pgTable(
 );
 
 /**
- * vehicle_models — reference data from /api/models/{manufacturer_id}/cars
+ * vehicle_models — reference data from /api/models/{manufacturer_id}/all (car and motorcycle models)
  */
 export const vehicleModels = pgTable(
   "vehicle_models",
@@ -178,7 +178,7 @@ export const vehicleModels = pgTable(
 );
 
 /**
- * vehicle_generations — reference data from /api/generations/{model_id}/cars
+ * vehicle_generations — reference data from /api/generations/{model_id}/{cars|motorcycles}
  */
 export const vehicleGenerations = pgTable(
   "vehicle_generations",
