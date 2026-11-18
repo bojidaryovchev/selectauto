@@ -1,17 +1,36 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { connection } from "next/server";
-import Link from "next/link";
-import { Container, LinkButton } from "@/components/common";
-import { CostEstimator } from "@/components/calculator";
-import { AuctionCard } from "@/components/cars/all-cars";
-import { InquiryButton } from "@/components/inquiry";
-import { HubTestimonials } from "@/components/hubs";
+import {
+  type HubIcon,
+  HubTestimonials,
+  ImportArticle,
+  ImportBar,
+  ImportCalculator,
+  ImportCards,
+  ImportEnd,
+  ImportFaq,
+  ImportFeaturedCars,
+  ImportHero,
+  ImportProcess,
+} from "@/components/hubs";
+import {
+  CalculatorIcon,
+  CircleDollarSignIcon,
+  ClockIcon,
+  FileCheckIcon,
+  FileSearchIcon,
+  FlagCaIcon,
+  FlagKrIcon,
+  FlagUsIcon,
+  MapPinIcon,
+  ScaleIcon,
+  SearchIcon,
+  ShieldCheckIcon,
+} from "@/components/icons";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
 import { buildBreadcrumbJsonLd, buildFaqJsonLd, buildServiceJsonLd, type FaqEntry } from "@/lib/site-jsonld";
 import { buildSocialMeta } from "@/lib/social-meta";
-import { getCarsPage } from "@/queries/cars";
 
 /**
  * /vnos-na-koli-ot-kanada — the Canada country hub (docs/12-web-seo-strategy.md §4.2).
@@ -25,6 +44,9 @@ import { getCarsPage } from "@/queries/cars";
  * history, with an explicit underbody/rust check — not a rust-free guarantee. Same
  * 10% duty + 20% VAT structure as the other hubs. See the Korea hub for the shared
  * pattern.
+ *
+ * Look: boards `im-hub-ca`, `im-hub-states`; the sections are components/hubs/import-sections.tsx; parity check
+ * docs/design/parity/vnos-na-koli.md.
  */
 
 const PATH = "/vnos-na-koli-ot-kanada";
@@ -33,7 +55,7 @@ const CANONICAL = `${SITE_URL}${PATH}`;
 export const metadata: Metadata = {
   title: "Внос на коли от Канада — Carfax, прозрачна история | SelectAuto",
   description:
-    "Внос на автомобили от Канада с SelectAuto — пълна история през Carfax, проверка на състояние и корозия, транспорт, мито и ДДС, регистрация в КАТ.",
+    "Внос на автомобили от Канада със SelectAuto — пълна история през Carfax, проверка на състояние и корозия, транспорт, мито и ДДС, регистрация в КАТ.",
   alternates: { canonical: CANONICAL },
   ...buildSocialMeta({
     title: "Внос на коли от Канада | SelectAuto",
@@ -86,21 +108,25 @@ const FAQ: FaqEntry[] = [
   },
 ];
 
-/** Why-Canada pillars (fact-checked, honest on rust). */
-const REASONS: { t: string; d: string }[] = [
+/** Why-Canada pillars (fact-checked, honest on rust), with the board's icons. */
+const REASONS: { Icon: HubIcon; t: string; d: string }[] = [
   {
+    Icon: FileSearchIcon,
     t: "Прозрачна история (Carfax)",
     d: "Всяка канадска провинция се покрива от Carfax — собственици, километри, инциденти, регистрации.",
   },
   {
+    Icon: ShieldCheckIcon,
     t: "Добър избор с чиста история",
     d: "Много автомобили идват от редовна експлоатация с проследима история, а не от щети.",
   },
   {
+    Icon: CircleDollarSignIcon,
     t: "Конкурентни цени",
     d: "С правилен подбор канадските коли често излизат изгодно спрямо европейския пазар.",
   },
   {
+    Icon: SearchIcon,
     t: "Проверка на корозия",
     d: "Зимната сол може да причини ръжда — проверяваме състоянието на долницата за конкретния автомобил.",
   },
@@ -114,6 +140,10 @@ const STEPS: { n: string; t: string; d: string }[] = [
   { n: "4", t: "Транспорт и оформяне", d: "Организираме превоза до България, митото, ДДС и документите." },
   { n: "5", t: "Предаване", d: "Автомобилът е готов за регистрация в КАТ и предаване на ключа." },
 ];
+
+const CALC_ID = "kolko-struva-ca";
+const ACTIONS_ID = "ca-hero-actions";
+const CTA_ID = "ca-cta";
 
 export default function CanadaHubPage() {
   const faqJsonLd = buildFaqJsonLd(FAQ);
@@ -131,242 +161,130 @@ export default function CanadaHubPage() {
   return (
     <>
       <SiteHeader />
-      <main className="flex-1 bg-[#fafafa] pt-(--header-h) text-ink">
+      <main className="flex-1 pt-(--header-h)">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceJsonLd) }} />
 
-        <Container className="max-w-245 py-12 max-md:py-8">
-          <nav className="mb-5 text-sm text-muted">
-            <Link href="/" className="hover:text-brand-dark">
-              Начало
-            </Link>
-            <span className="px-2">/</span>
-            <span className="text-ink">Внос на коли от Канада</span>
-          </nav>
+        <ImportHero
+          crumb="Внос на коли от Канада"
+          title="Внос на коли от Канада"
+          Flag={FlagCaIcon}
+          lead="Канада е силен пазар за автомобили с прозрачна история — Carfax покрива всяка провинция, а изборът на коли с чиста история е добър. SelectAuto поема целия процес: подбор, проверка на Carfax и състояние (включително корозия), наддаване, транспорт, мито и ДДС, и съдействие до регистрация в КАТ."
+          text="Канадските аукциони (IAA Canada, доскоро Impact Auto Auctions) работят на същия принцип като американските Copart и IAAI, но с по-малка конкуренция от международни купувачи на някои лотове — там се появяват добри сделки. Ще прочетете и твърдения за „0% мито по CETA“ — по-долу обясняваме честно защо това почти никога не важи за аукционни коли и как калкулираме реалната крайна цена."
+          calcId={CALC_ID}
+          actionsId={ACTIONS_ID}
+          whyId="ca-why"
+          whyTitle="Защо коли от Канада"
+          reasons={REASONS}
+        />
 
-          <h1 className="mb-3 text-4xl font-black uppercase tracking-tight text-ink max-md:text-3xl">
-            Внос на коли от Канада
-          </h1>
-          <p className="mb-4 max-w-2xl text-[15px] leading-[1.8] text-[#3d4046]">
-            Канада е силен пазар за автомобили с прозрачна история — Carfax покрива всяка провинция, а изборът на коли с
-            чиста история е добър. SelectAuto поема целия процес: подбор, проверка на Carfax и състояние (включително
-            корозия), наддаване, транспорт, мито и ДДС, и съдействие до регистрация в КАТ.
+        <ImportCalculator
+          id={CALC_ID}
+          title="Колко струва внос от Канада"
+          market="ca"
+          intro="Изчислете ориентировъчна разбивка: цена, аукционни такси, транспорт, мито (10%) и ДДС (20%), регистрация. За обвързваща оферта за конкретен автомобил направете запитване."
+        />
+
+        {/* CETA myth-busting — the researched differentiator: competitors either
+            stay silent or imply duty-free Canada; the origin rules say otherwise. */}
+        <ImportArticle Icon={ScaleIcon} title="„0% мито по CETA“ — митът за Канада">
+          <p>
+            Търговското споразумение ЕС–Канада (CETA) наистина премахна митото за автомобили — но{" "}
+            <strong>само за автомобили с канадски произход</strong> по правилата за произход, с декларация от
+            износителя. Уловката: голямата част от колите по канадските аукциони са произведени в САЩ, Мексико или
+            Азия. Фактът, че купувате колата <em>в</em> Канада, не я прави <em>канадска</em> по произход.
           </p>
-          <p className="mb-8 max-w-2xl text-[15px] leading-[1.8] text-[#3d4046]">
-            Канадските аукциони (IAA Canada, доскоро Impact Auto Auctions) работят на същия принцип като американските
-            Copart и IAAI, но с по-малка конкуренция от международни купувачи на някои лотове — там се появяват добри
-            сделки. Ще прочетете и твърдения за „0% мито по CETA“ — по-долу обясняваме честно защо това почти никога не
-            важи за аукционни коли и как калкулираме реалната крайна цена.
+          <p>
+            Затова калкулираме с 10% мито по подразбиране — честната сметка, с която няма изненади на митницата. Ако
+            конкретен автомобил реално отговаря на условията за преференция, ще ви го посочим изрично в персоналната
+            оферта.
           </p>
+        </ImportArticle>
 
-          <section className="mb-12">
-            <h2 className="mb-4 text-2xl font-black text-ink">Защо коли от Канада</h2>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {REASONS.map((r) => (
-                <div key={r.t} className="rounded-2xl border border-line bg-white p-5 shadow-card">
-                  <h3 className="mb-1.5 text-lg font-extrabold text-ink">{r.t}</h3>
-                  <p className="text-sm/relaxed text-[#5a5d64]">{r.d}</p>
-                </div>
-              ))}
-            </div>
-          </section>
+        <ImportProcess steps={STEPS} />
 
-          <section className="mb-12">
-            <h2 className="mb-4 text-2xl font-black text-ink">Колко струва внос от Канада</h2>
-            <p className="mb-5 max-w-2xl text-sm/relaxed text-[#3d4046]">
-              Изчисли ориентировъчна разбивка: цена, аукционни такси, транспорт, мито (10%) и ДДС (20%), регистрация. За
-              обвързваща оферта за конкретен автомобил направи запитване.
-            </p>
-            <CostEstimator defaultMarket="ca" />
-          </section>
+        <ImportFeaturedCars
+          market="ca"
+          title="Актуални коли от Канада"
+          allHref="/vsichki-avtomobili?market=ca"
+          emptyText="В момента няма активни обяви за коли от Канада. Заявете персонална селекция и ще намерим подходящ автомобил."
+        />
 
-          {/* CETA myth-busting — the researched differentiator: competitors either
-              stay silent or imply duty-free Canada; the origin rules say otherwise. */}
-          <section className="mb-12">
-            <h2 className="mb-4 text-2xl font-black text-ink">„0% мито по CETA“ — митът за Канада</h2>
-            <div className="rounded-2xl border border-line bg-white p-6 shadow-card max-md:p-5">
-              <p className="mb-3 text-[15px]/relaxed text-[#3d4046]">
-                Търговското споразумение ЕС–Канада (CETA) наистина премахна митото за автомобили — но{" "}
-                <strong>само за автомобили с канадски произход</strong> по правилата за произход, с декларация от
-                износителя. Уловката: голямата част от колите по канадските аукциони са произведени в САЩ, Мексико или
-                Азия. Фактът, че купувате колата <em>в</em> Канада, не я прави <em>канадска</em> по произход.
-              </p>
-              <p className="text-[15px]/relaxed text-[#3d4046]">
-                Затова калкулираме с 10% мито по подразбиране — честната сметка, с която няма изненади на митницата.
-                Ако конкретен автомобил реално отговаря на условията за преференция, ще ви го посочим изрично в
-                персоналната оферта.
-              </p>
-            </div>
-          </section>
+        {/* Honest transit + post-arrival (same NA-spec adaptation as the US) */}
+        <ImportCards
+          title="Срокове, транспорт и стъпките след пристигане"
+          items={[
+            {
+              Icon: ClockIcon,
+              t: "Колко време отнема — честно",
+              body: (
+                <>
+                  <p>
+                    Морският превоз от канадско пристанище до Европа отнема ориентировъчно{" "}
+                    <strong>5–8 седмици</strong> — трансатлантическият маршрут не е засегнат от отклоненията около
+                    Африка.
+                  </p>
+                  <p>
+                    Реалистично: около 2 месеца от покупката до кола, готова за КАТ — включително сухопътния превоз до
+                    България и оформянето. Държим ви в течение на всяка стъпка.
+                  </p>
+                </>
+              ),
+            },
+            {
+              Icon: FileCheckIcon,
+              t: "След пристигането",
+              body: (
+                <>
+                  <p>
+                    Канадските автомобили следват северноамериканските стандарти и минават{" "}
+                    <strong>индивидуално одобряване</strong> (технотест) с типичните адаптации: европейски (ECE) фарове,
+                    заден фар за мъгла и km/h скоростомер.
+                  </p>
+                  <p>
+                    Следват еднократната <strong>екотакса</strong> към ПУДООС, ГТП и регистрация в КАТ — всичко е
+                    включено в разбивката на калкулатора и в персоналната оферта.
+                  </p>
+                </>
+              ),
+            },
+          ]}
+        />
 
-          <section className="mb-12">
-            <h2 className="mb-4 text-2xl font-black text-ink">Процесът стъпка по стъпка</h2>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {STEPS.map((s) => (
-                <div key={s.n} className="rounded-2xl border border-line bg-white p-5 shadow-card">
-                  <div className="mb-2 inline-flex size-8 items-center justify-center rounded-full bg-brand text-sm font-black text-white">
-                    {s.n}
-                  </div>
-                  <h3 className="mb-1 text-base font-extrabold text-ink">{s.t}</h3>
-                  <p className="text-sm/relaxed text-[#5a5d64]">{s.d}</p>
-                </div>
-              ))}
-            </div>
-          </section>
+        {/* Testimonials (streamed, fail-open — same daily-cached read as /otzivi) */}
+        <Suspense fallback={null}>
+          <HubTestimonials />
+        </Suspense>
 
-          <section className="mb-12">
-            <div className="mb-4 flex items-end justify-between gap-4">
-              <h2 className="text-2xl font-black text-ink">Актуални коли от Канада</h2>
-              <Link
-                href="/vsichki-avtomobili?market=ca"
-                className="whitespace-nowrap text-sm font-bold text-brand-dark hover:underline"
-              >
-                Виж всички →
-              </Link>
-            </div>
-            <Suspense fallback={<FeaturedSkeleton />}>
-              <FeaturedCanadaCars />
-            </Suspense>
-          </section>
+        {/* Nationwide delivery — country+city long-tail as hub content. */}
+        <ImportArticle Icon={MapPinIcon} title="Внос на коли от Канада до всяка точка на България">
+          <p>
+            Организираме доставка на внесения автомобил до София, Пловдив, Варна, Бургас, Стара Загора, Русе и всеки
+            друг град в страната. Огледът и предаването стават при нас в Пловдив или уговаряме транспорт до вашия адрес
+            — процесът по внос, оформяне и регистрация е един и същ, независимо къде се намирате.
+          </p>
+        </ImportArticle>
 
-          {/* Honest transit + post-arrival (same NA-spec adaptation as the US) */}
-          <section className="mb-12">
-            <h2 className="mb-4 text-2xl font-black text-ink">Срокове, транспорт и стъпките след пристигане</h2>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-line bg-white p-6 shadow-card max-md:p-5">
-                <h3 className="mb-2 text-lg font-extrabold text-ink">Колко време отнема — честно</h3>
-                <p className="mb-2 text-sm/relaxed text-[#5a5d64]">
-                  Морският превоз от канадско пристанище до Европа отнема ориентировъчно <strong>5–8 седмици</strong> —
-                  трансатлантическият маршрут не е засегнат от отклоненията около Африка.
-                </p>
-                <p className="text-sm/relaxed text-[#5a5d64]">
-                  Реалистично: около 2 месеца от покупката до кола, готова за КАТ — включително сухопътния превоз до
-                  България и оформянето. Държим ви в течение на всяка стъпка.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-line bg-white p-6 shadow-card max-md:p-5">
-                <h3 className="mb-2 text-lg font-extrabold text-ink">След пристигането</h3>
-                <p className="mb-2 text-sm/relaxed text-[#5a5d64]">
-                  Канадските автомобили следват северноамериканските стандарти и минават{" "}
-                  <strong>индивидуално одобряване</strong> (технотест) с типичните адаптации: европейски (ECE) фарове,
-                  заден фар за мъгла и km/h скоростомер.
-                </p>
-                <p className="text-sm/relaxed text-[#5a5d64]">
-                  Следват еднократната <strong>екотакса</strong> към ПУДООС, ГТП и регистрация в КАТ — всичко е
-                  включено в разбивката на калкулатора и в персоналната оферта.
-                </p>
-              </div>
-            </div>
-          </section>
+        <ImportFaq items={FAQ} />
 
-          {/* Testimonials (streamed, fail-open — same daily-cached read as /otzivi) */}
-          <Suspense fallback={null}>
-            <HubTestimonials />
-          </Suspense>
+        {/* Compare with the other sourcing markets (cross-hub links), and the CTA */}
+        <ImportEnd
+          links={[
+            { href: "/vnos-na-koli-ot-korea", label: "Внос на коли от Корея", Icon: FlagKrIcon, flag: true },
+            { href: "/vnos-na-koli-ot-sasht", label: "Внос на коли от САЩ", Icon: FlagUsIcon, flag: true },
+            { href: "/kalkulator", label: "Калкулатор за внос", Icon: CalculatorIcon },
+          ]}
+          ctaId={CTA_ID}
+          ctaTitle="Искате кола от Канада?"
+          ctaText="Кажете ни марка, модел и бюджет — ще подберем подходящи автомобили с чиста история и ще изготвим персонална калкулация, без скрити такси."
+        />
 
-          {/* Nationwide delivery — country+city long-tail as hub content. */}
-          <section className="mb-12">
-            <h2 className="mb-4 text-2xl font-black text-ink">Внос на коли от Канада до всяка точка на България</h2>
-            <div className="rounded-2xl border border-line bg-white p-6 shadow-card max-md:p-5">
-              <p className="text-[15px]/relaxed text-[#3d4046]">
-                Организираме доставка на внесения автомобил до София, Пловдив, Варна, Бургас, Стара Загора, Русе и
-                всеки друг град в страната. Огледът и предаването стават при нас в Пловдив или уговаряме транспорт до
-                вашия адрес — процесът по внос, оформяне и регистрация е един и същ, независимо къде се намирате.
-              </p>
-            </div>
-          </section>
-
-          <section className="mb-12">
-            <h2 className="mb-4 text-2xl font-black text-ink">Често задавани въпроси</h2>
-            <div className="flex flex-col gap-4">
-              {FAQ.map((f) => (
-                <div key={f.question} className="rounded-2xl border border-line bg-white p-5 shadow-card">
-                  <h3 className="mb-1.5 text-base font-extrabold text-ink">{f.question}</h3>
-                  <p className="text-sm/relaxed text-[#5a5d64]">{f.answer}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Compare with the other sourcing markets (cross-hub links) */}
-          <section className="mb-12">
-            <h2 className="mb-4 text-2xl font-black text-ink">Сравни с другите пазари</h2>
-            <div className="flex flex-wrap gap-3">
-              <LinkButton
-                href="/vnos-na-koli-ot-korea"
-                rippleTheme="dark"
-                className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-white px-5 text-sm font-extrabold text-ink transition-colors hover:text-brand-dark"
-              >
-                Внос на коли от Корея
-              </LinkButton>
-              <LinkButton
-                href="/vnos-na-koli-ot-sasht"
-                rippleTheme="dark"
-                className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-white px-5 text-sm font-extrabold text-ink transition-colors hover:text-brand-dark"
-              >
-                Внос на коли от САЩ
-              </LinkButton>
-              <LinkButton
-                href="/kalkulator"
-                rippleTheme="dark"
-                className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-white px-5 text-sm font-extrabold text-ink transition-colors hover:text-brand-dark"
-              >
-                Калкулатор за внос
-              </LinkButton>
-            </div>
-          </section>
-
-          <section className="rounded-card bg-linear-to-r from-brand-dark to-brand p-8 text-center max-md:p-6">
-            <h2 className="mb-2 text-2xl font-black text-white max-md:text-xl">Искаш кола от Канада?</h2>
-            <p className="mx-auto mb-5 max-w-xl text-sm/relaxed text-white/85">
-              Кажи ни марка, модел и бюджет — ще подберем подходящи автомобили с чиста история и ще изготвим персонална
-              калкулация, без скрити такси.
-            </p>
-            <InquiryButton
-              rippleTheme="dark"
-              className="inline-flex min-h-13.5 items-center justify-center rounded-full bg-white px-8 text-sm font-extrabold uppercase tracking-wide text-brand-dark transition-transform duration-200 hover:-translate-y-0.5"
-            >
-              Направи запитване
-            </InquiryButton>
-          </section>
-        </Container>
+        <ImportBar calcId={CALC_ID} actionsId={ACTIONS_ID} ctaId={CTA_ID} />
       </main>
       <SiteFooter />
+      {/* Room for the phone bar at the page's end (phones only, with the bar). */}
+      <div className="sa-only-ph h-17.25" aria-hidden="true" />
     </>
-  );
-}
-
-/** Server island: first few active CA listings (market=ca). */
-async function FeaturedCanadaCars() {
-  // See the Korea hub: opt this streamed island into request-time rendering so the
-  // Drizzle `randomBytes` call doesn't trip the prerender-random guard and fail the
-  // build. The shell stays static; the listings stream behind the skeleton.
-  await connection();
-  const page = await getCarsPage({ market: "ca" }, null);
-  const cars = page.cars.slice(0, 6);
-  if (cars.length === 0) {
-    return (
-      <p className="text-sm text-muted">
-        В момента няма активни обяви за коли от Канада. Заяви персонална селекция и ще намерим подходящ автомобил.
-      </p>
-    );
-  }
-  return (
-    <div className="grid grid-cols-1 gap-5 min-[560px]:grid-cols-2 lg:grid-cols-3">
-      {cars.map((car) => (
-        <AuctionCard key={car.href} car={car} />
-      ))}
-    </div>
-  );
-}
-
-function FeaturedSkeleton() {
-  return (
-    <div className="grid grid-cols-1 gap-5 min-[560px]:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: 3 }).map((_, i) => (
-        <div key={i} className="aspect-4/3 w-full animate-pulse rounded-2xl bg-line" />
-      ))}
-    </div>
   );
 }

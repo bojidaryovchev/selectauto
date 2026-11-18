@@ -80,6 +80,15 @@ body {
   ::selection {
     background: rgba(255, 122, 26, 0.35);
   }
+  /* A link in running text: orange text, underlined (the board kit's `:where(.sa) :where(a)`). Only classless links in
+     a paragraph of a rebuilt section (.sa-wrap): every other link there is a component or carries utilities, and
+     Tailwind's preflight (color and decoration inherited) is what those rely on. Pages not yet rebuilt don't use
+     .sa-wrap, so they keep their own look. */
+  .sa-wrap p a:not([class]) {
+    color: var(--color-ortx);
+    text-decoration-line: underline;
+    text-underline-offset: 3px;
+  }
 }
 
 /*
@@ -140,9 +149,13 @@ body {
   }
 }
 @media (max-width: 639.98px) {
-  /* The calculators' result bar (phones only, .im-bar.is-on). */
+  /* The phone bars of the calculators and the import hubs (.im-bar.is-on, components/calculator/calc-bar.tsx): 69px
+     is 10px padding, a 48px button, 10px and the 1px top line. The budget's bar holds only text, 40px, so 61px. */
   :root:has(.im-bar.is-on) {
-    --page-bar: 65px;
+    --page-bar: 69px;
+  }
+  :root:has(.im-bar--text.is-on) {
+    --page-bar: 61px;
   }
 }
 @media (min-width: 1024px) {

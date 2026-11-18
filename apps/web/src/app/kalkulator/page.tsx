@@ -228,7 +228,7 @@ export default function CalculatorPage() {
                 <nav className="sa-chips" aria-label="Полезни страници">
                   {USEFUL_PAGES.map(({ label, href, Icon, flag }) => (
                     <Link key={href} href={href} className="sa-chip">
-                      <Icon className={flag ? "sa-flag" : undefined} />
+                      <Icon className={flag ? "sa-flag h-3.5 w-5.25" : undefined} />
                       {label}
                     </Link>
                   ))}

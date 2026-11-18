@@ -157,8 +157,8 @@ export function BudgetCalculator() {
       </div>
 
       {/* Phone: the price range stays in view while the inputs scroll. */}
-      <CalcBar watchId={SUMMARY_ID}>
-        <div>
+      <CalcBar watchIds={[SUMMARY_ID]} text>
+        <div className="h-10 justify-center">
           <small>Можете да си позволите кола до</small>
           <b>{range}</b>
         </div>

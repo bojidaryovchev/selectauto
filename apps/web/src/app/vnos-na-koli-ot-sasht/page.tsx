@@ -1,17 +1,40 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { connection } from "next/server";
 import Link from "next/link";
-import { Container, LinkButton } from "@/components/common";
-import { CostEstimator } from "@/components/calculator";
-import { AuctionCard } from "@/components/cars/all-cars";
-import { InquiryButton } from "@/components/inquiry";
-import { HubTestimonials } from "@/components/hubs";
+import {
+  type HubIcon,
+  HubTestimonials,
+  ImportArticle,
+  ImportBar,
+  ImportCalculator,
+  ImportCards,
+  ImportEnd,
+  ImportFaq,
+  ImportFeaturedCars,
+  ImportHero,
+  ImportProcess,
+} from "@/components/hubs";
+import {
+  CalculatorIcon,
+  CircleDollarSignIcon,
+  ClockIcon,
+  FileCheckIcon,
+  FileSearchIcon,
+  FlagCaIcon,
+  FlagKrIcon,
+  FlagUsIcon,
+  LayoutGridIcon,
+  MapPinIcon,
+  RefreshCwIcon,
+  ShieldCheckIcon,
+  TriangleAlertIcon,
+  TruckIcon,
+  WrenchIcon,
+} from "@/components/icons";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
 import { buildBreadcrumbJsonLd, buildFaqJsonLd, buildServiceJsonLd, type FaqEntry } from "@/lib/site-jsonld";
 import { buildSocialMeta } from "@/lib/social-meta";
-import { getCarsPage } from "@/queries/cars";
 
 /**
  * /vnos-na-koli-ot-sasht — the USA country hub (docs/12-web-seo-strategy.md §4.2). Targets
@@ -24,6 +47,9 @@ import { getCarsPage } from "@/queries/cars";
  * insurance total-loss (we state this honestly rather than hiding it). Shipping is
  * RoRo (cheaper) or container (more protection). See the Korea hub for the shared
  * structure/pattern.
+ *
+ * Look: boards `im-hub-us`, `im-hub-states`; the sections are components/hubs/import-sections.tsx; parity check
+ * docs/design/parity/vnos-na-koli.md.
  */
 
 const PATH = "/vnos-na-koli-ot-sasht";
@@ -32,7 +58,7 @@ const CANONICAL = `${SITE_URL}${PATH}`;
 export const metadata: Metadata = {
   title: "Внос на коли от САЩ (Америка) — Copart, IAAI | SelectAuto",
   description:
-    "Внос на автомобили от САЩ с SelectAuto — избор от Copart и IAAI, Carfax проверка, транспорт, мито и ДДС, регистрация в КАТ. Ясна разбивка на разходите.",
+    "Внос на автомобили от САЩ със SelectAuto — избор от Copart и IAAI, Carfax проверка, транспорт, мито и ДДС, регистрация в КАТ. Ясна разбивка на разходите.",
   alternates: { canonical: CANONICAL },
   ...buildSocialMeta({
     title: "Внос на коли от САЩ | SelectAuto",
@@ -86,41 +112,53 @@ const FAQ: FaqEntry[] = [
 ];
 
 /** Title-type mini glossary (visible cards) — the honest objection-handling
- *  content the trust cluster demands (clean/salvage/rebuilt/flood). */
-const TITLE_TYPES: { t: string; d: string }[] = [
+ *  content the trust cluster demands (clean/salvage/rebuilt/flood). The icons take the state colours. */
+const TITLE_TYPES: { Icon: HubIcon; tone: "pos" | "warn" | "info" | "neg"; t: string; d: string }[] = [
   {
+    Icon: ShieldCheckIcon,
+    tone: "pos",
     t: "Clean title",
     d: "Без сериозна застрахователна щета — най-лесен за внос и регистрация, на по-висока цена.",
   },
   {
+    Icon: WrenchIcon,
+    tone: "warn",
     t: "Salvage title",
     d: "Обявен за тотална щета от застраховател. По-евтин, но изисква оглед на щетите, реалистична сметка за ремонт и внимателна проверка.",
   },
   {
+    Icon: RefreshCwIcon,
+    tone: "info",
     t: "Rebuilt title",
     d: "Salvage кола след ремонт и повторна инспекция. Цената е между clean и salvage — историята на ремонта е ключова.",
   },
   {
+    Icon: TriangleAlertIcon,
+    tone: "neg",
     t: "Flood / вода",
     d: "Наводнен автомобил. Най-рисковата категория — щетите по електрониката се проявяват със закъснение. Избягваме ги и ги разпознаваме по историята.",
   },
 ];
 
-/** Why-USA pillars (fact-checked). */
-const REASONS: { t: string; d: string }[] = [
+/** Why-USA pillars (fact-checked), with the board's icons. */
+const REASONS: { Icon: HubIcon; t: string; d: string }[] = [
   {
+    Icon: LayoutGridIcon,
     t: "Огромен избор и обем",
     d: "Copart и IAAI предлагат стотици хиляди автомобили — от икономични до луксозни и пикапи.",
   },
   {
+    Icon: CircleDollarSignIcon,
     t: "Конкурентни цени",
     d: "С правилен подбор американските коли често излизат по-изгодно спрямо европейския пазар.",
   },
   {
+    Icon: FileSearchIcon,
     t: "Прозрачна история (Carfax/VIN)",
     d: "Проверяваме title статуса, щетите и историята преди наддаване — по-малко изненади.",
   },
   {
+    Icon: TruckIcon,
     t: "Пикапи и специфични модели",
     d: "Американският пазар е силен за пикапи, мускул коли и версии, рядко срещани в Европа.",
   },
@@ -134,6 +172,10 @@ const STEPS: { n: string; t: string; d: string }[] = [
   { n: "4", t: "Транспорт и оформяне", d: "Организираме превоза до България, митото, ДДС и документите." },
   { n: "5", t: "Предаване", d: "Автомобилът е готов за регистрация в КАТ и предаване на ключа." },
 ];
+
+const CALC_ID = "kolko-struva-us";
+const ACTIONS_ID = "us-hero-actions";
+const CTA_ID = "us-cta";
 
 export default function UsaHubPage() {
   const faqJsonLd = buildFaqJsonLd(FAQ);
@@ -151,254 +193,131 @@ export default function UsaHubPage() {
   return (
     <>
       <SiteHeader />
-      <main className="flex-1 bg-[#fafafa] pt-(--header-h) text-ink">
+      <main className="flex-1 pt-(--header-h)">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceJsonLd) }} />
 
-        <Container className="max-w-245 py-12 max-md:py-8">
-          <nav className="mb-5 text-sm text-muted">
-            <Link href="/" className="hover:text-brand-dark">
-              Начало
-            </Link>
-            <span className="px-2">/</span>
-            <span className="text-ink">Внос на коли от САЩ</span>
-          </nav>
+        <ImportHero
+          crumb="Внос на коли от САЩ"
+          title="Внос на коли от САЩ"
+          Flag={FlagUsIcon}
+          lead="САЩ е най-големият пазар за внос на автомобили — огромен избор през Copart и IAAI, конкурентни цени и силно предлагане на пикапи и специфични модели. SelectAuto поема целия процес: подбор, проверка на history/title, наддаване, транспорт, мито и ДДС, и съдействие до регистрация в КАТ."
+          text="Ще бъдем честни: вносът от Америка има и лоша слава — в Европа периодично гърмят скандали с тотално бракувани коли, продадени след козметичен ремонт. Именно затова нашият процес започва от историята, а не от цената: title статус, Carfax записи и снимки от аукциона се проверяват преди каквото и да е наддаване, и получавате всичко това черно на бяло. Изгодната сделка от САЩ съществува — но само с проверена история."
+          calcId={CALC_ID}
+          actionsId={ACTIONS_ID}
+          whyId="us-why"
+          whyTitle="Защо коли от САЩ"
+          reasons={REASONS}
+        />
 
-          <h1 className="mb-3 text-4xl font-black uppercase tracking-tight text-ink max-md:text-3xl">
-            Внос на коли от САЩ
-          </h1>
-          <p className="mb-4 max-w-2xl text-[15px] leading-[1.8] text-[#3d4046]">
-            САЩ е най-големият пазар за внос на автомобили — огромен избор през Copart и IAAI, конкурентни цени и силно
-            предлагане на пикапи и специфични модели. SelectAuto поема целия процес: подбор, проверка на history/title,
-            наддаване, транспорт, мито и ДДС, и съдействие до регистрация в КАТ.
-          </p>
-          <p className="mb-8 max-w-2xl text-[15px] leading-[1.8] text-[#3d4046]">
-            Ще бъдем честни: вносът от Америка има и лоша слава — в Европа периодично гърмят скандали с тотално
-            бракувани коли, продадени след козметичен ремонт. Именно затова нашият процес започва от историята, а не
-            от цената: title статус, Carfax записи и снимки от аукциона се проверяват преди каквото и да е наддаване, и
-            получавате всичко това черно на бяло. Изгодната сделка от САЩ съществува — но само с проверена история.
-          </p>
-
-          <section className="mb-12">
-            <h2 className="mb-4 text-2xl font-black text-ink">Защо коли от САЩ</h2>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {REASONS.map((r) => (
-                <div key={r.t} className="rounded-2xl border border-line bg-white p-5 shadow-card">
-                  <h3 className="mb-1.5 text-lg font-extrabold text-ink">{r.t}</h3>
-                  <p className="text-sm/relaxed text-[#5a5d64]">{r.d}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Title types — the honest objection-handling glossary (trust cluster) */}
-          <section className="mb-12">
-            <h2 className="mb-4 text-2xl font-black text-ink">Видове title — какво всъщност купуваш</h2>
-            <p className="mb-5 max-w-2xl text-sm/relaxed text-[#3d4046]">
-              Всеки американски автомобил идва с title документ, който казва истината за миналото му. Разликата между
-              изгодна сделка и скъп урок е в това какъв title купуваш — и дали историята зад него е проверена.
-            </p>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {TITLE_TYPES.map((r) => (
-                <div key={r.t} className="rounded-2xl border border-line bg-white p-5 shadow-card">
-                  <h3 className="mb-1.5 text-lg font-extrabold text-ink">{r.t}</h3>
-                  <p className="text-sm/relaxed text-[#5a5d64]">{r.d}</p>
-                </div>
-              ))}
-            </div>
-            <p className="mt-4 text-sm text-muted">
+        {/* Title types — the honest objection-handling glossary (trust cluster) */}
+        <ImportCards
+          title="Видове title — какво всъщност купувате"
+          intro="Всеки американски автомобил идва с title документ, който казва истината за миналото му. Разликата между изгодна сделка и скъп урок е в това какъв title купувате — и дали историята зад него е проверена."
+          columns={4}
+          items={TITLE_TYPES.map(({ Icon, tone, t, d }) => ({ Icon, tone, t, body: <p>{d}</p> }))}
+          note={
+            <>
               Преди наддаване проверяваме title статуса и историята на всеки лот —{" "}
-              <Link href="/proverka-vin" className="font-semibold text-brand-dark hover:underline">
-                безплатна VIN проверка
-              </Link>{" "}
-              или пълен{" "}
-              <Link href="/carfax" className="font-semibold text-brand-dark hover:underline">
-                Carfax доклад
-              </Link>
-              .
-            </p>
-          </section>
+              <Link href="/proverka-vin">безплатна VIN проверка</Link> или пълен{" "}
+              <Link href="/carfax">Carfax доклад</Link>.
+            </>
+          }
+        />
 
-          <section className="mb-12">
-            <h2 className="mb-4 text-2xl font-black text-ink">Колко струва внос от САЩ</h2>
-            <p className="mb-5 max-w-2xl text-sm/relaxed text-[#3d4046]">
-              Изчисли ориентировъчна разбивка: цена, аукционни такси, транспорт, мито (10%) и ДДС (20%), екотакса,
-              одобряване и регистрация. За обвързваща оферта за конкретен автомобил направи запитване.
-            </p>
-            <CostEstimator defaultMarket="us" />
-          </section>
+        <ImportCalculator
+          id={CALC_ID}
+          title="Колко струва внос от САЩ"
+          market="us"
+          intro="Изчислете ориентировъчна разбивка: цена, аукционни такси, транспорт, мито (10%) и ДДС (20%), екотакса, одобряване и регистрация. За обвързваща оферта за конкретен автомобил направете запитване."
+        />
 
-          <section className="mb-12">
-            <h2 className="mb-4 text-2xl font-black text-ink">Процесът стъпка по стъпка</h2>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {STEPS.map((s) => (
-                <div key={s.n} className="rounded-2xl border border-line bg-white p-5 shadow-card">
-                  <div className="mb-2 inline-flex size-8 items-center justify-center rounded-full bg-brand text-sm font-black text-white">
-                    {s.n}
-                  </div>
-                  <h3 className="mb-1 text-base font-extrabold text-ink">{s.t}</h3>
-                  <p className="text-sm/relaxed text-[#5a5d64]">{s.d}</p>
-                </div>
-              ))}
-            </div>
-          </section>
+        <ImportProcess steps={STEPS} />
 
-          <section className="mb-12">
-            <div className="mb-4 flex items-end justify-between gap-4">
-              <h2 className="text-2xl font-black text-ink">Актуални коли от САЩ</h2>
-              <Link
-                href="/vsichki-avtomobili?market=us"
-                className="whitespace-nowrap text-sm font-bold text-brand-dark hover:underline"
-              >
-                Виж всички →
-              </Link>
-            </div>
-            <Suspense fallback={<FeaturedSkeleton />}>
-              <FeaturedUsaCars />
-            </Suspense>
-          </section>
+        <ImportFeaturedCars
+          market="us"
+          title="Актуални коли от САЩ"
+          allHref="/vsichki-avtomobili?market=us"
+          emptyText="В момента няма активни обяви за коли от САЩ. Заявете персонална селекция и ще намерим подходящ автомобил."
+        />
 
-          {/* Honest transit + post-arrival (US-specific: individual approval +
-              ECE-light/speedometer adaptation) */}
-          <section className="mb-12">
-            <h2 className="mb-4 text-2xl font-black text-ink">Срокове, транспорт и стъпките след пристигане</h2>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-line bg-white p-6 shadow-card max-md:p-5">
-                <h3 className="mb-2 text-lg font-extrabold text-ink">Колко време отнема — честно</h3>
-                <p className="mb-2 text-sm/relaxed text-[#5a5d64]">
-                  Трансатлантическият превоз отнема ориентировъчно <strong>4–7 седмици</strong> от пристанище в САЩ до
-                  Европа — този маршрут не е засегнат от отклоненията около Африка, така че САЩ в момента е
-                  по-бързият презокеански вариант спрямо Азия.
-                </p>
-                <p className="text-sm/relaxed text-[#5a5d64]">
-                  Реалистично: около 2 месеца от покупката до кола, готова за КАТ — включително сухопътния превоз до
-                  България и оформянето. Държим ви в течение на всяка стъпка.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-line bg-white p-6 shadow-card max-md:p-5">
-                <h3 className="mb-2 text-lg font-extrabold text-ink">След пристигането</h3>
-                <p className="mb-2 text-sm/relaxed text-[#5a5d64]">
-                  Американските автомобили нямат европейско одобрение на типа, затова минават{" "}
-                  <strong>индивидуално одобряване</strong> (технотест) с типичните адаптации: фарове с европейски (ECE)
-                  светлинен сноп, заден фар за мъгла и km/h скоростомер.
-                </p>
-                <p className="text-sm/relaxed text-[#5a5d64]">
-                  Следват еднократната <strong>екотакса</strong> към ПУДООС, ГТП и регистрация в КАТ — всичко е
-                  включено в разбивката на калкулатора и в персоналната оферта.
-                </p>
-              </div>
-            </div>
-          </section>
+        {/* Honest transit + post-arrival (US-specific: individual approval +
+            ECE-light/speedometer adaptation) */}
+        <ImportCards
+          title="Срокове, транспорт и стъпките след пристигане"
+          items={[
+            {
+              Icon: ClockIcon,
+              t: "Колко време отнема — честно",
+              body: (
+                <>
+                  <p>
+                    Трансатлантическият превоз отнема ориентировъчно <strong>4–7 седмици</strong> от пристанище в САЩ
+                    до Европа — този маршрут не е засегнат от отклоненията около Африка, така че САЩ в момента е
+                    по-бързият презокеански вариант спрямо Азия.
+                  </p>
+                  <p>
+                    Реалистично: около 2 месеца от покупката до кола, готова за КАТ — включително сухопътния превоз до
+                    България и оформянето. Държим ви в течение на всяка стъпка.
+                  </p>
+                </>
+              ),
+            },
+            {
+              Icon: FileCheckIcon,
+              t: "След пристигането",
+              body: (
+                <>
+                  <p>
+                    Американските автомобили нямат европейско одобрение на типа, затова минават{" "}
+                    <strong>индивидуално одобряване</strong> (технотест) с типичните адаптации: фарове с европейски
+                    (ECE) светлинен сноп, заден фар за мъгла и km/h скоростомер.
+                  </p>
+                  <p>
+                    Следват еднократната <strong>екотакса</strong> към ПУДООС, ГТП и регистрация в КАТ — всичко е
+                    включено в разбивката на калкулатора и в персоналната оферта.
+                  </p>
+                </>
+              ),
+            },
+          ]}
+        />
 
-          {/* Testimonials (streamed, fail-open — same daily-cached read as /otzivi) */}
-          <Suspense fallback={null}>
-            <HubTestimonials />
-          </Suspense>
+        {/* Testimonials (streamed, fail-open — same daily-cached read as /otzivi) */}
+        <Suspense fallback={null}>
+          <HubTestimonials />
+        </Suspense>
 
-          {/* Nationwide delivery — the country+city long-tail lives HERE, not on
-              standalone city pages (docs/12-web-seo-strategy.md §4.2). */}
-          <section className="mb-12">
-            <h2 className="mb-4 text-2xl font-black text-ink">Внос на коли от САЩ до всяка точка на България</h2>
-            <div className="rounded-2xl border border-line bg-white p-6 shadow-card max-md:p-5">
-              <p className="text-[15px]/relaxed text-[#3d4046]">
-                Организираме доставка на внесения автомобил до София, Пловдив, Варна, Бургас, Стара Загора, Русе и
-                всеки друг град в страната. Огледът и предаването стават при нас в Пловдив или уговаряме транспорт до
-                вашия адрес — процесът по внос, оформяне и регистрация е един и същ, независимо къде се намирате.
-              </p>
-            </div>
-          </section>
+        {/* Nationwide delivery — the country+city long-tail lives HERE, not on
+            standalone city pages (docs/12-web-seo-strategy.md §4.2). */}
+        <ImportArticle Icon={MapPinIcon} title="Внос на коли от САЩ до всяка точка на България">
+          <p>
+            Организираме доставка на внесения автомобил до София, Пловдив, Варна, Бургас, Стара Загора, Русе и всеки
+            друг град в страната. Огледът и предаването стават при нас в Пловдив или уговаряме транспорт до вашия адрес
+            — процесът по внос, оформяне и регистрация е един и същ, независимо къде се намирате.
+          </p>
+        </ImportArticle>
 
-          <section className="mb-12">
-            <h2 className="mb-4 text-2xl font-black text-ink">Често задавани въпроси</h2>
-            <div className="flex flex-col gap-4">
-              {FAQ.map((f) => (
-                <div key={f.question} className="rounded-2xl border border-line bg-white p-5 shadow-card">
-                  <h3 className="mb-1.5 text-base font-extrabold text-ink">{f.question}</h3>
-                  <p className="text-sm/relaxed text-[#5a5d64]">{f.answer}</p>
-                </div>
-              ))}
-            </div>
-          </section>
+        <ImportFaq items={FAQ} />
 
-          {/* Compare with the other sourcing markets (cross-hub links) */}
-          <section className="mb-12">
-            <h2 className="mb-4 text-2xl font-black text-ink">Сравни с другите пазари</h2>
-            <div className="flex flex-wrap gap-3">
-              <LinkButton
-                href="/vnos-na-koli-ot-korea"
-                rippleTheme="dark"
-                className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-white px-5 text-sm font-extrabold text-ink transition-colors hover:text-brand-dark"
-              >
-                Внос на коли от Корея
-              </LinkButton>
-              <LinkButton
-                href="/vnos-na-koli-ot-kanada"
-                rippleTheme="dark"
-                className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-white px-5 text-sm font-extrabold text-ink transition-colors hover:text-brand-dark"
-              >
-                Внос на коли от Канада
-              </LinkButton>
-              <LinkButton
-                href="/kalkulator"
-                rippleTheme="dark"
-                className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-white px-5 text-sm font-extrabold text-ink transition-colors hover:text-brand-dark"
-              >
-                Калкулатор за внос
-              </LinkButton>
-            </div>
-          </section>
+        {/* Compare with the other sourcing markets (cross-hub links), and the CTA */}
+        <ImportEnd
+          links={[
+            { href: "/vnos-na-koli-ot-korea", label: "Внос на коли от Корея", Icon: FlagKrIcon, flag: true },
+            { href: "/vnos-na-koli-ot-kanada", label: "Внос на коли от Канада", Icon: FlagCaIcon, flag: true },
+            { href: "/kalkulator", label: "Калкулатор за внос", Icon: CalculatorIcon },
+          ]}
+          ctaId={CTA_ID}
+          ctaTitle="Искате кола от САЩ?"
+          ctaText="Кажете ни марка, модел и бюджет — ще подберем подходящи автомобили от Copart/IAAI и ще изготвим персонална калкулация, без скрити такси."
+        />
 
-          <section className="rounded-card bg-linear-to-r from-brand-dark to-brand p-8 text-center max-md:p-6">
-            <h2 className="mb-2 text-2xl font-black text-white max-md:text-xl">Искаш кола от САЩ?</h2>
-            <p className="mx-auto mb-5 max-w-xl text-sm/relaxed text-white/85">
-              Кажи ни марка, модел и бюджет — ще подберем подходящи автомобили от Copart/IAAI и ще изготвим персонална
-              калкулация, без скрити такси.
-            </p>
-            <InquiryButton
-              rippleTheme="dark"
-              className="inline-flex min-h-13.5 items-center justify-center rounded-full bg-white px-8 text-sm font-extrabold uppercase tracking-wide text-brand-dark transition-transform duration-200 hover:-translate-y-0.5"
-            >
-              Направи запитване
-            </InquiryButton>
-          </section>
-        </Container>
+        <ImportBar calcId={CALC_ID} actionsId={ACTIONS_ID} ctaId={CTA_ID} />
       </main>
       <SiteFooter />
+      {/* Room for the phone bar at the page's end (phones only, with the bar). */}
+      <div className="sa-only-ph h-17.25" aria-hidden="true" />
     </>
-  );
-}
-
-/** Server island: first few active US listings (market=us). */
-async function FeaturedUsaCars() {
-  // See the Korea hub: opt this streamed island into request-time rendering so the
-  // Drizzle `randomBytes` call doesn't trip the prerender-random guard and fail the
-  // build. The shell stays static; the listings stream behind the skeleton.
-  await connection();
-  const page = await getCarsPage({ market: "us" }, null);
-  const cars = page.cars.slice(0, 6);
-  if (cars.length === 0) {
-    return (
-      <p className="text-sm text-muted">
-        В момента няма активни обяви за коли от САЩ. Заяви персонална селекция и ще намерим подходящ автомобил.
-      </p>
-    );
-  }
-  return (
-    <div className="grid grid-cols-1 gap-5 min-[560px]:grid-cols-2 lg:grid-cols-3">
-      {cars.map((car) => (
-        <AuctionCard key={car.href} car={car} />
-      ))}
-    </div>
-  );
-}
-
-function FeaturedSkeleton() {
-  return (
-    <div className="grid grid-cols-1 gap-5 min-[560px]:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: 3 }).map((_, i) => (
-        <div key={i} className="aspect-4/3 w-full animate-pulse rounded-2xl bg-line" />
-      ))}
-    </div>
   );
 }

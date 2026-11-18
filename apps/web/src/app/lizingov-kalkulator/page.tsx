@@ -119,7 +119,7 @@ export default function LeasingCalculatorPage() {
       </main>
       <SiteFooter />
       {/* Room for the phone result bar at the page's end (phones only, with the bar). */}
-      <div className="sa-only-ph h-16.25" aria-hidden="true" />
+      <div className="sa-only-ph h-17.25" aria-hidden="true" />
     </>
   );
 }

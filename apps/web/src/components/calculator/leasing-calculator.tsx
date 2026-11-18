@@ -160,7 +160,7 @@ export function LeasingCalculator() {
       </div>
 
       {/* Phone: the monthly payment and „Кандидатствайте" stay in reach while the inputs scroll. */}
-      <CalcBar watchId={SUMMARY_ID}>
+      <CalcBar watchIds={[SUMMARY_ID]}>
         <div>
           <small>Месечно</small>
           <b>{eur(r.monthly)}</b>

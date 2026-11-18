@@ -15,7 +15,7 @@ design canvases.
 |---|---|
 | Tokens, fonts, type styles | `apps/web/src/styles/tokens.css`; fonts load in `apps/web/src/app/layout.tsx` |
 | Component classes (`sa-btn`, `sa-car`, `sa-hdr` …) | `apps/web/src/styles/kit.css`, ported from the boards' kit; React components apply them |
-| A screen's own layout classes (`cd-*` on the car page, `hm-*` on the hubs) | `apps/web/src/styles/<screen>.css` (so far `car-page.css` and `hub-page.css`), ported from that screen's board sources by `apps/web/scripts/port-board-css.mjs`: token names, `cqi` → `vw`, container queries → media queries |
+| A screen's own layout classes (`cd-*` on the car page, `hm-*` on the make and model hubs, `im-*` on the import hubs and the calculators) | `apps/web/src/styles/<screen>.css` (so far `car-page.css`, `hub-page.css` and `import-page.css`), ported from that screen's board sources by `apps/web/scripts/port-board-css.mjs`: token names, `cqi` → `vw`, container queries → media queries |
 | Contrast test of every text and ground pair | `apps/web/tests/design-tokens.test.mts`, run by `pnpm test` |
 | The logo | `Logo` in `apps/web/src/components/common/logo.tsx` |
 | Why this direction, these fonts, this logo | [adr-0001-direction-type-logo.md](adr-0001-direction-type-logo.md) |
@@ -208,6 +208,11 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
   While the header and tabs are hidden, `<html>` carries `data-bars-hidden`, so a page's own bottom bar can follow the
   tabs to the screen's edge. While such a bar shows, it sets `--page-bar` to its height (globals.css), and the
   back-to-top button and the notifications sit above it.
+- **Phone bars of the calculators and the import hubs** (`calc-bar.tsx`): fixed above the tabs, hidden while what they
+  repeat is on screen (the summary; a hub's hero actions, calculator and closing call to action). A bar starts hidden
+  and appears once it knows, so it never slides away at load. Heights, which `--page-bar` and the spacer after the
+  footer repeat: 69 px with a 48 px button, 61 px for the budget's text-only bar (the car page's bar, with 44 px
+  buttons, is 65 px).
 - **The car page's action bar** (`car-action-bar.tsx`, phones and tablets): the price or the countdown, „Направете
   заявка" and the call („Обадете се"); a sold car's „Вижте активни обяви". It hides while the contact panel is on
   screen.
@@ -232,9 +237,20 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
   page's „Подобни автомобили") the title and the controls share one row, and `freeMode` lets the track glide.
 - **Hubs** (`components/cars/hub/`): the header with the make's xl plate beside the H1, the model chips (a three-row
   swipe on a phone), the empty panel, the FAQ (two columns when there's no sold-price table) and the skeleton.
+- **Import hubs** (`components/hubs/`): the hero with the market's flag and the reasons panel, article bands, pairs and
+  rows of cards with icon tiles (state colours for the US title types), the numbered process, the closing band with
+  the market chips and the call to action, and the phone bar. Their rail (`car-scroll-rail.tsx`) scrolls and snaps,
+  4 / 3 / 2 / 1,16 cards (5 and 6 on wide screens), its arrows move one card and are disabled at the ends, and it
+  doesn't move on its own: the hubs' listings were a still grid.
+- **FAQ accordion** (`faq-accordion.tsx`, `.im-faq`): the import hubs and the calculators; the first answer open, every
+  answer kept in the page so the FAQPage JSON-LD still matches.
+- **Links in running text** (globals.css): orange (`ortx`) and underlined, the boards' kit rule for any link. It
+  applies to classless links in a paragraph of a rebuilt section (`.sa-wrap`), since every other link there is a
+  component or carries utilities.
 - **The catalog's filters** sit in one console above the results on tablets and desktops, and in a full-height sheet on
   phones, behind „Филтри" (decision 5). They apply as they change; the tab Активни / Приключили is not a filter.
 - **Carousels** keep advancing on their own, pause on hover and focus, and have a pause button („Спрете превъртането").
+  The import hubs' rails don't move on their own, so they have none.
 - The rest of the interaction rules are on the boards of each screen; [boards.md](boards.md) finds them.
 
 ## Accessibility
@@ -252,9 +268,10 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
   footer, Viber popup, back-to-top and notifications follow their boards, and the focus ring and the dark colour scheme
   are global. Pages not rebuilt yet look broken on the dark ground until their turn.
 - **Rebuilt so far:** the car card and the confirm dialog, the catalog (`/vsichki-avtomobili`), the home page, the car
-  page (`/avtomobil/[id]`) with its gallery, full-screen photo viewer, media dialogs and action bar, and the make and
-  model hubs (`/avtomobili/marka/…`). Each has its parity file in [parity/](parity/README.md). The car page's
-  calculator, inquiry and Carfax dialogs open as they are until their own steps.
+  page (`/avtomobil/[id]`) with its gallery, full-screen photo viewer, media dialogs and action bar, the make and
+  model hubs (`/avtomobili/marka/…`), the import calculator (`/kalkulator`, its e-mail form and the car page's
+  calculator dialog), the leasing and budget calculators, and the import hubs (`/vnos-na-koli-ot-…`). Each has its
+  parity file in [parity/](parity/README.md). The inquiry and Carfax dialogs open as they are until their own steps.
 - **Montserrat** still loads, only for the /proces particle title. Remove it when /proces is rebuilt.
 - **Fonts:** four font files are preloaded once Montserrat goes (Manrope and Unbounded, Latin and Cyrillic), against two
   today. Measure LCP on a phone after the shell's rebuild.
