@@ -1,0 +1,58 @@
+/*
+  The inquiry dialog „Безплатна консултация" (components/inquiry; boards ac-inq-desk, ac-inq-desk2, ac-inq-quiz,
+  ac-inq-send, ac-inq-tab): the dialog, its header with the step bar and the car banner, the question, the answers (rows,
+  the makes with their plates, the models), the start, the form and the thank-you.
+  Ported by script from the screen's board sources (apps/web/scripts/port-board-css.mjs), as kit.css is from the kit: token
+  names follow tokens.css, the boards' cqi became vw and their container queries media queries. Board-only parts
+  (device frames, preview overlays) were left out. Class prefix: ac- (only the dialog's: ac-iq*, ac-q*). One hand edit,
+  marked below: the phone frame became a media query.
+*/
+@layer components {
+  .ac-iqd{width:min(100%,560px);max-height:792px;display:flex;flex-direction:column;background:var(--color-s1);border:1px solid var(--color-hair2);border-radius:var(--radius-xl);box-shadow:var(--shadow-pop);overflow:hidden;position:relative}
+  .ac-iq__h{flex:none;display:flex;flex-direction:column;gap:14px;padding:20px 24px 0}
+  .ac-iq__bar{display:flex;align-items:center;gap:14px;min-height:44px}
+  .ac-iq__p{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
+  .ac-iq__p .sa-label{color:var(--color-tx3)}
+  .ac-iq__sp{flex:1}
+  .ac-iq__b{flex:1;min-height:0;overflow:auto;padding:22px 24px 28px;display:flex;flex-direction:column;gap:18px}
+  .ac-iq__q{font:700 22px/1.25 var(--font-display);letter-spacing:-.01em;text-wrap:balance}
+  @media (max-width:639.98px){.ac-iq__q{font-size:20px}}
+  .ac-qopts{display:grid;gap:10px}
+  .ac-qopt{display:flex;align-items:center;gap:12px;width:100%;min-height:56px;padding:0 14px 0 16px;border:0;border-radius:var(--radius-lg);background:var(--color-s2);box-shadow:inset 0 0 0 1px var(--color-field);color:var(--color-tx);font:700 16px/1.25 var(--font-sans);text-align:left;cursor:pointer}
+  .ac-qopt>span:not(.sa-plate){flex:1;min-width:0}
+  .ac-qopt>svg{width:20px;height:20px;flex:none;color:var(--color-tx2)}
+  .ac-qopt:hover,.ac-qopt.is-hl{background:var(--color-s3);box-shadow:inset 0 0 0 1.5px var(--color-or)}
+  .ac-qbrands{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  .ac-qbrands .ac-qopt{gap:10px;padding:0 10px;font-size:15px;min-height:56px}
+  .ac-qbrands .sa-plate{--ps:34px;border-radius:7px}
+  @media (max-width:639.98px){.ac-qbrands{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .ac-qmodels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  .ac-qmodels .ac-qopt{justify-content:center;text-align:center;padding:0 10px}
+  .ac-qmodels .ac-qopt>span:not(.sa-plate){flex:none}
+  @media (max-width:639.98px){.ac-qmodels{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .ac-iqcar{display:flex;align-items:center;gap:12px;padding:10px 14px 10px 10px;border-radius:var(--radius-lg);background:var(--color-s2);border:1px solid var(--color-hair2)}
+  .ac-iqcar>div{min-width:0;display:flex;flex-wrap:wrap;align-items:baseline;column-gap:8px;row-gap:2px}
+  .ac-iqcar .sa-label{width:100%;color:var(--color-tx3)}
+  .ac-iqcar b{font:800 15.5px/1.3 var(--font-sans)}
+  .ac-iqcar__lot{font-size:13.5px;font-weight:600;color:var(--color-tx3);white-space:nowrap}
+  .ac-iqs{display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px;padding-top:4px}
+  .ac-iqs img{width:200px;height:auto;border-radius:12px;box-shadow:0 0 0 1px var(--color-hair)}
+  .ac-iqs__t{font:700 28px/1.15 var(--font-display);letter-spacing:-.02em}
+  @media (max-width:639.98px){.ac-iqs__t{font-size:24px}}
+  .ac-iqs p{font-size:16px;line-height:1.65;color:var(--color-tx2);max-width:44ch}
+  .ac-iqs .sa-btn{margin-top:6px}
+  .ac-iqok{display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;padding:12px 0 8px}
+  .ac-iqok__ic{width:72px;height:72px;display:grid;place-items:center;border-radius:50%;background:var(--color-pos-w);color:var(--color-pos)}
+  .ac-iqok__ic svg{width:34px;height:34px}
+  .ac-iqok h2{font:700 24px/1.2 var(--font-display)}
+  .ac-iqok p{font-size:16px;line-height:1.6;color:var(--color-tx2);max-width:34ch}
+  .ac-iqform{display:flex;flex-direction:column;gap:18px}
+  /* Hand edit: the boards draw the phone dialog inside a full-screen frame (.ac-iqfs, ac-inq-quiz). Here the dialog
+     itself fills the screen below 640px, with the notch and home-indicator insets the old dialog honoured. */
+  @media (max-width:639.98px){
+    .ac-iqd{width:100%;max-height:none;height:100dvh;border:0;border-radius:0;box-shadow:none;background:var(--color-bg)}
+    .ac-iq__h{padding:max(14px,env(safe-area-inset-top)) 16px 0}
+    .ac-iq__b{padding:20px 16px max(24px,env(safe-area-inset-bottom))}
+    .ac-iqok{flex:1;justify-content:center;padding-bottom:80px}
+  }
+}

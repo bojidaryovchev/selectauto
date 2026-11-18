@@ -1,20 +1,27 @@
-import type { ReactNode } from "react";
-import { Button } from "@/components/common";
+import { MakePlate } from "@/components/common";
+import { ChevronRightIcon } from "@/components/icons";
 
-/** A selectable answer button within a quiz step. */
+/**
+ * An answer in the inquiry quiz (boards `ac-inq-desk`, `ac-inq-quiz`): a 56 px row. `row` answers end with a chevron;
+ * a `make` starts with its logo plate (decorative, the name follows); a `model` is just its name, centred by its grid.
+ */
 export function QuizOption({
   onClick,
   children,
+  kind = "row",
+  logo,
 }: {
   onClick: () => void;
-  children: ReactNode;
+  children: string;
+  kind?: "row" | "make" | "model";
+  /** The make's logo (`kind="make"`). */
+  logo?: string | null;
 }) {
   return (
-    <Button
-      onClick={onClick}
-      className="w-full rounded-[14px] border border-[#d9dde4] bg-white px-3.5 py-3.25 text-left text-[15px] font-bold text-[#23252a] transition-all duration-200 hover:-translate-y-px hover:border-brand hover:bg-[#fff8f2] active:translate-y-0 max-[640px]:text-sm"
-    >
-      {children}
-    </Button>
+    <button type="button" className="ac-qopt" onClick={onClick}>
+      {kind === "make" ? <MakePlate name={children} logo={logo ?? null} size="sm" alt="" /> : null}
+      <span>{children}</span>
+      {kind === "row" ? <ChevronRightIcon /> : null}
+    </button>
   );
 }

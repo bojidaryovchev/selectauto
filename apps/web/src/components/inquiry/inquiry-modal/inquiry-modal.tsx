@@ -2,12 +2,13 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Button } from "@/components/common";
+import { Button, IconButton, MakePlate } from "@/components/common";
 import { INQUIRY_LOGO } from "@/constants";
-import { CheckIcon, ChevronLeftIcon, CloseIcon } from "@/components/icons";
+import { AlertIcon, CheckIcon, ChevronLeftIcon, CloseIcon } from "@/components/icons";
 import {
+  INQUIRY_BRAND_LOGOS,
   INQUIRY_BRANDS,
   INQUIRY_BUDGETS,
   INQUIRY_FINANCE,
@@ -15,13 +16,13 @@ import {
 } from "@/data/inquiry-brands";
 import { inquiryContactSchema, type InquiryContactValues } from "@/schemas/inquiry.schema";
 import type { ActionResult, InquiryPrefill } from "@/types";
-import { MainButton } from "./main-button";
 import { QuizOption } from "./quiz-option";
 import { QuizStep } from "./quiz-step";
 
 /**
- * Site-wide "Безплатна консултация" modal wizard. Rendered once near the root and
- * opened by any "Запитване" button via the `useInquiry()` context.
+ * Site-wide "Безплатна консултация" modal wizard (boards `ac-inq-desk`, `ac-inq-desk2`, `ac-inq-quiz`, `ac-inq-send`,
+ * `ac-inq-tab`; parity check docs/design/parity/inquiry.md). Rendered once near the root and opened by any
+ * "Запитване" button via the `useInquiry()` context.
  *
  * Flow: a start screen → seven quiz steps (specific model? → brand → model →
  * budget → time → finance → name/phone) → a success step that auto-closes.
@@ -32,10 +33,13 @@ import { QuizStep } from "./quiz-step";
  * specific-model/brand/model steps and starts at the budget step, showing a banner
  * that names the car — the buyer only fills in budget/time/finance + name/phone.
  *
+ * The look: a 560 px dialog at the top of the screen (it doesn't jump as the steps change height), full screen on a
+ * phone; the step bar with „Назад", „Стъпка N от M" over the kit's segments and „Затворете". Focus moves into the
+ * dialog on open, to each new question, and back to what opened it on close.
+ *
  * Quiz option data lives in `@/data/inquiry-brands`; phone helpers in
  * `@/lib/phone`.
  */
-
 
 type Screen = "start" | "quiz";
 type QuizData = {
@@ -67,6 +71,7 @@ export function InquiryModal({
   // Server-side submit error (createInquiry failure); field-level validation for
   // name/phone is handled by react-hook-form below.
   const [error, setError] = useState("");
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   // Only the final step's name/phone are validated fields — the quiz answers are
   // button taps stored in `data`. `zodResolver(inquiryContactSchema)` normalises
@@ -129,6 +134,21 @@ export function InquiryModal({
       document.removeEventListener("keydown", onKey);
     };
   }, [isOpen, close]);
+
+  // Focus into the dialog on open, and back to whatever opened it on close.
+  useEffect(() => {
+    if (!isOpen) return;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    dialogRef.current?.focus();
+    return () => opener?.focus();
+  }, [isOpen]);
+
+  // Each new step: its question takes the focus (the answer that was pressed is gone); a step without one, the dialog.
+  useEffect(() => {
+    if (!isOpen) return;
+    const question = dialogRef.current?.querySelector<HTMLElement>("[data-iq-focus]");
+    (question ?? dialogRef.current)?.focus();
+  }, [isOpen, screen, step]);
 
   // Clear the name/phone fields whenever the modal (re)opens. Done in an effect,
   // not the render-time seeding above, because RHF's `reset` must not run during
@@ -218,7 +238,7 @@ export function InquiryModal({
         setError(result.error);
       }
     } catch {
-      setError("Грешка при изпращане. Моля опитай отново.");
+      setError("Грешка при изпращане. Моля опитайте отново.");
     }
   }
 
@@ -237,275 +257,249 @@ export function InquiryModal({
   const stepIndex = stepFlow.indexOf(step);
   // Progress is shown on the quiz screen for the answered steps (not on success).
   const showProgress = screen === "quiz" && step < 7 && stepIndex >= 0;
-  const progressPct = ((stepIndex + 1) / stepFlow.length) * 100;
+
+  const nameError = errors.name?.message;
+  const phoneError = errors.phone?.message;
 
   return (
-    <div
-      className="fixed inset-0 z-99999"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="sa-inquiry-title"
-    >
-      {/* Backdrop */}
-      <div
-        onClick={close}
-        className="absolute inset-0 bg-[rgba(8,10,14,0.72)] backdrop-blur-lg"
-      />
+    <div className="fixed inset-0 z-99999 flex items-start justify-center px-6 pt-18 pb-6 max-sm:p-0">
+      {/* The dimmed page; a press on it closes the dialog. */}
+      <div onClick={close} className="sa-scrim" />
 
-      {/* Dialog — a flex column: a PINNED header (back + close + progress + car
-          banner) that never scrolls, over a scrollable body. The scroll used to
-          live on this whole box with the close button `absolute` inside it, so on
-          tall steps (the brand/model lists) the header scrolled out of view.
-          On phones (≤640px) it fills the whole viewport — edge-to-edge, square
-          corners, `h-dvh` (tracks the URL bar / keyboard) — with the header/body
-          padding honouring the notch + home-indicator safe-area insets. From 641px
-          up it's the centred card. */}
-      <div className="relative z-2 mx-auto mt-[5vh] flex max-h-[min(88vh,820px)] w-[min(100%-24px,520px)] flex-col overflow-hidden rounded-[30px] bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(248,248,250,0.98)_100%)] shadow-[0_30px_80px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-md max-[640px]:mt-0 max-[640px]:h-dvh max-[640px]:max-h-dvh max-[640px]:w-full max-[640px]:rounded-none max-[640px]:shadow-none">
-        {/* Pinned header */}
-        <div className="shrink-0 px-7 pt-5 max-[640px]:px-4.5 max-[640px]:pt-[max(1rem,env(safe-area-inset-top))]">
-          <div className="flex items-center justify-between gap-2">
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Безплатна консултация"
+        className="ac-iqd max-h-[min(792px,calc(100dvh-96px))] outline-none max-sm:max-h-none"
+      >
+        {/* The header stays put while the body scrolls (the make and model lists are long on a phone). */}
+        <div className="ac-iq__h">
+          <div className="ac-iq__bar">
             {showBack ? (
-              <Button
-                onClick={back}
-                aria-label="Назад"
-                className="inline-flex size-11 items-center justify-center rounded-[14px] bg-[#f1f2f4] text-[#6f747c] transition-all duration-200 hover:-translate-y-px hover:bg-[#e8eaee] hover:text-[#17181b]"
-              >
-                <ChevronLeftIcon className="size-5" />
-              </Button>
+              <IconButton label="Назад" onClick={back}>
+                <ChevronLeftIcon />
+              </IconButton>
+            ) : null}
+            {showProgress ? (
+              <div className="ac-iq__p">
+                <span className="sa-label">
+                  Стъпка {stepIndex + 1} от {stepFlow.length}
+                </span>
+                <div className="sa-steps" aria-hidden="true">
+                  {stepFlow.map((s, i) => (
+                    <i key={s} className={i <= stepIndex ? "is-on" : undefined} />
+                  ))}
+                </div>
+              </div>
             ) : (
-              <span />
+              <span className="ac-iq__sp" />
             )}
-            <Button
-              aria-label="Затвори"
-              onClick={close}
-              className="inline-flex size-11 items-center justify-center rounded-[14px] bg-[#f1f2f4] text-[#6f747c] transition-all duration-200 hover:-translate-y-px hover:bg-[#e8eaee] hover:text-[#17181b]"
-            >
-              <CloseIcon className="size-4.5" />
-            </Button>
+            <IconButton label="Затворете" onClick={close}>
+              <CloseIcon />
+            </IconButton>
           </div>
 
-          {/* Step progress */}
-          {showProgress && (
-            <div className="mt-3">
-              <p className="mb-1.5 text-[12px] font-semibold text-[#8a8f98]">
-                Стъпка {stepIndex + 1} от {stepFlow.length}
-              </p>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#ececef]">
-                <div
-                  className="h-full rounded-full bg-[linear-gradient(90deg,#b95200,#d86f16)] transition-[width] duration-300 ease-out"
-                  style={{ width: `${progressPct}%` }}
-                />
+          {/* The car the inquiry is about (prefill only). */}
+          {isCarPrefill && bannerLabel ? (
+            <div className="ac-iqcar">
+              <MakePlate name={prefill!.brand!} logo={prefill?.makeLogo ?? null} size="sm" />
+              <div>
+                <span className="sa-label">Запитване за</span>
+                <b>{bannerLabel}</b>
+                {prefill?.lotNumber ? (
+                  <span className="ac-iqcar__lot">
+                    · Лот № <span className="sa-mono">{prefill.lotNumber}</span>
+                  </span>
+                ) : null}
               </div>
             </div>
-          )}
-
-          {/* Car context banner (prefill only) */}
-          {isCarPrefill && bannerLabel && (
-            <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-0.5 rounded-[14px] bg-brand/8 px-3.5 py-2.5 ring-1 ring-brand/15">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-[#a5641f]">
-                Запитване за
-              </span>
-              <span className="text-[14px] font-extrabold text-[#17181b]">{bannerLabel}</span>
-              {prefill?.lotNumber ? (
-                <span className="text-[12px] font-semibold text-[#8a8f98]">
-                  · Лот № {prefill.lotNumber}
-                </span>
-              ) : null}
-            </div>
-          )}
+          ) : null}
         </div>
 
-        {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto px-7 pb-6.5 pt-4 max-[640px]:px-4.5 max-[640px]:pb-[max(1.125rem,env(safe-area-inset-bottom))]">
-        {/* Start screen */}
-        {screen === "start" && (
-          <div>
-            {/* Dimensions come from INQUIRY_LOGO so they track the file's real 758×497
-                ratio — see the constant for why a wrong ratio resizes this box on load.
-                The element only exists once the modal opens, so it is fetched eagerly at
-                high priority rather than lazily; InquiryProvider has usually already
-                warmed it during idle, making this a cache hit. Next 16's `preload` prop
-                is deliberately NOT used: it inserts a <head> link, useless for an element
-                that does not exist until open, and the docs say not to pair it with
-                `fetchPriority`. */}
-            <Image
-              src={INQUIRY_LOGO.src}
-              alt="SelectAuto"
-              width={INQUIRY_LOGO.width}
-              height={INQUIRY_LOGO.height}
-              unoptimized
-              loading="eager"
-              fetchPriority="high"
-              className="mx-auto mb-3.5 block max-w-37.5 rounded-[10px] max-[640px]:max-w-32.5"
-            />
-            <h2
-              id="sa-inquiry-title"
-              className="mb-3 text-center text-[28px] font-extrabold text-[#17181b] max-[640px]:text-2xl"
-            >
-              Безплатна консултация
-            </h2>
-            <p className="mx-auto mb-4.5 text-center text-[15px] leading-[1.65] text-[#555962]">
-              SelectAuto е вашият надежден партньор при избора, закупуването и
-              доставката на мечтания автомобил от Корея, САЩ и Канада.
-            </p>
-            <MainButton onClick={() => setScreen("quiz")}>
-              Започни консултация
-            </MainButton>
-          </div>
-        )}
+        <div className="ac-iq__b">
+          {/* Start screen */}
+          {screen === "start" && (
+            <div className="ac-iqs">
+              {/* Dimensions come from INQUIRY_LOGO so they track the file's real 758×497
+                  ratio — see the constant for why a wrong ratio resizes this box on load.
+                  The element only exists once the modal opens, so it is fetched eagerly at
+                  high priority rather than lazily; InquiryProvider has usually already
+                  warmed it during idle, making this a cache hit. Next 16's `preload` prop
+                  is deliberately NOT used: it inserts a <head> link, useless for an element
+                  that does not exist until open, and the docs say not to pair it with
+                  `fetchPriority`. */}
+              <Image
+                src={INQUIRY_LOGO.src}
+                alt="SelectAuto"
+                width={INQUIRY_LOGO.width}
+                height={INQUIRY_LOGO.height}
+                unoptimized
+                loading="eager"
+                fetchPriority="high"
+              />
+              <h2 className="ac-iqs__t">Безплатна консултация</h2>
+              <p>
+                SelectAuto е вашият надежден партньор при избора, закупуването и доставката на мечтания автомобил от
+                Корея, САЩ и Канада.
+              </p>
+              <Button variant="pri" size="xl" block onClick={() => setScreen("quiz")}>
+                Започнете консултация
+              </Button>
+            </div>
+          )}
 
-        {/* Quiz */}
-        {screen === "quiz" && (
-          <div>
-            {/* Step 0 — specific model? */}
-            {step === 0 && (
-              <QuizStep title="Търсите ли конкретен модел?">
-                <QuizOption onClick={() => pick("specific_model", "Да")}>Да</QuizOption>
-                <QuizOption onClick={() => pick("specific_model", "Не", true)}>
-                  Не
+          {/* Quiz */}
+          {screen === "quiz" && step === 0 && (
+            <QuizStep title="Търсите ли конкретен модел?">
+              <QuizOption onClick={() => pick("specific_model", "Да")}>Да</QuizOption>
+              <QuizOption onClick={() => pick("specific_model", "Не", true)}>Не</QuizOption>
+            </QuizStep>
+          )}
+
+          {screen === "quiz" && step === 1 && (
+            <QuizStep title="Изберете марка" list="makes">
+              {Object.keys(INQUIRY_BRANDS).map((brand) => (
+                <QuizOption
+                  key={brand}
+                  kind="make"
+                  logo={INQUIRY_BRAND_LOGOS[brand] ?? null}
+                  onClick={() => pick("brand", brand)}
+                >
+                  {brand}
                 </QuizOption>
-              </QuizStep>
-            )}
+              ))}
+            </QuizStep>
+          )}
 
-            {/* Step 1 — brand */}
-            {step === 1 && (
-              <QuizStep title="Изберете марка">
-                {Object.keys(INQUIRY_BRANDS).map((brand) => (
-                  <QuizOption key={brand} onClick={() => pick("brand", brand)}>
-                    {brand}
-                  </QuizOption>
-                ))}
-              </QuizStep>
-            )}
+          {screen === "quiz" && step === 2 && (
+            <QuizStep title="Изберете модел" list="models">
+              {(data.brand ? INQUIRY_BRANDS[data.brand] : []).map((model) => (
+                <QuizOption key={model} kind="model" onClick={() => pick("model", model)}>
+                  {model}
+                </QuizOption>
+              ))}
+            </QuizStep>
+          )}
 
-            {/* Step 2 — model */}
-            {step === 2 && (
-              <QuizStep title="Изберете модел">
-                {(data.brand ? INQUIRY_BRANDS[data.brand] : []).map((model) => (
-                  <QuizOption key={model} onClick={() => pick("model", model)}>
-                    {model}
-                  </QuizOption>
-                ))}
-              </QuizStep>
-            )}
+          {screen === "quiz" && step === 3 && (
+            <QuizStep title="Бюджет?">
+              {INQUIRY_BUDGETS.map((b) => (
+                <QuizOption key={b} onClick={() => pick("budget", b)}>
+                  {b}
+                </QuizOption>
+              ))}
+            </QuizStep>
+          )}
 
-            {/* Step 3 — budget */}
-            {step === 3 && (
-              <QuizStep title="Бюджет?">
-                {INQUIRY_BUDGETS.map((b) => (
-                  <QuizOption key={b} onClick={() => pick("budget", b)}>
-                    {b}
-                  </QuizOption>
-                ))}
-              </QuizStep>
-            )}
+          {screen === "quiz" && step === 4 && (
+            <QuizStep title="До колко време искате да закупите автомобил?">
+              {INQUIRY_TIMES.map((t) => (
+                <QuizOption key={t} onClick={() => pick("time", t)}>
+                  {t}
+                </QuizOption>
+              ))}
+            </QuizStep>
+          )}
 
-            {/* Step 4 — time */}
-            {step === 4 && (
-              <QuizStep title="До колко време искате да закупите автомобил?">
-                {INQUIRY_TIMES.map((t) => (
-                  <QuizOption key={t} onClick={() => pick("time", t)}>
-                    {t}
-                  </QuizOption>
-                ))}
-              </QuizStep>
-            )}
+          {screen === "quiz" && step === 5 && (
+            <QuizStep title="Как ще финансирате автомобила?">
+              {INQUIRY_FINANCE.map((f) => (
+                <QuizOption key={f} onClick={() => pick("finance", f)}>
+                  {f}
+                </QuizOption>
+              ))}
+            </QuizStep>
+          )}
 
-            {/* Step 5 — finance */}
-            {step === 5 && (
-              <QuizStep title="Как ще финансирате автомобила?">
-                {INQUIRY_FINANCE.map((f) => (
-                  <QuizOption key={f} onClick={() => pick("finance", f)}>
-                    {f}
-                  </QuizOption>
-                ))}
-              </QuizStep>
-            )}
-
-            {/* Step 6 — name / phone */}
-            {step === 6 && (
-              <form
-                noValidate
-                onSubmit={handleSubmit(onSubmit)}
-                className="animate-[saFadeIn_0.28s_ease]"
-              >
-                <div className="mb-3.5">
-                  <label
-                    htmlFor="sa-quiz-name"
-                    className="mb-2 block text-left text-[15px] font-bold text-[#17181b]"
-                  >
-                    Вашето име
-                  </label>
-                  <input
-                    id="sa-quiz-name"
-                    type="text"
-                    placeholder="Име"
-                    autoComplete="name"
-                    enterKeyHint="next"
-                    className="min-h-14 w-full rounded-[14px] border border-[#d9dde4] bg-white px-4 text-[15px] font-semibold text-[#17181b] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] outline-none transition-all duration-200 placeholder:font-medium placeholder:text-[#9aa0aa] focus:-translate-y-px focus:border-brand focus:shadow-[0_0_0_4px_rgba(216,111,22,0.12)]"
-                    {...register("name")}
-                  />
-                  {errors.name?.message ? (
-                    <p className="mt-1.5 text-left text-[13px] font-semibold leading-[1.45] text-[#c0392b]">
-                      {errors.name.message}
-                    </p>
-                  ) : null}
-                </div>
-                <div className="mb-4">
-                  <label
-                    htmlFor="sa-quiz-phone"
-                    className="mb-2 block text-left text-[15px] font-bold text-[#17181b]"
-                  >
-                    Телефон
-                  </label>
-                  <input
-                    id="sa-quiz-phone"
-                    type="tel"
-                    placeholder="+359XXXXXXXXX"
-                    inputMode="tel"
-                    autoComplete="tel"
-                    enterKeyHint="done"
-                    className="min-h-14 w-full rounded-[14px] border border-[#d9dde4] bg-white px-4 text-[15px] font-semibold text-[#17181b] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] outline-none transition-all duration-200 placeholder:font-medium placeholder:text-[#9aa0aa] focus:-translate-y-px focus:border-brand focus:shadow-[0_0_0_4px_rgba(216,111,22,0.12)]"
-                    {...register("phone")}
-                  />
-                  {errors.phone?.message ? (
-                    <p className="mt-1.5 text-left text-[13px] font-semibold leading-[1.45] text-[#c0392b]">
-                      {errors.phone.message}
-                    </p>
-                  ) : null}
-                </div>
-
-                <MainButton type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "Изпращаме заявката..." : "Изпрати"}
-                </MainButton>
-
-                {error && (
-                  <p className="mt-2.5 text-left text-[13px] leading-[1.45] text-[#c0392b]">
-                    {error}
-                  </p>
-                )}
-              </form>
-            )}
-
-            {/* Step 7 — success */}
-            {step === 7 && (
-              <div className="animate-[saFadeIn_0.28s_ease] py-1 text-center">
-                <div className="mx-auto mb-3.5 flex size-16 items-center justify-center rounded-full bg-brand/12 text-brand">
-                  <CheckIcon className="size-8" />
-                </div>
-                <h3 className="mb-2.5 text-center text-[17px] font-extrabold text-[#17181b]">
-                  Благодарим!
-                </h3>
-                <p className="m-0 text-center text-[15px] leading-[1.65] text-[#555962]">
-                  Вашата заявка е приета. Ще се свържем с вас скоро.
-                </p>
+          {/* Step 6 — name / phone */}
+          {screen === "quiz" && step === 6 && (
+            <form
+              noValidate
+              onSubmit={handleSubmit(onSubmit)}
+              className="ac-iqform animate-[saFadeIn_0.28s_ease] motion-reduce:animate-none"
+            >
+              <div className="sa-fld">
+                <label htmlFor="sa-quiz-name" className="sa-lbl">
+                  Вашето име
+                </label>
+                <input
+                  id="sa-quiz-name"
+                  type="text"
+                  placeholder="Име"
+                  autoComplete="name"
+                  enterKeyHint="next"
+                  aria-invalid={nameError ? true : undefined}
+                  aria-describedby={nameError ? "sa-quiz-name-err" : undefined}
+                  className={`sa-in ${nameError ? "is-err" : ""}`}
+                  {...register("name")}
+                />
+                {nameError ? (
+                  <span id="sa-quiz-name-err" className="sa-err">
+                    <AlertIcon />
+                    {nameError}
+                  </span>
+                ) : null}
               </div>
-            )}
-          </div>
-        )}
+              <div className="sa-fld">
+                <label htmlFor="sa-quiz-phone" className="sa-lbl">
+                  Телефон
+                </label>
+                <input
+                  id="sa-quiz-phone"
+                  type="tel"
+                  placeholder="+359XXXXXXXXX"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  enterKeyHint="done"
+                  aria-invalid={phoneError ? true : undefined}
+                  aria-describedby={phoneError ? "sa-quiz-phone-err" : undefined}
+                  className={`sa-in ${phoneError ? "is-err" : ""}`}
+                  {...register("phone")}
+                />
+                {phoneError ? (
+                  <span id="sa-quiz-phone-err" className="sa-err">
+                    <AlertIcon />
+                    {phoneError}
+                  </span>
+                ) : null}
+              </div>
+
+              {/* While sending, the button keeps its full strength (the kit dims a disabled one). */}
+              <Button
+                type="submit"
+                variant="pri"
+                size="xl"
+                block
+                busy={isSubmitting}
+                disabled={isSubmitting}
+                className="opacity-100"
+              >
+                {isSubmitting ? "Изпращаме заявката..." : "Изпратете"}
+              </Button>
+
+              {error ? (
+                <div className="sa-alert sa-alert--neg" role="alert">
+                  <AlertIcon />
+                  <div>{error}</div>
+                </div>
+              ) : null}
+            </form>
+          )}
+
+          {/* Step 7 — success */}
+          {screen === "quiz" && step === 7 && (
+            <div className="ac-iqok animate-[saFadeIn_0.28s_ease] motion-reduce:animate-none" role="status">
+              <span className="ac-iqok__ic" aria-hidden="true">
+                <CheckIcon />
+              </span>
+              <h2>Благодарим!</h2>
+              <p>Вашата заявка е приета. Ще се свържем с вас скоро.</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
-

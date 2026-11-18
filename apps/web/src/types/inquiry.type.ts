@@ -11,4 +11,6 @@ export type InquiryPrefill = {
   /** Banner label, e.g. "BMW 320 (2021)". */
   carLabel?: string;
   lotNumber?: string;
+  /** The make's logo, for the banner's plate (null or absent: the make's letters). */
+  makeLogo?: string | null;
 };

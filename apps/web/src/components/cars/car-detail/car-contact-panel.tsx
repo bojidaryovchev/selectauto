@@ -20,10 +20,11 @@ export function carInquiryPrefill(car: {
   model?: string;
   year?: number;
   lotNumber?: string;
+  brandLogo?: string | null;
 }): InquiryPrefill | undefined {
-  const { brand, model, year, lotNumber } = car;
+  const { brand, model, year, lotNumber, brandLogo } = car;
   return brand && model
-    ? { brand, model, carLabel: `${brand} ${model}${year ? ` (${year})` : ""}`, lotNumber }
+    ? { brand, model, carLabel: `${brand} ${model}${year ? ` (${year})` : ""}`, lotNumber, makeLogo: brandLogo ?? null }
     : undefined;
 }
 
@@ -46,6 +47,7 @@ export function CarContactPanel({
   model,
   year,
   lotNumber,
+  brandLogo,
   vin,
   market,
 }: {
@@ -54,10 +56,12 @@ export function CarContactPanel({
   model?: string;
   year?: number;
   lotNumber?: string;
+  /** The make's logo, for the inquiry banner's plate. */
+  brandLogo?: string | null;
   vin?: string;
   market?: CarMarket;
 }) {
-  const prefill = carInquiryPrefill({ brand, model, year, lotNumber });
+  const prefill = carInquiryPrefill({ brand, model, year, lotNumber, brandLogo });
 
   const showCarfax = market !== "kr";
 

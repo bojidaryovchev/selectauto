@@ -24,6 +24,27 @@ export const INQUIRY_BRANDS: Record<string, string[]> = {
   Jeep: ["Renegade", "Compass", "Cherokee", "Grand Cherokee", "Wrangler"],
 };
 
+/** Each make's logo for its plate on the make step (boards `ac-inq-desk`, `ac-inq-quiz`): the site's own files in
+ *  `public/brand-logos`, the same the home page's make grid shows. */
+export const INQUIRY_BRAND_LOGOS: Record<string, string> = {
+  BMW: "/brand-logos/bmw.png",
+  Audi: "/brand-logos/audi.png",
+  Mercedes: "/brand-logos/mercedes-benz.png",
+  Toyota: "/brand-logos/toyota.png",
+  Honda: "/brand-logos/honda.png",
+  Ford: "/brand-logos/ford.png",
+  Volkswagen: "/brand-logos/volkswagen.png",
+  Nissan: "/brand-logos/nissan.png",
+  Mazda: "/brand-logos/mazda.png",
+  Hyundai: "/brand-logos/hyundai.png",
+  KIA: "/brand-logos/kia.png",
+  Lexus: "/brand-logos/lexus.png",
+  Subaru: "/brand-logos/subaru.png",
+  Tesla: "/brand-logos/tesla.png",
+  Porsche: "/brand-logos/porsche.png",
+  Jeep: "/brand-logos/jeep.png",
+};
+
 export const INQUIRY_BUDGETS = ["15-25 хил. $.", "25-35 хил. $.", "35-50 хил. $.", "Над 50 хил. $."];
 export const INQUIRY_TIMES = ["Възможно най-скоро", "До месец", "След няколко месеца"];
 export const INQUIRY_FINANCE = ["Собствени средства", "Лизинг / Кредит", "Не съм сигурен"];

@@ -387,6 +387,7 @@ async function CarDetailBody({ params }: { params: Params }) {
                 model={detail.model}
                 year={detail.year}
                 lotNumber={detail.lotNumber}
+                brandLogo={detail.brandLogo ?? null}
                 vin={detail.vin}
                 market={detail.market}
               />
