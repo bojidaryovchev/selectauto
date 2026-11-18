@@ -173,13 +173,13 @@ export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 /** The kit tag colour of each status (boards `ab-contracts`, `ab-contract-stages`), as the old pills had them. */
 export type StatusTone = "warn" | "info" | "pos" | "neg" | "line" | null;
 
-export const PAYMENT_STATUS_META: Record<PaymentStatus, { label: string; badgeClass: string; tone: StatusTone }> = {
-  not_requested: { label: "Не е поискано", badgeClass: "bg-neutral-100 text-neutral-600 ring-neutral-200", tone: null },
-  awaiting_payment: { label: "Очаква плащане", badgeClass: "bg-amber-100 text-amber-800 ring-amber-200", tone: "warn" },
-  partially_paid: { label: "Частично платено", badgeClass: "bg-blue-100 text-blue-800 ring-blue-200", tone: "info" },
-  paid: { label: "Платено", badgeClass: "bg-emerald-100 text-emerald-800 ring-emerald-200", tone: "pos" },
-  overdue: { label: "Просрочено", badgeClass: "bg-rose-100 text-rose-800 ring-rose-200", tone: "neg" },
-  cancelled: { label: "Анулирано", badgeClass: "bg-neutral-200 text-neutral-700 ring-neutral-300", tone: null },
+export const PAYMENT_STATUS_META: Record<PaymentStatus, { label: string; tone: StatusTone }> = {
+  not_requested: { label: "Не е поискано", tone: null },
+  awaiting_payment: { label: "Очаква плащане", tone: "warn" },
+  partially_paid: { label: "Частично платено", tone: "info" },
+  paid: { label: "Платено", tone: "pos" },
+  overdue: { label: "Просрочено", tone: "neg" },
+  cancelled: { label: "Анулирано", tone: null },
 };
 
 /** Contract lifecycle statuses. `fully_paid` = all of the contract's stages paid (§11.8). */
@@ -187,11 +187,11 @@ export const CONTRACT_STATUSES = ["draft", "active", "fully_paid", "cancelled"] 
 
 export type ContractStatus = (typeof CONTRACT_STATUSES)[number];
 
-export const CONTRACT_STATUS_META: Record<ContractStatus, { label: string; badgeClass: string; tone: StatusTone }> = {
-  draft: { label: "Чернова", badgeClass: "bg-neutral-100 text-neutral-600 ring-neutral-200", tone: "line" },
-  active: { label: "Активен", badgeClass: "bg-blue-100 text-blue-800 ring-blue-200", tone: "info" },
-  fully_paid: { label: "Напълно платен", badgeClass: "bg-emerald-100 text-emerald-800 ring-emerald-200", tone: "pos" },
-  cancelled: { label: "Анулиран", badgeClass: "bg-neutral-200 text-neutral-700 ring-neutral-300", tone: null },
+export const CONTRACT_STATUS_META: Record<ContractStatus, { label: string; tone: StatusTone }> = {
+  draft: { label: "Чернова", tone: "line" },
+  active: { label: "Активен", tone: "info" },
+  fully_paid: { label: "Напълно платен", tone: "pos" },
+  cancelled: { label: "Анулиран", tone: null },
 };
 
 /** Deposit-contract statuses (§14). */
@@ -199,13 +199,13 @@ export const DEPOSIT_STATUSES = ["draft", "signed", "paid", "used", "returned", 
 
 export type DepositStatus = (typeof DEPOSIT_STATUSES)[number];
 
-export const DEPOSIT_STATUS_META: Record<DepositStatus, { label: string; badgeClass: string; tone: StatusTone }> = {
-  draft: { label: "Чернова", badgeClass: "bg-neutral-100 text-neutral-600 ring-neutral-200", tone: "line" },
-  signed: { label: "Подписан", badgeClass: "bg-blue-100 text-blue-800 ring-blue-200", tone: "info" },
-  paid: { label: "Депозит платен", badgeClass: "bg-amber-100 text-amber-800 ring-amber-200", tone: "warn" },
-  used: { label: "Използван", badgeClass: "bg-emerald-100 text-emerald-800 ring-emerald-200", tone: "pos" },
-  returned: { label: "Върнат", badgeClass: "bg-neutral-200 text-neutral-700 ring-neutral-300", tone: null },
-  cancelled: { label: "Анулиран", badgeClass: "bg-rose-100 text-rose-800 ring-rose-200", tone: "neg" },
+export const DEPOSIT_STATUS_META: Record<DepositStatus, { label: string; tone: StatusTone }> = {
+  draft: { label: "Чернова", tone: "line" },
+  signed: { label: "Подписан", tone: "info" },
+  paid: { label: "Депозит платен", tone: "warn" },
+  used: { label: "Използван", tone: "pos" },
+  returned: { label: "Върнат", tone: null },
+  cancelled: { label: "Анулиран", tone: "neg" },
 };
 
 /** Recipient kinds (§5/§8). The kind drives which stages a recipient may serve. */

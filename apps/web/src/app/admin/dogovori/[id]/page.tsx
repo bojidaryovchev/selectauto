@@ -1,8 +1,9 @@
 import { auth } from "@/auth";
 import { ContractAdminTools, ContractDocumentButton, ContractForm } from "@/components/admin/contracts";
 import { PaymentStageCard } from "@/components/admin/contracts/payment-stage-card";
-import { AdminCard, AdminPageHeader } from "@/components/admin/ui";
-import { ChevronDownIcon } from "@/components/icons";
+import { AdminPageHeader, AdminStatusTag } from "@/components/admin/ui";
+import { MakePlate } from "@/components/common";
+import { ChevronDownIcon, PencilIcon } from "@/components/icons";
 import { auditActionLabel } from "@/constants/audit";
 import {
   CLIENT_KIND_META,
@@ -13,8 +14,9 @@ import {
   type ContractStatus,
 } from "@/constants/contracts";
 import { can } from "@/lib/admin";
+import { getMakeLogoLookup } from "@/lib/make-logo-lookup";
 import { dbToCents, formatDbAmount } from "@/lib/money";
-import { formatSofiaDateTime } from "@/lib/sofia-time";
+import { formatSofiaDate, formatSofiaDateTime } from "@/lib/sofia-time";
 import { getContract } from "@/queries/contracts";
 import { listRecipients } from "@/queries/recipients";
 import type { Metadata } from "next";
@@ -30,25 +32,30 @@ export const metadata: Metadata = { title: "Договор" };
 function Fact({ label, children, mono }: { label: string; children: React.ReactNode; mono?: boolean }) {
   return (
     <div>
-      <dt className="inline font-semibold text-muted">{label}: </dt>
-      <dd className={`inline wrap-anywhere text-ink ${mono ? "font-mono" : ""}`}>{children}</dd>
+      <dt>{label}: </dt>
+      <dd>{mono ? <span className="ab-mono">{children}</span> : children}</dd>
     </div>
   );
 }
 
 /**
- * /admin/dogovori/[id] — the contract detail (spec §4): head data, client, the
- * market's пера, one card per payment stage with status/recipient/остатък and
- * its notice, payment and attachment actions, the linked deposit, the audit
- * trail, and an inline edit form. The layout gates the route to the back
- * office; getContract 404s a contract the user may not see.
+ * /admin/dogovori/[id] — the contract detail (spec §4; boards `ab-contract` and its states, parity check
+ * docs/design/parity/admin-contract.md): head data, client, the market's пера, one card per payment stage with
+ * status/recipient/остатък and its notice, payment and attachment actions, the linked deposit, the audit trail, and
+ * an inline edit form. The layout gates the route to the back office; getContract 404s a contract the user may not
+ * see.
  *
  * Grids follow the width of the content column (container queries), not the
  * window: next to the sidebar, a 1 280 px screen leaves less room than a tablet.
  */
 export default async function AdminContractDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [detail, allRecipients, session] = await Promise.all([getContract(Number(id)), listRecipients(), auth()]);
+  const [detail, allRecipients, session, logoFor] = await Promise.all([
+    getContract(Number(id)),
+    listRecipients(),
+    auth(),
+    getMakeLogoLookup(),
+  ]);
   if (!detail) notFound();
   // Each action shows only with its capability (owner spec 07.2026: „Наблюдаващ"
   // follows everything read-only, attaching bank documents aside).
@@ -71,35 +78,34 @@ export default async function AdminContractDetailPage({ params }: { params: Prom
     foreignCurrency: p.foreignCurrency,
   }));
 
+  // The contract's one main action is the document when the viewer has no stage actions (an observer).
+  const docPrimary = !stageActions.issueNotices && !stageActions.recordPayments;
+
   return (
-    <div className="flex flex-col gap-6">
+    <>
       <AdminPageHeader
         back={{ href: "/admin/dogovori", label: "Всички договори" }}
         title={`Договор № ${contract.number}`}
-        badge={
-          statusMeta ? (
-            <span
-              className={`rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap ring-1 ${statusMeta.badgeClass}`}
-            >
-              {statusMeta.label}
-            </span>
-          ) : null
-        }
-        description={`${marketMeta?.label ?? contract.market} (${contract.currency}) · Дата: ${contract.contractDate}`}
+        badge={statusMeta ? <AdminStatusTag tone={statusMeta.tone}>{statusMeta.label}</AdminStatusTag> : null}
+        description={`${marketMeta?.label ?? contract.market} (${contract.currency}) · Дата: ${formatSofiaDate(contract.contractDate)}`}
         // Printing is open to „Наблюдаващ" too — it never edits the contract.
         actions={
-          <ContractDocumentButton contractId={contract.id} documents={documents.filter((d) => d.kind === "contract")} />
+          <ContractDocumentButton
+            contractId={contract.id}
+            documents={documents.filter((d) => d.kind === "contract")}
+            primary={docPrimary}
+          />
         }
       />
 
-      <div className="@container">
-        <div className="grid gap-4 @xl:grid-cols-2 @5xl:grid-cols-3">
-          <AdminCard>
-            <h2 className="mb-3 text-lg font-black text-ink">Клиент</h2>
-            <dl className="flex flex-col gap-1.5 text-sm">
+      <div className="ab-dtop">
+        <div className="ab-dgrid">
+          <section className="sa-pnl ab-dcard">
+            <h2>Клиент</h2>
+            <dl className="ab-facts">
               <Fact label="Тип">{CLIENT_KIND_META[client.kind as ClientKind]?.label ?? client.kind}</Fact>
               <Fact label={client.kind === "company" ? "Фирма" : "Име"}>
-                <span className="font-semibold">{client.name}</span>
+                <b>{client.name}</b>
               </Fact>
               {client.egn ? <Fact label="ЕГН">{client.egn}</Fact> : null}
               {client.eik ? <Fact label="ЕИК">{client.eik}</Fact> : null}
@@ -109,14 +115,21 @@ export default async function AdminContractDetailPage({ params }: { params: Prom
               {client.phone ? <Fact label="Телефон">{client.phone}</Fact> : null}
               {client.email ? <Fact label="Имейл">{client.email}</Fact> : null}
             </dl>
-          </AdminCard>
+          </section>
 
-          <AdminCard>
-            <h2 className="mb-3 text-lg font-black text-ink">Автомобил</h2>
-            <dl className="flex flex-col gap-1.5 text-sm">
+          <section className="sa-pnl ab-dcard">
+            <h2>Автомобил</h2>
+            <dl className="ab-facts">
               <div>
-                <dd className="font-semibold text-ink">
-                  {contract.carYear} {contract.carMake} {contract.carModel}
+                <dd className="ab-car flex">
+                  {contract.carMake ? (
+                    <MakePlate name={contract.carMake} logo={logoFor(contract.carMake)} size="sm" />
+                  ) : null}
+                  <span>
+                    <b>
+                      {contract.carYear} {contract.carMake} {contract.carModel}
+                    </b>
+                  </span>
                 </dd>
               </div>
               {contract.vin ? (
@@ -127,50 +140,50 @@ export default async function AdminContractDetailPage({ params }: { params: Prom
               {contract.purchaseMarket ? <Fact label="Пазар">{contract.purchaseMarket}</Fact> : null}
               {contract.auctionPlatform ? <Fact label="Търг">{contract.auctionPlatform}</Fact> : null}
             </dl>
-          </AdminCard>
+          </section>
 
           {/* Two columns: the пера need the room — full width under the other two. */}
-          <AdminCard className="@xl:col-span-2 @5xl:col-span-1">
-            <h2 className="mb-3 text-lg font-black text-ink">Финансови точки</h2>
-            <dl className="flex flex-col gap-1.5 text-sm">
+          <section className="sa-pnl ab-dcard ab-pts">
+            <h2>Финансови точки</h2>
+            <dl className="ab-ptl">
               {points.map((p) => (
-                <div key={p.label} className="flex justify-between gap-3">
-                  <dt className="min-w-0 text-muted">{p.label}</dt>
-                  <dd className="text-right font-semibold whitespace-nowrap text-ink">
+                <div key={p.label}>
+                  <dt>{p.label}</dt>
+                  <dd>
                     {formatDbAmount(p.value)} {contract.currency}
                     {p.foreignCurrency && contract.amountCarForeign ? (
-                      <div className="text-xs font-normal text-muted">
+                      <small>
                         ({formatDbAmount(contract.amountCarForeign)} {contract.foreignCurrency} × курс{" "}
                         {contract.foreignRate})
-                      </div>
+                      </small>
                     ) : null}
                   </dd>
                 </div>
               ))}
               {dbToCents(contract.depositDeduction) > 0 && deposit ? (
-                <div className="flex justify-between gap-3 text-brand">
-                  <dt className="min-w-0">Депозит № {deposit.number}</dt>
-                  <dd className="font-semibold whitespace-nowrap">
+                <div className="is-dep">
+                  <dt>Депозит № {deposit.number}</dt>
+                  <dd>
                     −{formatDbAmount(contract.depositDeduction)} {contract.currency}
                   </dd>
                 </div>
               ) : null}
-              <div className="mt-1 flex justify-between gap-3 border-t border-line pt-2">
-                <dt className="font-bold text-ink">Обща сума</dt>
-                <dd className="text-base font-black whitespace-nowrap text-ink">
+              <div className="is-tot">
+                <dt>Обща сума</dt>
+                <dd>
                   {formatDbAmount(contract.totalAmount)} {contract.currency}
                 </dd>
               </div>
             </dl>
-          </AdminCard>
+          </section>
         </div>
       </div>
 
-      {/* ── Плащания ── one column on a phone, two once there's room; `items-start`
-          so a card with an open panel doesn't stretch its neighbour. */}
-      <section className="@container flex flex-col gap-3">
-        <h2 className="text-lg font-black text-ink">Плащания</h2>
-        <div className="grid items-start gap-4 @2xl:grid-cols-2">
+      {/* ── Плащания ── one column on a phone, two once there's room, four on a wide
+          screen; `items-start` so a card with an open panel doesn't stretch its neighbour. */}
+      <section className="ab-sec ab-stgs">
+        <h2 className="ab-h2">Плащания</h2>
+        <div className="ab-stgg">
           {payments.map((p) => (
             <PaymentStageCard
               key={p.id}
@@ -196,15 +209,19 @@ export default async function AdminContractDetailPage({ params }: { params: Prom
 
       {/* ── Редакция (contracts.edit) ── */}
       {canEdit ? (
-        <details className="group rounded-xl border border-line bg-white">
-          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 text-lg font-black text-ink select-none sm:px-5 [&::-webkit-details-marker]:hidden">
-            Редакция на договора
-            <ChevronDownIcon className="size-4 shrink-0 transition-transform group-open:rotate-180" />
+        <details className="ab-disc">
+          <summary>
+            <span>
+              <PencilIcon />
+              Редакция на договора
+            </span>
+            <ChevronDownIcon />
           </summary>
-          <div className="border-t border-line p-4 sm:p-5">
-            <p className="mb-4 max-w-2xl text-sm text-muted">
-              Промените обновяват дължимите суми на неплатените етапи. Вече генерирани документи НЕ се променят — при
-              нужда се генерира нова версия. Клиентът и приспаднатият депозит не се променят след създаване.
+          <div className="ab-disc__b">
+            <p className="ab-sub">
+              Промените обновяват дължимите суми на неплатените етапи. Вече генерирани документи{" "}
+              <b className="text-tx">НЕ</b> се променят — при нужда се генерира нова версия. Клиентът и приспаднатият
+              депозит не се променят след създаване.
             </p>
             {/* Keyed on the last change: the form keeps its own copy of the values,
                 and a renumber, a status flip from a payment or another save must
@@ -226,20 +243,18 @@ export default async function AdminContractDetailPage({ params }: { params: Prom
       ) : null}
 
       {/* ── История ── */}
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-black text-ink">История</h2>
-        <div className="rounded-xl border border-line bg-white">
+      <section className="ab-sec">
+        <h2 className="ab-h2">История</h2>
+        <div className="ab-hist">
           {events.length === 0 ? (
-            <p className="p-4 text-sm text-muted sm:px-5">Няма записани събития.</p>
+            <p>Няма записани събития.</p>
           ) : (
-            <ul className="divide-y divide-line">
+            <ul>
               {events.map((e) => (
-                <li key={e.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-3 text-sm sm:px-5">
-                  <span className="font-mono text-xs whitespace-nowrap text-muted">
-                    {formatSofiaDateTime(e.createdAt)}
-                  </span>
-                  <span className="font-semibold text-ink">{auditActionLabel(e.action)}</span>
-                  <span className="text-muted">
+                <li key={e.id}>
+                  <time dateTime={new Date(e.createdAt).toISOString()}>{formatSofiaDateTime(e.createdAt)}</time>
+                  <b>{auditActionLabel(e.action)}</b>
+                  <span>
                     {e.entity === "payment"
                       ? "(плащане)"
                       : e.entity === "deposit"
@@ -254,6 +269,6 @@ export default async function AdminContractDetailPage({ params }: { params: Prom
           )}
         </div>
       </section>
-    </div>
+    </>
   );
 }

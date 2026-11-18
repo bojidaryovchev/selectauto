@@ -50,7 +50,8 @@ export type ContractDetail = {
 export async function getContract(id: number): Promise<ContractDetail | null> {
   const session = await getSessionWith("backoffice.enter");
   if (!session) throw new Error("FORBIDDEN");
-  if (!Number.isInteger(id) || id <= 0) return null;
+  // Past the serial column's range (int4) the query itself fails, which showed the error page instead of a 404.
+  if (!Number.isInteger(id) || id <= 0 || id > 2_147_483_647) return null;
 
   const db = getDb();
   const c = schema.contracts;

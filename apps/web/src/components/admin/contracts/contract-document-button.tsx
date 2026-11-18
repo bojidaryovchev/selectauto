@@ -1,7 +1,10 @@
 "use client";
 
-import { AdminBanner, AdminButton, adminButtonClass } from "@/components/admin/ui";
+import { AdminBanner } from "@/components/admin/ui";
+import { Button } from "@/components/common";
+import { buttonClasses } from "@/components/common/button-variants";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { DownloadIcon, FilePlusIcon } from "@/components/icons";
 import { formatSofiaDate } from "@/lib/sofia-time";
 import { generateContractDocument } from "@/mutations/contracts";
 import type { GeneratedDocumentRow } from "@/queries/contracts";
@@ -9,18 +12,20 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 /**
- * „Генерирай договор" on the contract detail — renders the contract document
- * itself (посредничество or доставка, by market). Regeneration is confirmed
- * first, because it appends a new version rather than replacing the old one
- * (§10 „Вече генериран документ — разрешава се нова версия след потвърждение").
+ * „Генерирайте договор" on the contract detail (`ab-docs`; boards `ab-contract`, `-obs`, `-panels2`) — renders the
+ * contract document itself (посредничество or доставка, by market). Regeneration is confirmed first, because it
+ * appends a new version rather than replacing the old one (§10 „Вече генериран документ — разрешава се нова версия
+ * след потвърждение"). Secondary beside the stage actions; `primary` when it is the viewer's only action (an observer).
  */
 export function ContractDocumentButton({
   contractId,
   documents,
+  primary = false,
 }: {
   contractId: number;
   /** Existing `contract`-kind versions, newest first. */
   documents: GeneratedDocumentRow[];
+  primary?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -40,6 +45,8 @@ export function ContractDocumentButton({
         setError(result.error);
       }
     } catch {
+      // A request that never reached the server: the dialog used to stay open over the error.
+      setConfirmOpen(false);
       setError("Възникна грешка при генерирането.");
     } finally {
       setBusy(false);
@@ -47,34 +54,42 @@ export function ContractDocumentButton({
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <AdminButton
-          variant="primary"
+    <div className="ab-docs">
+      <div className="ab-docs__r">
+        <Button
+          variant={primary ? "pri" : "sec"}
+          size="md"
           disabled={busy}
+          busy={busy}
           onClick={() => (documents.length > 0 ? setConfirmOpen(true) : void run())}
         >
-          {busy ? "Генериране…" : documents.length > 0 ? "Генерирай нова версия" : "Генерирай договор (PDF)"}
-        </AdminButton>
+          {busy ? null : <FilePlusIcon />}
+          {busy ? "Генериране…" : documents.length > 0 ? "Генерирайте нова версия" : "Генерирайте договор (PDF)"}
+        </Button>
         {documents.map((d) => (
           <a
             key={d.id}
             href={`/api/payment-document/${d.id}`}
             target="_blank"
             rel="noreferrer"
-            className={adminButtonClass("ghost")}
+            className={`${buttonClasses({ variant: "txt", size: "md" })} ab-dlk`}
           >
-            Версия {d.version} ({formatSofiaDate(d.createdAt)}) ⬇
+            <DownloadIcon />
+            Версия {d.version} ({formatSofiaDate(d.createdAt)})
           </a>
         ))}
       </div>
-      {error ? <AdminBanner tone="error">{error}</AdminBanner> : null}
+      {error ? (
+        <AdminBanner tone="error" className="ab-al">
+          {error}
+        </AdminBanner>
+      ) : null}
 
       <ConfirmDialog
         isOpen={confirmOpen}
         title="Нова версия на договора?"
         message={`Вече има ${documents.length} генерирана(и) версия(и). Старите се запазват и остават достъпни за изтегляне.`}
-        confirmLabel="Генерирай нова версия"
+        confirmLabel="Генерирайте нова версия"
         isPending={busy}
         onConfirm={() => void run()}
         onCancel={() => setConfirmOpen(false)}
