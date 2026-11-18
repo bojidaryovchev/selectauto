@@ -47,7 +47,7 @@ export function ContractAdminTools({
         setStatus({ kind: "error", message: result.error });
       }
     } catch {
-      setStatus({ kind: "error", message: "Възникна грешка. Моля опитайте отново." });
+      setStatus({ kind: "error", message: "Възникна грешка. Моля, опитайте отново." });
     } finally {
       setBusy(false);
     }
@@ -66,7 +66,7 @@ export function ContractAdminTools({
     } catch {
       // A request that never reached the server: it used to leave the dialog open without a word.
       setConfirmDelete(false);
-      setStatus({ kind: "error", message: "Възникна грешка. Моля опитайте отново." });
+      setStatus({ kind: "error", message: "Възникна грешка. Моля, опитайте отново." });
     } finally {
       setBusy(false);
     }

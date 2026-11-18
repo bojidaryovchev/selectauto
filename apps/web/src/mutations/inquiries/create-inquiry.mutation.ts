@@ -36,7 +36,7 @@ export async function createInquiry(input: unknown): Promise<ActionResult> {
       success: false,
       error:
         parsed.error.issues[0]?.message ??
-        "Моля въведете име и валиден телефонен номер.",
+        "Моля, въведете име и валиден телефонен номер.",
     };
   }
   const data = parsed.data;
@@ -73,7 +73,7 @@ export async function createInquiry(input: unknown): Promise<ActionResult> {
     console.error("[create-inquiry] insert failed", error);
     return {
       success: false,
-      error: "Възникна грешка при изпращането. Моля опитайте отново.",
+      error: "Възникна грешка при изпращането. Моля, опитайте отново.",
     };
   }
 

@@ -158,6 +158,6 @@ export async function updateContract(id: number, input: unknown): Promise<Action
     return { success: true, data: undefined };
   } catch (error) {
     console.error("[update-contract] persist failed", error);
-    return { success: false, error: "Възникна грешка при запазването. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка при запазването. Моля, опитайте отново." };
   }
 }

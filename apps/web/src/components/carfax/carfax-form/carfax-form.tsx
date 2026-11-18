@@ -114,7 +114,7 @@ export function CarfaxForm({
     } catch {
       setStatus({
         kind: "error",
-        message: "Възникна грешка при изпращането. Моля опитайте отново.",
+        message: "Възникна грешка при изпращането. Моля, опитайте отново.",
       });
     }
   }

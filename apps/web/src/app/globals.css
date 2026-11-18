@@ -24,31 +24,6 @@
 @import "../styles/admin-b.css";
 @import "../styles/admin-b-root.css";
 
-/*
-  Legacy: the light theme's tokens, ported from the old site's theme.css. The
-  redesign moves each page to the tokens in ../styles/tokens.css. Delete a
-  token here once nothing uses it, and this block once it is empty.
-  Two left already: `ink` now has its „Нощно шосе" value (text on light
-  plates and paper; #222222 before), and `font-sans` is Manrope.
-*/
-@theme {
-  --color-brand: #d86f16;
-  --color-brand-dark: #b95200;
-  --color-brand-soft: #f5a14b;
-  --color-brand-glow: #ff8a3d;
-  --color-ink-strong: #111111;
-  --color-muted: #666666;
-  --color-line: #e8e8e8;
-  --color-shell: #0f1014;
-  --color-shell-soft: #121317;
-  --color-success: #1eb960;
-
-  --radius-card: 24px;
-
-  --shadow-card: 0 12px 30px rgba(0, 0, 0, 0.1);
-  --shadow-card-strong: 0 20px 50px rgba(0, 0, 0, 0.18);
-}
-
 html,
 body {
   margin: 0;

@@ -50,6 +50,6 @@ export async function activateTariffUpload(uploadId: number | null): Promise<Act
     return { success: true, data: undefined };
   } catch (error) {
     console.error("[activate-tariff-upload] failed", error);
-    return { success: false, error: "Възникна грешка при запис. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка при запис. Моля, опитайте отново." };
   }
 }

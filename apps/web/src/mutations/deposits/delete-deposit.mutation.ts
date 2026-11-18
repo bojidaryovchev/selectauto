@@ -75,6 +75,6 @@ export async function deleteDeposit(id: number): Promise<ActionResult<{ number: 
     return { success: true, data: { number: deposit.number } };
   } catch (error) {
     console.error("[delete-deposit] failed", error);
-    return { success: false, error: "Възникна грешка при изтриването. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка при изтриването. Моля, опитайте отново." };
   }
 }

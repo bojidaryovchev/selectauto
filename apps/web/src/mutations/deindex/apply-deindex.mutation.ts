@@ -153,7 +153,7 @@ export async function applyDeindex(
     });
   } catch (error) {
     console.error("[deindex] apply failed", vin, error);
-    return { success: false, error: "Възникна грешка при обработката. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка при обработката. Моля, опитайте отново." };
   }
 
   if (carIds.length === 0) {
@@ -242,7 +242,7 @@ export async function revokeDeindex(vinInput: string): Promise<ActionResult<{ ca
     });
   } catch (error) {
     console.error("[deindex] revoke failed", vin, error);
-    return { success: false, error: "Възникна грешка при обработката. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка при обработката. Моля, опитайте отново." };
   }
 
   if (carIds.length === 0) {

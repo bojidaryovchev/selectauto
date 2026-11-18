@@ -23,6 +23,6 @@ export async function previewPaymentNotice(input: PaymentNoticeInput): Promise<A
     return { success: true, data: prepared.notice.snapshot };
   } catch (error) {
     console.error("[preview-payment-notice] failed", error);
-    return { success: false, error: "Прегледът не можа да се състави. Моля опитайте отново." };
+    return { success: false, error: "Прегледът не можа да се състави. Моля, опитайте отново." };
   }
 }

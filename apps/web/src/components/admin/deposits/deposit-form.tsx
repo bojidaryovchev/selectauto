@@ -159,7 +159,7 @@ export function DepositForm({ clients, onDone }: { clients: ClientRow[]; onDone?
         setStatus({ kind: "error", message: result.error });
       }
     } catch {
-      setStatus({ kind: "error", message: "Възникна грешка при запис. Моля опитайте отново." });
+      setStatus({ kind: "error", message: "Възникна грешка при запис. Моля, опитайте отново." });
     } finally {
       setBusy(false);
     }

@@ -89,7 +89,7 @@ export function CalculatorOfferForm({ inputs }: { inputs: ImportCostInputs }) {
         setStatus({ kind: "error", message: result.error });
       }
     } catch {
-      setStatus({ kind: "error", message: "Грешка при изпращане. Моля опитайте отново." });
+      setStatus({ kind: "error", message: "Грешка при изпращане. Моля, опитайте отново." });
     }
   }
 

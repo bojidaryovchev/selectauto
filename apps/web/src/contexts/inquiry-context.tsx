@@ -76,7 +76,7 @@ export function InquiryProvider({
       .then((Component) => setModal(() => Component))
       .catch(() => {
         setIsOpen(false);
-        toast.error("Формата не успя да се зареди. Моля опитайте отново.");
+        toast.error("Формата не успя да се зареди. Моля, опитайте отново.");
       });
   }, []);
 

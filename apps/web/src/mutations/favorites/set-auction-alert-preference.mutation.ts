@@ -44,6 +44,6 @@ export async function setAuctionAlertPreference(
     return { success: true, data: { enabled: value } };
   } catch (error) {
     console.error("[set-auction-alert-preference] failed", error);
-    return { success: false, error: "Възникна грешка. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка. Моля, опитайте отново." };
   }
 }

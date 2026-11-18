@@ -577,7 +577,6 @@ export function MobilebgPublisher() {
                   <div className="ab-fld">
                     <p className="sa-lbl">Марката „{preview.source.brandName ?? "—"}“ в mobile.bg е:</p>
                     <Combobox
-                      look="kit"
                       className="ad-in"
                       aria-label={`Марката „${preview.source.brandName ?? "—"}“ в mobile.bg`}
                       options={[
@@ -601,7 +600,6 @@ export function MobilebgPublisher() {
                   <div className="ab-fld">
                     <p className="sa-lbl">Моделът „{preview.source.modelName ?? "—"}“ в mobile.bg е:</p>
                     <Combobox
-                      look="kit"
                       className="ad-in"
                       aria-label={`Моделът „${preview.source.modelName ?? "—"}“ в mobile.bg`}
                       options={[
@@ -718,7 +716,6 @@ export function MobilebgPublisher() {
           <div className="ab-pg">
             <PickField label="Месец на производство" required={missingFields.has("month")}>
               <Combobox
-                look="kit"
                 className="ad-in"
                 aria-label="Месец на производство"
                 options={[{ value: "", label: "Изберете" }, ...MONTHS.map((m) => ({ value: m, label: m }))]}
@@ -731,7 +728,6 @@ export function MobilebgPublisher() {
             </PickField>
             <PickField label="Валидност (дни) — за дилъри е само статистика">
               <Combobox
-                look="kit"
                 className="ad-in"
                 aria-label="Валидност (дни)"
                 options={[
@@ -744,7 +740,6 @@ export function MobilebgPublisher() {
             </PickField>
             <PickField label="Категория" required={missingFields.has("category")}>
               <Combobox
-                look="kit"
                 className="ad-in"
                 aria-label="Категория"
                 options={categoryChoices}
@@ -757,7 +752,6 @@ export function MobilebgPublisher() {
             </PickField>
             <PickField label="Държава (извън страната)" required={missingFields.has("locatc")}>
               <Combobox
-                look="kit"
                 className="ad-in"
                 aria-label="Държава (извън страната)"
                 options={countryChoices}
@@ -770,7 +764,6 @@ export function MobilebgPublisher() {
             </PickField>
             <PickField label="ДДС статус на цената" required={missingFields.has("price_dds")}>
               <Combobox
-                look="kit"
                 className="ad-in"
                 aria-label="ДДС статус на цената"
                 options={[

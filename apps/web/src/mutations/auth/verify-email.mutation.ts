@@ -52,6 +52,6 @@ export async function verifyEmail(token: unknown): Promise<ActionResult> {
     return { success: true, data: undefined };
   } catch (error) {
     console.error("[verify-email] failed", error);
-    return { success: false, error: "Възникна грешка. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка. Моля, опитайте отново." };
   }
 }

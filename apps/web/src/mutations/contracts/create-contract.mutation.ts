@@ -294,6 +294,6 @@ export async function createContract(input: unknown): Promise<ActionResult<{ id:
       return { success: false, error: error.message.slice(3) };
     }
     console.error("[create-contract] persist failed", error);
-    return { success: false, error: "Възникна грешка при създаването на договора. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка при създаването на договора. Моля, опитайте отново." };
   }
 }

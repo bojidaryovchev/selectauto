@@ -56,7 +56,6 @@ export function StatusSelect({
   return (
     <>
       <Combobox
-        look="kit"
         aria-label="Статус на заявката"
         options={LEAD_STATUSES.map((s) => ({ value: s, label: LEAD_STATUS_META[s].label }))}
         value={current}

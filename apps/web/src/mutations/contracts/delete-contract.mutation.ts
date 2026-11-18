@@ -105,6 +105,6 @@ export async function deleteContract(id: number): Promise<ActionResult<{ number:
     return { success: true, data: { number: contract.number } };
   } catch (error) {
     console.error("[delete-contract] failed", error);
-    return { success: false, error: "Възникна грешка при изтриването. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка при изтриването. Моля, опитайте отново." };
   }
 }

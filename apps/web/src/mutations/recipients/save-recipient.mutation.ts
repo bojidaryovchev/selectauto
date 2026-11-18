@@ -120,6 +120,6 @@ export async function saveRecipient(input: SaveRecipientInput): Promise<ActionRe
     return { success: true, data: { id } };
   } catch (error) {
     console.error("[save-recipient] persist failed", error);
-    return { success: false, error: "Възникна грешка при запазването. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка при запазването. Моля, опитайте отново." };
   }
 }

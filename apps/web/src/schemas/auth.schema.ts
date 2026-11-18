@@ -14,16 +14,16 @@ const password = z
 
 export const signInSchema = z.object({
   email: z.string().trim().email({ message: "Невалиден имейл адрес." }),
-  password: z.string().min(1, { message: "Моля въведете парола." }),
+  password: z.string().min(1, { message: "Моля, въведете парола." }),
 });
 export type SignInValues = z.infer<typeof signInSchema>;
 
 export const signUpSchema = z
   .object({
-    name: z.string().trim().min(1, { message: "Моля въведете име." }).max(120, { message: "Името е твърде дълго." }),
+    name: z.string().trim().min(1, { message: "Моля, въведете име." }).max(120, { message: "Името е твърде дълго." }),
     email: z.string().trim().email({ message: "Невалиден имейл адрес." }),
     password,
-    confirmPassword: z.string().min(1, { message: "Моля потвърдете паролата." }),
+    confirmPassword: z.string().min(1, { message: "Моля, потвърдете паролата." }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Паролите не съвпадат.",
@@ -40,7 +40,7 @@ export const resetPasswordSchema = z
   .object({
     token: z.string().min(1),
     password,
-    confirmPassword: z.string().min(1, { message: "Моля потвърдете паролата." }),
+    confirmPassword: z.string().min(1, { message: "Моля, потвърдете паролата." }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Паролите не съвпадат.",

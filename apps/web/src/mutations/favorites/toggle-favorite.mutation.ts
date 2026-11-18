@@ -58,6 +58,6 @@ export async function toggleFavorite(carId: unknown): Promise<ActionResult<{ fav
     // A bad car_id (no matching cars row) trips the FK — surface a clean message
     // rather than throwing; the FK violation is caught generically here.
     console.error("[toggle-favorite] failed", error);
-    return { success: false, error: "Възникна грешка. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка. Моля, опитайте отново." };
   }
 }

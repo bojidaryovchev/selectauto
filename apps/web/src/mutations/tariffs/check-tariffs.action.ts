@@ -63,6 +63,6 @@ export async function checkTariffsAction(input: {
     };
   } catch (error) {
     console.error("[check-tariffs] reading the active table failed", error);
-    return { success: false, error: "Активната таблица не можа да бъде прочетена. Моля опитайте отново." };
+    return { success: false, error: "Активната таблица не можа да бъде прочетена. Моля, опитайте отново." };
   }
 }

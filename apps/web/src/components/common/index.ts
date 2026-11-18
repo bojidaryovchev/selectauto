@@ -12,5 +12,4 @@ export { Logo } from "./logo";
 export { MakePlate, type PlateSize } from "./make-plate";
 export { Reveal } from "./reveal";
 export { Ripple } from "./ripple";
-export { SectionHeader } from "./section-header";
 export { SectionHeading } from "./section-heading";

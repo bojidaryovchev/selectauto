@@ -108,6 +108,6 @@ export async function uploadTariffs(input: UploadTariffsInput): Promise<ActionRe
     };
   } catch (error) {
     console.error("[upload-tariffs] persist failed", error);
-    return { success: false, error: "Възникна грешка при запис в базата. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка при запис в базата. Моля, опитайте отново." };
   }
 }

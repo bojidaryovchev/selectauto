@@ -66,6 +66,6 @@ export async function markNoticeSent(documentId: number): Promise<ActionResult> 
     return { success: true, data: undefined };
   } catch (error) {
     console.error("[mark-notice-sent] failed", error);
-    return { success: false, error: "Възникна грешка при запазването. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка при запазването. Моля, опитайте отново." };
   }
 }

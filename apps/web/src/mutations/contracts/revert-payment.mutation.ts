@@ -84,6 +84,6 @@ export async function revertPayment(paymentId: number): Promise<ActionResult> {
     return { success: true, data: undefined };
   } catch (error) {
     console.error("[revert-payment] failed", error);
-    return { success: false, error: "Възникна грешка при запазването. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка при запазването. Моля, опитайте отново." };
   }
 }

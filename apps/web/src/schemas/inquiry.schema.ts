@@ -11,13 +11,13 @@ import { isValidPhone, normalizePhone } from "@/lib/phone";
  * same defensively, so both validate the same final value.
  */
 export const inquirySchema = z.object({
-  name: z.string().trim().min(1, { message: "Моля въведете име." }),
+  name: z.string().trim().min(1, { message: "Моля, въведете име." }),
   phone: z
     .string()
     .trim()
     // Same check as theme.js `isValidPhone` (and the modal): a full BG mobile.
     .regex(/^\+359[7-9]\d{8}$/, {
-      message: "Моля въведете име и валиден телефонен номер.",
+      message: "Моля, въведете име и валиден телефонен номер.",
     }),
   specific_model: z.string().optional(),
   brand: z.string().optional(),
@@ -39,12 +39,12 @@ export type InquiryFormValues = z.infer<typeof inquirySchema>;
  * messages are surfaced inline, matching the auth/carfax forms.
  */
 export const inquiryContactSchema = z.object({
-  name: z.string().trim().min(1, { message: "Моля въведете име." }),
+  name: z.string().trim().min(1, { message: "Моля, въведете име." }),
   phone: z
     .string()
     .trim()
     .transform((value) => normalizePhone(value))
-    .refine(isValidPhone, { message: "Моля въведете валиден телефонен номер." }),
+    .refine(isValidPhone, { message: "Моля, въведете валиден телефонен номер." }),
 });
 
 export type InquiryContactValues = z.infer<typeof inquiryContactSchema>;

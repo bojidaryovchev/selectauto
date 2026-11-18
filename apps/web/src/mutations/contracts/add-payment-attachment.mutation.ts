@@ -116,6 +116,6 @@ export async function addPaymentAttachment(formData: FormData): Promise<ActionRe
     return { success: true, data: { id: attachmentId } };
   } catch (error) {
     console.error("[add-payment-attachment] failed", error);
-    return { success: false, error: "Възникна грешка при прикачването. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка при прикачването. Моля, опитайте отново." };
   }
 }

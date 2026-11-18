@@ -117,6 +117,6 @@ export async function markPaymentPaid(input: MarkPaymentPaidInput): Promise<Acti
     return { success: true, data: undefined };
   } catch (error) {
     console.error("[mark-payment-paid] failed", error);
-    return { success: false, error: "Възникна грешка при запазването. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка при запазването. Моля, опитайте отново." };
   }
 }

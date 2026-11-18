@@ -82,6 +82,6 @@ export async function generateDepositDocument(
     return { success: true, data: { documentId: created.id, version: created.version } };
   } catch (error) {
     console.error("[generate-deposit-document] failed", error);
-    return { success: false, error: "Възникна грешка при генерирането. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка при генерирането. Моля, опитайте отново." };
   }
 }

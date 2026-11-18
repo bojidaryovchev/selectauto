@@ -120,7 +120,7 @@ export async function sendReply(input: SendReplyInput): Promise<ActionResult> {
     messageRowId = inserted[0].id;
   } catch (error) {
     console.error("[mail] reply persist failed", error);
-    return { success: false, error: "Възникна грешка при запазването. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка при запазването. Моля, опитайте отново." };
   }
 
   const headers: Record<string, string> = {};

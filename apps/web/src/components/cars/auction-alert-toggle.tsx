@@ -46,7 +46,7 @@ export function AuctionAlertToggle({ initialEnabled }: { initialEnabled: boolean
           {error ? (
             <p className="sa-err mt-1.5" role="alert">
               <AlertIcon />
-              Възникна грешка. Моля опитайте отново.
+              Възникна грешка. Моля, опитайте отново.
             </p>
           ) : null}
         </div>

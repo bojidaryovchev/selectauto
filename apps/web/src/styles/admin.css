@@ -3,6 +3,7 @@
   Ported by script from the screen's board sources (apps/web/scripts/port-board-css.mjs), as kit.css is from the kit: token
   names follow tokens.css, the boards' cqi became vw and their container queries media queries. Board-only parts
   (device frames, preview overlays) were left out. Class prefix: ad-.
+  Rules for classes no code uses were removed by hand on 18 Nov 2026; a new port would bring them back.
 */
 @layer components {
   .ad-side{position:sticky;top:0;height:min(100%,1040px);display:flex;flex-direction:column}
@@ -56,9 +57,6 @@
   .ad-in{height:44px}
   .ad-count{font-size:14px;line-height:1.4;color:var(--color-tx2)}
   .ad-count b{color:var(--color-tx);font-weight:800}
-  .ad-v-tbl,.ad-v-tblw{display:none}
-  @media (min-width:1100px){.ad-v-tbl{display:block}.ad-v-cards{display:none}}
-  @media (min-width:1200px){.ad-v-tblw{display:block}.ad-v-cardsw{display:none}}
   .ad-tbl td{vertical-align:top}
   .ad-tbl th{position:static}
   .ad-link{padding:0;border:0;background:none;color:var(--color-tx);font:700 14px/1.4 var(--font-sans);text-align:left;cursor:pointer;overflow-wrap:anywhere}
@@ -91,7 +89,6 @@
   .ad-ok{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:700;color:var(--color-pos)}
   .ad-ok svg{width:16px;height:16px;flex:none}
   .ad-hint{font-size:13px;line-height:1.45;color:var(--color-tx3)}
-  .ad-dis{opacity:.5;cursor:not-allowed}
   .ad-dash{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr))}
   .ad-lead{display:flex;flex-direction:column;gap:16px}
   .ad-lead__h{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:46px}
@@ -167,8 +164,6 @@
   .ad-dl dd .ad-car{vertical-align:middle}
   .ad-box{display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:var(--radius-lg);background:var(--color-s2);border:1px solid var(--color-hair)}
   .ad-box>p{font-size:13px;font-weight:700;color:var(--color-tx2)}
-  .ad-popw{position:relative}
-  .ad-pop{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:5}
   .ad-notes{display:flex;flex-direction:column;gap:10px}
   .ad-notes__l{display:flex;flex-direction:column;gap:6px}
   .ad-notes__f{display:flex;flex-wrap:wrap;align-items:center;gap:12px}

@@ -57,6 +57,6 @@ export async function credentialsSignIn(input: unknown): Promise<ActionResult> {
       }
     }
     console.error("[credentials-sign-in] failed", error);
-    return { success: false, error: "Възникна грешка при входа. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка при входа. Моля, опитайте отново." };
   }
 }

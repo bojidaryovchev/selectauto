@@ -33,8 +33,8 @@ const carFields = {
     .int({ message: "Невалидна година." })
     .min(1950, { message: "Невалидна година." })
     .max(2100, { message: "Невалидна година." }),
-  carMake: z.string().trim().min(1, { message: "Моля въведете марка." }).max(100),
-  carModel: z.string().trim().min(1, { message: "Моля въведете модел." }).max(100),
+  carMake: z.string().trim().min(1, { message: "Моля, въведете марка." }).max(100),
+  carModel: z.string().trim().min(1, { message: "Моля, въведете модел." }).max(100),
   vin: z.string().trim().toUpperCase().max(17).optional(),
   purchaseMarket: z.string().trim().max(100).optional(),
   auctionPlatform: z.string().trim().max(100).optional(),

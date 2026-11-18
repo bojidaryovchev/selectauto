@@ -202,7 +202,7 @@ export function PaymentStageCard({
         setError(result.error);
       }
     } catch {
-      setError("Възникна грешка. Моля опитайте отново.");
+      setError("Възникна грешка. Моля, опитайте отново.");
     } finally {
       setBusy(false);
     }
@@ -224,7 +224,7 @@ export function PaymentStageCard({
         setPanel("generate");
       }
     } catch {
-      setError("Възникна грешка. Моля опитайте отново.");
+      setError("Възникна грешка. Моля, опитайте отново.");
       setPanel("generate");
     } finally {
       setBusy(false);
@@ -279,7 +279,7 @@ export function PaymentStageCard({
       }
       router.refresh();
     } catch {
-      setError("Възникна грешка. Моля опитайте отново.");
+      setError("Възникна грешка. Моля, опитайте отново.");
     } finally {
       setBusy(false);
     }
@@ -331,7 +331,7 @@ export function PaymentStageCard({
     } catch {
       // A request that never reached the server: it used to leave the dialog open without a word.
       setRevertOpen(false);
-      setError("Възникна грешка. Моля опитайте отново.");
+      setError("Възникна грешка. Моля, опитайте отново.");
     } finally {
       setBusy(false);
     }

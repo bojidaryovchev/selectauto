@@ -136,6 +136,6 @@ export async function createDeposit(input: unknown): Promise<ActionResult<{ id: 
       return { success: false, error: error.message.slice(3) };
     }
     console.error("[create-deposit] persist failed", error);
-    return { success: false, error: "Възникна грешка при създаването на депозита. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка при създаването на депозита. Моля, опитайте отново." };
   }
 }

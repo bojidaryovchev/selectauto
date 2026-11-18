@@ -456,7 +456,6 @@ export function CostEstimator({
           <div className="sa-fld">
             <span className="sa-lbl">Локация на аукциона</span>
             <Combobox
-              look="kit"
               icon={<MapPinIcon />}
               aria-label="Локация на аукциона"
               options={locationOptions.map((loc) => ({ value: loc, label: loc }))}

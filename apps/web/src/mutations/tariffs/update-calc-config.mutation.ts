@@ -32,6 +32,6 @@ export async function updateCalcConfig(input: unknown): Promise<ActionResult> {
     return { success: true, data: undefined };
   } catch (error) {
     console.error("[update-calc-config] save failed", error);
-    return { success: false, error: "Възникна грешка при запис. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка при запис. Моля, опитайте отново." };
   }
 }

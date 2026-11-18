@@ -33,7 +33,7 @@ export async function createCarfaxRequest(
       success: false,
       message:
         parsed.error.issues[0]?.message ??
-        "Моля попълнете име, телефон и VIN номер.",
+        "Моля, попълнете име, телефон и VIN номер.",
       status: 422,
     };
   }

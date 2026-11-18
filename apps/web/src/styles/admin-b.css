@@ -4,17 +4,14 @@
   names follow tokens.css, the boards' cqi became vw and their queries on the board's frame media queries (queries on a
   container these rules declare stay container queries). Board-only parts (device frames, preview overlays) were left
   out. Class prefix: ab-.
+  Rules for classes no code uses were removed by hand on 18 Nov 2026; a new port would bring them back.
 */
 @layer components {
-  .ab-col{min-width:0;display:flex;flex-direction:column}
   .ab-sec{display:flex;flex-direction:column;gap:12px;min-width:0}
   .ab-h2{font:800 18px/1.3 var(--font-sans);color:var(--color-tx);display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px}
   .ab-h2 small{font-size:14px;font-weight:700;color:var(--color-tx3)}
-  .ab-h2--lg{font:600 22px/1.2 var(--font-display);letter-spacing:-.01em}
   .ab-h3{font:800 16px/1.35 var(--font-sans);color:var(--color-tx)}
   .ab-sub{font-size:14px;line-height:1.6;color:var(--color-tx2);max-width:86ch}
-  .ab-card{background:var(--color-s1);border:1px solid var(--color-hair);border-radius:var(--radius-lg);padding:20px;min-width:0}
-  @media (max-width:639.98px){.ab-card{padding:16px}}
   .ab-stack{display:flex;flex-direction:column;gap:14px;min-width:0}
   .ab-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
   .ab-hint{font-size:13px;line-height:1.5;color:var(--color-tx3)}
@@ -27,7 +24,6 @@
   .ab-wrap{overflow-wrap:anywhere}
   .ab-link{color:var(--color-ortx);font-weight:700;text-decoration:none}
   .ab-no .ab-mono{font-weight:600;font-size:14.5px}
-  .ab-fgrid{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
   .ab-fld{display:flex;flex-direction:column;gap:6px;min-width:0}
   .ab-fld>.sa-lbl em{font-style:normal;font-weight:500;color:var(--color-tx3)}
   .ab-al>div{min-width:0;overflow-wrap:anywhere}
@@ -38,7 +34,6 @@
   .ab-st{gap:6px}
   .ab-st em{font-style:normal;font-weight:600;opacity:.82}
   .ab-chips{display:flex;flex-wrap:wrap;gap:6px;max-width:30rem}
-  .ab-pill-ok{background:var(--color-pos-w);color:var(--color-pos)}
   .ab-disc{background:var(--color-s1);border:1px solid var(--color-hair);border-radius:var(--radius-lg);min-width:0}
   .ab-disc>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px;padding:0 20px;list-style:none;cursor:pointer;font:800 17px/1.3 var(--font-sans);color:var(--color-tx)}
   .ab-disc>summary::-webkit-details-marker{display:none}
@@ -71,7 +66,6 @@
   .ab-dock--stick{position:sticky;bottom:10px}
   @media (max-width:639.98px){.ab-dock{padding:12px}.ab-dock__r>.sa-btn,.ab-dock>.ab-row>.sa-btn{width:100%}}
   .ab-dlg-note{font-size:14px;line-height:1.6;color:var(--color-tx2)}
-  .ab-sh2{font:800 18px/1.3 var(--font-sans);color:var(--color-tx);margin-bottom:-12px}
   .ab-srch{display:flex;flex-direction:column;gap:10px}
   .ab-srch__r{display:flex;gap:8px}
   .ab-srch__r>.sa-inw{flex:1;min-width:0}
@@ -91,8 +85,6 @@
   @container abform (min-width:512px){.ab-cad{grid-template-columns:repeat(3,minmax(0,1fr))}}
   .ab-derived{display:flex;align-items:center;height:44px;padding:0 14px;border-radius:var(--radius-md);background:var(--color-s2);font-size:15px;font-weight:700;color:var(--color-tx);white-space:nowrap}
   .ab-dhint{font-size:13px;line-height:1.5;font-weight:700;color:var(--color-ortx)}
-  .ab-fixed{font-size:14.5px;color:var(--color-tx2)}
-  .ab-fixed b{color:var(--color-tx)}
   .ab-dtop{container:abd/inline-size}
   .ab-dgrid{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
   @container abd (min-width:576px){.ab-dgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.ab-dgrid>.ab-pts{grid-column:span 2}}
@@ -123,7 +115,6 @@
   .ab-stg__d{font-size:13px;line-height:1.5;color:var(--color-tx3);margin-top:-6px}
   .ab-stg__sum{font:700 22px/1.1 var(--font-display);letter-spacing:-.01em;white-space:nowrap}
   .ab-stg .ab-facts{gap:5px}
-  .ab-rem dd{color:var(--color-neg)!important;font-weight:700}
   .ab-box{background:var(--color-s2);border-radius:var(--radius-md);padding:8px 12px 10px;display:flex;flex-direction:column;gap:2px;min-width:0}
   .ab-box>p{font-size:12.5px;font-weight:700;color:var(--color-tx3);padding-top:4px}
   .ab-dl{display:inline-flex;align-items:center;gap:8px;min-height:40px;color:var(--color-ortx);font:700 14px/1.35 var(--font-sans);text-decoration:none;overflow-wrap:anywhere;min-width:0}
@@ -209,13 +200,6 @@
   .ab-cur>.sa-in{flex:1;min-width:0}
   .ab-cur>.sa-selw{flex:none;width:7rem}
   .ab-newdep>summary span svg{color:var(--color-ortx)}
-  .ab-dsheet{padding:40px 48px 56px;display:flex;flex-direction:column;gap:32px}
-  .ab-dfig{display:flex;flex-direction:column;gap:10px;margin:0;min-width:0}
-  .ab-dfig>figcaption{font-size:13px;font-weight:700;color:var(--color-tx3);line-height:1.45;min-height:38px}
-  .ab-dfig>figcaption b{color:var(--color-tx2)}
-  .ab-dbg{position:absolute;inset:0;padding:24px;display:flex;flex-direction:column;gap:12px}
-  .ab-dbg b{font:700 20px/1.2 var(--font-display)}
-  .ab-dbg .sa-sk{background:var(--color-s1)}
   .ab-cand{container:abcand/inline-size;display:flex;flex-direction:column;gap:16px}
   .ab-cand>header h2{font:800 17px/1.35 var(--font-sans);overflow-wrap:anywhere}
   .ab-cand>header h2 .ab-mono{font-size:15.5px}
@@ -240,12 +224,6 @@
   .ab-reg dd small,.ab-rt small{display:block;font-size:12.5px;color:var(--color-tx3)}
   .ab-mis{font-weight:800;color:var(--color-warn)}
   .ab-mis small{display:block;font-size:12.5px;color:var(--color-warn)!important}
-  .ab-msheet{padding:40px 48px 56px;display:flex;flex-direction:column;gap:32px}
-  .ab-mgrp{display:flex;flex-direction:column;gap:8px;min-width:0}
-  .ab-mgrp>h2{font:800 17px/1.3 var(--font-sans);margin-bottom:4px}
-  .ab-mgrp>h3{font-size:13px;font-weight:700;color:var(--color-tx3);margin-top:8px}
-  .ab-mgrp .ab-al{padding:9px 12px;font-size:13.5px}
-  .ab-mnote{font-size:13px;line-height:1.5;color:var(--color-tx2)}
   .ab-pub{container:abpub/inline-size;display:flex;flex-direction:column;gap:16px}
   .ab-pub__h h2{font:800 18px/1.35 var(--font-sans);overflow-wrap:anywhere;display:flex;align-items:center;gap:10px}
   .ab-pub__h p{margin-top:4px;font-size:14px;color:var(--color-tx2);overflow-wrap:anywhere}
@@ -262,8 +240,6 @@
   .ab-pick__r{display:flex;flex-direction:column;gap:8px}
   @container abpub (min-width:512px){.ab-pick__r{flex-direction:row;align-items:flex-end}.ab-pick__r>.ab-fld{flex:1}}
   .ab-pick__r .sa-lbl{font-size:12.5px;color:var(--color-tx3)}
-  .ab-popw{position:relative}
-  .ab-popw>.sa-pop{position:relative;margin-top:6px;z-index:5}
   .ab-price{display:flex;flex-direction:column;gap:6px;padding:14px 16px;border:1px solid var(--color-hair2);border-radius:var(--radius-md)}
   .ab-price>b{font-size:14.5px;font-weight:800}
   .ab-price p{font-size:14px;line-height:1.55;color:var(--color-tx2)}

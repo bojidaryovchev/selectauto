@@ -46,7 +46,6 @@ export function MailThreadStatusSelect({ threadId, value }: { threadId: number; 
     <div className="ad-stsel">
       <span className="sa-lbl">Статус</span>
       <Combobox
-        look="kit"
         aria-label="Статус на разговора"
         options={MAIL_THREAD_STATUSES.map((s) => ({
           value: s,

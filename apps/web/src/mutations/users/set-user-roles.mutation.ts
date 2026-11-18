@@ -87,7 +87,7 @@ export async function setUserRoles(input: SetUserRolesInput): Promise<ActionResu
       return { success: false, error: "Това е последният администратор — ролята му не може да се отнеме." };
     }
     console.error("[set-user-roles] failed", error);
-    return { success: false, error: "Възникна грешка при запазването. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка при запазването. Моля, опитайте отново." };
   }
 }
 

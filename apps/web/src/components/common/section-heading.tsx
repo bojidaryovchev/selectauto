@@ -9,8 +9,6 @@ import type { ReactNode } from "react";
  * - `titleClassName` sets the title's type: `type-h2` by default, `type-h1` for a band's single big title.
  * - `eyebrowEnd` sits at the eyebrow row's far end (the car rails' arrows on a phone).
  * - `actionsClassName` adds to the actions' box, e.g. `sa-hide-ph` when a phone shows them elsewhere.
- *
- * Replaces the legacy `SectionHeader` (centred, a pill eyebrow) page by page.
  */
 export function SectionHeading({
   eyebrow,

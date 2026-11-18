@@ -78,6 +78,6 @@ export async function signUp(input: unknown): Promise<ActionResult> {
     return { success: true, data: undefined };
   } catch (error) {
     console.error("[sign-up] failed", error);
-    return { success: false, error: "Възникна грешка при регистрацията. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка при регистрацията. Моля, опитайте отново." };
   }
 }

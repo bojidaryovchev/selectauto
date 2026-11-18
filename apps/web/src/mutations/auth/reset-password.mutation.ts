@@ -51,6 +51,6 @@ export async function resetPassword(input: unknown): Promise<ActionResult> {
     return { success: true, data: undefined };
   } catch (error) {
     console.error("[reset-password] failed", error);
-    return { success: false, error: "Възникна грешка. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка. Моля, опитайте отново." };
   }
 }

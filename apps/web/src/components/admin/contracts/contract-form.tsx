@@ -279,7 +279,7 @@ export function ContractForm({
         }
       }
     } catch {
-      setStatusMsg({ kind: "error", message: "Възникна грешка при запис. Моля опитайте отново." });
+      setStatusMsg({ kind: "error", message: "Възникна грешка при запис. Моля, опитайте отново." });
     } finally {
       setBusy(false);
     }

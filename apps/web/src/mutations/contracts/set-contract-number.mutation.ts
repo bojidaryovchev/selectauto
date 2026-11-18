@@ -77,6 +77,6 @@ export async function setContractNumber(id: number, newNumber: string): Promise<
     return { success: true, data: { number } };
   } catch (error) {
     console.error("[set-contract-number] failed", error);
-    return { success: false, error: "Възникна грешка при запазването. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка при запазването. Моля, опитайте отново." };
   }
 }

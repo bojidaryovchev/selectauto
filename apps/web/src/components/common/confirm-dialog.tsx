@@ -15,7 +15,7 @@ import { IconButton } from "./icon-button";
  * - The footer holds the cancel button and the confirm button: negative for `tone="danger"`, primary otherwise. On a
  *   phone they stack full width, confirm on top.
  * - Cancelling is Esc, a press on the dimmed page, ✕, or the cancel button; confirming runs `onConfirm`.
- * - While `isPending`, both buttons are disabled and the confirm button reads „Моля изчакайте...".
+ * - While `isPending`, both buttons are disabled and the confirm button reads „Моля, изчакайте...".
  * - Focus starts on the cancel button, the safest default: a stray Enter cancels rather than confirms. Body scroll is
  *   locked while open, and nothing is mounted while closed.
  */
@@ -102,7 +102,7 @@ export function ConfirmDialog({
             {cancelLabel}
           </Button>
           <Button variant={tone === "danger" ? "neg" : "pri"} onClick={onConfirm} disabled={isPending}>
-            {isPending ? "Моля изчакайте..." : confirmLabel}
+            {isPending ? "Моля, изчакайте..." : confirmLabel}
           </Button>
         </div>
       </div>

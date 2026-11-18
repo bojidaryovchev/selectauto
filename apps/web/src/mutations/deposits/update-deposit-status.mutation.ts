@@ -58,6 +58,6 @@ export async function updateDepositStatus(depositId: number, status: string): Pr
     return { success: true, data: undefined };
   } catch (error) {
     console.error("[update-deposit-status] failed", error);
-    return { success: false, error: "Възникна грешка при запазването. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка при запазването. Моля, опитайте отново." };
   }
 }

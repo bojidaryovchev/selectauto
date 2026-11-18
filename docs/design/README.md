@@ -74,6 +74,8 @@ The full list, with dates and wording, is `decisions.md`.
   - text the code upper-cases only through CSS becomes sentence case;
   - an arrow glyph becomes an icon;
   - the listed formats (decimal comma, readable admin dates and amounts);
+  - fixes from the bug list in `REDESIGN.md`: „Моля, опитайте отново" with its comma, „със SelectAuto", a singular
+    that agrees („1 обява");
   - new states and pages, whose strings the owner approves.
 - **Formal „вие".** Imperatives end in -ете or -йте („Разгледайте", „Обадете се"). New interface text writes „вие, ви,
   вас" in lowercase; the capitalised forms are for e-mails and documents to one named person. A capital the code
@@ -266,14 +268,16 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
 - Never remove a focus style. Targets are 44 px or more. Images carry the car's title as `alt`, and the countdown has a
   text equivalent.
 
-## While the rebuild runs
+## Notes from the rebuild
 
-- **The old light theme's tokens** stay in `apps/web/src/app/globals.css`, marked legacy, until no page uses them. When
-  the last one goes, consider setting `--color-*: initial` in the tokens so a colour outside the design can't be used.
+- **Only the design's colours exist.** The old light theme's tokens are gone (18 November), and Tailwind's own palette
+  is switched off (`--color-*: initial` in `tokens.css`), so a class like `text-gray-500` doesn't compile; white and
+  black are kept as tokens for their listed uses. The old light look of the dropdown and the old section header are
+  gone too.
 - **The shell is rebuilt** (17–18 November): the page ground is night, the header, phone top bar, bottom tabs, drawer,
   footer, Viber popup, back-to-top and notifications follow their boards, and the focus ring and the dark colour scheme
-  are global. Pages not rebuilt yet look broken on the dark ground until their turn.
-- **Rebuilt so far:** the car card and the confirm dialog, the catalog (`/vsichki-avtomobili`), the home page, the car
+  are global.
+- **Rebuilt:** the car card and the confirm dialog, the catalog (`/vsichki-avtomobili`), the home page, the car
   page (`/avtomobil/[id]`) with its gallery, full-screen photo viewer, media dialogs and action bar, the make and
   model hubs (`/avtomobili/marka/…`), the import calculator (`/kalkulator`, its e-mail form and the car page's
   calculator dialog), the leasing and budget calculators, the import hubs (`/vnos-na-koli-ot-…`), the FAQ, contacts,
@@ -283,17 +287,16 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
   card), dashboard, loading, error and 404 states and shared parts (`components/admin/ui`), the three lead inboxes
   (Carfax, consultations, offers) with their drawer, the mail (Поща and the thread page), the contracts register,
   the deposits page, the contract form, the contract page, the hidden listings, mobile.bg, the tariffs, the recipients,
-  the users and the journal, and the seven e-mails. Each has its parity file in [parity/](parity/README.md).
+  the users and the journal, and the seven e-mails: every screen. Each has its parity file in
+  [parity/](parity/README.md). The PDFs keep today's look until the owner decides on theirs.
 - **The ab- boards' styles** (deals, listings, settings) are `styles/admin-b.css`, ported with their named container
   queries (`ablist`, `abform` …), which are the code's own approach. The few rules the boards scope under their root
   `.ab` are written by hand in `styles/admin-b-root.css`. Fields stay the admin's 44 px, 16 px `ad-in`, not the boards'
-  15 px `ab-f`.
+  15 px `ab-f`. The ported `admin.css` and `admin-b.css` had their rules for classes no code uses removed by hand.
 - **Never open a real mail thread to check it** (`/admin/poshta/[id]`): its render fetches missing message bodies from
   Resend and saves them. Check the thread components on a temporary route with made-up threads, and delete it.
 - **Make plates in the admin** come from `getMakeLogoLookup` (`lib/admin-lead-view.ts`): leads store the make as text,
   so it is matched by name against the makes the car cards use, then against the inquiry quiz's own logos.
-- **Admin pages not rebuilt yet** already get the kit's buttons, panels, fields, chips, pager and banners through the
-  shared parts, but keep their own light classes until their turn, so they look half-dark until then.
 - **The fonts are defined once,** in `src/styles/fonts.ts`: the root layout and `app/global-error.tsx`, which replaces
   the layout, both load them from there.
 - **The 410 page is a document the proxy sends,** `src/lib/gone-page.ts`, not a route: it can't use the components,

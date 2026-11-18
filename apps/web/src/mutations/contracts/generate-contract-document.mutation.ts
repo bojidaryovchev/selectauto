@@ -86,6 +86,6 @@ export async function generateContractDocument(
     return { success: true, data: { documentId: created.id, version: created.version } };
   } catch (error) {
     console.error("[generate-contract-document] failed", error);
-    return { success: false, error: "Възникна грешка при генерирането. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка при генерирането. Моля, опитайте отново." };
   }
 }

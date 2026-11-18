@@ -50,7 +50,7 @@ export async function createCalculatorOffer(input: unknown): Promise<ActionResul
       success: false,
       error:
         parsed.error.issues[0]?.message ??
-        "Моля въведете име, валиден телефон и имейл.",
+        "Моля, въведете име, валиден телефон и имейл.",
     };
   }
   const data = parsed.data;
@@ -66,7 +66,7 @@ export async function createCalculatorOffer(input: unknown): Promise<ActionResul
 
   if (rawInputs.market === "us") {
     const transportError =
-      "Не можахме да потвърдим транспортната цена за избраната локация. Моля изберете локация на аукциона и опитайте отново.";
+      "Не можахме да потвърдим транспортната цена за избраната локация. Моля, изберете локация на аукциона и опитайте отново.";
     if (!rawInputs.auction || !rawInputs.location) {
       return { success: false, error: transportError };
     }
@@ -129,7 +129,7 @@ export async function createCalculatorOffer(input: unknown): Promise<ActionResul
     console.error("[create-calculator-offer] insert failed", error);
     return {
       success: false,
-      error: "Възникна грешка при изпращането. Моля опитайте отново.",
+      error: "Възникна грешка при изпращането. Моля, опитайте отново.",
     };
   }
 

@@ -11,7 +11,7 @@ import { CLIENT_KINDS } from "@/constants/contracts";
 export const clientSchema = z
   .object({
     kind: z.enum(CLIENT_KINDS),
-    name: z.string().trim().min(1, { message: "Моля въведете име / фирма." }).max(300),
+    name: z.string().trim().min(1, { message: "Моля, въведете име / фирма." }).max(300),
     egn: z
       .string()
       .trim()
@@ -32,10 +32,10 @@ export const clientSchema = z
   })
   .superRefine((values, ctx) => {
     if (values.kind === "individual" && !values.egn) {
-      ctx.addIssue({ code: "custom", path: ["egn"], message: "Моля въведете ЕГН." });
+      ctx.addIssue({ code: "custom", path: ["egn"], message: "Моля, въведете ЕГН." });
     }
     if (values.kind === "company" && !values.eik) {
-      ctx.addIssue({ code: "custom", path: ["eik"], message: "Моля въведете ЕИК." });
+      ctx.addIssue({ code: "custom", path: ["eik"], message: "Моля, въведете ЕИК." });
     }
   });
 

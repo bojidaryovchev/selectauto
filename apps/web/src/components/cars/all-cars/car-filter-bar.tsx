@@ -277,7 +277,6 @@ export function CarFilterBar({
     comboField(
       "Марка",
       <Combobox
-        look="kit"
         plates
         aria-label="Марка"
         options={[
@@ -295,7 +294,6 @@ export function CarFilterBar({
     comboField(
       "Модел",
       <Combobox
-        look="kit"
         aria-label="Модел"
         options={[
           { value: "", label: draft.brand === undefined ? "Първо изберете марка" : "Всички модели" },
@@ -313,7 +311,6 @@ export function CarFilterBar({
     comboField(
       "Тип",
       <Combobox
-        look="kit"
         aria-label="Тип"
         // Zero in the current (filtered) subset → disable so the user can't pick a
         // dead-end combo; never disable the active selection itself.
@@ -415,7 +412,6 @@ export function CarFilterBar({
       {comboField(
         "Гориво",
         <Combobox
-          look="kit"
           aria-label="Гориво"
           // Zero in the current (filtered) subset → disable; never the active one.
           options={[
@@ -434,7 +430,6 @@ export function CarFilterBar({
       {comboField(
         "Задвижване",
         <Combobox
-          look="kit"
           aria-label="Задвижване"
           options={[{ value: "", label: "Всички" }, ...facets.drives.map((d) => ({ value: d.value, label: d.label }))]}
           value={draft.drive ?? ""}
@@ -444,7 +439,6 @@ export function CarFilterBar({
       {comboField(
         "Състояние",
         <Combobox
-          look="kit"
           aria-label="Състояние"
           // Zero in the current (filtered) subset → disable; never the active one.
           options={[
@@ -463,7 +457,6 @@ export function CarFilterBar({
       {comboField(
         "Цвят",
         <Combobox
-          look="kit"
           aria-label="Цвят"
           options={[{ value: "", label: "Всички цветове" }, ...facets.colors.map((c) => ({ value: c.value, label: c.label }))]}
           value={draft.color ?? ""}

@@ -238,7 +238,7 @@ export function InquiryModal({
         setError(result.error);
       }
     } catch {
-      setError("Грешка при изпращане. Моля опитайте отново.");
+      setError("Грешка при изпращане. Моля, опитайте отново.");
     }
   }
 

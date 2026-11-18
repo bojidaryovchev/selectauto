@@ -137,6 +137,6 @@ export async function generatePaymentNotice(
     return { success: true, data: { documentId: created.id, version: created.version } };
   } catch (error) {
     console.error("[generate-payment-notice] failed", error);
-    return { success: false, error: "Възникна грешка при генерирането. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка при генерирането. Моля, опитайте отново." };
   }
 }

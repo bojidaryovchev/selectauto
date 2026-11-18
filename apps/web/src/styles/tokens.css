@@ -16,6 +16,9 @@
   type utilities, page CSS, inline styles and scripts can always read it.
 */
 @theme static {
+  /* Tailwind's own palette is off: only the colours below exist, so a class like text-gray-500 can't creep in. */
+  --color-*: initial;
+
   /* Grounds. Surfaces step up in lightness instead of casting shadows. */
   --color-bg: #0c0d10; /* Night: the ground of every page and full-bleed band. The logo sits on it. */
   --color-s1: #15171b; /* Surface: cards, panels, menus, dialogs */
@@ -61,6 +64,10 @@
   --color-plate: #eef0f2; /* The light plate behind car-make logos, so every logo reads in its own colours */
   --color-paper: #ffffff; /* The white tile behind the Google logo on /otzivi. From the kit; not in tokens.json */
   --color-ink: #15171b; /* Text on plate and paper, such as a make's initials on its plate */
+
+  /* The two extremes, kept from Tailwind's palette for these uses only */
+  --color-white: #ffffff; /* The glyph on the Viber circle; a faint tint at low opacity (bg-white/3) */
+  --color-black: #000000; /* Letterboxing behind a video, and the drawers' backdrop under its opacity */
 
   /* Font families. next/font (app/layout.tsx) defines --font-manrope and the
      others on <html>, the element :root matches, so these resolve there and

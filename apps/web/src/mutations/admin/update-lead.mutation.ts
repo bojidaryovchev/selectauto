@@ -79,7 +79,7 @@ export async function updateLead(input: UpdateLeadInput): Promise<ActionResult> 
     }
   } catch (error) {
     console.error("[update-lead] update failed", error);
-    return { success: false, error: "Възникна грешка при запазването. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка при запазването. Моля, опитайте отново." };
   }
 
   revalidatePath("/admin", "layout");

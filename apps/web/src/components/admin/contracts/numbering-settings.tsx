@@ -48,7 +48,7 @@ export function NumberingSettings({ numbering }: { numbering: NumberingRow }) {
         setStatus({ kind: "error", message: result.error });
       }
     } catch {
-      setStatus({ kind: "error", message: "Възникна грешка. Моля опитайте отново." });
+      setStatus({ kind: "error", message: "Възникна грешка. Моля, опитайте отново." });
     } finally {
       setBusy(false);
     }

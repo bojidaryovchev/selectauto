@@ -72,6 +72,6 @@ export async function setNextNumber(input: SetNextNumberInput): Promise<ActionRe
     return { success: true, data: { nextNumber } };
   } catch (error) {
     console.error("[set-next-number] failed", error);
-    return { success: false, error: "Възникна грешка при запазването. Моля опитайте отново." };
+    return { success: false, error: "Възникна грешка при запазването. Моля, опитайте отново." };
   }
 }

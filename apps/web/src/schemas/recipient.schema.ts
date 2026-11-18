@@ -16,7 +16,7 @@ export const recipientSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(1, { message: "Моля въведете наименование." })
+    .min(1, { message: "Моля, въведете наименование." })
     .max(200, { message: "Наименованието може да съдържа най-много 200 знака." }),
   country: z.string().trim().max(100, { message: "Държавата може да съдържа най-много 100 знака." }).optional(),
   address: z.string().trim().max(300, { message: "Адресът може да съдържа най-много 300 знака." }).optional(),

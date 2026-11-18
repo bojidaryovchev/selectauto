@@ -30,10 +30,11 @@ type Pair = {
 const TOKENS_FILE = join(import.meta.dirname, "..", "src", "styles", "tokens.css");
 
 /** Colours used by the kit that are Tailwind's own, not ours. */
-const LITERALS: Record<string, string> = { white: "#ffffff" };
+const LITERALS: Record<string, string> = {};
 
 /** Tokens that never carry or hold text and never mark a control on their own. */
 const DECORATIVE: Record<string, string> = {
+  black: "letterboxing behind a video and the drawers' backdrop (under its opacity); never text or a control's edge",
   hair: "dividers and card borders; never a control's only edge",
   hair2: "edges of popovers, dialogs and the bottom tab bar",
   scrim: "the dimmed page behind a dialog; the dialog's surface carries the text",
