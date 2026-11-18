@@ -15,7 +15,7 @@ design canvases.
 |---|---|
 | Tokens, fonts, type styles | `apps/web/src/styles/tokens.css`; fonts load in `apps/web/src/app/layout.tsx` |
 | Component classes (`sa-btn`, `sa-car`, `sa-hdr` …) | `apps/web/src/styles/kit.css`, ported from the boards' kit; React components apply them |
-| A screen's own layout classes (`cd-*` on the car page, `hm-*` on the make and model hubs, `im-*` on the import hubs and the calculators) | `apps/web/src/styles/<screen>.css` (so far `car-page.css`, `hub-page.css` and `import-page.css`), ported from that screen's board sources by `apps/web/scripts/port-board-css.mjs`: token names, `cqi` → `vw`, container queries → media queries |
+| A screen's own layout classes (`cd-*` on the car page, `hm-*` on the make and model hubs, `im-*` on the import hubs and the calculators, `in-*` on the information pages, `ac-*` on the account pages and the inquiry dialog, `ad-*` in the admin) | `apps/web/src/styles/<screen>.css` (`car-page.css`, `hub-page.css`, `import-page.css`, the `info-*.css` files, `account.css`, `inquiry.css`, `admin.css`), ported from that screen's board sources by `apps/web/scripts/port-board-css.mjs`: token names, `cqi` → `vw`, container queries → media queries |
 | Contrast test of every text and ground pair | `apps/web/tests/design-tokens.test.mts`, run by `pnpm test` |
 | The logo | `Logo` in `apps/web/src/components/common/logo.tsx` |
 | Why this direction, these fonts, this logo | [adr-0001-direction-type-logo.md](adr-0001-direction-type-logo.md) |
@@ -273,7 +273,11 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
   calculator dialog), the leasing and budget calculators, the import hubs (`/vnos-na-koli-ot-…`), the FAQ, contacts,
   about and reviews pages, the Carfax and VIN check pages with the Carfax dialog, /proces, the blog, the three
   legal pages, the 404, 410 and error pages, the sign-in and account pages (`/sign-in` to `/greshka-pri-vhod`) and
-  the favourites (`/lyubimi`), and the inquiry dialog. Each has its parity file in [parity/](parity/README.md).
+  the favourites (`/lyubimi`), the inquiry dialog, and the admin's shell (sidebar, phone top bar and drawer, account
+  card), dashboard, loading, error and 404 states and shared parts (`components/admin/ui`). Each has its parity file in
+  [parity/](parity/README.md).
+- **Admin pages not rebuilt yet** already get the kit's buttons, panels, fields, chips, pager and banners through the
+  shared parts, but keep their own light classes until their turn, so they look half-dark until then.
 - **The fonts are defined once,** in `src/styles/fonts.ts`: the root layout and `app/global-error.tsx`, which replaces
   the layout, both load them from there.
 - **The 410 page is a document the proxy sends,** `src/lib/gone-page.ts`, not a route: it can't use the components,

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { buttonClasses } from "@/components/common/button-variants";
+import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 
 /** The page numbers to show: the first, the last, and a window around the current one; null = a gap. */
 function pageWindow(page: number, pageCount: number): (number | null)[] {
@@ -13,16 +15,12 @@ function pageWindow(page: number, pageCount: number): (number | null)[] {
   return out;
 }
 
-const STEP =
-  "inline-flex min-h-10 items-center justify-center rounded-full border border-line bg-white px-4 text-sm font-semibold text-ink transition-colors hover:bg-neutral-50";
-const NUMBER =
-  "inline-flex min-h-10 min-w-10 items-center justify-center rounded-full px-2 text-sm font-semibold transition-colors";
+const STEP = buttonClasses({ variant: "sec", size: "md" });
 
 /**
- * Pager for a server-paged list: „Назад", the page numbers (just „X / Y" on a
- * phone), „Напред". Plain links built by `hrefFor`, so a page can be
- * opened in a new tab; they don't prefetch — each would render a whole page of
- * results in the background.
+ * Pager for a server-paged list (`.ad-pager`): „Назад", the page numbers (just „X / Y" on a phone), „Напред", the
+ * arrows as icons. Plain links built by `hrefFor`, so a page can be opened in a new tab; they don't prefetch — each
+ * would render a whole page of results in the background.
  */
 export function AdminPagination({
   page,
@@ -35,33 +33,32 @@ export function AdminPagination({
 }) {
   if (pageCount <= 1) return null;
   return (
-    <nav aria-label="Страници" className="flex items-center justify-center gap-2">
+    <nav aria-label="Страници" className="ad-pager">
       {page > 1 ? (
         <Link href={hrefFor(page - 1)} prefetch={false} className={STEP} rel="prev">
-          ← Назад
+          <ChevronLeftIcon />
+          Назад
         </Link>
       ) : (
-        <span className={`${STEP} pointer-events-none opacity-40`}>← Назад</span>
+        <span className={`${STEP} is-dis`} aria-disabled="true">
+          <ChevronLeftIcon />
+          Назад
+        </span>
       )}
       {/* „1 / 2“ keeps both buttons on one line at 320 px; a screen reader still hears „Страница“. */}
-      <span className="px-1 text-sm whitespace-nowrap text-muted sm:hidden">
+      <span className="ad-pager__n">
         <span className="sr-only">Страница </span>
         {page} / {pageCount}
       </span>
-      <ul className="m-0 hidden list-none items-center gap-1 p-0 sm:flex">
+      <ul>
         {pageWindow(page, pageCount).map((p, i) =>
           p === null ? (
-            <li key={`gap-${i}`} aria-hidden="true" className="px-1 text-sm text-muted">
-              …
+            <li key={`gap-${i}`} aria-hidden="true">
+              <span>…</span>
             </li>
           ) : (
             <li key={p}>
-              <Link
-                href={hrefFor(p)}
-                prefetch={false}
-                aria-current={p === page ? "page" : undefined}
-                className={`${NUMBER} ${p === page ? "bg-ink text-white" : "text-muted hover:bg-neutral-100 hover:text-ink"}`}
-              >
+              <Link href={hrefFor(p)} prefetch={false} aria-current={p === page ? "page" : undefined}>
                 {p}
               </Link>
             </li>
@@ -70,10 +67,14 @@ export function AdminPagination({
       </ul>
       {page < pageCount ? (
         <Link href={hrefFor(page + 1)} prefetch={false} className={STEP} rel="next">
-          Напред →
+          Напред
+          <ChevronRightIcon />
         </Link>
       ) : (
-        <span className={`${STEP} pointer-events-none opacity-40`}>Напред →</span>
+        <span className={`${STEP} is-dis`} aria-disabled="true">
+          Напред
+          <ChevronRightIcon />
+        </span>
       )}
     </nav>
   );

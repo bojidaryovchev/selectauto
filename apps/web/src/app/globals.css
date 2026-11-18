@@ -20,6 +20,7 @@
 @import "../styles/info-legal.css";
 @import "../styles/account.css";
 @import "../styles/inquiry.css";
+@import "../styles/admin.css";
 
 /*
   Legacy: the light theme's tokens, ported from the old site's theme.css. The

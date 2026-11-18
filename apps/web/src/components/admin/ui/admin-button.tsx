@@ -1,27 +1,28 @@
 import Link from "next/link";
+import { buttonClasses, type ButtonVariant } from "@/components/common/button-variants";
 
 export type AdminButtonVariant = "primary" | "secondary" | "danger" | "positive" | "success" | "ghost";
 export type AdminButtonSize = "md" | "lg";
 
-const VARIANTS: Record<AdminButtonVariant, string> = {
-  primary: "bg-brand text-white hover:bg-brand-dark",
-  secondary: "border border-line bg-white text-ink hover:bg-neutral-50",
-  danger: "border border-[#f3c4bf] bg-[#fdecea] text-[#b3261e] hover:bg-[#fbdcd8]",
-  positive: "border border-emerald-600 bg-white text-emerald-700 hover:bg-emerald-50",
-  success: "bg-emerald-600 text-white hover:bg-emerald-700",
-  ghost: "text-brand hover:bg-brand/10",
+/**
+ * The admin's kinds as the kit's buttons (boards `ab-*`, `ad-*`): primary orange, secondary outline, danger the kit's
+ * negative, success its positive („Запазете плащането"), ghost a text button. „Positive" is an affirming secondary
+ * („Отбележете като изпратено"), drawn as an outline button with the deals' green accent (`ab-btn-pos`).
+ */
+const VARIANTS: Record<AdminButtonVariant, { kit: ButtonVariant; extra?: string }> = {
+  primary: { kit: "pri" },
+  secondary: { kit: "sec" },
+  danger: { kit: "neg" },
+  positive: { kit: "sec", extra: "ab-btn-pos" },
+  success: { kit: "pos" },
+  ghost: { kit: "txt" },
 };
 
-// 40 px tall at least (44 for the main action of a form or page), so every
-// button is a comfortable tap target; the label may wrap rather than overflow.
-const SIZES: Record<AdminButtonSize, string> = {
-  md: "min-h-10 px-4",
-  lg: "min-h-11 px-6",
-};
-
-/** Class names for an admin button — for the rare control that can't use AdminButton (a <summary>, a label). */
+/** Class names for an admin button — for the rare control that can't use AdminButton (a <summary>, a label). 44 px
+ *  tall (md) or 48 px (lg, the main action of a form or page). */
 export function adminButtonClass(variant: AdminButtonVariant = "secondary", size: AdminButtonSize = "md"): string {
-  return `inline-flex items-center justify-center gap-2 rounded-full text-center text-sm font-extrabold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-50 ${VARIANTS[variant]} ${SIZES[size]}`;
+  const { kit, extra } = VARIANTS[variant];
+  return `${buttonClasses({ variant: kit, size })}${extra ? ` ${extra}` : ""}`;
 }
 
 type Common = { variant?: AdminButtonVariant; size?: AdminButtonSize; className?: string };

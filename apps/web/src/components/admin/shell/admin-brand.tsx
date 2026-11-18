@@ -1,35 +1,30 @@
 import Link from "next/link";
+import { Logo } from "@/components/common";
 
 /**
- * „SELECTAUTO АДМИН“ wordmark. `tone` follows the surface: white on the dark
- * sidebar and drawer, ink on the light top bar. Without `href` it is plain text
- * (the loading skeleton, before the role — and so the right home — is known).
+ * The back office's brand (boards `ad-shell-roles`, `ad-shell-phone`): the SelectAuto logo, on the dark ground only
+ * (decision 2), with an „Админ" tag. `compact` is the phone top bar's and the drawer's smaller logo. Without `href` it
+ * is not a link (the loading skeleton, before the role — and so the right home — is known).
  */
 export function AdminBrand({
   href,
-  tone,
+  compact = false,
   onNavigate,
 }: {
   href?: string;
-  tone: "dark" | "light";
+  compact?: boolean;
   onNavigate?: () => void;
 }) {
-  const className = `text-sm font-black uppercase tracking-tight ${tone === "dark" ? "text-white" : "text-ink"}`;
-  const label = (
+  const content = (
     <>
-      SelectAuto <span className={tone === "dark" ? "text-brand-soft" : "text-brand"}>Админ</span>
+      <Logo size={compact ? "bar" : "header"} />
+      <span>Админ</span>
     </>
   );
-  if (!href) return <span className={className}>{label}</span>;
+  if (!href) return <span className="ad-brand">{content}</span>;
   return (
-    <Link
-      href={href}
-      onClick={onNavigate}
-      className={`${className} rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 ${
-        tone === "dark" ? "focus-visible:outline-brand-soft" : "focus-visible:outline-brand"
-      }`}
-    >
-      {label}
+    <Link href={href} onClick={onNavigate} className="ad-brand">
+      {content}
     </Link>
   );
 }

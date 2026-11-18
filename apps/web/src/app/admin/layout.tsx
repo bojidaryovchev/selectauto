@@ -13,8 +13,9 @@ export const metadata: Metadata = {
 
 /**
  * /admin layout — the owner-facing back office shell (NOT the public
- * header/footer): a dark sidebar from lg up, a top bar with a drawer below it,
- * and the page in the content column.
+ * header/footer; boards `ad-shell-roles`, `ad-shell-phone`, parity check docs/design/parity/admin-shell.md): the
+ * sidebar from lg up, the kit's top bar with a drawer below it, and the page in the content column, on the night
+ * ground.
  *
  * Two <Suspense> boundaries, because both halves read request-time auth (which
  * cacheComponents requires to sit inside one): the chrome, whose skeleton has
@@ -31,10 +32,11 @@ export const metadata: Metadata = {
  */
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-dvh bg-[#f4f4f5] text-ink">
+    <div className="min-h-dvh">
+      {/* „Към съдържанието": hidden until a keyboard focuses it (board `ad-shell-phone` 5). */}
       <a
         href="#admin-main"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-70 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2.5 focus:text-sm focus:font-bold focus:text-ink focus:shadow-card"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2.5 focus:left-3 focus:z-70 focus:inline-flex focus:h-11 focus:items-center focus:rounded-md focus:bg-tx focus:px-4 focus:text-sm focus:font-extrabold focus:text-bg"
       >
         Към съдържанието
       </a>
@@ -42,7 +44,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <AdminChrome />
       </Suspense>
       <div className="lg:pl-64">
-        <main id="admin-main" tabIndex={-1} className="mx-auto w-full max-w-7xl min-w-0 px-4 py-6 outline-none lg:px-8">
+        <main id="admin-main" tabIndex={-1} className="ad-main outline-none">
           <Suspense fallback={<AdminPageSkeleton />}>
             <AdminGate>{children}</AdminGate>
           </Suspense>

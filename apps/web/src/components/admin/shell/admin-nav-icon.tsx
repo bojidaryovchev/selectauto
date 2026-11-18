@@ -1,11 +1,11 @@
 import {
-  BankIcon,
   CalculatorIcon,
   ClockIcon,
-  DashboardIcon,
   EyeOffIcon,
   FileSearchIcon,
   FileTextIcon,
+  LandmarkIcon,
+  LayoutGridIcon,
   MailIcon,
   MegaphoneIcon,
   MessageIcon,
@@ -15,8 +15,9 @@ import {
 } from "@/components/icons";
 import type { AdminNavIconName } from "@/constants/admin-nav";
 
+/** The boards' glyphs (`ad-shell-roles`): the kit's Lucide drawings. */
 const ICONS: Record<AdminNavIconName, (props: { className?: string }) => React.ReactNode> = {
-  dashboard: DashboardIcon,
+  dashboard: LayoutGridIcon,
   mail: MailIcon,
   carfax: FileSearchIcon,
   inquiry: MessageIcon,
@@ -26,7 +27,7 @@ const ICONS: Record<AdminNavIconName, (props: { className?: string }) => React.R
   mobilebg: MegaphoneIcon,
   hidden: EyeOffIcon,
   tariffs: PercentIcon,
-  recipients: BankIcon,
+  recipients: LandmarkIcon,
   users: UsersIcon,
   log: ClockIcon,
 };
