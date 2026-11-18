@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { NumberingSettings } from "@/components/admin/contracts";
 import { DepositForm, DepositList } from "@/components/admin/deposits";
 import { AdminEmptyState, AdminPageHeader } from "@/components/admin/ui";
-import { ChevronDownIcon } from "@/components/icons";
+import { ChevronDownIcon, PlusIcon, WalletIcon } from "@/components/icons";
 import { can } from "@/lib/admin";
 import { listClients } from "@/queries/clients";
 import { getNumbering } from "@/queries/contracts";
@@ -17,7 +17,8 @@ export const metadata: Metadata = { title: "Депозити" };
  * Върнат / Анулиран). A 'paid' deposit becomes offerable in the contract
  * wizard; contract creation flips it to 'used' and links it („Използван по").
  * The layout gates the route to the back office, and listDeposits shows only
- * the deposits the user may see.
+ * the deposits the user may see. Boards `ab-deposits` and its states; parity
+ * check docs/design/parity/admin-deposits.md.
  */
 export default async function AdminDepositsPage() {
   const session = await auth();
@@ -33,7 +34,7 @@ export default async function AdminDepositsPage() {
   ]);
 
   return (
-    <div className="flex flex-col gap-4">
+    <>
       <AdminPageHeader
         title="Договори за депозит"
         description="Депозит със статус „Депозит платен“ се предлага автоматично за приспадане при създаване на договор за същия клиент. Използван депозит не може да се променя или ползва повторно."
@@ -45,12 +46,15 @@ export default async function AdminDepositsPage() {
           was a long scroll away on a phone. Open from the start while there is
           nothing in the list. */}
       {canCreate ? (
-        <details open={deposits.length === 0} className="group rounded-xl border border-line bg-white">
-          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 text-base font-black text-ink select-none sm:px-5 [&::-webkit-details-marker]:hidden">
-            ＋ Нов договор за депозит
-            <ChevronDownIcon className="size-4 shrink-0 transition-transform group-open:rotate-180" />
+        <details open={deposits.length === 0} className="ab-disc ab-newdep">
+          <summary>
+            <span>
+              <PlusIcon />
+              Нов договор за депозит
+            </span>
+            <ChevronDownIcon />
           </summary>
-          <div className="border-t border-line p-4 sm:p-5">
+          <div className="ab-disc__b">
             <DepositForm clients={clients} />
           </div>
         </details>
@@ -59,8 +63,8 @@ export default async function AdminDepositsPage() {
       {deposits.length > 0 ? (
         <DepositList rows={deposits} canManage={canManage} />
       ) : (
-        <AdminEmptyState title="Още няма договори за депозит." />
+        <AdminEmptyState title="Още няма договори за депозит." icon={<WalletIcon />} />
       )}
-    </div>
+    </>
   );
 }

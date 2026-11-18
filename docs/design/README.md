@@ -275,7 +275,8 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
   legal pages, the 404, 410 and error pages, the sign-in and account pages (`/sign-in` to `/greshka-pri-vhod`) and
   the favourites (`/lyubimi`), the inquiry dialog, the admin's shell (sidebar, phone top bar and drawer, account
   card), dashboard, loading, error and 404 states and shared parts (`components/admin/ui`), the three lead inboxes
-  (Carfax, consultations, offers) with their drawer, the mail (Поща and the thread page), and the contracts register.
+  (Carfax, consultations, offers) with their drawer, the mail (Поща and the thread page), the contracts register and
+  the deposits page.
   Each has its parity file in [parity/](parity/README.md).
 - **The ab- boards' styles** (deals, listings, settings) are `styles/admin-b.css`, ported with their named container
   queries (`ablist`, `abform` …), which are the code's own approach. The few rules the boards scope under their root

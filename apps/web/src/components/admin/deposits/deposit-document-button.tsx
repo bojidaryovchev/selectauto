@@ -1,7 +1,9 @@
 "use client";
 
-import { AdminButton } from "@/components/admin/ui";
+import { Button } from "@/components/common";
+import { buttonClasses } from "@/components/common/button-variants";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { AlertIcon, DownloadIcon, FilePlusIcon } from "@/components/icons";
 import { formatSofiaDate } from "@/lib/sofia-time";
 import { generateDepositDocument } from "@/mutations/deposits";
 import type { DepositDocumentRow } from "@/queries/deposits";
@@ -9,10 +11,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 /**
- * „Разпечатай договор" for one deposit row (spec §14). Generating appends a new
- * version and keeps the old ones, exactly like the other documents; existing
- * versions list next to the button for download. A further version is confirmed
- * first, as on the contract (§10 „нова версия след потвърждение").
+ * „Договор (PDF)" for one deposit row (spec §14; board `ab-deposits`, its states and `ab-dialogs`). Generating appends
+ * a new version and keeps the old ones, exactly like the other documents; existing versions list next to the button
+ * for download. A further version is confirmed first, as on the contract (§10 „нова версия след потвърждение").
+ * Secondary: the page's one primary is the form's (notes ab §4).
  */
 export function DepositDocumentButton({
   depositId,
@@ -39,6 +41,8 @@ export function DepositDocumentButton({
         setError(result.error);
       }
     } catch {
+      // A request that never reached the server: the dialog used to stay open over the error.
+      setConfirmOpen(false);
       setError("Грешка при генериране.");
     } finally {
       setBusy(false);
@@ -46,28 +50,34 @@ export function DepositDocumentButton({
   }
 
   return (
-    <div className="flex flex-col items-start gap-1">
-      <AdminButton
-        variant="primary"
-        disabled={busy}
-        onClick={() => (documents.length > 0 ? setConfirmOpen(true) : void run())}
-        className="whitespace-nowrap"
-      >
-        {busy ? "Генериране…" : documents.length > 0 ? "Нова версия" : "Договор (PDF)"}
-      </AdminButton>
-      {documents.map((d) => (
-        <a
-          key={d.id}
-          href={`/api/payment-document/${d.id}`}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex min-h-10 items-center text-sm font-semibold whitespace-nowrap text-brand hover:underline"
+    <>
+      <div className="ab-dep-doc">
+        <Button
+          variant="sec"
+          size="md"
+          disabled={busy}
+          busy={busy}
+          onClick={() => (documents.length > 0 ? setConfirmOpen(true) : void run())}
         >
-          в.{d.version} ({formatSofiaDate(d.createdAt)}) ⬇
-        </a>
-      ))}
+          {busy ? null : <FilePlusIcon />}
+          {busy ? "Генериране…" : documents.length > 0 ? "Нова версия" : "Договор (PDF)"}
+        </Button>
+        {documents.map((d) => (
+          <a
+            key={d.id}
+            href={`/api/payment-document/${d.id}`}
+            target="_blank"
+            rel="noreferrer"
+            className={`${buttonClasses({ variant: "txt", size: "md" })} ab-dlk`}
+          >
+            <DownloadIcon />
+            в.{d.version} ({formatSofiaDate(d.createdAt)})
+          </a>
+        ))}
+      </div>
       {error ? (
-        <span role="alert" className="text-xs font-semibold text-[#b3261e]">
+        <span role="alert" className="sa-err">
+          <AlertIcon />
           {error}
         </span>
       ) : null}
@@ -76,11 +86,11 @@ export function DepositDocumentButton({
         isOpen={confirmOpen}
         title="Нова версия на договора за депозит?"
         message={`Вече има ${documents.length} генерирана(и) версия(и). Старите се запазват и остават достъпни за изтегляне.`}
-        confirmLabel="Генерирай нова версия"
+        confirmLabel="Генерирайте нова версия"
         isPending={busy}
         onConfirm={() => void run()}
         onCancel={() => setConfirmOpen(false)}
       />
-    </div>
+    </>
   );
 }
