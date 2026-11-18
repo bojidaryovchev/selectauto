@@ -1,8 +1,8 @@
 # Design: „Нощно шосе"
 
-SelectAuto's site and admin are being rebuilt in the „Нощно шосе" design, the direction the owner chose on
-26 October 2026. This page holds the rules in words. The values live in code, and the pictures are the boards on the
-design canvases.
+SelectAuto's site and admin are rebuilt in the „Нощно шосе" design, the direction the owner chose on 26 October 2026
+(every screen and e-mail, 17–18 November 2026; the PDFs keep their look for now). This page holds the rules in words.
+The values live in code, and the pictures are the boards on the design canvases.
 
 - **The code binds.** `apps/web/src/styles/tokens.css` holds every colour, type style, radius and size. When a board
   disagrees with it, the code wins and the board is corrected.
