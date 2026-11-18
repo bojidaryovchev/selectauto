@@ -6,12 +6,30 @@ import { carListingToView } from "@/lib/car-mapper";
 import { getDb, schema } from "@/lib/db";
 import type { CarView } from "@/types/car.type";
 import { getMakeIndex } from "./get-make-index.query";
+import { passengerCarsOnly } from "./passenger-cars";
 
 const DEFAULT_LIMIT = 6;
 
+/** The two sources the rail alternates, Copart first (owner decision 14). */
+const RAIL_SOURCES = ["copart_com", "encar_com"] as const;
+
+/** [a0, b0, a1, b1, …]; once one list runs out, the rest of the other follows. */
+function interleave<T>(a: T[], b: T[]): T[] {
+  const out: T[] = [];
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    if (i < a.length) out.push(a[i]);
+    if (i < b.length) out.push(b[i]);
+  }
+  return out;
+}
+
 /**
- * Buy-now car listings for the homepage: active buy-now cars with an image,
- * newest first.
+ * Buy-now car listings for the homepage: active buy-now passenger cars with an
+ * image, newest first, Copart and Encar alternating (owner decision 14, 2
+ * November 2026: passenger cars only, and the rail mixes the two sources —
+ * newest-first alone shows whichever source synced last, and on 2 November that
+ * was Copart only). Each source is read separately, newest first, and the rail
+ * takes them in turns; a source that runs short is filled from the other.
  *
  * Reads the `car_listings` projection (one row per physical car, already
  * active-only and pre-joined — see docs/05-projection-tables-car-listings.md) the same way the catalog
@@ -45,20 +63,28 @@ export async function getBuyNowCars(limit = DEFAULT_LIMIT): Promise<CarView[]> {
   const cl = schema.carListings;
 
   try {
-    const rows = await getDb()
-      .select()
-      .from(cl)
-      .where(
-        and(
-          // Valid buy-now: buy_now flag set with a positive price (mirrors the
-          // catalog's "buy-now" channel predicate).
-          eq(cl.buyNow, true),
-          sql`${cl.effectivePrice} > 0`,
-          isNotNull(cl.imageUrl),
-        ),
-      )
-      .orderBy(desc(cl.sortId))
-      .limit(limit);
+    // Two index scans on `cl_buynow_sort`, ~0.1 ms each (EXPLAIN ANALYZE, 18.11.2026).
+    const [first, second] = await Promise.all(
+      RAIL_SOURCES.map((domain) =>
+        getDb()
+          .select()
+          .from(cl)
+          .where(
+            and(
+              // Valid buy-now: buy_now flag set with a positive price (mirrors the
+              // catalog's "buy-now" channel predicate).
+              eq(cl.buyNow, true),
+              sql`${cl.effectivePrice} > 0`,
+              isNotNull(cl.imageUrl),
+              passengerCarsOnly(),
+              eq(cl.domainName, domain),
+            ),
+          )
+          .orderBy(desc(cl.sortId))
+          .limit(limit),
+      ),
+    );
+    const rows = interleave(first, second).slice(0, limit);
 
     if (rows.length === 0) return FALLBACK_BUY_NOW_CARS;
     const makes = await getMakeIndex();

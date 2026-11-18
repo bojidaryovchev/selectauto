@@ -1,47 +1,43 @@
-import { Container, LinkButton, SectionHeader } from "@/components/common";
-import { CarsCarousel } from "@/components/cars/cars-carousel";
+import { CarRail } from "@/components/cars/car-rail";
 import type { CarView } from "@/types/car.type";
 
 /**
- * A homepage listings section: section header + car carousel + a centered CTA.
- * Folds the former `CarsSection`/`CarsSectionInner` pair from page.tsx into one
- * component. Pass `tinted` to render on the grey (`#fafafa`) background used by
- * the auction section.
+ * A homepage listings section (board `hm-home`): a band holding a rail of car cards under its heading, with
+ * „Вижте всички …" to the catalog. `divided` draws a hairline above, between two rails in a row.
  */
 export function CarsSection({
   eyebrow,
   title,
+  titleId,
   subtitle,
   cars,
   ctaHref,
   ctaLabel,
-  tinted = false,
+  divided = false,
 }: {
   eyebrow: string;
   title: string;
+  /** The title's id, which names the section. */
+  titleId: string;
   subtitle: string;
   cars: CarView[];
   ctaHref: string;
   ctaLabel: string;
-  tinted?: boolean;
+  divided?: boolean;
 }) {
   return (
-    <section className={`py-19.5 max-md:py-14 ${tinted ? "bg-[#fafafa]" : ""}`}>
-      <Container>
-        <SectionHeader eyebrow={eyebrow} title={title} subtitle={subtitle} />
-
-        <CarsCarousel cars={cars} />
-
-        <div className="mt-7 flex justify-center">
-          <LinkButton
-            href={ctaHref}
-            rippleTheme="dark"
-            className="inline-flex min-h-13.5 items-center justify-center rounded-full border border-[#ddd] bg-white px-7 text-[15px] font-extrabold text-[#333] transition-transform duration-200 hover:-translate-y-0.5 hover:text-brand-dark"
-          >
-            {ctaLabel}
-          </LinkButton>
-        </div>
-      </Container>
+    <section className={`sa-band ${divided ? "sa-band--line" : ""}`} aria-labelledby={titleId}>
+      <div className="sa-wrap">
+        <CarRail
+          eyebrow={eyebrow}
+          title={title}
+          titleId={titleId}
+          lead={subtitle}
+          cars={cars}
+          moreHref={ctaHref}
+          moreLabel={ctaLabel}
+        />
+      </div>
     </section>
   );
 }

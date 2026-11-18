@@ -44,7 +44,7 @@ export default async function HomePage() {
     <>
       <SiteHeader />
 
-      <main className="flex-1 text-ink">
+      <main className="flex-1">
         {/* The page's SINGLE <h1>: keyword-bearing, visually hidden (the visible
             hero slogan in ParticleHero is a styled <p> — it was an <h1> once,
             which made the page carry duplicate H1s). Not cloaking: it states
@@ -52,34 +52,37 @@ export default async function HomePage() {
         <h1 className="sr-only">
           Внос на автомобили от Корея, САЩ и Канада — SelectAuto
         </h1>
-        {/* Dark spacer so the fixed header sits above the hero, not on it. */}
-        <div className="h-(--header-h) bg-shell" />
+        {/* Spacer so the fixed header sits above the hero, not on it. */}
+        <div className="h-(--header-h)" />
         <ParticleHero />
 
         <WhyUsSection />
 
         <ProcessCtaSection />
 
-        {/* Buy-now listings */}
+        {/* Buy-now listings: passenger cars, Copart and Encar in turns (decision 14). */}
         <CarsSection
           eyebrow="Buy Now автомобили"
-          title="Налични предложения, които можеш да вземеш сега"
+          title="Налични предложения, които можете да вземете сега"
+          titleId="hm-bn-t"
           subtitle="Това са автомобили с директна възможност за покупка — подходящи за клиенти, които искат бързо и ясно решение."
           cars={buyNowCars}
           ctaHref="/vsichki-avtomobili?channel=buy-now"
-          ctaLabel="Виж всички Buy Now"
+          ctaLabel="Вижте всички Buy Now"
         />
 
-        {/* Auction listings — auction cards without a photo are filtered out in
-            the query rather than shown with a placeholder, like the real site. */}
+        {/* Auction listings — passenger cars (decision 14); auction cards without
+            a photo are filtered out in the query rather than shown with a
+            placeholder, like the real site. */}
         <CarsSection
-          tinted
+          divided
           eyebrow="Аукционни автомобили"
           title="Възможности от аукционите, подбрани със стратегия"
+          titleId="hm-au-t"
           subtitle="Аукционните автомобили дават силни възможности, когато зад избора има правилен подход и реална експертиза."
           cars={auctionCars}
           ctaHref="/vsichki-avtomobili?channel=auction"
-          ctaLabel="Виж всички аукционни автомобили"
+          ctaLabel="Вижте всички аукционни автомобили"
         />
 
         <PopularBrandsSection />

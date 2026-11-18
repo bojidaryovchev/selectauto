@@ -182,8 +182,9 @@ Sizes with an arrow grow with the window, as the boards' do (the kit's `cqi` bec
 - **Make logos** sit on `bg-plate` in their own colours. A make without a logo shows its first two letters.
 - **The 3D particle car** is the home hero and the only glow.
 - **Motion** lasts 150–300 ms, ease-out. The countdown ticks every second and turns `ortx` under 24 hours. Spinners
-  turn and skeletons shimmer (the boards draw them still). Under `prefers-reduced-motion` nothing moves, but every
-  state still changes: the catalog's spinning globe becomes a still one.
+  turn and skeletons shimmer (the boards draw them still). Sections fade in over 300 ms as they scroll into view.
+  Under `prefers-reduced-motion` nothing moves, but every state still changes: the catalog's spinning globe becomes a
+  still one, and sections are simply there.
 - **Icons** are Lucide's drawings at stroke 1.8 and 20–24 px, beside a word, or with an `aria-label` when alone. Each is
   a component in `components/icons`, like the brand glyphs already there.
 
@@ -210,6 +211,12 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
   Without it the old light look stays until each page that uses one is rebuilt. Base UI's state attributes
   (`data-popup-open`, `data-highlighted`, `data-selected`, `data-disabled`) map onto the kit's states in `kit.css`.
 - **Make plates** (`make-plate.tsx`): the logo on a light plate, or two letters without one; sizes xs to xl.
+- **Section headings** (`section-heading.tsx`, the kit's `.sa-sh`): the orange eyebrow, the title and a lead on the
+  left, actions on the right that drop under the text when there's no room. It replaces the old centred
+  `SectionHeader` page by page.
+- **Car rails** (`car-rail.tsx`): cards in a row with the next one peeking (1,15 on a phone up to 5,3 from 1800 px),
+  autoplay every 2 s only while on screen, a 6 s pause after an arrow click, rewind at the ends, and the arrows and
+  „Вижте всички …" in the heading (on a phone, the arrows beside the eyebrow and the link under the rail).
 - **The catalog's filters** sit in one console above the results on tablets and desktops, and in a full-height sheet on
   phones, behind „Филтри" (decision 5). They apply as they change; the tab Активни / Приключили is not a filter.
 - **Carousels** keep advancing on their own, pause on hover and focus, and have a pause button („Спрете превъртането").
@@ -229,8 +236,9 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
 - **The shell is rebuilt** (17–18 November): the page ground is night, the header, phone top bar, bottom tabs, drawer,
   footer, Viber popup, back-to-top and notifications follow their boards, and the focus ring and the dark colour scheme
   are global. Pages not rebuilt yet look broken on the dark ground until their turn.
-- **Rebuilt so far:** the car card and the confirm dialog, then the catalog, `/vsichki-avtomobili`. Each has its parity
-  file in [parity/](parity/README.md).
+- **Rebuilt so far:** the car card and the confirm dialog, the catalog (`/vsichki-avtomobili`) and the home page. Each
+  has its parity file in [parity/](parity/README.md). The car page's related cars still use the old
+  `car-cards-carousel.tsx` until that page is rebuilt with `CarRail`.
 - **Montserrat** still loads, only for the /proces particle title. Remove it when /proces is rebuilt.
 - **Fonts:** four font files are preloaded once Montserrat goes (Manrope and Unbounded, Latin and Cyrillic), against two
   today. Measure LCP on a phone after the shell's rebuild.

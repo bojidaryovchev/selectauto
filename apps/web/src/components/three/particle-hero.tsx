@@ -10,7 +10,14 @@ import { isSoftwareRenderer } from "@/lib/webgl";
 
 /**
  * 3D particle hero — a Three.js scene where each GLB car model is sampled into a
- * point cloud; particles morph from one model to the next on a loop.
+ * point cloud; particles morph from one model to the next on a loop. The page's
+ * only glow (decision 8; boards `hm-home`, `hm-flow-hero`, `hm-home-states`).
+ *
+ * Layout: from 1024 px the scene spans the hero behind the copy, the camera
+ * offset putting the car in the right half, and the model's name sits at the
+ * hero's bottom right with the eyebrow and the dots. Below 1024 px the copy comes
+ * first and the scene follows as a full-width block, the name overlapping its
+ * foot.
  *
  * three is loaded dynamically inside the effect so it never lands in the server
  * bundle and the canvas only initialises in the browser.
@@ -43,8 +50,9 @@ export function ParticleHero() {
       );
       if (disposed) return;
 
+      // Up to 1023 px the scene is a block under the copy (see the layout note above); from 1024 px it spans the hero.
       const isMobile = () => window.innerWidth <= 768;
-      const isTablet = () => window.innerWidth > 768 && window.innerWidth <= 1100;
+      const isTablet = () => window.innerWidth > 768 && window.innerWidth <= 1023;
 
       // Which pre-baked point-cloud variant to fetch. Must line up with
       // PARTICLE_COUNT below and the TIERS in scripts/bake-hero-points.mjs.
@@ -91,17 +99,25 @@ export function ParticleHero() {
         100,
       );
 
+      // From 1024 px the canvas spans the hero and the view offset puts the car in its right half. Below, the canvas
+      // is a wide block under the copy (boards `hm-home-p`, `-t`; aspect 1170:640): the view is centred and the field
+      // of view narrowed so the car's side, 4,9 units long in the baked clouds, spans about 85% of the block's width
+      // as drawn. At the cameras' distances (8,9 and 7,6 units) that takes 20° and 22°, against 44° and 36° before.
+      // The particles are world-sized, so they zoom with the car and the cloud looks as dense as before.
       function applyResponsiveCamera() {
         const width = canvas!.clientWidth || hero!.clientWidth;
         const height = canvas!.clientHeight || hero!.clientHeight;
         camera.aspect = width / height;
         if (isMobile()) {
+          camera.fov = 20;
           camera.position.set(4.2, 1.8, 8.8);
-          camera.setViewOffset(width, height, -width * 0.02, 0, width, height);
+          camera.clearViewOffset();
         } else if (isTablet()) {
+          camera.fov = 22;
           camera.position.set(4.4, 2.1, 7.4);
-          camera.setViewOffset(width, height, -width * 0.1, 0, width, height);
+          camera.clearViewOffset();
         } else {
+          camera.fov = 36;
           camera.position.set(4.6, 2.2, 7.2);
           camera.setViewOffset(width, height, -width * 0.2, 0, width, height);
         }
@@ -455,94 +471,77 @@ export function ParticleHero() {
     };
   }, []);
 
+  // The glow behind the car, in the brand orange: centred on the car's half from 1024 px, under the copy below.
+  const glow =
+    "bg-[radial-gradient(80%_42%_at_56%_78%,color-mix(in_srgb,var(--color-or)_16%,transparent),transparent_72%)] lg:bg-[radial-gradient(46%_64%_at_76%_54%,color-mix(in_srgb,var(--color-or)_17%,transparent),transparent_72%)]";
+
   return (
-    <section
-      ref={heroRef}
-      className="relative isolate min-h-screen overflow-hidden bg-[radial-gradient(ellipse_at_70%_50%,#2a1a10_0%,#100a06_55%,#050302_100%)] text-white max-[900px]:min-h-svh max-[900px]:bg-[radial-gradient(ellipse_at_60%_80%,#3a1f0a_0%,#1a0d05_50%,#080403_100%)]"
-    >
-      <canvas
-        ref={canvasRef}
-        className="absolute inset-0 z-1 size-full [touch-action:pan-y] max-[900px]:top-[48%] max-[900px]:h-[52%]"
-      />
+    <section ref={heroRef} className={`relative isolate overflow-hidden border-b border-hair ${glow}`}>
+      {/* The copy. It overlays the scene from 1024 px, so only its own column takes the pointer: a drag on the rest
+          rotates the car. */}
+      <div className="sa-wrap pointer-events-none relative z-2 flex flex-col pt-7 sm:pt-[clamp(36px,6vw,64px)] lg:min-h-[clamp(620px,52vw,940px)] lg:justify-center lg:pt-[clamp(64px,6vw,120px)] lg:pb-[clamp(120px,9vw,170px)]">
+        <div className="pointer-events-auto flex w-full flex-col items-start gap-4 sm:gap-[clamp(20px,1.8vw,32px)] lg:w-[min(50%,820px)]">
+          {/* Visible hero slogan — deliberately a <p>, NOT a heading: the page's
+              single <h1> is the keyword-bearing sr-only heading in app/page.tsx
+              (this used to be a second <h1>, giving the homepage duplicate H1s). */}
+          <p className="font-display text-[40px] leading-[0.98] font-bold tracking-[-0.035em] text-balance sm:text-[clamp(44px,4.4vw+12px,108px)]">
+            Намираме <em className="sa-em">точните</em> автомобили за <em className="sa-em">точните</em> хора
+          </p>
 
-      {/* Vignette */}
-      <div className="pointer-events-none absolute inset-0 z-2 bg-[linear-gradient(90deg,rgba(0,0,0,0.62)_0%,rgba(0,0,0,0.28)_42%,rgba(0,0,0,0.05)_100%),radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.58)_100%)]" />
+          <p className="sa-lead max-w-[50ch] max-sm:text-base max-sm:leading-[1.55]">
+            SelectAuto не е просто каталог. Това е процес, опит и реално съдействие — от подбора и участието в търг до
+            логистиката и предаването на ключ.
+          </p>
 
-      {/* Copy — aligned to the shared 1280px page column (matches the header/nav
-          and every Container section) instead of a fixed viewport inset. */}
-      <div className="pointer-events-none relative z-5 mx-auto flex min-h-screen w-[min(100%-28px,1280px)] flex-col items-start justify-center pb-22.5 pt-[clamp(110px,12vh,150px)] *:pointer-events-auto max-[900px]:min-h-fit max-[900px]:justify-start max-[900px]:pb-0 max-[900px]:pt-[clamp(76px,13vh,128px)]">
-        {/* Visible hero slogan — deliberately a <p>, NOT a heading: the page's
-            single <h1> is the keyword-bearing sr-only heading in app/page.tsx
-            (this used to be a second <h1>, giving the homepage duplicate H1s). */}
-        <p className="mb-6 max-w-170 text-[clamp(46px,6vw,88px)] font-black leading-[0.95] tracking-[-2px] text-white max-[900px]:mb-4.5 max-[900px]:max-w-full max-[900px]:text-[clamp(34px,11vw,46px)] max-[900px]:leading-none max-[900px]:tracking-[-1.4px]">
-          Намираме{" "}
-          <span className="bg-linear-to-br from-brand-glow to-[#ffb37a] bg-clip-text text-transparent">
-            точните
-          </span>{" "}
-          автомобили за{" "}
-          <span className="bg-linear-to-br from-brand-glow to-[#ffb37a] bg-clip-text text-transparent">
-            точните
-          </span>{" "}
-          хора
-        </p>
-
-        <p className="mb-9 max-w-130 text-lg/relaxed text-white/70 max-[900px]:mb-5.5 max-[900px]:max-w-full max-[900px]:text-sm max-[900px]:text-white/85">
-          SelectAuto не е просто каталог. Това е процес, опит и реално
-          съдействие — от подбора и участието в търг до логистиката и предаването
-          на ключ.
-        </p>
-
-        <div className="flex flex-wrap items-center gap-4 max-[900px]:mt-1 max-[900px]:w-full max-[900px]:flex-col max-[900px]:gap-3.5">
-          <LinkButton
-            href="/vsichki-avtomobili"
-            rippleTheme="light"
-            className="inline-flex min-h-13.5 items-center justify-center rounded-full bg-linear-to-br from-brand-glow to-[#e86c20] px-7.5 text-[15px] font-extrabold text-white shadow-[0_12px_40px_rgba(232,108,32,0.4)] transition-transform duration-200 hover:-translate-y-0.75 max-[900px]:w-full"
-          >
-            Разгледай автомобилите
-          </LinkButton>
-          <Button
-            onClick={() => openInquiry()}
-            rippleTheme="light"
-            className="inline-flex min-h-13.5 items-center justify-center rounded-full border border-white/18 bg-white/8 px-7.5 text-[15px] font-extrabold text-white backdrop-blur-md transition-colors hover:bg-white/[0.14] max-[900px]:w-full"
-          >
-            Направете запитване
-          </Button>
-        </div>
-      </div>
-
-      {/* Model label — pinned to the right edge of the shared page column. */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-14.5 z-5 max-[900px]:bottom-5 max-[900px]:z-8">
-        <div className="mx-auto w-[min(100%-28px,1280px)] text-right">
-          <div className="mb-2 text-[11px] font-extrabold uppercase tracking-[3px] text-white/40 max-[900px]:hidden">
-            Подбор · Внос · Доставка
-          </div>
-          <div
-            className="bg-linear-to-br from-brand-glow to-[#ffb37a] bg-clip-text text-[56px] font-black leading-none tracking-[-1px] text-transparent transition-opacity duration-300 max-[900px]:text-[36px] max-[900px]:tracking-[-0.5px]"
-            style={{ opacity: infoVisible ? 1 : 0 }}
-          >
-            {modelName}
-          </div>
-          <div
-            className="mt-3 text-[13px] font-semibold text-white/50 transition-opacity duration-300 max-[900px]:mt-1 max-[900px]:text-[11px] max-[900px]:text-white/65"
-            style={{ opacity: infoVisible ? 1 : 0 }}
-          >
-            {modelMeta}
+          <div className="mt-1 flex flex-col gap-3 self-stretch sm:mt-2 sm:flex-row sm:flex-wrap sm:self-auto">
+            <LinkButton
+              href="/vsichki-avtomobili"
+              variant="pri"
+              size="xl"
+              className="max-sm:h-control-lg max-sm:text-[15px]"
+            >
+              Разгледайте автомобилите
+            </LinkButton>
+            <Button
+              variant="sec"
+              size="xl"
+              onClick={() => openInquiry()}
+              className="max-sm:h-control-lg max-sm:text-[15px]"
+            >
+              Направете запитване
+            </Button>
           </div>
         </div>
       </div>
 
-      {/* Progress dots */}
-      <div className="pointer-events-none absolute bottom-7.5 left-1/2 z-5 flex -translate-x-1/2 gap-3 max-[900px]:hidden">
-        {HERO_MODELS.map((_, i) => (
-          <div
-            key={i}
-            className={`h-0.75 w-8 rounded-sm transition-colors duration-300 ${
-              activeDot === i
-                ? "bg-linear-to-r from-brand-glow to-[#ffb37a]"
-                : "bg-white/15"
-            }`}
-          />
-        ))}
+      {/* The scene: a full-width block under the copy up to 1023 px, behind the whole hero from 1024 px. */}
+      <div className="relative aspect-1170/640 sm:mt-[clamp(8px,2vw,24px)] lg:absolute lg:inset-0 lg:z-1 lg:mt-0 lg:aspect-auto">
+        <canvas ref={canvasRef} className="absolute inset-0 size-full touch-pan-y" />
+      </div>
+
+      {/* The model's name: at the hero's bottom right from 1024 px, over the scene's foot below. */}
+      <div className="sa-wrap pointer-events-none relative z-2 -mt-15 flex flex-col items-end pb-[clamp(24px,4vw,40px)] text-right sm:-mt-[clamp(40px,8vw,72px)] lg:absolute lg:inset-x-0 lg:bottom-[clamp(32px,3.2vw,60px)] lg:mt-0 lg:pb-0">
+        <span className="mb-2 hidden text-[13px] leading-[1.2] font-bold tracking-[0.04em] text-tx3 lg:block">
+          Подбор · Внос · Доставка
+        </span>
+        <b
+          className="font-display text-4xl leading-none font-bold tracking-[-0.01em] transition-opacity duration-300 ease-out motion-reduce:transition-none lg:text-[clamp(36px,3.4vw,64px)]"
+          style={{ opacity: infoVisible ? 1 : 0 }}
+        >
+          {modelName}
+        </b>
+        <span
+          className="mt-1.5 text-[13px] leading-[1.4] font-semibold text-tx2 transition-opacity duration-300 ease-out motion-reduce:transition-none sm:text-sm"
+          style={{ opacity: infoVisible ? 1 : 0 }}
+        >
+          {modelMeta}
+        </span>
+        {/* Progress dots: decoration, from 1024 px. */}
+        <span className="mt-4 hidden gap-2.5 lg:flex" aria-hidden="true">
+          {HERO_MODELS.map((m, i) => (
+            <i key={m.name} className={`block h-0.75 w-8 rounded-xs ${activeDot === i ? "bg-or" : "bg-hair2"}`} />
+          ))}
+        </span>
       </div>
     </section>
   );

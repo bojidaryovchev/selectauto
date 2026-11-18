@@ -1,23 +1,12 @@
-/** Balance-scales glyph (24×24). Uses currentColor. Replaces the ⚖️ emoji on the
- *  "Стратегия и преценка" pillar of the "Защо SelectAuto" home section. */
+/** Lucide „scale" as drawn on the boards (kit/icons.json, stroke 1.8). Colour follows `currentColor`. */
 export function ScaleIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
-      <path
-        d="M12 3v17M6 20h12M5 7h14M8 7 5 14M5 7 2 14M16 7l3 7M16 7l3 7"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M2 14a3 3 0 0 0 6 0M16 14a3 3 0 0 0 6 0"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className}>
+      <path d="M12 3v18" />
+      <path d="m19 8 3 8a5 5 0 0 1-6 0zV7" />
+      <path d="M3 7h1a17 17 0 0 0 8-2 17 17 0 0 0 8 2h1" />
+      <path d="m5 8 3 8a5 5 0 0 1-6 0zV7" />
+      <path d="M7 21h10" />
     </svg>
   );
 }

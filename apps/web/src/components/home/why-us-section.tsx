@@ -1,38 +1,37 @@
-import { Container, Reveal, SectionHeader } from "@/components/common";
+import { Reveal, SectionHeading } from "@/components/common";
 import { PILLARS } from "@/data/home";
 
-/** "Защо SelectAuto" — three-pillar value proposition. */
+/** „Защо SelectAuto" — three pillars (board `hm-home`). On a phone each icon sits beside its title. */
 export function WhyUsSection() {
   return (
-    <section className="py-19.5 max-md:py-14">
-      <Container>
-        <SectionHeader
-          eyebrow="Защо SelectAuto"
-          title="Ние не просто продаваме автомобили. Ние управляваме целия процес."
-          subtitle="В нашия бранш резултатът идва от правилни решения, опит и добра преценка. Затова работим така, че клиентът да получи не просто кола, а увереност, че е стигнал до правилния избор."
-        />
+    <section className="sa-band" aria-labelledby="hm-why-t">
+      <div className="sa-wrap">
+        <Reveal>
+          <SectionHeading
+            eyebrow="Защо SelectAuto"
+            title="Ние не просто продаваме автомобили. Ние управляваме целия процес."
+            titleId="hm-why-t"
+            lead="В нашия бранш резултатът идва от правилни решения, опит и добра преценка. Затова работим така, че клиентът да получи не просто кола, а увереност, че е стигнал до правилния избор."
+          />
+        </Reveal>
 
-        <div className="grid grid-cols-3 gap-6 max-[1100px]:grid-cols-1">
+        <div className="sa-grid sa-grid--3">
           {PILLARS.map((pillar, i) => {
             const Icon = pillar.icon;
             return (
-            <Reveal key={pillar.title} delay={0.08 * (i + 1)}>
-              <div className="h-full rounded-card border border-line bg-white px-6 py-7 text-left shadow-card">
-                <div className="mb-4.5 flex size-15 items-center justify-center rounded-[18px] bg-brand/12 text-brand-dark">
-                  <Icon className="size-7" />
-                </div>
-                <h3 className="mb-2.5 text-[23px] font-black text-ink">
-                  {pillar.title}
-                </h3>
-                <p className="m-0 text-[15px] leading-[1.75] text-[#555]">
-                  {pillar.text}
-                </p>
-              </div>
-            </Reveal>
+              <Reveal key={pillar.title} delay={0.08 * (i + 1)} className="flex">
+                <article className="sa-pnl grid flex-1 grid-cols-[44px_minmax(0,1fr)] items-center gap-x-3.5 gap-y-3 p-[clamp(24px,2.2vw,40px)] sm:flex sm:flex-col sm:items-start sm:gap-3.5">
+                  <span className="sa-pnl__ic size-11 rounded-[14px] sm:mb-1.5 sm:size-14 [&_svg]:size-6 sm:[&_svg]:size-7">
+                    <Icon />
+                  </span>
+                  <h3 className="type-h3">{pillar.title}</h3>
+                  <p className="sa-p col-span-full">{pillar.text}</p>
+                </article>
+              </Reveal>
             );
           })}
         </div>
-      </Container>
+      </div>
     </section>
   );
 }

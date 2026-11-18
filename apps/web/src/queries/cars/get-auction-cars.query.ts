@@ -6,13 +6,15 @@ import { carListingToView } from "@/lib/car-mapper";
 import { getDb, schema } from "@/lib/db";
 import type { CarView } from "@/types/car.type";
 import { getMakeIndex } from "./get-make-index.query";
+import { passengerCarsOnly } from "./passenger-cars";
 
 const DEFAULT_LIMIT = 6;
 
 /**
  * Auction car listings for the homepage: active auction listings (i.e. not a
- * valid buy-now) that have an image — like the live site, auction cards without
- * a photo are skipped rather than shown with a placeholder.
+ * valid buy-now) of passenger cars that have an image — like the live site,
+ * auction cards without a photo are skipped rather than shown with a placeholder,
+ * and (owner decision 14) no trailer, motorcycle, bus or van reaches the rail.
  *
  * Reads the `car_listings` projection (one row per physical car, already
  * active-only and pre-joined — see docs/05-projection-tables-car-listings.md) the same way the
@@ -47,6 +49,7 @@ export async function getAuctionCars(limit = DEFAULT_LIMIT): Promise<CarView[]> 
           // positive price. Mirrors the catalog's "auction" channel predicate.
           or(ne(cl.buyNow, true), sql`${cl.buyNow} IS NULL`, sql`${cl.effectivePrice} IS NULL`),
           isNotNull(cl.imageUrl),
+          passengerCarsOnly(),
         ),
       )
       .orderBy(desc(cl.sortId))

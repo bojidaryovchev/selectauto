@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Ripple } from "@/components/common";
+import { LinkButton } from "@/components/common";
 import { ArrowRightIcon } from "@/components/icons";
 import { brandHubPath } from "@/lib/car-slug";
 import { getCarBrands } from "@/queries/cars";
@@ -9,15 +9,13 @@ import { BRANDS } from "@/data/home";
 const CATALOG_PATH = "/vsichki-avtomobili";
 
 /**
- * Popular-brands grid — ports the `selectauto_popular_brands` plugin's
- * `sab-brands-*` markup and CSS: a header with a navy title + "Виж всички →"
- * link, then a flex grid (6 per row → 5 → 4 → 2 on mobile) of cards with grayscale logos
- * that turn full-colour on hover.
+ * Popular-brands grid (board `hm-home`): a „Популярни марки" heading with „Вижте всички" to the catalog, then 18 make
+ * tiles: the logo on a light plate in its own colours (decision 8: makes always show their logo) and the name. The
+ * tiles fill columns of at least 176 px (9 across at 1920 px); a phone shows 3 per row.
  *
- * The flex item widths use the plugin's exact `calc()` formulas, expressed as
- * arbitrary Tailwind values with responsive variants.
+ * The logos are local files, served through next/image, so each arrives at the plate's size instead of the full PNG.
  *
- * Each card links to that make's **brand hub** (`/avtomobili/marka/{make}`), NOT
+ * Each tile links to that make's **brand hub** (`/avtomobili/marka/{make}`), NOT
  * to a `?brand=<externalId>` catalog filter. The hubs are the durable ranking
  * asset — 36 of the domain's 56 ranking keywords land on `/avtomobili/marka/*`
  * (2026-08-18 measurement) — whereas the faceted catalog URLs this grid used to
@@ -49,50 +47,31 @@ export async function BrandsGrid() {
   };
 
   return (
-    <section className="py-14">
-      <div className="mx-auto w-[min(100%-28px,1280px)]">
-        {/* sab-brands-head */}
-        <div className="mb-7 flex items-center justify-between gap-5 max-[991px]:mb-5.5">
-          <h2 className="m-0 text-[52px] font-extrabold leading-[1.04] tracking-[-0.03em] text-[#0b1736] max-[1600px]:text-[46px] max-[991px]:text-[34px]">
-            Популярни марки
-          </h2>
-          <Link
-            href="/vsichki-avtomobili"
-            className="inline-flex items-center gap-2.5 whitespace-nowrap text-lg font-bold text-[#c86116] transition-[opacity,transform] duration-200 hover:translate-x-0.5 hover:opacity-90 max-[991px]:text-base"
-          >
-            <span>Виж всички</span>
-            <ArrowRightIcon className="size-5.5 flex-[0_0_22px]" />
-          </Link>
-        </div>
+    <div>
+      <div className="sa-between mb-5">
+        <h3 className="type-h3">Популярни марки</h3>
+        <LinkButton href={CATALOG_PATH} variant="txt" size="md">
+          Вижте всички
+          <ArrowRightIcon />
+        </LinkButton>
+      </div>
 
-        {/* sab-brands-list — flex wrap, widths per breakpoint */}
-        <div className="flex w-full flex-wrap gap-4.5 max-[991px]:gap-3.5">
-          {BRANDS.map((brand) => (
+      <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-[repeat(auto-fill,minmax(176px,1fr))] sm:gap-4">
+        {BRANDS.map((brand) => (
+          <li key={brand.slug} className="flex min-w-0">
             <Link
-              key={brand.slug}
               href={hrefFor(brand.name)}
               aria-label={brand.name}
-              className="group block min-w-0 basis-[calc((100%-90px)/6)] max-[1600px]:basis-[calc((100%-72px)/5)] max-[1280px]:basis-[calc((100%-54px)/4)] max-[991px]:basis-[calc((100%-14px)/2)]"
+              className="flex flex-1 flex-col items-center justify-center gap-2.5 rounded-lg border border-hair bg-s2 px-1.5 pt-3.5 pb-3 text-center text-tx transition-colors duration-150 ease-out hover:border-or hover:bg-s3 motion-reduce:transition-none sm:min-h-43 sm:gap-3.5 sm:px-3 sm:pt-5.5 sm:pb-4.5"
             >
-              <div className="relative flex h-49 flex-col items-center justify-center overflow-hidden rounded-[22px] border border-[#d8e0ea] bg-white px-3.5 pb-4.5 pt-5.5 text-center shadow-[0_1px_2px_rgba(15,23,42,0.03)] transition-[border-color,box-shadow,transform] duration-200 group-hover:-translate-y-0.75 group-hover:border-[#c86116] group-hover:shadow-[0_14px_28px_rgba(20,34,66,0.08)] max-[1280px]:h-46.5">
-                <div className="mb-4 flex h-17 w-full flex-[0_0_auto] items-center justify-center">
-                  <Image
-                    src={`/brand-logos/${brand.slug}.png`}
-                    alt={brand.name}
-                    width={84}
-                    height={48}
-                    className="block max-h-12 max-w-21 object-contain opacity-[0.72] grayscale transition-[filter,opacity,transform] duration-200 group-hover:scale-[1.04] group-hover:opacity-100 group-hover:grayscale-0"
-                  />
-                </div>
-                <div className="w-full wrap-break-word text-lg font-extrabold leading-[1.28] text-[#2c3b57] transition-colors duration-200 group-hover:text-[#c86116] max-[1280px]:text-base">
-                  {brand.name}
-                </div>
-                <Ripple theme="dark" />
-              </div>
+              <span className="sa-plate sa-plate--xl [--ps:48px] sm:[--ps:88px]">
+                <Image src={`/brand-logos/${brand.slug}.png`} alt={brand.name} width={70} height={70} />
+              </span>
+              <span className="text-[13px] leading-tight font-extrabold wrap-anywhere sm:text-base">{brand.name}</span>
             </Link>
-          ))}
-        </div>
-      </div>
-    </section>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

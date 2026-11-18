@@ -145,17 +145,25 @@ body {
   }
 }
 
-/* Scroll-reveal: elements start hidden, `.is-visible` fades them in. */
+/* Scroll-reveal: elements start hidden, `.is-visible` fades them in. 300 ms, ease-out, and nothing moves under
+   reduced motion (design README, motion): the content is simply there. */
 .sa-reveal {
   opacity: 0;
-  transform: translateY(26px);
+  transform: translateY(16px);
   transition:
-    opacity 0.8s ease,
-    transform 0.8s ease;
+    opacity 0.3s ease-out,
+    transform 0.3s ease-out;
 }
 .sa-reveal.is-visible {
   opacity: 1;
   transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sa-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
 }
 
 /* Inquiry-modal step fade-in, ported from theme.css `saFadeIn`. */
