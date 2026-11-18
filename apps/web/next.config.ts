@@ -85,9 +85,10 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: { bodySizeLimit: "4.5mb" },
   },
-  // next/image now serves ONLY a handful of LOCAL, immutable static assets — the
-  // header/footer logo (/logo.png) and the brand-logo grid (/brand-logos/*.png);
-  // the inquiry hero is rendered `unoptimized`. Every auction/car photo is served
+  // next/image now serves ONLY LOCAL, immutable static assets — the header/footer
+  // logo (/logo.png); the inquiry hero is rendered `unoptimized`, and the make logos
+  // (/brand-logos) are small files at plate size, served as they are through a
+  // plain <img>. Every auction/car photo is served
   // DIRECTLY from its source CDN through a plain <img> (no optimizer), so no
   // remote host needs whitelisting here anymore and the runaway per-car
   // transformation cost that dominated the Vercel bill is gone.

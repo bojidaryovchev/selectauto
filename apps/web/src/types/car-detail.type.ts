@@ -138,7 +138,7 @@ export type CarDetail = {
   title: string;
   /** Resolved brand name (from manufacturers), when available — for JSON-LD. */
   brand?: string;
-  /** Resolved brand logo SVG URL (from manufacturers.image_url), when available. */
+  /** The make's logo URL (`makeLogo`: the site's own file, else manufacturers.image_url), when there is one. */
   brandLogo?: string;
   /** Resolved model name (from vehicle_models), when available — for JSON-LD. */
   model?: string;

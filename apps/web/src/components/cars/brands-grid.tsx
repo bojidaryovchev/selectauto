@@ -1,8 +1,8 @@
-import Image from "next/image";
 import Link from "next/link";
 import { LinkButton } from "@/components/common";
 import { ArrowRightIcon } from "@/components/icons";
 import { brandHubPath } from "@/lib/car-slug";
+import { makeLogo } from "@/lib/make-logo";
 import { getCarBrands } from "@/queries/cars";
 import { BRANDS } from "@/data/home";
 
@@ -13,7 +13,8 @@ const CATALOG_PATH = "/vsichki-avtomobili";
  * tiles: the logo on a light plate in its own colours (decision 8: makes always show their logo) and the name. The
  * tiles fill columns of at least 176 px (9 across at 1920 px); a phone shows 3 per row.
  *
- * The logos are local files, served through next/image, so each arrives at the plate's size instead of the full PNG.
+ * The logos are the site's own files (`makeLogo`), the same as on every other plate: small SVGs and rasters of at most
+ * 256 px, so they load as they are (next/image refuses SVG).
  *
  * Each tile links to that make's **brand hub** (`/avtomobili/marka/{make}`), NOT
  * to a `?brand=<externalId>` catalog filter. The hubs are the durable ranking
@@ -58,14 +59,22 @@ export async function BrandsGrid() {
 
       <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-[repeat(auto-fill,minmax(176px,1fr))] sm:gap-4">
         {BRANDS.map((brand) => (
-          <li key={brand.slug} className="flex min-w-0">
+          <li key={brand.id} className="flex min-w-0">
             <Link
               href={hrefFor(brand.name)}
               aria-label={brand.name}
               className="flex flex-1 flex-col items-center justify-center gap-2.5 rounded-lg border border-hair bg-s2 px-1.5 pt-3.5 pb-3 text-center text-tx transition-colors duration-150 ease-out hover:border-or hover:bg-s3 motion-reduce:transition-none sm:min-h-43 sm:gap-3.5 sm:px-3 sm:pt-5.5 sm:pb-4.5"
             >
               <span className="sa-plate sa-plate--xl [--ps:48px] sm:[--ps:88px]">
-                <Image src={`/brand-logos/${brand.slug}.png`} alt={brand.name} width={70} height={70} />
+                {/* eslint-disable-next-line @next/next/no-img-element -- a small local SVG/WebP, already at plate size */}
+                <img
+                  src={makeLogo(brand.id) ?? undefined}
+                  alt={brand.name}
+                  width={70}
+                  height={70}
+                  loading="lazy"
+                  decoding="async"
+                />
               </span>
               <span className="text-[13px] leading-tight font-extrabold wrap-anywhere sm:text-base">{brand.name}</span>
             </Link>

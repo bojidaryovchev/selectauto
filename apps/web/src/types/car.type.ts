@@ -44,8 +44,8 @@ export type CarView = {
   sortId?: number;
   /**
    * The make, for the card's logo plate: its name (alt text, and two letters when there is no logo) and its logo URL
-   * from `manufacturers.image_url`. Absent when the listing has no make, or the caller had no make index (the static
-   * FALLBACK_* arrays), and the card then shows no plate.
+   * (`makeLogo`: the site's own file, else `manufacturers.image_url`). Absent when the listing has no make, or the
+   * caller had no make index (the static FALLBACK_* arrays), and the card then shows no plate.
    */
   make?: { name: string; logo: string | null };
   /** Lot number → "Търг №" row. */

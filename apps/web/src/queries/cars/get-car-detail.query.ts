@@ -5,6 +5,7 @@ import { carDetailFromRows } from "@/lib/car-detail-mapper";
 import { carListingToView } from "@/lib/car-mapper";
 import { CACHE_TAGS, carCacheTag } from "@/lib/cache-tags";
 import { getDb, schema } from "@/lib/db";
+import { makeLogo } from "@/lib/make-logo";
 import { getMakeIndex } from "./get-make-index.query";
 import { getModelYearSoldStat } from "./get-model-sold-prices.query";
 import type { CarDetail, CarDetailPayload } from "@/types/car-detail.type";
@@ -235,8 +236,11 @@ async function getCarDetailCached(carId: number): Promise<CarDetail | null> {
 export const getCarDetail = cache(async (carId: number): Promise<CarDetailPayload | null> => {
   if (!Number.isInteger(carId) || carId <= 0) return null;
 
-  const detail = await getCarDetailCached(carId);
-  if (!detail) return null;
+  const cached = await getCarDetailCached(carId);
+  if (!cached) return null;
+  // The make's logo is the site's own file (`makeLogo`), resolved here: the cached entry keeps AuctionsAPI's link,
+  // so a changed file shows with the next deploy rather than when ~945k entries expire.
+  const detail = { ...cached, brandLogo: makeLogo(cached.brandExternalId, cached.brandLogo) ?? undefined };
 
   // The mapper copies the listing's reference ids onto the detail, so the
   // carousel needs no extra read to find its pool keys.

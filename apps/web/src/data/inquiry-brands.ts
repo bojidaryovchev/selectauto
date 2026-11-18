@@ -25,24 +25,25 @@ export const INQUIRY_BRANDS: Record<string, string[]> = {
 };
 
 /** Each make's logo for its plate on the make step (boards `ac-inq-desk`, `ac-inq-quiz`): the site's own files in
- *  `public/brand-logos`, the same the home page's make grid shows. */
+ *  `public/brand-logos`, the same every plate shows. Written out rather than read from `data/make-logos.ts`, which
+ *  would bring every make's entry into the dialog's client bundle; `tests/make-logos.test.mts` keeps the two equal. */
 export const INQUIRY_BRAND_LOGOS: Record<string, string> = {
-  BMW: "/brand-logos/bmw.png",
-  Audi: "/brand-logos/audi.png",
-  Mercedes: "/brand-logos/mercedes-benz.png",
-  Toyota: "/brand-logos/toyota.png",
-  Honda: "/brand-logos/honda.png",
-  Ford: "/brand-logos/ford.png",
-  Volkswagen: "/brand-logos/volkswagen.png",
-  Nissan: "/brand-logos/nissan.png",
-  Mazda: "/brand-logos/mazda.png",
-  Hyundai: "/brand-logos/hyundai.png",
-  KIA: "/brand-logos/kia.png",
-  Lexus: "/brand-logos/lexus.png",
-  Subaru: "/brand-logos/subaru.png",
-  Tesla: "/brand-logos/tesla.png",
-  Porsche: "/brand-logos/porsche.png",
-  Jeep: "/brand-logos/jeep.png",
+  BMW: "/brand-logos/bmw.svg",
+  Audi: "/brand-logos/audi.svg",
+  Mercedes: "/brand-logos/mercedes-benz.svg",
+  Toyota: "/brand-logos/toyota.svg",
+  Honda: "/brand-logos/honda.svg",
+  Ford: "/brand-logos/ford.svg",
+  Volkswagen: "/brand-logos/volkswagen.webp",
+  Nissan: "/brand-logos/nissan.webp",
+  Mazda: "/brand-logos/mazda.webp",
+  Hyundai: "/brand-logos/hyundai.svg",
+  KIA: "/brand-logos/kia.svg",
+  Lexus: "/brand-logos/lexus.svg",
+  Subaru: "/brand-logos/subaru.svg",
+  Tesla: "/brand-logos/tesla.svg",
+  Porsche: "/brand-logos/porsche.svg",
+  Jeep: "/brand-logos/jeep.svg",
 };
 
 export const INQUIRY_BUDGETS = ["15-25 хил. $.", "25-35 хил. $.", "35-50 хил. $.", "Над 50 хил. $."];

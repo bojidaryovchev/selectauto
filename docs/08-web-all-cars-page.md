@@ -208,11 +208,11 @@ Car card images are served **directly from the source CDN** through a plain
   an `<Image unoptimized>` would be the same bytes with extra weight. The
   detail-page gallery (`car-gallery.tsx`, sourced from `raw_json`) is likewise a
   plain `<img>`.
-- **`next/image` is now LOCAL-only.** It optimizes only a handful of immutable
-  **local static assets** — the header/footer logo (`/logo.png`) and the brand-logo
-  grid (`/brand-logos/*.png`); the inquiry hero is rendered `unoptimized`. Every
-  dynamic/remote image (car cards, the detail gallery, remote brand/insurer logos)
-  uses a plain `<img>`. `next.config.ts` keeps `minimumCacheTTL: 2678400` (31 days),
+- **`next/image` is now LOCAL-only.** It optimizes only immutable **local static
+  assets** — the header/footer logo (`/logo.png`); the inquiry hero is rendered
+  `unoptimized`. The make logos (`/brand-logos`, see `docs/make-logos.md`) are small
+  files at plate size and every dynamic/remote image (car cards, the detail gallery,
+  insurer logos) uses a plain `<img>`. `next.config.ts` keeps `minimumCacheTTL: 2678400` (31 days),
   `deviceSizes: [640,750,828,1080,1920]` + `imageSizes: [96,128,256]` for those
   local variants; with no `remotePatterns`, the runaway per-car transformation cost
   that dominated the Vercel bill is gone.

@@ -12,6 +12,7 @@ import {
 } from "@/lib/car-labels";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { getDb, schema } from "@/lib/db";
+import { makeLogo } from "@/lib/make-logo";
 import type { CarFilters, FacetOption, FacetOptions } from "@/types/car-filters.type";
 
 const cf = schema.carListingFacets;
@@ -137,7 +138,10 @@ export async function getCarFacets(filters: CarFilters = {}): Promise<FacetOptio
       computeCarFacets(filters.status === "past" ? "past" : "active"),
       hasSelectiveFilter(filters) ? computeLiveFacetCounts(filters) : Promise.resolve(null),
     ]);
-    return withSelection(live ? overlayCounts(base, live) : base, filters);
+    const facets = await withSelection(live ? overlayCounts(base, live) : base, filters);
+    // The make dropdown's logos are the site's own files (`makeLogo`), resolved outside the cached base, so a changed
+    // file shows with the next deploy rather than when the base expires. This covers a make `withSelection` added too.
+    return { ...facets, brands: facets.brands.map((b) => ({ ...b, logo: makeLogo(Number(b.value), b.logo) })) };
   } catch (error) {
     // Never hard-fail a render on facets (it's the heaviest query set). An empty
     // facet set degrades the filter dropdowns gracefully; the catalog still works.
@@ -239,8 +243,9 @@ async function computeCarFacets(tk: FacetTableKind): Promise<FacetOptions> {
   // full-projection aggregates). Intermediate row shapes match the old query, so
   // the label/ordering/grouping logic below is unchanged.
   const [brandRows, modelRows, colorRows, driveRows, fuelRows, condRows, yearRows, vtRows, btRows] = await Promise.all([
-    // Brands that appear in the catalog, with their display name and logo (summary
-    // id → manufacturers; the join drops ids with no manufacturers row, as before).
+    // Brands that appear in the catalog, with their display name and AuctionsAPI's logo
+    // link (summary id → manufacturers; the join drops ids with no manufacturers row, as
+    // before). `getCarFacets` swaps in the site's own logo.
     db
       .select({
         value: schema.manufacturers.externalId,

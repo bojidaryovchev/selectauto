@@ -121,26 +121,26 @@ export const FALLBACK_AUCTION_CARS: CarView[] = [
   },
 ];
 
-/** 18 popular brands, each with a logo under /public/brand-logos. */
-export const BRANDS: { name: string; slug: string }[] = [
-  { name: "Mercedes-Benz", slug: "mercedes-benz" },
-  { name: "BMW", slug: "bmw" },
-  { name: "Audi", slug: "audi" },
-  { name: "Toyota", slug: "toyota" },
-  { name: "Honda", slug: "honda" },
-  { name: "Volkswagen", slug: "volkswagen" },
-  { name: "Jeep", slug: "jeep" },
-  { name: "Ford", slug: "ford" },
-  { name: "Tesla", slug: "tesla" },
-  { name: "Porsche", slug: "porsche" },
-  { name: "Mazda", slug: "mazda" },
-  { name: "Volvo", slug: "volvo" },
-  { name: "Hyundai", slug: "hyundai" },
-  { name: "Kia", slug: "kia" },
-  { name: "Lexus", slug: "lexus" },
-  { name: "Subaru", slug: "subaru" },
-  { name: "Nissan", slug: "nissan" },
-  { name: "Maserati", slug: "maserati" },
+/** 18 popular brands, by their `manufacturers.external_id`; each one's logo is in `data/make-logos.ts`. */
+export const BRANDS: { name: string; id: number }[] = [
+  { name: "Mercedes-Benz", id: 88 },
+  { name: "BMW", id: 16 },
+  { name: "Audi", id: 9 },
+  { name: "Toyota", id: 140 },
+  { name: "Honda", id: 56 },
+  { name: "Volkswagen", id: 147 },
+  { name: "Jeep", id: 68 },
+  { name: "Ford", id: 48 },
+  { name: "Tesla", id: 187 },
+  { name: "Porsche", id: 110 },
+  { name: "Mazda", id: 85 },
+  { name: "Volvo", id: 148 },
+  { name: "Hyundai", id: 58 },
+  { name: "Kia", id: 70 },
+  { name: "Lexus", id: 76 },
+  { name: "Subaru", id: 132 },
+  { name: "Nissan", id: 99 },
+  { name: "Maserati", id: 83 },
 ];
 
 /** Three pillars in the "Why SelectAuto" section. Text verbatim from the site. */
