@@ -124,6 +124,19 @@
   .cd-exp__b{padding:0 clamp(18px,1.6vw,28px) clamp(18px,1.6vw,28px)}
   .cd-exp:not(.is-open) .cd-exp__b{display:none}
   .cd-exp.cd-exp--ph .cd-exp__b{display:block}
+  /* Owner point 12 (18.11.2026, FoldOnPhone): on a phone the long Korean sections fold behind their titles and counts,
+     with the boards' .cd-exp--ph header. From 640 px they are the plain panels they were: the body box is
+     `display: contents`, so the heading and the content lay out exactly as before. */
+  .cd-fold__ph{display:none}
+  .cd-fold__b{display:contents}
+  @media (max-width:639.98px){
+    .cd-fold{padding:0}
+    .cd-fold__ph{display:block}
+    .cd-fold__b{display:block;padding:0 18px 18px}
+    .cd-fold__b>.sa-pnl__h{display:none}
+    .cd-fold:not(.is-open) .cd-fold__b{display:none}
+    .cd-fold.is-open .cd-fold__ph button svg{transform:rotate(180deg);color:var(--color-ortx)}
+  }
   .cd-exp.cd-exp--ph .cd-exp__h button svg{display:none}
   @media (max-width:639.98px){.cd-exp.cd-exp--ph:not(.is-open) .cd-exp__b{display:none}.cd-exp.cd-exp--ph .cd-exp__h button svg{display:block}}
   .cd-rel .sa-sh{flex-wrap:nowrap;align-items:center}

@@ -1,4 +1,5 @@
 import type { CarFactoryOptions as CarFactoryOptionsData } from "@/types/car-detail.type";
+import { FoldOnPhone } from "./fold-on-phone";
 
 /** A chip list of option names under a small sub-heading. */
 function OptionGroup({ title, names }: { title: string; names: string[] }) {
@@ -21,7 +22,7 @@ function OptionGroup({ title, names }: { title: string; names: string[] }) {
  * ENCAR factory options — „Фабрични пакети" with the total (boards `cd-korea*`). Standard equipment
  * (`details.options.standard[]` decoded via the korea-options dictionary, grouped by section) plus the dealer/priced
  * extras (`options_extra[]`, already English) under „Допълнителни пакети". Present on ~71% of active ENCAR lots.
- * Renders nothing when neither list has content.
+ * Folds behind its title on a phone (owner point 12). Renders nothing when neither list has content.
  */
 export function CarFactoryOptions({ options }: { options: CarFactoryOptionsData }) {
   const { standard, extras } = options;
@@ -29,18 +30,13 @@ export function CarFactoryOptions({ options }: { options: CarFactoryOptionsData 
   if (total === 0) return null;
 
   return (
-    <section className="sa-pnl">
-      <div className="sa-pnl__h">
-        <h2 className="sa-pnl__t">
-          Фабрични пакети <small className="text-sm font-bold text-tx3">({total})</small>
-        </h2>
-      </div>
+    <FoldOnPhone title="Фабрични пакети" count={total}>
       <div className="cd-opts">
         {standard.map((g) => (
           <OptionGroup key={g.section} title={g.section} names={g.names} />
         ))}
         {extras.length > 0 ? <OptionGroup title="Допълнителни пакети" names={extras.map((e) => e.name)} /> : null}
       </div>
-    </section>
+    </FoldOnPhone>
   );
 }

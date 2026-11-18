@@ -1,5 +1,6 @@
 import { CircleCheckIcon, TriangleAlertIcon } from "@/components/icons";
 import type { CarInspection as CarInspectionData } from "@/types/car-detail.type";
+import { FoldOnPhone } from "./fold-on-phone";
 
 /** Whether the inspection carries anything to show (the page also asks, to point the VIN card's Korean line here). */
 export function hasInspectionData({ summary, mechanics, panels }: CarInspectionData): boolean {
@@ -10,17 +11,15 @@ export function hasInspectionData({ summary, mechanics, panels }: CarInspectionD
  * ENCAR state-inspection block (`details.inspect` + `inspect.outer`) — „Технически преглед" (boards `cd-korea-insp`,
  * `cd-states`). Three parts: the accident-summary verdicts (a tick for „Не", a warning for „Да"), the body-panel
  * repair list (or „Непокътната"), and the mechanical checks (each with a green or amber dot and its state). Present on
- * ~35% of active ENCAR lots. Renders nothing when the inspection carries no data.
+ * ~35% of active ENCAR lots. Folds behind its title on a phone (owner point 12). Renders nothing when the inspection
+ * carries no data.
  */
 export function CarInspection({ inspection, id }: { inspection: CarInspectionData; id?: string }) {
   if (!hasInspectionData(inspection)) return null;
   const { summary, mechanics, panels } = inspection;
 
   return (
-    <section id={id} className="sa-pnl scroll-mt-[calc(var(--header-h)+16px)]">
-      <div className="sa-pnl__h">
-        <h2 className="sa-pnl__t">Технически преглед</h2>
-      </div>
+    <FoldOnPhone id={id} title="Технически преглед" className="scroll-mt-[calc(var(--header-h)+16px)]">
 
       {summary.length > 0 ? (
         <div className="cd-chips">
@@ -71,6 +70,6 @@ export function CarInspection({ inspection, id }: { inspection: CarInspectionDat
           </div>
         </>
       ) : null}
-    </section>
+    </FoldOnPhone>
   );
 }

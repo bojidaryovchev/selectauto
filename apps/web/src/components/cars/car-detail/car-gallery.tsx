@@ -6,21 +6,18 @@ import { CameraIcon, ChevronLeftIcon, ChevronRightIcon, Maximize2Icon, ZoomInIco
 import { CarPhotoViewer } from "./car-photo-viewer";
 
 /**
- * The car page's photo gallery (boards `cd-*`, `cd-f-gallery`, `cd-f-gallery-d`): a large photo that **zooms in place**
- * (the pointer pans a magnified view over the photo, no popup), the arrows, the counter, the thumbnails, and the
- * full-screen viewer (owner decision 22). The photo list comes from the lot's raw_json (5–20 photos for almost every
- * car). The active photo eager-loads (LCP candidate); the rest lazy-load.
+ * The car page's photo gallery (boards `cd-*`, `cd-f-gallery`, `cd-f-gallery-d`): a large photo, the arrows, the
+ * counter, the thumbnails, and the full-screen viewer (owner decision 22). The photo list comes from the lot's raw_json
+ * (5–20 photos for almost every car). The active photo eager-loads (LCP candidate); the rest lazy-load.
  *
- * The magnifier is a second layer with the same image as a scaled `background-image`, its `background-position`
- * driven by the pointer:
- *
- * - **Mouse (pointer: fine)** — it fades in on hover and pans with the cursor; a click opens the viewer.
- * - **Touch (pointer: coarse)** — a *tap* toggles it on/off and a drag pans it, with the finger acting as the lens.
- *   Everything runs on pointer events gated by `pointerType`, because a tap also makes the browser synthesise
- *   `mouseenter`/`mousemove`: on mouse-only handlers that turned zoom on, faded the base `<img>` out, and left a blank
- *   frame — the image "disappeared" on tap.
- * - **„Отворете снимките на цял екран"** (top right) opens the viewer on every device. Whether a phone tap should
- *   open the viewer instead of zooming here is owner point 5 (REDESIGN.md), still open, so the tap keeps today's zoom.
+ * - **Mouse (pointer: fine)** — the photo **zooms in place**: a second layer with the same image as a scaled
+ *   `background-image` fades in on hover and pans with the cursor. A click opens the viewer.
+ * - **Touch and pen** — a tap opens the viewer, where a double tap zooms and a drag pans (owner point 5, decided
+ *   18.11.2026 as drawn on `cd-f-gallery` / `cd-f-viewer`: one tap can't both zoom here and open the viewer). A drag
+ *   still scrolls the page. Everything runs on pointer events gated by `pointerType`, because a tap also makes the
+ *   browser synthesise `mouseenter`/`mousemove`: on mouse-only handlers that once turned the zoom on, faded the base
+ *   `<img>` out, and left a blank frame.
+ * - **„Отворете снимките на цял екран"** (top right) opens the viewer on every device.
  *
  * Client component — it owns the selected-index, zoom and viewer state.
  */
@@ -39,9 +36,8 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
   const [lens, setLens] = useState({ x: 50, y: 50 });
   const frameRef = useRef<HTMLDivElement | null>(null);
   const openerRef = useRef<HTMLButtonElement | null>(null);
-  // Live touch gesture: where it started, whether it has moved past the tap slop,
-  // and whether zoom was already on when it began (so a tap can toggle correctly).
-  const touch = useRef<{ x: number; y: number; moved: boolean; wasZooming: boolean } | null>(null);
+  // Live touch gesture: where it started and whether it has moved past the tap slop (a drag scrolls the page).
+  const touch = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   // The last pointer that pressed the photo: a click opens the viewer only for a mouse (Safari's click events carry
   // no pointerType, so it's read from pointerdown).
   const lastPointer = useRef("");
@@ -75,20 +71,19 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
     if (e.pointerType === "mouse") setZooming(false);
   }, []);
 
-  // Touch gestures start here. Zoom is deliberately NOT armed on pointerdown: while
-  // un-zoomed the frame still scrolls the page, and the browser would cancel the
-  // gesture mid-way, leaving the lens stuck on. It's decided on pointerup instead.
-  const onPointerDown = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      lastPointer.current = e.pointerType;
-      if (e.pointerType === "mouse") return;
-      touch.current = { x: e.clientX, y: e.clientY, moved: false, wasZooming: zooming };
-      // Capture so a pan keeps tracking even if the finger strays over the arrows
-      // or off the frame entirely.
-      e.currentTarget.setPointerCapture(e.pointerId);
-    },
-    [zooming],
-  );
+  const openViewer = useCallback((opener: HTMLButtonElement | null) => {
+    openerRef.current = opener;
+    setZooming(false);
+    setViewerOpen(true);
+  }, []);
+
+  // A touch or pen gesture starts here; whether it was a tap is decided on pointerup (a drag scrolls the page, and the
+  // browser may cancel it mid-way).
+  const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    lastPointer.current = e.pointerType;
+    if (e.pointerType === "mouse") return;
+    touch.current = { x: e.clientX, y: e.clientY, moved: false };
+  }, []);
 
   const onPointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -97,12 +92,7 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
         return;
       }
       const t = touch.current;
-      if (!t) return;
-      if (Math.abs(e.clientX - t.x) > TAP_SLOP || Math.abs(e.clientY - t.y) > TAP_SLOP) {
-        t.moved = true;
-      }
-      // Only a zoomed frame pans; otherwise the drag belongs to the page scroll.
-      if (t.wasZooming) aim(e.clientX, e.clientY);
+      if (t && (Math.abs(e.clientX - t.x) > TAP_SLOP || Math.abs(e.clientY - t.y) > TAP_SLOP)) t.moved = true;
     },
     [aim],
   );
@@ -112,27 +102,15 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
       if (e.pointerType === "mouse") return;
       const t = touch.current;
       touch.current = null;
-      if (!t || t.moved) return;
-      // A clean tap toggles: zoom in centred on the tap, or back out.
-      if (t.wasZooming) {
-        setZooming(false);
-      } else {
-        aim(e.clientX, e.clientY);
-        setZooming(true);
-      }
+      // A clean tap opens the viewer; zooming happens there.
+      if (t && !t.moved) openViewer(null);
     },
-    [aim],
+    [openViewer],
   );
 
   const onPointerCancel = useCallback(() => {
     touch.current = null;
   }, []);
-
-  const openViewer = (opener: HTMLButtonElement | null) => {
-    openerRef.current = opener;
-    setZooming(false);
-    setViewerOpen(true);
-  };
 
   if (count === 0) {
     return (
@@ -147,8 +125,8 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
 
   return (
     <div className="sa-gal">
-      {/* Main photo: hover to zoom with a mouse (a click opens the viewer), tap to zoom on touch. Full bleed on a
-          phone. */}
+      {/* Main photo: hover to zoom with a mouse (a click opens the viewer); a tap opens the viewer on touch. Full
+          bleed on a phone. */}
       <div
         ref={frameRef}
         onPointerEnter={onPointerEnter}
@@ -161,9 +139,6 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
           // A mouse click opens the viewer; taps are handled by the pointer handlers above.
           if (lastPointer.current === "mouse") openViewer(null);
         }}
-        // While zoomed, the frame owns touch moves (so a drag pans the lens instead
-        // of scrolling the page); un-zoomed it stays out of the way of page scroll.
-        style={{ touchAction: zooming ? "none" : undefined }}
         className={`sa-gal__main select-none max-sm:-mx-gutter max-sm:rounded-none ${zooming ? "cursor-zoom-out" : "cursor-zoom-in"}`}
       >
         {/* Served directly from the source CDN — no Vercel optimizer. */}

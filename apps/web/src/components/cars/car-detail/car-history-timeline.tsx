@@ -1,4 +1,5 @@
 import type { CarHistoryEntry } from "@/types/car-detail.type";
+import { FoldOnPhone } from "./fold-on-phone";
 
 /** Recall flags carry their state's tone, always beside the word (board `cd-korea-full`); the rest are neutral. */
 const FLAG_TONE: Record<string, string> = {
@@ -9,19 +10,19 @@ const FLAG_TONE: Record<string, string> = {
 /**
  * ENCAR vehicle-history timeline (`details.history[]`) — „История на автомобила" with the count (boards `cd-korea*`):
  * a dated list of ownership, insurance and recall events in two columns from 640 px, each with its flag (Дилър, Частно
- * лице, Отзоваване …) on the date line and an optional detail. Server-rendered; renders nothing when the car has no
- * history (present on ~78% of active ENCAR lots, never on archived ones).
+ * лице, Отзоваване …) on the date line and an optional detail. Folds behind its title on a phone (owner point 12).
+ * Renders nothing when the car has no history (present on ~78% of active ENCAR lots, never on archived ones).
  */
 export function CarHistoryTimeline({ history, id }: { history: CarHistoryEntry[]; id?: string }) {
   if (history.length === 0) return null;
 
   return (
-    <section id={id} className="sa-pnl scroll-mt-[calc(var(--header-h)+16px)]">
-      <div className="sa-pnl__h">
-        <h2 className="sa-pnl__t">
-          История на автомобила <small className="text-sm font-bold text-tx3">({history.length})</small>
-        </h2>
-      </div>
+    <FoldOnPhone
+      id={id}
+      title="История на автомобила"
+      count={history.length}
+      className="scroll-mt-[calc(var(--header-h)+16px)]"
+    >
       <ol className="sa-tl cd-tl2">
         {history.map((entry, i) => (
           <li key={i}>
@@ -36,6 +37,6 @@ export function CarHistoryTimeline({ history, id }: { history: CarHistoryEntry[]
           </li>
         ))}
       </ol>
-    </section>
+    </FoldOnPhone>
   );
 }
