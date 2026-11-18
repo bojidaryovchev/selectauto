@@ -57,10 +57,13 @@ function parseId(raw: string): number {
  */
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const id = parseId((await params).id);
-  if (Number.isNaN(id)) return { title: "Автомобил | SelectAuto" };
+  // A malformed or unknown id → the 404 page with status 404. Metadata blocks the response (`htmlLimitedBots` in
+  // next.config.ts), so nothing has been sent yet; from the body alone it streamed after a 200, a soft 404.
+  // `getCarDetail` returns null only for a car that doesn't exist or is de-indexed; a database error throws instead.
+  if (Number.isNaN(id)) notFound();
 
   const payload = await getCarDetail(id);
-  if (!payload) return { title: "Автомобил | SelectAuto", robots: { index: false, follow: true } };
+  if (!payload) notFound();
 
   const { detail } = payload;
   const canonical = `${SITE_URL}/avtomobil/${id}`;
@@ -132,10 +135,9 @@ const MIN_BID_SEED_USD = 500;
  * documents for `<ScrollToTop>`; static routes are unaffected because their pathname is known at build time). It has
  * no data reads, so at request time it streams in the first flush — effectively instant.
  *
- * 404 handling: `notFound()` runs inside the suspended body, so a missing/invalid id renders the not-found UI AFTER
- * the shell has begun streaming (HTTP 200 with a 404 body — an inherent PPR trade-off). `notFound()` still injects
- * `noindex`, so such a URL is never indexed — the SEO-critical part. A true 404 status would require giving up the
- * static shell, which isn't worth it here.
+ * 404 handling: `generateMetadata` calls `notFound()` for a missing/invalid id. Metadata blocks the response
+ * (`htmlLimitedBots`), so that happens before the shell is sent and the 404 page goes out with status 404. The body
+ * keeps its own check, which on its own could only render the 404 after a 200 had gone out (a soft 404).
  */
 export default function CarDetailPage({ params }: { params: Params }) {
   return (

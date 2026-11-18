@@ -32,6 +32,7 @@
 | 10 | (admin) „Към началото" → /admin (admin/error.tsx:35-38) | „Към началото", secondary | → / on the public page |
 | 11 | No title on an error | `info-meta`: „Нещо се обърка — SelectAuto", from a `<title>` in the component (an error boundary can't export metadata); no noindex | New (decision 12) |
 | 12 | An error in the root layout itself: Next's bare screen | `info-500-flow` 2: `global-error.tsx`, its own document with the logo bar only, no header, tabs or footer | Fixed: `app/global-error.tsx`, with the site's styles and fonts |
+| 13 | An unknown make or model, and a missing or malformed car id, call `notFound()` inside the streamed body: the 404 page arrives after HTTP 200 (a soft 404) (avtomobili/marka/[make]/page.tsx:87-90, 132-135; […]/[model]/page.tsx:88-91, 150-153; avtomobil/[id]/page.tsx:52-57, 150-155) | `info-meta` findings: the unknown make's soft 404 | Fixed: `generateMetadata` calls `notFound()` first. Metadata blocks the response (`htmlLimitedBots`), so the 404 page goes out with status 404. Real pages unchanged |
 
 **The 410's body.** The proxy is the only place a 410 can come from: the car page streams a 200 shell (`lib/sold-lot-gone.ts`).
 Next's docs give two ways for a proxy to answer: rewrite to a route, or return a response. A rewrite with a status of

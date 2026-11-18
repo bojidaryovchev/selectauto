@@ -82,12 +82,15 @@ function hubPath(hub: BrandHubResolution): string {
 /**
  * Brand-hub metadata. Indexable when the make has enough live inventory (same
  * threshold as the model hubs), else `noindex, follow`. Canonical from the resolved
- * slug. An unresolvable make → minimal noindex head (the page `notFound()`s).
+ * slug. An unresolvable make → `notFound()` here: metadata blocks the response
+ * (`htmlLimitedBots` in next.config.ts), so nothing has been sent yet and the 404
+ * page goes out with status 404. From the body alone it streamed after a 200, a soft
+ * 404 (the design run's `info-meta` findings). The body keeps its own check.
  */
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { make } = await params;
   const data = await loadBrandHub(make);
-  if (!data) return { title: "Автомобили | SelectAuto", robots: { index: false, follow: true } };
+  if (!data) notFound();
 
   const { hub, count, indexCount } = data;
   const path = hubPath(hub);

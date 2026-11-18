@@ -82,13 +82,14 @@ const MIN_SAMPLE_FOR_COUNTRY_CLAIM = 10;
  * Model-hub metadata. A hub with enough live inventory is fully indexable with a
  * keyword-rich title/description + a canonical built from the resolved slugs.
  * Below the inventory threshold it's `noindex, follow` (thin-content guard). An
- * unresolvable make/model slug yields a minimal noindex head (the page itself
- * `notFound()`s).
+ * unresolvable make/model slug → `notFound()` here: metadata blocks the response
+ * (`htmlLimitedBots` in next.config.ts), so the 404 page goes out with status 404
+ * rather than streaming after a 200 (a soft 404). The body keeps its own check.
  */
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { make, model } = await params;
   const data = await loadModelHub(make, model);
-  if (!data) return { title: "Автомобили | SelectAuto", robots: { index: false, follow: true } };
+  if (!data) notFound();
 
   const { hub, count, indexCount } = data;
   const path = hubPath(hub);
