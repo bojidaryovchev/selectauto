@@ -132,7 +132,7 @@ export function CarfaxForm({
     name: FieldName,
     label: string,
     required: boolean,
-    input: (props: { id: string; invalid: boolean; describedBy?: string }) => ReactNode,
+    input: (props: { id: string; invalid: boolean; describedBy?: string; required: boolean }) => ReactNode,
   ) => {
     const id = `${uid}-${name}`;
     const error = errors[name]?.message;
@@ -142,7 +142,7 @@ export function CarfaxForm({
           {label}
           {required ? <i> *</i> : null}
         </label>
-        {input({ id, invalid: !!error, describedBy: error ? `${id}-err` : undefined })}
+        {input({ id, invalid: !!error, describedBy: error ? `${id}-err` : undefined, required })}
         {error ? (
           <span id={`${id}-err`} className="sa-err">
             <AlertIcon />
@@ -156,7 +156,7 @@ export function CarfaxForm({
   /** A text input; locked ones are read-only (kept in the submission), dashed, with a lock. */
   const textInput = (
     name: FieldName,
-    { id, invalid, describedBy }: { id: string; invalid: boolean; describedBy?: string },
+    { id, invalid, describedBy, required }: { id: string; invalid: boolean; describedBy?: string; required?: boolean },
     extra: { type?: string; placeholder: string; inputMode?: "tel"; autoComplete?: string; vin?: boolean; lockTitle?: string },
   ) => {
     const cls = `sa-in ${extra.vin ? "in-vin" : ""} ${invalid ? "is-err" : ""}`;
@@ -168,6 +168,8 @@ export function CarfaxForm({
       autoComplete: extra.autoComplete,
       "aria-invalid": invalid || undefined,
       "aria-describedby": describedBy,
+      // Main marked these `required`; the form is `noValidate`, so it told only screen readers, and it does again.
+      "aria-required": required || undefined,
       ...register(name),
     };
     if (isLocked(name)) {

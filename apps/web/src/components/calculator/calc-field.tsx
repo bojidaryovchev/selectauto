@@ -71,7 +71,11 @@ export function CalcField({
             const raw = e.target.value;
             setDraft(raw);
             if (raw.trim() === "") return; // let the field sit empty mid-edit — don't push a number yet
-            const n = Number(raw.replace(",", "."));
+            // Spaces are thousands separators („40 000", or the site's own „73 491" pasted back, with a no-break or
+            // narrow space): without this every keystroke after the space failed to parse and was dropped, so the
+            // field showed „40 000" while the calculation used 40 (found in the production review, 18.11.2026; main's
+            // number input never let a space in). `\s` covers the no-break and narrow spaces.
+            const n = Number(raw.replace(/\s/g, "").replace(",", "."));
             if (!Number.isFinite(n)) return; // ignore un-parseable partials
             push(n);
           }}

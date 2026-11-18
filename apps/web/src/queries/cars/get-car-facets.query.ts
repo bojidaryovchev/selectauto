@@ -137,7 +137,7 @@ export async function getCarFacets(filters: CarFilters = {}): Promise<FacetOptio
       computeCarFacets(filters.status === "past" ? "past" : "active"),
       hasSelectiveFilter(filters) ? computeLiveFacetCounts(filters) : Promise.resolve(null),
     ]);
-    return live ? overlayCounts(base, live) : base;
+    return withSelection(live ? overlayCounts(base, live) : base, filters);
   } catch (error) {
     // Never hard-fail a render on facets (it's the heaviest query set). An empty
     // facet set degrades the filter dropdowns gracefully; the catalog still works.
@@ -145,6 +145,69 @@ export async function getCarFacets(filters: CarFilters = {}): Promise<FacetOptio
     console.error("[get-car-facets] query failed, returning empty facets", error);
     return EMPTY_FACETS;
   }
+}
+
+/**
+ * The selected make and model always have their option. The lists follow the tab (active or past), and a make with no
+ * past lots isn't in the past tab's list: after switching tabs its field read empty while the filter still applied
+ * (production review, 18.11.2026). The missing one is added by name, with its logo, from the reference tables.
+ */
+async function withSelection(facets: FacetOptions, filters: CarFilters): Promise<FacetOptions> {
+  const brandKey = filters.brand !== undefined ? String(filters.brand) : undefined;
+  const modelKey = filters.model !== undefined ? String(filters.model) : undefined;
+  const needBrand = brandKey !== undefined && !facets.brands.some((b) => b.value === brandKey);
+  const needModel =
+    brandKey !== undefined &&
+    modelKey !== undefined &&
+    !(facets.modelsByBrand[brandKey] ?? []).some((m) => m.value === modelKey);
+  if (!needBrand && !needModel) return facets;
+
+  const db = getDb();
+  const [brandRow, modelRow] = await Promise.all([
+    needBrand
+      ? db
+          .select({ label: schema.manufacturers.name, logo: schema.manufacturers.imageUrl })
+          .from(schema.manufacturers)
+          .where(eq(schema.manufacturers.externalId, filters.brand!))
+          .limit(1)
+          .then((r) => r[0])
+      : undefined,
+    needModel
+      ? db
+          .select({ label: schema.vehicleModels.name })
+          .from(schema.vehicleModels)
+          .where(eq(schema.vehicleModels.externalId, filters.model!))
+          .limit(1)
+          .then((r) => r[0])
+      : undefined,
+  ]);
+  return {
+    ...facets,
+    brands:
+      needBrand && brandRow
+        ? insertByLabel(facets.brands, {
+            value: brandKey!,
+            label: brandRow.label ?? `#${brandKey}`,
+            logo: brandRow.logo || null,
+          })
+        : facets.brands,
+    modelsByBrand:
+      needModel && modelRow
+        ? {
+            ...facets.modelsByBrand,
+            [brandKey!]: insertByLabel(facets.modelsByBrand[brandKey!] ?? [], {
+              value: modelKey!,
+              label: modelRow.label ?? `#${modelKey}`,
+            }),
+          }
+        : facets.modelsByBrand,
+  };
+}
+
+/** Adds an option where the lists' `ORDER BY name` puts it, so the added one doesn't sit at the end. */
+function insertByLabel(list: FacetOption[], option: FacetOption): FacetOption[] {
+  const i = list.findIndex((o) => o.label.localeCompare(option.label) > 0);
+  return i === -1 ? [...list, option] : [...list.slice(0, i), option, ...list.slice(i)];
 }
 
 /**

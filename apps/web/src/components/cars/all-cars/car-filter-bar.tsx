@@ -211,7 +211,12 @@ export function CarFilterBar({
     document.body.style.overflow = "hidden";
     sheetRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeSheetRef.current();
+      if (e.key !== "Escape") return;
+      // An Esc meant for an open dropdown (focus on its field or in its list) closes only the dropdown; it closed the
+      // whole sheet too (production review, 18.11.2026). Base UI's own handler can't stop this listener.
+      const target = e.target instanceof Element ? e.target : null;
+      if (target?.closest('[aria-expanded="true"], [role="listbox"]')) return;
+      closeSheetRef.current();
     };
     // The sheet exists on phones only: a wider window (a turned tablet) closes it rather than leave the page locked.
     const wide = window.matchMedia(CONSOLE_QUERY);

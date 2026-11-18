@@ -12,11 +12,11 @@ import { CarPhotoViewer } from "./car-photo-viewer";
  *
  * - **Mouse (pointer: fine)** — the photo **zooms in place**: a second layer with the same image as a scaled
  *   `background-image` fades in on hover and pans with the cursor. A click opens the viewer.
- * - **Touch and pen** — a tap opens the viewer, where a double tap zooms and a drag pans (owner point 5, decided
- *   18.11.2026 as drawn on `cd-f-gallery` / `cd-f-viewer`: one tap can't both zoom here and open the viewer). A drag
- *   still scrolls the page. Everything runs on pointer events gated by `pointerType`, because a tap also makes the
- *   browser synthesise `mouseenter`/`mousemove`: on mouse-only handlers that once turned the zoom on, faded the base
- *   `<img>` out, and left a blank frame.
+ * - **Touch and pen** — a tap opens the viewer, where a double tap or a pinch zooms and a drag pans (owner point 5,
+ *   decided 18.11.2026 as drawn on `cd-f-gallery` / `cd-f-viewer`: one tap can't both zoom here and open the viewer).
+ *   A drag still scrolls the page. The zoom runs on pointer events gated by `pointerType === "mouse"`, because a tap
+ *   also makes the browser synthesise `mouseenter`/`mousemove`: on mouse-only handlers that once turned the zoom on,
+ *   faded the base `<img>` out, and left a blank frame.
  * - **„Отворете снимките на цял екран"** (top right) opens the viewer on every device.
  *
  * Client component — it owns the selected-index, zoom and viewer state.
@@ -24,9 +24,6 @@ import { CarPhotoViewer } from "./car-photo-viewer";
 
 /** How far the hover lens magnifies (2.4× reads as "premium store" without losing context). */
 const ZOOM = 2.4;
-
-/** Finger travel (px) above which a touch counts as a pan, not a tap. */
-const TAP_SLOP = 10;
 
 export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
   const [active, setActive] = useState(0);
@@ -36,11 +33,6 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
   const [lens, setLens] = useState({ x: 50, y: 50 });
   const frameRef = useRef<HTMLDivElement | null>(null);
   const openerRef = useRef<HTMLButtonElement | null>(null);
-  // Live touch gesture: where it started and whether it has moved past the tap slop (a drag scrolls the page).
-  const touch = useRef<{ x: number; y: number; moved: boolean } | null>(null);
-  // The last pointer that pressed the photo: a click opens the viewer only for a mouse (Safari's click events carry
-  // no pointerType, so it's read from pointerdown).
-  const lastPointer = useRef("");
 
   const count = images.length;
   const clamp = useCallback((i: number) => (i + count) % count, [count]);
@@ -71,46 +63,19 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
     if (e.pointerType === "mouse") setZooming(false);
   }, []);
 
+  /** Opens the viewer; it hands the focus back to `opener` when it closes. */
   const openViewer = useCallback((opener: HTMLButtonElement | null) => {
     openerRef.current = opener;
     setZooming(false);
     setViewerOpen(true);
   }, []);
 
-  // A touch or pen gesture starts here; whether it was a tap is decided on pointerup (a drag scrolls the page, and the
-  // browser may cancel it mid-way).
-  const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    lastPointer.current = e.pointerType;
-    if (e.pointerType === "mouse") return;
-    touch.current = { x: e.clientX, y: e.clientY, moved: false };
-  }, []);
-
   const onPointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      if (e.pointerType === "mouse") {
-        aim(e.clientX, e.clientY);
-        return;
-      }
-      const t = touch.current;
-      if (t && (Math.abs(e.clientX - t.x) > TAP_SLOP || Math.abs(e.clientY - t.y) > TAP_SLOP)) t.moved = true;
+      if (e.pointerType === "mouse") aim(e.clientX, e.clientY);
     },
     [aim],
   );
-
-  const onPointerUp = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      if (e.pointerType === "mouse") return;
-      const t = touch.current;
-      touch.current = null;
-      // A clean tap opens the viewer; zooming happens there.
-      if (t && !t.moved) openViewer(null);
-    },
-    [openViewer],
-  );
-
-  const onPointerCancel = useCallback(() => {
-    touch.current = null;
-  }, []);
 
   if (count === 0) {
     return (
@@ -131,14 +96,11 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
         ref={frameRef}
         onPointerEnter={onPointerEnter}
         onPointerLeave={onPointerLeave}
-        onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerCancel}
-        onClick={() => {
-          // A mouse click opens the viewer; taps are handled by the pointer handlers above.
-          if (lastPointer.current === "mouse") openViewer(null);
-        }}
+        // A click or a tap opens the viewer. On `click`, not `pointerup`: a tap that only stops a flick-scroll gets
+        // pointer events but no click, so it no longer opens the viewer by mistake (production review, 18.11.2026).
+        // The focus comes back to the full-screen button when it closes; the photo itself isn't focusable.
+        onClick={(e) => openViewer(e.currentTarget.querySelector<HTMLButtonElement>(".sa-gal__fs"))}
         className={`sa-gal__main select-none max-sm:-mx-gutter max-sm:rounded-none ${zooming ? "cursor-zoom-out" : "cursor-zoom-in"}`}
       >
         {/* Served directly from the source CDN — no Vercel optimizer. */}
@@ -157,8 +119,8 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
           className={`transition-opacity duration-200 ease-out motion-reduce:transition-none ${zooming ? "opacity-0" : "opacity-100"}`}
         />
 
-        {/* Zoom layer: the same image as a magnified background, panned by the pointer (cursor on desktop, finger on
-            touch). It must render on every pointer type, since it's what replaces the base image once that fades. */}
+        {/* Zoom layer: the same image as a magnified background, panned by the mouse (touch zooms in the viewer). It
+            is what replaces the base image once that fades. */}
         <div
           aria-hidden="true"
           className={`pointer-events-none absolute inset-0 bg-no-repeat transition-opacity duration-200 ease-out motion-reduce:transition-none ${
@@ -173,7 +135,7 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
 
         {/* Controls sit above the zoom layer and stay usable during zoom: with a mouse the photo is only reachable
             while hovering, which is exactly when zoom is on. Hovering one drops the zoom, like leaving the photo;
-            pressing one is never a tap-to-zoom. */}
+            pressing one never also opens the viewer from the photo behind it. */}
         {count > 1 ? (
           <>
             <GalleryControl label="Предишна снимка" className="sa-gal__nav is-l" onHoverChange={setZooming} onClick={prev}>
@@ -214,7 +176,9 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
 
       {/* Thumbnail strip */}
       {count > 1 ? (
-        <div className="sa-gal__th">
+        // A mouse gets main's thin scrollbar back: without one, thumbnails past the strip's edge were out of a wheel
+        // user's reach (production review, 18.11.2026). Touch scrolls the strip by swiping, as drawn.
+        <div className="sa-gal__th pointer-fine:pb-1 pointer-fine:scrollbar-thin">
           {images.map((thumb, i) => (
             <button
               key={thumb}
@@ -259,8 +223,8 @@ export function CarGallery({ images, alt }: { images: string[]; alt: string }) {
 /**
  * A control over the photo (an arrow, the viewer opener). Hovering one with a mouse drops the image zoom (like leaving
  * the picture), so the magnified lens isn't panning under the control you're aiming at; moving back onto the photo
- * re-arms it. Gated to `pointerType === "mouse"`: a tap also synthesises enter/leave. `pointerdown` stops here, so
- * pressing a control is never read as a tap-to-zoom on the photo behind it, and the click doesn't reach the photo.
+ * re-arms it. Gated to `pointerType === "mouse"`: a tap also synthesises enter/leave. The press and the click stop
+ * here, so the photo behind never sees them: a click there opens the viewer.
  */
 function GalleryControl({
   label,

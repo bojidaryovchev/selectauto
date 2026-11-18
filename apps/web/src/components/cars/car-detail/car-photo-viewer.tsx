@@ -7,6 +7,8 @@ import { ChevronLeftIcon, ChevronRightIcon, CloseIcon } from "@/components/icons
 
 /** Zoom of a double tap or double click inside the viewer. */
 const ZOOM = 2.5;
+/** The furthest a pinch zooms in. */
+const MAX_ZOOM = 4;
 /** Finger travel (px) that makes a swipe: anything shorter is a tap. */
 const SWIPE = 40;
 /** Two taps within this many ms are a double tap. */
@@ -17,8 +19,11 @@ const DOUBLE_TAP_MS = 300;
  * counter and ✕ „Затворете" on top, the photo fitted to the screen with „Предишна снимка" / „Следваща снимка", the
  * thumbnails underneath (from 640 px; a phone shows the counter instead).
  *
- * - Keys: ← and → move, Esc closes. A swipe moves on touch.
- * - A double tap (or double click) zooms 2,5× at that point and a drag pans; another double tap zooms out.
+ * - Keys: ← and → move, Esc closes, Tab stays inside the viewer. A swipe moves on touch.
+ * - A double tap (or double click) zooms 2,5× at that point and a drag pans; another double tap zooms out. Two fingers
+ *   pinch between 1× and 4× around their midpoint (board `cd-f-viewer` frame 5); a pinch is never read as a tap or a
+ *   swipe. Each finger is tracked by its pointer id: with one shared gesture, a spread of two fingers measured one
+ *   finger against the other's start and changed the photo (found in the production review, 18.11.2026).
  * - Body scroll is locked while open; focus moves into the viewer and returns to the opener when it closes.
  *
  * It opens on the photo the gallery shows and reports the photo it closes on, so the gallery follows.
@@ -36,10 +41,16 @@ export function CarPhotoViewer({
   onClose: (index: number) => void;
 }) {
   const [active, setActive] = useState(start);
-  const [zoom, setZoom] = useState<{ x: number; y: number } | null>(null);
+  const [zoom, setZoom] = useState<{ x: number; y: number; scale: number } | null>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const closeRef = useRef<HTMLButtonElement | null>(null);
-  const gesture = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  /** Every finger (or the mouse) on the stage, by pointer id. */
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  /** The gesture since the first finger went down; `multi` once a second one joined (a pinch). */
+  const gesture = useRef<{ x: number; y: number; moved: boolean; multi: boolean } | null>(null);
+  /** A pinch in progress: the fingers' distance and the zoom when it began. */
+  const pinch = useRef<{ dist: number; scale: number } | null>(null);
   const lastTap = useRef(0);
   const count = images.length;
   const titleId = "car-viewer-title";
@@ -68,6 +79,25 @@ export function CarPhotoViewer({
       if (e.key === "Escape") close();
       else if (e.key === "ArrowLeft") go(-1);
       else if (e.key === "ArrowRight") go(1);
+      else if (e.key === "Tab") {
+        // The viewer is modal: Tab and Shift+Tab cycle through its own controls instead of walking into the page behind.
+        const root = dialogRef.current;
+        if (!root) return;
+        const items = [...root.querySelectorAll<HTMLElement>("button:not([disabled]), [href]")].filter(
+          (el) => el.offsetParent !== null,
+        );
+        if (items.length === 0) return;
+        const first = items[0];
+        const last = items[items.length - 1];
+        const current = document.activeElement;
+        if (e.shiftKey && (current === first || !root.contains(current))) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && (current === last || !root.contains(current))) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -83,20 +113,46 @@ export function CarPhotoViewer({
     };
   };
 
+  /** The distance between the first two fingers, and their midpoint. */
+  const twoFingers = () => {
+    const [a, b] = [...pointers.current.values()];
+    return { dist: Math.hypot(a.x - b.x, a.y - b.y), mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } };
+  };
+
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    gesture.current = { x: e.clientX, y: e.clientY, moved: false };
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     e.currentTarget.setPointerCapture(e.pointerId);
+    if (pointers.current.size === 1) {
+      gesture.current = { x: e.clientX, y: e.clientY, moved: false, multi: false };
+    } else if (pointers.current.size === 2) {
+      if (gesture.current) gesture.current.multi = true;
+      pinch.current = { dist: twoFingers().dist || 1, scale: zoom?.scale ?? 1 };
+    }
   };
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!pointers.current.has(e.pointerId)) return;
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.current.size >= 2 && pinch.current) {
+      const { dist, mid } = twoFingers();
+      const scale = Math.min(MAX_ZOOM, Math.max(1, (pinch.current.scale * dist) / pinch.current.dist));
+      setZoom(scale <= 1.02 ? null : { ...pointAt(mid.x, mid.y), scale });
+      return;
+    }
     const g = gesture.current;
     if (!g) return;
     if (Math.abs(e.clientX - g.x) > 10 || Math.abs(e.clientY - g.y) > 10) g.moved = true;
-    if (zoom) setZoom(pointAt(e.clientX, e.clientY));
+    if (zoom) setZoom({ ...pointAt(e.clientX, e.clientY), scale: zoom.scale });
+  };
+  const releasePointer = (e: React.PointerEvent<HTMLDivElement>) => {
+    pointers.current.delete(e.pointerId);
+    if (pointers.current.size < 2) pinch.current = null;
   };
   const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    releasePointer(e);
+    if (pointers.current.size > 0) return; // a finger is still down: the end of a pinch
     const g = gesture.current;
     gesture.current = null;
-    if (!g) return;
+    if (!g || g.multi) return; // a pinch is never a tap or a swipe
     const dx = e.clientX - g.x;
     // Un-zoomed, a horizontal swipe moves to the next or previous photo.
     if (!zoom && e.pointerType !== "mouse" && Math.abs(dx) > SWIPE && Math.abs(dx) > Math.abs(e.clientY - g.y)) {
@@ -107,16 +163,21 @@ export function CarPhotoViewer({
     const now = Date.now();
     if (now - lastTap.current < DOUBLE_TAP_MS) {
       lastTap.current = 0;
-      setZoom((z) => (z ? null : pointAt(e.clientX, e.clientY)));
+      setZoom((z) => (z ? null : { ...pointAt(e.clientX, e.clientY), scale: ZOOM }));
     } else {
       lastTap.current = now;
     }
+  };
+  const onPointerCancel = (e: React.PointerEvent<HTMLDivElement>) => {
+    releasePointer(e);
+    if (pointers.current.size === 0) gesture.current = null;
   };
 
   const src = images[active];
 
   return createPortal(
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
@@ -139,7 +200,7 @@ export function CarPhotoViewer({
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onPointerCancel={() => (gesture.current = null)}
+        onPointerCancel={onPointerCancel}
         className={`relative min-h-0 flex-1 touch-none overflow-hidden select-none ${zoom ? "cursor-zoom-out" : "cursor-zoom-in"}`}
       >
         {/* Served directly from the source CDN, like the gallery. */}
@@ -156,7 +217,11 @@ export function CarPhotoViewer({
           <div
             aria-hidden="true"
             className="absolute inset-0 bg-no-repeat"
-            style={{ backgroundImage: `url(${src})`, backgroundSize: `${ZOOM * 100}%`, backgroundPosition: `${zoom.x}% ${zoom.y}%` }}
+            style={{
+              backgroundImage: `url(${src})`,
+              backgroundSize: `${zoom.scale * 100}%`,
+              backgroundPosition: `${zoom.x}% ${zoom.y}%`,
+            }}
           />
         ) : null}
         {count > 1 ? (
@@ -193,8 +258,9 @@ export function CarPhotoViewer({
               {active + 1} / {count}
             </span>
           </div>
-          {/* From 640 px: the thumbnails. */}
-          <div className="hidden flex-none justify-center gap-2 overflow-x-auto px-6 pt-3.5 pb-5.5 scrollbar-none sm:flex">
+          {/* From 640 px: the thumbnails. Centred only while they fit (`safe center`): a centred row that overflows
+              cuts its first thumbnails off on the left, where no scrolling reaches them. */}
+          <div className="hidden flex-none justify-center-safe gap-2 overflow-x-auto px-6 pt-3.5 pb-5.5 scrollbar-none pointer-fine:scrollbar-thin sm:flex">
             {images.map((thumb, i) => (
               <button
                 key={thumb}

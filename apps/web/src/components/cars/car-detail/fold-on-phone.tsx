@@ -29,14 +29,26 @@ export function FoldOnPhone({
   const [open, setOpen] = useState(false);
   const bodyId = useId();
 
-  // The VIN card's link to this section opens it (a folded section would otherwise show only its title).
+  // A link to this section opens it (a folded section would otherwise show only its title): the page opened at the
+  // anchor, the anchor changing, and a press on such a link when the hash is already the anchor — the VIN card's
+  // second press, which fires no hashchange (production review, 18.11.2026).
   useEffect(() => {
     if (!id) return;
+    const anchor = `#${id}`;
     const onHash = () => {
-      if (window.location.hash === `#${id}`) setOpen(true);
+      if (window.location.hash === anchor) setOpen(true);
     };
+    const onClick = (e: MouseEvent) => {
+      if (e.target instanceof Element && e.target.closest(`a[href="${anchor}"]`)) setOpen(true);
+    };
+    const first = setTimeout(onHash, 0); // the page opened at the anchor (a tick later: no setState in the effect body)
     window.addEventListener("hashchange", onHash);
-    return () => window.removeEventListener("hashchange", onHash);
+    document.addEventListener("click", onClick);
+    return () => {
+      clearTimeout(first);
+      window.removeEventListener("hashchange", onHash);
+      document.removeEventListener("click", onClick);
+    };
   }, [id]);
 
   const counter = count !== undefined ? <small className="text-sm font-bold text-tx3">({count})</small> : null;

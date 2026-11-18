@@ -900,11 +900,31 @@ export function ParticleProcess() {
       const onResize = () => resize();
       window.addEventListener("resize", onResize, { passive: true });
 
-      // The GPU dropped the context (a driver reset, too many contexts): nothing will draw again.
+      // The GPU dropped the context: a driver reset, too many contexts, but also a laptop's sleep or a phone switching
+      // apps. three.js asks for it back (preventDefault) and rebuilds when it returns, so only a context that stays
+      // lost means nothing will draw again. Then the static band replaces the scene, and the scene stops here: the loop
+      // and the GPU objects with it, which kept running behind the band (production review, 18.11.2026).
+      let restoreTimer: ReturnType<typeof setTimeout> | undefined;
       const onContextLost = () => {
-        if (!disposed) setWebglFailed(true);
+        if (disposed) return;
+        clearTimeout(restoreTimer);
+        restoreTimer = setTimeout(() => {
+          if (disposed) return;
+          disposed = true;
+          cancelAnimationFrame(rafId);
+          // Once: the effect's own cleanup runs it again when the page unmounts.
+          const cleanup = cleanupListeners;
+          cleanupListeners = () => {};
+          cleanup();
+          setWebglFailed(true);
+        }, 3000);
+      };
+      const onContextRestored = () => {
+        clearTimeout(restoreTimer);
+        needsDraw = true;
       };
       canvas.addEventListener("webglcontextlost", onContextLost);
+      canvas.addEventListener("webglcontextrestored", onContextRestored);
 
       // Past the section (the written steps and the footer below it) the pinned
       // canvas is off screen, but the loop kept simulating and drawing all of it.
@@ -918,6 +938,8 @@ export function ParticleProcess() {
         observer.disconnect();
         window.removeEventListener("resize", onResize);
         canvas.removeEventListener("webglcontextlost", onContextLost);
+        canvas.removeEventListener("webglcontextrestored", onContextRestored);
+        clearTimeout(restoreTimer);
         renderer.dispose();
         particleGeometry.dispose();
         particleMaterial.dispose();

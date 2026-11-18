@@ -2,6 +2,7 @@
 title: "Речник на американските аукциони: run & drive, clean title, salvage и всичко между тях"
 description: "Какво значат термините в Copart и IAAI обявите: run & drive, starts, stationary, clean/salvage/rebuilt/flood title, ACV, buyer fee, buy now. Кратък речник преди първото наддаване."
 date: "2026-07-16"
+updated: "2026-11-18"
 author: "SelectAuto"
 ---
 

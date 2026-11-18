@@ -30,6 +30,10 @@ type FavoritesContextValue = {
   // pre-seed empty set — e.g. the /lyubimi grid keeps showing its server-rendered
   // cards until `initialized`, then filters out any un-favourited since.
   initialized: boolean;
+  /** The last load of the saved cars failed (no connection, a server error); it is retried, waiting longer each time. */
+  failed: boolean;
+  /** Load the saved cars again now (a heart tapped while `failed`). */
+  retry: () => void;
 };
 
 const FavoritesContext = createContext<FavoritesContextValue | null>(null);
@@ -48,6 +52,12 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   const userId = data?.user?.id;
   const [ids, setIds] = useState<Set<number>>(() => new Set());
   const [initialized, setInitialized] = useState(false);
+  // A failed load used to leave `initialized` false for the whole visit, and every heart waits for it: they all stopped
+  // responding (production review, 18.11.2026). It is retried instead; marking the list loaded would be worse, since
+  // a tap on a saved car whose heart reads empty removes it (toggleFavorite flips the stored state).
+  const [failures, setFailures] = useState(0);
+  const [attempt, setAttempt] = useState(0);
+  const failed = failures > 0;
 
   // Seed (and re-seed on user change) from the server once the session resolves.
   // Keyed on `userId` so switching accounts refetches. We only ever call setState
@@ -58,16 +68,36 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
     if (status === "loading") return;
     let cancelled = false;
     const load = isSignedIn ? getMyFavoriteIds() : Promise.resolve<number[]>([]);
-    load.then((list) => {
-      if (!cancelled) {
-        setIds(new Set(list));
-        setInitialized(true);
-      }
-    });
+    load
+      .then((list) => {
+        if (!cancelled) {
+          setIds(new Set(list));
+          setInitialized(true);
+          setFailures(0);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setFailures((n) => n + 1);
+      });
     return () => {
       cancelled = true;
     };
-  }, [status, isSignedIn, userId]);
+  }, [status, isSignedIn, userId, attempt]);
+
+  const retry = useCallback(() => setAttempt((a) => a + 1), []);
+
+  // A failed load is tried again after 5 s, then 10, 20 and 40, then every minute — not every few seconds from each
+  // open tab while the server is down — and at once when the connection comes back, or when a heart is tapped
+  // (FavoriteButton calls `retry`).
+  useEffect(() => {
+    if (failures === 0) return;
+    const t = setTimeout(retry, Math.min(5000 * 2 ** (failures - 1), 60_000));
+    window.addEventListener("online", retry);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("online", retry);
+    };
+  }, [failures, retry]);
 
   const isFavorite = useCallback((carId: number) => ids.has(carId), [ids]);
 
@@ -84,8 +114,8 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ isFavorite, setFavorite, initialized }),
-    [isFavorite, setFavorite, initialized],
+    () => ({ isFavorite, setFavorite, initialized, failed, retry }),
+    [isFavorite, setFavorite, initialized, failed, retry],
   );
 
   return <FavoritesContext.Provider value={value}>{children}</FavoritesContext.Provider>;

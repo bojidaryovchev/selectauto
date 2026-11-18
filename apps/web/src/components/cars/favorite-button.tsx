@@ -52,7 +52,7 @@ export function FavoriteButton({
   const isSignedIn = status === "authenticated";
   const router = useRouter();
   const pathname = usePathname();
-  const { isFavorite, setFavorite, initialized } = useFavorites();
+  const { isFavorite, setFavorite, initialized, failed, retry } = useFavorites();
   const [isPending, startTransition] = useTransition();
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -82,8 +82,14 @@ export function FavoriteButton({
     // The session is still loading: a signed-in visitor would otherwise be sent to sign-in (REDESIGN.md, bugs).
     if (status === "loading") return;
     // Signed in, but the saved cars haven't loaded: every heart still reads empty, so a tap on a saved car would remove
-    // it — on /lyubimi without the question below. Wait for the list.
-    if (isSignedIn && !initialized) return;
+    // it — on /lyubimi without the question below. Wait for the list; if loading it failed, try again now and say so.
+    if (isSignedIn && !initialized) {
+      if (failed) {
+        retry();
+        toast.error("Възникна грешка. Опитайте отново.");
+      }
+      return;
+    }
     // Signed out → go to sign-in, returning to the current page afterwards.
     if (!isSignedIn) {
       const back = encodeURIComponent(pathname || "/");

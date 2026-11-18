@@ -213,8 +213,10 @@ export function CarRail({
         autoplay={mounted ? { delay: AUTOPLAY_DELAY_MS, disableOnInteraction: false, pauseOnMouseEnter: true } : undefined}
         wrapperTag="ul"
         // Equal-height slides: Swiper's CSS makes each slide a block of its own height; as flex items of a stretched
-        // row they all take the tallest card's height.
-        className="[&_.swiper-slide]:flex! [&_.swiper-slide]:h-auto! [&_.swiper-wrapper]:items-stretch!"
+        // row they all take the tallest card's height. The card grows to the slide's width too: a row item is as wide
+        // as its content, so a card with short text, no photo yet or no photo at all came out narrower than its slide
+        // (production review, 18.11.2026; main's slides were columns).
+        className="[&_.swiper-slide]:flex! [&_.swiper-slide]:h-auto! [&_.swiper-slide>*]:min-w-0 [&_.swiper-slide>*]:flex-1 [&_.swiper-wrapper]:items-stretch!"
       >
         {cars.map((car, i) => (
           <SwiperSlide key={car.id ?? car.href + i} tag="li">

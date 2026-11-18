@@ -74,14 +74,19 @@ export function HeaderDropdown({
   // Whether the menu was open when the press began. A tap also fires the emulated mouseenter, which opens the menu
   // before the click arrives, so the click must look at the state from before the tap.
   const openAtPress = useRef(false);
+  // Set while Esc hands the focus back to the parent link: that focus would otherwise reopen the menu at once (the
+  // wrapper opens on focus), and the first Esc did nothing (production review, 18.11.2026).
+  const refocusing = useRef(false);
   const menuId = useId();
 
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      setOpen(false);
+      refocusing.current = true;
       parentRef.current?.focus();
+      refocusing.current = false;
+      setOpen(false);
     };
     const onDown = (e: PointerEvent) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
@@ -100,7 +105,9 @@ export function HeaderDropdown({
       className="relative flex"
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
-      onFocus={() => setOpen(true)}
+      onFocus={() => {
+        if (!refocusing.current) setOpen(true);
+      }}
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOpen(false);
       }}
@@ -119,7 +126,11 @@ export function HeaderDropdown({
             openAtPress.current = open;
           }}
           onClick={(e) => {
-            if (lastPointer.current === "touch" && !openAtPress.current) {
+            // Read once: a keyboard Enter is a click with no pointer before it, and a pointer type left over from an
+            // earlier tap kept such an Enter from following the link (touch screens with a keyboard).
+            const tapped = lastPointer.current === "touch";
+            lastPointer.current = "";
+            if (tapped && !openAtPress.current) {
               e.preventDefault();
               setOpen(true);
             }
