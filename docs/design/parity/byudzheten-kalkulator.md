@@ -26,3 +26,7 @@
 
 **18.11.2026.** „Автомобили в този бюджет" converts the euro budget into the catalog's dollar price filter at the import
 calculator's rate (`eurUsd`, /api/calc-config); it passed the euro amount as dollars (REDESIGN.md bug list).
+
+**18.11.2026, production review.** A number typed with spaces between the thousands („40 000", or a pasted „73 491"
+with a no-break space) counts as typed: before, the field showed „40 000" while the result used 40. Main's number
+inputs never let a space in.

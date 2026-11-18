@@ -58,3 +58,19 @@ bleed, identity, status, price, calculator, the details, the contact panel, and 
 only (`styles/car-page.css`, ported from the boards), so the reading order stays the desktop one. Strings: the design
 run's audit (notes §2) lists every change; all are formal address or CSS capitals, plus the decimal comma in the
 calculator (calculators step).
+
+**18.11.2026, production review.** The gallery opens the viewer on a click or a tap, read from `click`: a tap that
+only stops a flick-scroll gets no click, so it no longer opens the viewer by mistake. The focus comes back to
+„Отворете снимките на цял екран" when it closes. In the viewer two fingers pinch between 1× and 4× (board `cd-f-viewer`
+frame 5) and never change the photo; Tab stays inside it; its thumbnail row is centred only while it fits, so the
+first thumbnails stay reachable when it overflows. With a mouse both thumbnail rows have main's thin scrollbar again.
+A folded section also opens when the page loads at its anchor, and on a second press of the VIN card's link (no
+`hashchange` then). The „Подобни автомобили" cards fill their slides: a card with short text or no photo came out
+narrower.
+
+**18.11.2026, the phone bar (row 23).** From 360 to 389 px, under the boards' 390, its price and countdown are a size
+smaller: the countdown spilled over the buttons at 360 and 375 px („13д 23ч 59м", „23ч 59м 59с"). A status in place
+of either (an active car with no price and no sale ahead, which the boards don't draw) is set like the page's status
+strip, in the body face, and may take two lines: „Неизвестен" spilled from 360 to 414 px in the display face. Either
+way the bar keeps its height, so the countdown that replaces the status after hydration doesn't move it. Below 360 px
+the back-to-top button and the notifications sit above the two-row bar; they covered its top 14 px.

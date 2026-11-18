@@ -73,3 +73,7 @@
 | 37 | Notifications top right, 2,2 s | bottom right, left of „нагоре"; above the tabs on phones; ✕ to close; pause on hover and focus · `ac-float` 6–7, `ac-float-desk` 2–5 | Moved as drawn (README, interaction rules) |
 | 38 | Inquiry opened before its code arrives: a dark backdrop that closes on press | backdrop plus a spinner · `ac-float` 5 | New loading state from the board |
 | 39 | Inquiry code fails: „Формата не успя да се зареди. Моля опитайте отново." | yes · `ac-float` 6 | — |
+
+**18.11.2026, production review.** Navigation dropdowns (row 7): the first Esc closes the menu and hands the focus to
+its parent link (that focus reopened it, so it took two presses), and Enter on a parent link follows it on a touch
+screen with a keyboard too (a pointer type left over from an earlier tap stopped it).

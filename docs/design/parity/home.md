@@ -37,3 +37,6 @@
 | 20 | The page is a static shell: both rails are cached for hours and prerendered | — | Kept |
 
 Nothing on this page writes data. The inquiry it opens is the inquiry modal's own check.
+
+**18.11.2026, production review.** The rail cards fill their slides: a card with short text or no photo came out
+narrower than its slide (`CarRail`, shared with the car page).

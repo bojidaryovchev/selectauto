@@ -29,3 +29,7 @@
 **18.11.2026.** „Корея или Америка" and the Japan post give the sea leg from Korea as ≈5–7 weeks and ≈8–10 weeks to
 Bulgaria, without the Cape of Good Hope (point 6, decision 34); the post's description says „морски превоз 5–7 срещу
 4–7 седмици".
+
+**18.11.2026, production review.** The 12 posts carry `updated: "2026-11-18"`: their text changed today (decision 20, and
+point 6 for two of them). The date shows as „обновена 18.11.2026" and goes to `dateModified`, the Open Graph
+`modifiedTime` and the sitemap's `lastModified`.

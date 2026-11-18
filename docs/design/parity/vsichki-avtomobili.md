@@ -59,3 +59,8 @@
 | 36 | Accessible names: the dropdowns carry their label; the card's links, heart, phone and Viber (car-card.md) | the sheet is a dialog named „Филтри" | — |
 
 Nothing on the screen writes data: the page and both actions only read.
+
+**18.11.2026, production review.** On a phone, Esc in an open dropdown closes only the dropdown, not the whole
+„Филтри" sheet. A make or model chosen on one tab keeps its name on the other: the lists follow the tab, so a make with
+no past lots had no option on „Приключили" and its field read empty while the filter still applied. The missing
+option is now added from the reference tables, in its alphabetical place.

@@ -30,3 +30,6 @@
 | 8 | Dialog (the car page's contact panel, the VIN tool): „Заяви Carfax проверка", the car and „ · Лот № …" or „Остави данни за контакт и ще се свържем с теб."; „Затвори"; VIN, make and model locked („(от обявата)", „Заключено — …"); Escape, a press outside, body scroll locked, focus to the close button; closes 2,5 s after a success; full screen on a phone (carfax-dialog.tsx) | `in-vin-dlg`, `in-vin-carfax`: the kit dialog, locked fields dashed with a lock | Formal „Заявете…", „Оставете … с вас.", „Затворете". Focus returns to the button that opened it |
 | 9 | — | on phones and tablets a bar „Изпратете запитване" to the form | New, as drawn (design-run question 7): it hides while the hero's actions or the form are on screen, follows the tabs and lifts back-to-top |
 | 10 | Sections fade in on scroll (`Reveal`); a light page ground | the night ground | Kept; the shell's ground |
+
+**18.11.2026, production review.** Name, phone and VIN carry `aria-required` again: main marked them `required`,
+which, with the form `noValidate`, told only screen readers.

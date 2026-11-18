@@ -23,3 +23,7 @@
 | 9 | „Свързани инструменти": the budget and import calculators | link cards with an icon and an arrow | As drawn |
 | 10 | CTA „Искаш точни условия за лизинг?", „Кажи ни…", „Направи запитване" (capitals through CSS) | a panel beside the links | Formal address |
 | 11 | Sections fade in on scroll (`Reveal`) | — | Kept |
+
+**18.11.2026, production review.** A number typed with spaces between the thousands („40 000", or a pasted „73 491"
+with a no-break space) counts as typed: before, the field showed „40 000" while the result used 40. Main's number
+inputs never let a space in.
