@@ -70,10 +70,21 @@ Per-car grid ≈ **935,500 active cards** (vs ~998k active lots-with-image).
 
 | | `car_listings` (active) | `car_listings_archived` (past) |
 |---|---|---|
-| lot `archived` | `= false` | `= true` |
+| lot `archived` | `= false` | either (since 0052; `= true` before) |
 | lot `image_url` | `IS NOT NULL` | `IS NOT NULL` |
-| lot `status` | any (pick prefers actionable) | **`IN (sold, not_sold, failed)`** (concluded only, since 0012) |
-| disjointness | — | **AND NOT** (car has any active+image lot) |
+| lot `status` | **not** `IN (sold, not_sold, failed)`, NULL counts as open (since 0052; pick prefers actionable) | **`IN (sold, not_sold, failed)`** (concluded only, since 0012) |
+| disjointness | — | **AND NOT** (car has any live+image lot: not archived, not concluded) |
+
+**Since 0052 (18.11.2026) the status decides, not the archive flag.** `archived` is set
+by one hourly event alone (the lot appearing in `/archived-lots?minutes=75`), while
+`/cars` keeps sending a concluded lot for a while with status `sold` and no `archived`
+key, which the active upsert stores as active ([03](03-normalization-and-field-mapping.md#the-archived-handling)).
+A `/cars` update after the archive event, or an hour the archive feed missed (the
+outage of 12–14 Oct 2026, the thin week of 4–11 Oct), left the lot active for good:
+125 277 active cars were concluded that day (124 515 `sold`), about 11 % of the
+catalog. So a concluded lot is never live, flag or not, and a `not_sold` lot that
+runs again is live again as soon as `/cars` brings it back with an open status. The
+affected cars were moved with `packages/db/repair-concluded-active.mjs`.
 
 The two tables are kept **strictly disjoint** — a car is **active XOR past**.
 Every write path recomputes **both** so a lot changing state *moves* the car

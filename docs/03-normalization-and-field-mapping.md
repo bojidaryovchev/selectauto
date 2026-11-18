@@ -123,6 +123,15 @@ disappeared from the site while the hourly sync kept rewriting it (98,308 cars o
 its *first* archive time, and `car_listings_archived.archived_at` drives the 90-day
 410 rule.
 
+**The other side of it (0052, 18.11.2026).** `/cars` does not carry only open lots:
+it keeps sending a concluded lot for a while, with status `sold` and no `archived`
+key. Under the rule above each such update stores the lot as active again, and the
+archive event that set the flag doesn't come twice. So the flag alone can't say
+whether a lot is live: since migration 0052 the projections go by the status, and a
+concluded lot (`sold`, `not_sold`, `failed`) is never live, archived or not
+([05 §3](05-projection-tables-car-listings.md#3-membership-rules-who-gets-a-row)). The
+upsert itself is unchanged: a re-run lot still comes back with an open status.
+
 ---
 
 ## `normalizeArchivedLot(raw)` → `auction_lots` row (archive flow, from `/archived-lots`)

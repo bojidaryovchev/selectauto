@@ -209,6 +209,12 @@ we request `prices_history=1`). See the full real sample in
 > out of the archive. Until 2026-10 the upsert kept the stored flag when the key
 > was absent, which left every re-run lot hidden from the site. See
 > [03](03-normalization-and-field-mapping.md#the-archived-handling).
+>
+> **„Active" here means not archived yet, not open for bids.** On 18.11.2026, 124 515
+> lots in the active projection had come from `/cars` with status `sold` (no
+> `archived` key), most within hours of their sale and never again. So `/cars` does
+> deliver concluded lots, and since migration 0052 the projections go by the status:
+> a concluded lot is never live, whatever the flag ([05 §3](05-projection-tables-car-listings.md#3-membership-rules-who-gets-a-row)).
 
 ### 6b. `/archived-lots` — FLAT shape (different!), with `{value}` wrappers
 

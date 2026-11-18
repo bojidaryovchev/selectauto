@@ -290,7 +290,8 @@ Both share an identical column set (except `car_listings_archived.archived_at`):
   read-time-join footgun as on `cars`). Brand/model **names are never stored**.
 
 ### `car_listings` — active catalog (~932 k rows)
-One row per physical car with **≥1 non-archived, image-bearing lot**.
+One row per physical car with **≥1 live, image-bearing lot**: not archived, and (since
+0052) not concluded — a `sold`/`not_sold`/`failed` lot never counts as live.
 - **Populated by** `recompute_car_listings(int[])` (pick-strategy) wrapped by
   `recompute_car_listings_counted(int[])`, called at the end of `upsertCarsAndLots`
   / `archiveLots` for the touched car ids, by the weekly drift sweep, and by
@@ -308,7 +309,7 @@ One row per physical car with **≥1 non-archived, image-bearing lot**.
 
 ### `car_listings_archived` — past / sold (~399 k rows)
 One row per physical car whose chosen **concluded** lot is `sold`/`not_sold`/`failed`
-and which has **no** active image lot. Powers the "Приключили" toggle for
+(archived or not, since 0052) and which has **no** live image lot. Powers the "Приключили" toggle for
 auction-result/price browsing.
 - **Populated by** `recompute_archived_car_listings(int[])` wrapped by
   `recompute_archived_car_listings_counted(int[])` (same call sites).
@@ -601,6 +602,7 @@ safe. **Append-only and hand-run** (`pnpm migrate`) — not applied on deploy.
 | `0047_mobilebg_publishing.sql` | mobile.bg publishing: `mobilebg_adverts`, `mobilebg_brand_map`, `mobilebg_model_map`. |
 | `0048_notice_sent_to_client.sql` | `generated_documents.client_sent_at` / `client_sent_by` — a payment notice marked as sent to the client („За изпращане към клиента"). |
 | `0049_notice_note.sql` | `generated_documents.note` — the operator's internal note on a payment-notice version (never printed on the PDF). |
+| `0052_concluded_lots_leave_active.sql` | Both recompute functions go by the status: a concluded lot (`sold`/`not_sold`/`failed`) is never active, archived or not, and shows in the past view. `repair-concluded-active.mjs` moved the 125 277 cars it affected on 18.11.2026 (05 §3). |
 
 > Operational procedures (backfill, reseed, drift sweep, resume) →
 > [07-operations-runbook.md](07-operations-runbook.md).
