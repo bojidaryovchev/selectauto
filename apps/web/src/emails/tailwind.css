@@ -1,0 +1,16 @@
+/*
+  The e-mails' Tailwind, for the linter only (eslint.config.mjs points
+  better-tailwindcss at this file for src/emails). Nothing imports it.
+
+  react-email's <Tailwind> builds the same stylesheet in memory: Tailwind's
+  default theme and utilities, then the config in theme.ts through @config
+  (node_modules/react-email/src/components/tailwind/utils/tailwindcss/
+  setup-tailwind.ts). Linting against it instead of the site's globals.css
+  means the e-mail colours (desk, night, orange …) are known, and the
+  canonical-class fix can't swap an e-mail class for a site token the e-mail
+  doesn't have.
+*/
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@config "./theme.ts";

@@ -1,5 +1,6 @@
-import { Button, Heading, Link, Section, Text } from "react-email";
+import { Text } from "react-email";
 import { EmailLayout } from "./email-layout";
+import { Cta, LinkFallback, Paragraph, Signature, Title } from "./parts";
 
 type VerificationEmailProps = {
   name?: string;
@@ -7,45 +8,28 @@ type VerificationEmailProps = {
   verifyUrl: string;
 };
 
-/** Sent to a newly registered user to confirm their email address (24h link). */
+/** Sent to a newly registered user to confirm their email address (24h link; board `ms-em-verify`). */
 export function VerificationEmail({ name, verifyUrl }: VerificationEmailProps) {
   return (
     <EmailLayout preview="Потвърдете имейл адреса си за SelectAuto">
-      <Heading className="m-0 mb-4 text-[24px] font-black text-ink-strong">
-        Добре дошли в SelectAuto
-      </Heading>
-      <Text className="m-0 mb-4 text-[16px] leading-[1.7] text-ink">
-        Здравейте{name ? ` ${name}` : ""},
-      </Text>
-      <Text className="m-0 mb-6 text-[16px] leading-[1.7] text-ink">
-        Благодарим за регистрацията. За да активирате профила си, потвърдете имейл адреса си с
-        бутона по-долу.
-      </Text>
+      <Title>Добре дошли в SelectAuto</Title>
+      <Paragraph>Здравейте{name ? ` ${name}` : ""},</Paragraph>
+      <Paragraph>
+        Благодарим за регистрацията. За да активирате профила си, потвърдете имейл адреса си с бутона по-долу.
+      </Paragraph>
 
-      <Section className="mb-6 text-center">
-        <Button
-          href={verifyUrl}
-          className="box-border rounded-full bg-brand px-8 py-3.75 text-[15px] font-extrabold text-white no-underline"
-        >
-          Потвърдете имейла
-        </Button>
-      </Section>
+      <Cta href={verifyUrl}>Потвърдете имейла</Cta>
 
-      <Text className="m-0 mb-2 text-[14px] leading-[1.7] text-muted">
+      <Text className="m-0 mb-2.5 text-[14px] leading-[1.65] text-muted">
         Линкът е валиден 24 часа. Ако не сте се регистрирали, игнорирайте този имейл.
       </Text>
-      <Text className="m-0 mb-1 text-[13px] text-muted">
-        Ако бутонът не работи, копирайте този адрес в браузъра си:
-      </Text>
-      <Link href={verifyUrl} className="text-[13px] break-all text-brand-dark">
-        {verifyUrl}
-      </Link>
+      <LinkFallback intro="Ако бутонът не работи, копирайте този адрес в браузъра си:" href={verifyUrl} />
 
-      <Text className="m-0 mt-7 text-[15px] leading-[1.7] text-ink">
+      <Signature>
         Поздрави,
         <br />
         Екипът на SelectAuto
-      </Text>
+      </Signature>
     </EmailLayout>
   );
 }

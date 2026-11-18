@@ -276,8 +276,8 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
   the favourites (`/lyubimi`), the inquiry dialog, the admin's shell (sidebar, phone top bar and drawer, account
   card), dashboard, loading, error and 404 states and shared parts (`components/admin/ui`), the three lead inboxes
   (Carfax, consultations, offers) with their drawer, the mail (Поща and the thread page), the contracts register,
-  the deposits page, the contract form, the contract page, the hidden listings, mobile.bg, the tariffs, the recipients, the users and the journal.
-  Each has its parity file in [parity/](parity/README.md).
+  the deposits page, the contract form, the contract page, the hidden listings, mobile.bg, the tariffs, the recipients,
+  the users and the journal, and the seven e-mails. Each has its parity file in [parity/](parity/README.md).
 - **The ab- boards' styles** (deals, listings, settings) are `styles/admin-b.css`, ported with their named container
   queries (`ablist`, `abform` …), which are the code's own approach. The few rules the boards scope under their root
   `.ab` are written by hand in `styles/admin-b-root.css`. Fields stay the admin's 44 px, 16 px `ad-in`, not the boards'
@@ -292,8 +292,20 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
   the layout, both load them from there.
 - **The 410 page is a document the proxy sends,** `src/lib/gone-page.ts`, not a route: it can't use the components,
   the stylesheet or the fonts, so its look is written out there. Keep it in step with the tokens and the kit.
-- **Montserrat is gone** (with /proces, 18 November): the particle title is drawn in Unbounded. The e-mails still name it
-  first in their font stack (`emails/theme.ts`) until the e-mails step.
+- **Montserrat is gone** (with /proces, 18 November): the particle title is drawn in Unbounded, and the e-mails name
+  Manrope first in their font stack (`emails/theme.ts`), loading no web font.
+- **The e-mails compile with react-email's own Tailwind** (`emails/theme.ts`), not the site's, and ESLint and Prettier
+  read that theme through `emails/tailwind.css`. Four rules keep them working in mail clients:
+  - every size is px, from `pixelBasedPreset`'s steps or an arbitrary value (`w-[132px]`), because several clients
+    ignore rem; any other step (`w-33`, `px-4.5`) compiles to rem;
+  - no `var()`: Gmail drops the declaration, so a shadow is an arbitrary property (`[box-shadow:…]`), not `shadow-[…]`;
+  - a block whose padding changes on a phone is a `Row`/`Column` cell, never a `Section` or the `Body`: react-email
+    moves their padding onto an inner cell and leaves the class outside, so `max-[480px]:` padding never applies;
+  - a `Column` is a bare cell with no `border="0"`, so a border goes on its `Row`; `border-solid` on a cell gives its
+    other three sides the default 3 px.
+
+  Check a change by rendering every template with `render()` from `react-email` (what Resend calls) and looking at it
+  at 700, 390 and 320 px; the walk is in [parity/emails.md](parity/emails.md).
 - **Fonts:** four font files are preloaded (Manrope and Unbounded, Latin and Cyrillic). Measure LCP on a phone.
 - **Where the design system's `tokens.json` and the kit differ, the code follows the kit,** because the boards were
   drawn with it: `small` sets no weight (tokens.json says 500); prices and button labels have the kit's tracking; `or-ring`

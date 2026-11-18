@@ -142,8 +142,12 @@ export type CalculatorOfferEmailData = {
   phone: string;
   email: string;
   marketLabel: string;
-  /** Ordered, pre-formatted line items ("Мито (10%)" → "1 490 $"). */
-  lines: { label: string; amount: string }[];
+  /**
+   * Ordered, pre-formatted line items ("Мито (10%)" → "1 490 $"). `muted`: a line that doesn't add up to the total
+   * („Междинна сума (до Холандия)", „Митническа основа"), shown grey in the customer e-mail as on the site's
+   * calculator.
+   */
+  lines: { label: string; amount: string; muted?: boolean }[];
   totalFormatted: string;
   transit: string;
   ratesVerifiedAt: string;
@@ -268,8 +272,8 @@ export async function sendFavoriteAuctionDigest(
     // an absolute source-CDN URL). Null image → omit the thumbnail.
     //
     // Deliberately the SAME `car.image` the catalog card uses, which the digest
-    // template renders at 536px — WIDER than any card slot, so this surface was
-    // the one most hurt by the old 144×108 Copart thumbnail (a 3.7× upscale) and
+    // template renders at 518px — WIDER than any card slot, so this surface was
+    // the one most hurt by the old 144×108 Copart thumbnail (a 3.6× upscale) and
     // the one most improved by the `_ful` rewrite (see lib/car-mapper.ts).
     // NOTE: `car.imageFallback` is intentionally NOT applied here — an email has
     // no JS, so a dead URL degrades to the `alt` text rather than swapping. That

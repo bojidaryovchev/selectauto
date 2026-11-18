@@ -45,6 +45,22 @@ const eslintConfig = defineConfig([
     },
   },
 
+  // The e-mails compile with react-email's own Tailwind (src/emails/theme.ts), not the site's, so their classes are
+  // checked against that (src/emails/tailwind.css). No rootFontSize here: px must stay px in an e-mail (several mail
+  // clients ignore rem), so the fix must never turn px-[18px] into px-4.5. The options objects replace the ones above.
+  {
+    files: ["src/emails/**/*.{ts,tsx}"],
+    settings: {
+      "better-tailwindcss": {
+        entryPoint: "src/emails/tailwind.css",
+      },
+    },
+    rules: {
+      "better-tailwindcss/no-unknown-classes": ["error", { ignore: [] }],
+      "better-tailwindcss/enforce-canonical-classes": ["warn", {}],
+    },
+  },
+
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

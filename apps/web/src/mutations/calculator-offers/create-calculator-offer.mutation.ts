@@ -142,6 +142,7 @@ export async function createCalculatorOffer(input: unknown): Promise<ActionResul
     lines: breakdown.lines.map((l) => ({
       label: l.label,
       amount: l.amountEur != null ? eurStr(l.amountEur) : usdStr(l.amountUsd),
+      muted: l.muted,
     })),
     totalFormatted: usdStr(breakdown.totalUsd),
     transit: market.transit,

@@ -3,5 +3,11 @@
   "printWidth": 120,
   "endOfLine": "lf",
   "plugins": ["prettier-plugin-organize-imports", "prettier-plugin-tailwindcss"],
-  "tailwindStylesheet": "apps/web/src/app/globals.css"
+  "tailwindStylesheet": "apps/web/src/app/globals.css",
+  "overrides": [
+    {
+      "files": "apps/web/src/emails/**",
+      "options": { "tailwindStylesheet": "apps/web/src/emails/tailwind.css" }
+    }
+  ]
 }

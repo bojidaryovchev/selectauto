@@ -62,6 +62,9 @@ This step is the owner's rule (decision 26). Write `docs/design/parity/<screen>.
 
 - **Tokens and components only.** No hex colours, no arbitrary pixel sizes where a token exists, no fonts but the three
   families. Type comes from the `type-*` utilities.
+- **E-mails are the exception.** They compile with react-email's own Tailwind and the e-mail palette in
+  `emails/theme.ts`, in px. Follow the four e-mail rules in `docs/design/README.md` (px only, no `var()`, phone padding
+  on `Row`/`Column` cells, borders on the `Row`) and render every template to check a change.
 - **The real data and words come from the code, never from a board.** Boards mask people („Иван П.", „+359 88• ••• •34")
   and use sample cars. The product shows what the code shows. The admin shows full names, phones and e-mails, because
   staff call and reply.
