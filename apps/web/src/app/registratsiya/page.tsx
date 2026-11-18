@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Container } from "@/components/common";
-import { AuthCard, SignUpForm } from "@/components/auth";
+import { AuthCard, AuthFormSkeleton, AuthMain, SignUpForm } from "@/components/auth";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 
 export const metadata: Metadata = {
@@ -11,20 +10,19 @@ export const metadata: Metadata = {
 
 type SearchParams = Promise<{ redirectTo?: string }>;
 
-/** /registratsiya — sign up with email/password or Google. */
+/** /registratsiya — sign up with email/password or Google (boards `ac-register`, `ac-register-st`; parity check
+ *  docs/design/parity/auth.md). */
 export default function SignUpPage({ searchParams }: { searchParams: SearchParams }) {
   return (
     <>
       <SiteHeader />
-      <main className="flex flex-1 items-center justify-center bg-[#fafafa] pt-(--header-h)">
-        <Container className="flex justify-center py-12 max-md:py-8">
-          <AuthCard title="Регистрация" subtitle="Създайте профил, за да запазвате любими автомобили.">
-            <Suspense fallback={<div className="h-80" />}>
-              <SignUpFormWithRedirect searchParams={searchParams} />
-            </Suspense>
-          </AuthCard>
-        </Container>
-      </main>
+      <AuthMain>
+        <AuthCard title="Регистрация" subtitle="Създайте профил, за да запазвате любими автомобили.">
+          <Suspense fallback={<AuthFormSkeleton google fields={4} />}>
+            <SignUpFormWithRedirect searchParams={searchParams} />
+          </Suspense>
+        </AuthCard>
+      </AuthMain>
       <SiteFooter />
     </>
   );

@@ -20,7 +20,7 @@ export type SignInValues = z.infer<typeof signInSchema>;
 
 export const signUpSchema = z
   .object({
-    name: z.string().trim().min(1, { message: "Моля въведете име." }).max(120),
+    name: z.string().trim().min(1, { message: "Моля въведете име." }).max(120, { message: "Името е твърде дълго." }),
     email: z.string().trim().email({ message: "Невалиден имейл адрес." }),
     password,
     confirmPassword: z.string().min(1, { message: "Моля потвърдете паролата." }),

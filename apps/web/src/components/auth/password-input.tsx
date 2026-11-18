@@ -1,45 +1,38 @@
 "use client";
 
 import React, { useState } from "react";
-import { Button } from "@/components/common";
 import { EyeIcon, EyeOffIcon } from "@/components/icons";
-import { AUTH_INPUT_CLASS } from "./auth-styles";
 
 /**
- * Auth password field with a show/hide toggle. Renders a shared `AUTH_INPUT_CLASS`
- * input plus a proper (ripple-backed) icon button pinned to the right that flips
- * the input between `password` and `text`. Forwards its ref and spreads the rest
- * of the native input props, so it's a drop-in for the auth `<input>` and works
- * directly with react-hook-form's `{...register("…")}`.
- *
- * The right padding is set inline (not via a Tailwind class) so it always wins
- * over `AUTH_INPUT_CLASS`'s `px-4` regardless of stylesheet source order — text
- * never slides under the toggle.
+ * A password field with the eye button at its end that shows and hides what was typed (boards `ac-signin`,
+ * `ac-register`, `ac-reset`). Forwards its ref and spreads the native input props, so it works with react-hook-form's
+ * `{...register("…")}`. The kit's input wrapper assumes a leading icon; this field has none, so its text starts at
+ * the field's own padding.
  */
 export const PasswordInput = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
-  ({ className = "", style, ...props }, ref) => {
+  ({ className = "", ...props }, ref) => {
     const [visible, setVisible] = useState(false);
+    const label = visible ? "Скрийте паролата" : "Покажете паролата";
 
     return (
-      <div className="relative">
+      <span className="sa-inw">
         <input
           ref={ref}
           type={visible ? "text" : "password"}
-          className={`${AUTH_INPUT_CLASS} ${className}`}
-          style={{ paddingRight: "3.5rem", ...style }}
+          className={`sa-in has-end pl-3.5 ${className}`}
           {...props}
         />
-        <Button
+        <button
           type="button"
+          className="sa-ib"
           onClick={() => setVisible((v) => !v)}
-          aria-label={visible ? "Скрий паролата" : "Покажи паролата"}
+          aria-label={label}
           aria-pressed={visible}
-          title={visible ? "Скрий паролата" : "Покажи паролата"}
-          className="absolute right-1.5 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-[10px] text-[#6b7280] transition-colors hover:text-brand-dark focus-visible:outline-none focus-visible:text-brand-dark"
+          title={label}
         >
-          {visible ? <EyeOffIcon className="size-5" /> : <EyeIcon className="size-5" />}
-        </Button>
-      </div>
+          {visible ? <EyeOffIcon /> : <EyeIcon />}
+        </button>
+      </span>
     );
   },
 );

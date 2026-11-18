@@ -1,0 +1,37 @@
+/*
+  The account pages /sign-in, /registratsiya, /zabravena-parola, /nova-parola, /verify and /greshka-pri-vhod (boards ac-signin, ac-register, ac-forgot, ac-reset, ac-verify, ac-autherr and their state sheets): the card, the „или“ divider, the label row with its link, the „Последно използвано“ badge and rings, the password field with its eye button, the waiting row and the warning circle.
+  Ported by script from the screen's board sources (apps/web/scripts/port-board-css.mjs), as kit.css is from the kit: token
+  names follow tokens.css, the boards' cqi became vw and their container queries media queries. Board-only parts
+  (device frames, preview overlays) were left out. Class prefix: ac-.
+*/
+@layer components {
+  .ac-auth{padding-block:clamp(40px,6.5vw,112px)}
+  .ac-card{width:min(100%,472px);margin-inline:auto;display:flex;flex-direction:column;gap:22px;padding:clamp(24px,3vw,40px);background:var(--color-s1);border:1px solid var(--color-hair);border-radius:var(--radius-xl)}
+  @media (max-width:639.98px){.ac-card{padding:24px 20px;gap:20px}}
+  .ac-card__hd{display:flex;flex-direction:column;gap:10px}
+  .ac-card__t{font:700 30px/1.12 var(--font-display);letter-spacing:-.02em;text-wrap:balance}
+  @media (max-width:639.98px){.ac-card__t{font-size:26px}}
+  .ac-card__s{font-size:15.5px;line-height:1.55;color:var(--color-tx2)}
+  .ac-card--c{text-align:center;align-items:center}
+  .ac-card--c .ac-card__hd{align-items:center}
+  .ac-card--c .ac-card__s{max-width:36ch}
+  .ac-card--c>.ac-acts{width:100%}
+  .ac-or{display:flex;align-items:center;gap:14px;font-size:13px;font-weight:700;color:var(--color-tx3)}
+  .ac-or::before,.ac-or::after{content:"";flex:1;height:1px;background:var(--color-hair2)}
+  .ac-lblrow{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:24px}
+  .ac-lnk{display:inline-flex;align-items:center;padding-block:10px;margin-block:-10px;font-size:13.5px;font-weight:700;color:var(--color-ortx);text-decoration:none;white-space:nowrap}
+  .ac-alt{font-size:15px;line-height:1.5;color:var(--color-tx2);text-align:center}
+  .ac-alt a{font-weight:800;color:var(--color-ortx)}
+  .ac-acts{display:flex;flex-direction:column;gap:12px;align-items:stretch}
+  .ac-acts>.sa-btn--txt,.ac-back{align-self:center}
+  .ac-lu{position:relative}
+  .ac-lu__b{position:absolute;top:-11px;right:14px;z-index:2;display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:11px;background:var(--color-s1);box-shadow:inset 0 0 0 1px var(--color-or);color:var(--color-ortx);font:800 11.5px/1 var(--font-sans);white-space:nowrap;pointer-events:none}
+  .ac-lu--g .sa-btn{box-shadow:inset 0 0 0 1.5px var(--color-or),0 0 0 4px var(--color-or-ring)}
+  .ac-ring{filter:drop-shadow(2px 0 0 var(--color-s1)) drop-shadow(-2px 0 0 var(--color-s1)) drop-shadow(0 2px 0 var(--color-s1)) drop-shadow(0 -2px 0 var(--color-s1)) drop-shadow(2px 0 0 rgba(255,122,26,.55)) drop-shadow(-2px 0 0 rgba(255,122,26,.55)) drop-shadow(0 2px 0 rgba(255,122,26,.55)) drop-shadow(0 -2px 0 rgba(255,122,26,.55))}
+  .ac-wait{display:flex;align-items:center;gap:12px;min-height:48px;font-size:15px;font-weight:600;color:var(--color-tx2)}
+  .ac-wait .sa-spin{color:var(--color-or)}
+  .ac-sk{display:flex;flex-direction:column;gap:12px}
+  .ac-eic{width:64px;height:64px;display:grid;place-items:center;border-radius:50%;background:var(--color-warn-w);color:var(--color-warn)}
+  .ac-eic svg{width:30px;height:30px}
+  .ac-msg{font-size:15.5px;line-height:1.6;color:var(--color-tx2);max-width:38ch}
+}

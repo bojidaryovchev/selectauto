@@ -1,20 +1,44 @@
 import type { ReactNode } from "react";
 
-/** Centered card shell for the auth pages (sign-in/up, forgot/reset, verify). */
+/**
+ * The account pages' frame (boards `ac-signin`, `ac-register`, `ac-forgot`, `ac-reset`, `ac-verify`, `ac-autherr`;
+ * parity check docs/design/parity/auth.md): `AuthMain` is the page's main region under the fixed header, `AuthCard`
+ * the 472 px card on it, a title in the display face and an optional subtitle. `centered` is the sign-in error page's
+ * card, with its icon above the title. The page's own CSS is styles/account.css.
+ */
+export function AuthMain({ children }: { children: ReactNode }) {
+  return (
+    <main className="flex-1 pt-(--header-h)">
+      <div className="ac-auth">
+        <div className="sa-wrap">{children}</div>
+      </div>
+    </main>
+  );
+}
+
 export function AuthCard({
   title,
   subtitle,
+  centered = false,
+  icon,
   children,
 }: {
   title: string;
   subtitle?: ReactNode;
+  centered?: boolean;
+  icon?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <div className="w-full max-w-110 rounded-[22px] border border-line bg-white p-8 shadow-card max-md:p-6">
-      <h1 className="mb-1.5 text-2xl font-black uppercase tracking-tight text-ink">{title}</h1>
-      {subtitle ? <p className="mb-6 text-sm text-muted">{subtitle}</p> : <div className="mb-6" />}
+    <section className={`ac-card ${centered ? "ac-card--c" : ""}`} aria-labelledby="ac-title">
+      {icon}
+      <div className="ac-card__hd">
+        <h1 className="ac-card__t" id="ac-title">
+          {title}
+        </h1>
+        {subtitle ? <p className="ac-card__s">{subtitle}</p> : null}
+      </div>
       {children}
-    </div>
+    </section>
   );
 }

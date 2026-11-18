@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Container } from "@/components/common";
-import { AuthCard, SignInForm } from "@/components/auth";
+import { AuthCard, AuthFormSkeleton, AuthMain, SignInForm } from "@/components/auth";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 
 export const metadata: Metadata = {
@@ -12,23 +11,21 @@ export const metadata: Metadata = {
 type SearchParams = Promise<{ redirectTo?: string }>;
 
 /**
- * /sign-in — email/password + Google sign-in. Static shell; the form (which reads
- * `redirectTo` from searchParams, request-time data) streams inside <Suspense> as
- * required under cacheComponents.
+ * /sign-in — email/password + Google sign-in (boards `ac-signin`, `ac-signin-st`; parity check
+ * docs/design/parity/auth.md). Static shell; the form (which reads `redirectTo` from searchParams, request-time data)
+ * streams inside <Suspense> as required under cacheComponents, a skeleton until then.
  */
 export default function SignInPage({ searchParams }: { searchParams: SearchParams }) {
   return (
     <>
       <SiteHeader />
-      <main className="flex flex-1 items-center justify-center bg-[#fafafa] pt-(--header-h)">
-        <Container className="flex justify-center py-12 max-md:py-8">
-          <AuthCard title="Вход" subtitle="Влезте в профила си, за да управлявате любимите си автомобили.">
-            <Suspense fallback={<div className="h-72" />}>
-              <SignInFormWithRedirect searchParams={searchParams} />
-            </Suspense>
-          </AuthCard>
-        </Container>
-      </main>
+      <AuthMain>
+        <AuthCard title="Вход" subtitle="Влезте в профила си, за да управлявате любимите си автомобили.">
+          <Suspense fallback={<AuthFormSkeleton google fields={2} />}>
+            <SignInFormWithRedirect searchParams={searchParams} />
+          </Suspense>
+        </AuthCard>
+      </AuthMain>
       <SiteFooter />
     </>
   );

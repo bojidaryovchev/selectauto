@@ -1,11 +1,10 @@
-import Link from "next/link";
 import { LinkButton } from "@/components/common";
 import { AlertIcon } from "@/components/icons";
-import { AUTH_PRIMARY_BTN_CLASS } from "./auth-styles";
+import { AuthCard } from "./auth-card";
 
 /**
  * Body of the /greshka-pri-vhod page — the branded replacement for Auth.js's raw
- * `/api/auth/error` card. Auth.js redirects here (via `pages.error` in
+ * `/api/auth/error` card (boards `ac-autherr`, `ac-autherr-st`). Auth.js redirects here (via `pages.error` in
  * auth.config.ts) whenever an auth flow fails, passing the reason as `?error=`.
  *
  * Note the `Configuration` case: Auth.js relabels ANY error it doesn't consider
@@ -57,29 +56,39 @@ export function AuthErrorContent({ error }: { error?: string }) {
   const { title, message } = (error && ERROR_COPY[error]) || DEFAULT_COPY;
 
   return (
-    <div className="w-full max-w-110 rounded-[22px] border border-line bg-white p-8 text-center shadow-card max-md:p-6">
-      <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-full bg-brand/10 text-brand-dark">
-        <AlertIcon className="size-7" />
-      </div>
-
-      <h1 className="mb-2 text-2xl font-black uppercase tracking-tight text-ink">{title}</h1>
-      <p className="mx-auto mb-7 max-w-88 text-sm/relaxed text-muted">{message}</p>
-
-      <div className="grid gap-3">
-        <LinkButton
-          href="/sign-in"
-          rippleTheme="light"
-          className={`flex items-center justify-center ${AUTH_PRIMARY_BTN_CLASS}`}
-        >
+    <AuthCard
+      centered
+      title={title}
+      icon={
+        <span className="ac-eic" aria-hidden="true">
+          <AlertIcon />
+        </span>
+      }
+    >
+      <p className="ac-msg">{message}</p>
+      <div className="ac-acts">
+        <LinkButton href="/sign-in" variant="pri" block>
           Опитайте отново
         </LinkButton>
-        <Link
-          href="/"
-          className="text-sm font-bold text-brand-dark transition-colors hover:underline"
-        >
+        <LinkButton href="/" variant="txt">
           Към началото
-        </Link>
+        </LinkButton>
       </div>
-    </div>
+    </AuthCard>
+  );
+}
+
+/** The sign-in error card while the page reads its address (`ac-autherr-st` 6), named „Зареждане". */
+export function AuthErrorSkeleton() {
+  return (
+    <section className="ac-card ac-card--c" aria-busy="true" aria-label="Зареждане">
+      <div className="ac-sk w-full items-center">
+        <div className="sa-sk size-16 rounded-full" />
+        <div className="sa-sk h-6.5 w-[70%]" />
+        <div className="sa-sk h-3 w-[90%]" />
+        <div className="sa-sk h-3 w-[80%]" />
+        <div className="sa-sk mt-3 h-12 w-full rounded-md" />
+      </div>
+    </section>
   );
 }

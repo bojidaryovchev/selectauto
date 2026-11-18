@@ -10,13 +10,10 @@ import { Button } from "@/components/common";
 import { useLastAuthMethod } from "@/hooks/use-last-auth-method";
 import { credentialsSignIn } from "@/mutations/auth";
 import { signInSchema, type SignInValues } from "@/schemas/auth.schema";
-import {
-  AUTH_ERROR_BOX_CLASS,
-  AUTH_INPUT_CLASS,
-  AUTH_PRIMARY_BTN_CLASS,
-} from "./auth-styles";
+import { AuthAlert, AuthField, fieldErrorProps } from "./auth-field";
 import { GoogleButton } from "./google-button";
 import { LastUsedBadge } from "./last-used-badge";
+import { PasswordInput } from "./password-input";
 
 /** `aria-describedby` targets for the «Последно използвано» badge. Only one of the
  *  two ever renders (the hook returns a single method), but distinct ids keep the
@@ -25,17 +22,16 @@ const GOOGLE_HINT_ID = "last-used-google";
 const CREDENTIALS_HINT_ID = "last-used-credentials";
 
 /**
- * Email/password sign-in form + Google button. On success it refetches the
- * Auth.js session — the sign-in ran through a Server Action, so the client
- * SessionProvider doesn't otherwise learn about the cookie it just set — then
- * navigates to `redirectTo`. Errors (wrong credentials, unverified email) surface
- * in the status box from the server action's result.
+ * Email/password sign-in form + Google button (boards `ac-signin`, `ac-signin-st`). On success it refetches the
+ * Auth.js session — the sign-in ran through a Server Action, so the client SessionProvider doesn't otherwise learn
+ * about the cookie it just set — then navigates to `redirectTo`. Errors (wrong credentials, unverified email) show in
+ * the alert above the button, from the server action's result.
  *
- * Whichever method this browser last signed in with gets a «Последно използвано»
- * badge + brand ring, so returning users don't have to remember whether they used
- * Google or a password (with `allowDangerousEmailAccountLinking` both can exist on
- * one email). The marker is client-only — it appears right after hydration and,
- * being absolutely positioned, shifts nothing.
+ * Whichever method this browser last signed in with gets a «Последно използвано» badge and a ring, so returning users
+ * don't have to remember whether they used Google or a password (with `allowDangerousEmailAccountLinking` both can
+ * exist on one email). The marker is client-only: it appears right after hydration and, positioned on the control's
+ * edge, shifts nothing. The chamfered „Вход" can't take an outline or a box-shadow (its clip-path cuts them), so its
+ * ring is drawn by `.ac-ring` around it.
  */
 export function SignInForm({ redirectTo = "/" }: { redirectTo?: string }) {
   const router = useRouter();
@@ -68,91 +64,74 @@ export function SignInForm({ redirectTo = "/" }: { redirectTo?: string }) {
     }
   }
 
+  const submit = (
+    <Button
+      type="submit"
+      variant="pri"
+      block
+      busy={isSubmitting}
+      disabled={isSubmitting}
+      aria-describedby={lastMethod === "credentials" ? CREDENTIALS_HINT_ID : undefined}
+      // While sending, the button keeps its full strength (the kit dims a disabled one).
+      className="opacity-100"
+    >
+      Вход
+    </Button>
+  );
+
   return (
-    <div className="grid gap-4">
-      {/* `relative` host for the badge — it must be a SIBLING of the button, which
-          is overflow-hidden for its ripple and would clip an overlapping pill. */}
-      <div className="relative">
-        <GoogleButton
-          redirectTo={redirectTo}
-          highlighted={lastMethod === "google"}
-          describedBy={lastMethod === "google" ? GOOGLE_HINT_ID : undefined}
-        />
+    <>
+      <div className={`ac-lu ${lastMethod === "google" ? "ac-lu--g" : ""}`}>
+        <GoogleButton redirectTo={redirectTo} describedBy={lastMethod === "google" ? GOOGLE_HINT_ID : undefined} />
         {lastMethod === "google" ? <LastUsedBadge id={GOOGLE_HINT_ID} /> : null}
       </div>
 
-      <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-muted">
-        <span className="h-px flex-1 bg-line" />
-        или
-        <span className="h-px flex-1 bg-line" />
-      </div>
+      <div className="ac-or">или</div>
 
-      <form noValidate onSubmit={handleSubmit(onSubmit)} className="grid gap-3.5">
-        <div className="grid gap-1.5">
-          <label htmlFor="signin-email" className="text-sm font-bold text-ink">
-            Имейл
-          </label>
+      <form noValidate onSubmit={handleSubmit(onSubmit)} className="sa-form">
+        <AuthField id="signin-email" label="Имейл" error={errors.email?.message}>
           <input
             id="signin-email"
             type="email"
             autoComplete="email"
             placeholder="example@email.com"
-            className={AUTH_INPUT_CLASS}
+            className={`sa-in ${errors.email ? "is-err" : ""}`}
+            {...fieldErrorProps("signin-email", errors.email?.message)}
             {...register("email")}
           />
-          {errors.email?.message ? (
-            <span className="text-xs font-semibold text-[#b53b2f]">{errors.email.message}</span>
-          ) : null}
-        </div>
+        </AuthField>
 
-        <div className="grid gap-1.5">
-          <div className="flex items-center justify-between">
-            <label htmlFor="signin-password" className="text-sm font-bold text-ink">
-              Парола
-            </label>
-            <Link href="/zabravena-parola" className="text-xs font-semibold text-brand-dark hover:underline">
+        <AuthField
+          id="signin-password"
+          label="Парола"
+          error={errors.password?.message}
+          aside={
+            <Link href="/zabravena-parola" className="ac-lnk">
               Забравена парола?
             </Link>
-          </div>
-          <input
+          }
+        >
+          <PasswordInput
             id="signin-password"
-            type="password"
             autoComplete="current-password"
             placeholder="••••••••"
-            className={AUTH_INPUT_CLASS}
+            className={errors.password ? "is-err" : ""}
+            {...fieldErrorProps("signin-password", errors.password?.message)}
             {...register("password")}
           />
-          {errors.password?.message ? (
-            <span className="text-xs font-semibold text-[#b53b2f]">{errors.password.message}</span>
-          ) : null}
-        </div>
+        </AuthField>
 
-        {error ? <div className={AUTH_ERROR_BOX_CLASS}>{error}</div> : null}
+        {error ? <AuthAlert tone="neg">{error}</AuthAlert> : null}
 
-        <div className="relative">
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            rippleTheme="light"
-            aria-describedby={lastMethod === "credentials" ? CREDENTIALS_HINT_ID : undefined}
-            // Offset ring: a flush brand ring would vanish against the button's
-            // own orange gradient.
-            className={`${AUTH_PRIMARY_BTN_CLASS} ${
-              lastMethod === "credentials" ? "ring-2 ring-brand/40 ring-offset-2 ring-offset-white" : ""
-            }`}
-          >
-            Вход
-          </Button>
+        <div className="ac-lu">
+          {lastMethod === "credentials" ? <div className="ac-ring">{submit}</div> : submit}
           {lastMethod === "credentials" ? <LastUsedBadge id={CREDENTIALS_HINT_ID} /> : null}
         </div>
       </form>
 
-      <p className="text-center text-sm text-muted">
-        Нямате профил?{" "}
-        <Link href="/registratsiya" className="font-bold text-brand-dark hover:underline">
-          Регистрация
-        </Link>
+      <p className="ac-alt">
+        Нямате профил? <Link href="/registratsiya">Регистрация</Link>
       </p>
-    </div>
+    </>
   );
 }

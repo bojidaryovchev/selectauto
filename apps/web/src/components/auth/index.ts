@@ -1,5 +1,6 @@
-export { AuthCard } from "./auth-card";
-export { AuthErrorContent } from "./auth-error-content";
+export { AuthCard, AuthMain } from "./auth-card";
+export { AuthErrorContent, AuthErrorSkeleton } from "./auth-error-content";
+export { AuthAlert, AuthField, AuthFormSkeleton, fieldErrorProps } from "./auth-field";
 export { ForgotPasswordForm } from "./forgot-password-form";
 export { GoogleButton } from "./google-button";
 export { LastUsedBadge } from "./last-used-badge";

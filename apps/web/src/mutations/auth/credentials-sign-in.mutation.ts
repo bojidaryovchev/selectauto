@@ -49,7 +49,7 @@ export async function credentialsSignIn(input: unknown): Promise<ActionResult> {
       if (cause?.message === "OAUTH_ONLY") {
         return {
           success: false,
-          error: "Този имейл е регистриран чрез Google. Влезте с бутона „Продължи с Google“.",
+          error: "Този имейл е регистриран чрез Google. Влезте с бутона „Продължете с Google“.",
         };
       }
       if (error.type === "CredentialsSignin") {

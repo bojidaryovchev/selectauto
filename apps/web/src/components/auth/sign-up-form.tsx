@@ -7,18 +7,14 @@ import { useForm } from "react-hook-form";
 import { Button } from "@/components/common";
 import { signUp } from "@/mutations/auth";
 import { signUpSchema, type SignUpValues } from "@/schemas/auth.schema";
-import {
-  AUTH_ERROR_BOX_CLASS,
-  AUTH_INPUT_CLASS,
-  AUTH_PRIMARY_BTN_CLASS,
-  AUTH_SUCCESS_BOX_CLASS,
-} from "./auth-styles";
+import { AuthAlert, AuthField, fieldErrorProps } from "./auth-field";
 import { GoogleButton } from "./google-button";
+import { PasswordInput } from "./password-input";
 
 /**
- * Registration form (Google + email/password). On a successful email sign-up it
- * shows a "check your inbox" confirmation rather than logging in — the account is
- * unverified until the user clicks the emailed link.
+ * Registration form (Google + email/password; boards `ac-register`, `ac-register-st`). On a successful email sign-up
+ * the form is replaced by a "check your inbox" confirmation rather than logging in — the account is unverified until
+ * the user clicks the emailed link. Both password fields have the eye button.
  */
 export function SignUpForm({ redirectTo = "/" }: { redirectTo?: string }) {
   const [done, setDone] = useState(false);
@@ -45,104 +41,76 @@ export function SignUpForm({ redirectTo = "/" }: { redirectTo?: string }) {
 
   if (done) {
     return (
-      <div className={AUTH_SUCCESS_BOX_CLASS}>
+      <AuthAlert tone="pos">
         Изпратихме линк за потвърждение на имейла ви. Отворете го, за да активирате профила си и да влезете.
-      </div>
+      </AuthAlert>
     );
   }
 
   return (
-    <div className="grid gap-4">
+    <>
       <GoogleButton redirectTo={redirectTo} />
 
-      <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-muted">
-        <span className="h-px flex-1 bg-line" />
-        или
-        <span className="h-px flex-1 bg-line" />
-      </div>
+      <div className="ac-or">или</div>
 
-      <form noValidate onSubmit={handleSubmit(onSubmit)} className="grid gap-3.5">
-        <div className="grid gap-1.5">
-          <label htmlFor="signup-name" className="text-sm font-bold text-ink">
-            Име
-          </label>
+      <form noValidate onSubmit={handleSubmit(onSubmit)} className="sa-form">
+        <AuthField id="signup-name" label="Име" error={errors.name?.message}>
           <input
             id="signup-name"
             type="text"
             autoComplete="name"
             placeholder="Вашето име"
-            className={AUTH_INPUT_CLASS}
+            className={`sa-in ${errors.name ? "is-err" : ""}`}
+            {...fieldErrorProps("signup-name", errors.name?.message)}
             {...register("name")}
           />
-          {errors.name?.message ? (
-            <span className="text-xs font-semibold text-[#b53b2f]">{errors.name.message}</span>
-          ) : null}
-        </div>
+        </AuthField>
 
-        <div className="grid gap-1.5">
-          <label htmlFor="signup-email" className="text-sm font-bold text-ink">
-            Имейл
-          </label>
+        <AuthField id="signup-email" label="Имейл" error={errors.email?.message}>
           <input
             id="signup-email"
             type="email"
             autoComplete="email"
             placeholder="example@email.com"
-            className={AUTH_INPUT_CLASS}
+            className={`sa-in ${errors.email ? "is-err" : ""}`}
+            {...fieldErrorProps("signup-email", errors.email?.message)}
             {...register("email")}
           />
-          {errors.email?.message ? (
-            <span className="text-xs font-semibold text-[#b53b2f]">{errors.email.message}</span>
-          ) : null}
-        </div>
+        </AuthField>
 
-        <div className="grid gap-1.5">
-          <label htmlFor="signup-password" className="text-sm font-bold text-ink">
-            Парола
-          </label>
-          <input
+        <AuthField id="signup-password" label="Парола" error={errors.password?.message}>
+          <PasswordInput
             id="signup-password"
-            type="password"
             autoComplete="new-password"
             placeholder="Поне 8 символа"
-            className={AUTH_INPUT_CLASS}
+            className={errors.password ? "is-err" : ""}
+            {...fieldErrorProps("signup-password", errors.password?.message)}
             {...register("password")}
           />
-          {errors.password?.message ? (
-            <span className="text-xs font-semibold text-[#b53b2f]">{errors.password.message}</span>
-          ) : null}
-        </div>
+        </AuthField>
 
-        <div className="grid gap-1.5">
-          <label htmlFor="signup-confirm-password" className="text-sm font-bold text-ink">
-            Потвърдете паролата
-          </label>
-          <input
+        <AuthField id="signup-confirm-password" label="Потвърдете паролата" error={errors.confirmPassword?.message}>
+          <PasswordInput
             id="signup-confirm-password"
-            type="password"
             autoComplete="new-password"
             placeholder="Повторете паролата"
-            className={AUTH_INPUT_CLASS}
+            className={errors.confirmPassword ? "is-err" : ""}
+            {...fieldErrorProps("signup-confirm-password", errors.confirmPassword?.message)}
             {...register("confirmPassword")}
           />
-          {errors.confirmPassword?.message ? (
-            <span className="text-xs font-semibold text-[#b53b2f]">{errors.confirmPassword.message}</span>
-          ) : null}
-        </div>
+        </AuthField>
 
-        {error ? <div className={AUTH_ERROR_BOX_CLASS}>{error}</div> : null}
+        {error ? <AuthAlert tone="neg">{error}</AuthAlert> : null}
 
-        <Button type="submit" disabled={isSubmitting} rippleTheme="light" className={AUTH_PRIMARY_BTN_CLASS}>
+        {/* While sending, the button keeps its full strength (the kit dims a disabled one). */}
+        <Button type="submit" variant="pri" block busy={isSubmitting} disabled={isSubmitting} className="opacity-100">
           Регистрация
         </Button>
       </form>
 
-      <p className="text-center text-sm text-muted">
-        Вече имате профил?{" "}
-        <Link href="/sign-in" className="font-bold text-brand-dark hover:underline">
-          Вход
-        </Link>
+      <p className="ac-alt">
+        Вече имате профил? <Link href="/sign-in">Вход</Link>
       </p>
-    </div>
+    </>
   );
 }

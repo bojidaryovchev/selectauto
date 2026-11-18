@@ -6,40 +6,31 @@ import { GoogleIcon } from "@/components/icons";
 import { googleSignIn } from "@/mutations/auth";
 
 /**
- * "Continue with Google" button. Calls the `googleSignIn` server action, which
- * triggers Auth.js's OAuth redirect (the action throws a redirect — expected, so
- * we don't await a return value). `redirectTo` returns the user to where they
- * started after the round-trip.
+ * „Продължете с Google". Calls the `googleSignIn` server action, which triggers Auth.js's OAuth redirect (the action
+ * throws a redirect — expected, so we don't await a return value). `redirectTo` returns the user to where they
+ * started after the round-trip. While the browser leaves for Google, the button waits with a spinner in place of the
+ * mark (`ac-signin-st` 7).
  *
- * `highlighted` draws the brand ring used when this was the last method the
- * browser signed in with, and `describedBy` points at the <LastUsedBadge> that
- * accompanies it (see sign-in-form.tsx). Both are inert on /registratsiya, where
- * a "last used" hint makes no sense.
+ * `describedBy` points at the „Последно използвано" badge when Google was this browser's last method; the ring around
+ * the button comes from the wrapper (`.ac-lu--g`, see sign-in-form.tsx).
  */
-export function GoogleButton({
-  redirectTo = "/",
-  highlighted = false,
-  describedBy,
-}: {
-  redirectTo?: string;
-  highlighted?: boolean;
-  describedBy?: string;
-}) {
+export function GoogleButton({ redirectTo = "/", describedBy }: { redirectTo?: string; describedBy?: string }) {
   const [isPending, startTransition] = useTransition();
 
   return (
     <Button
       type="button"
+      variant="sec"
+      block
+      busy={isPending}
       disabled={isPending}
-      rippleTheme="dark"
       aria-describedby={describedBy}
       onClick={() => startTransition(() => googleSignIn(redirectTo))}
-      className={`flex min-h-13.5 w-full items-center justify-center gap-3 rounded-[14px] border bg-white text-base font-bold text-[#17181b] transition-transform duration-200 hover:-translate-y-0.5 disabled:opacity-70 ${
-        highlighted ? "border-brand ring-2 ring-brand/25" : "border-[#d9dde4]"
-      }`}
+      // While it waits, the button keeps its full strength (the kit dims a disabled one).
+      className="opacity-100"
     >
-      <GoogleIcon className="size-5" />
-      Продължи с Google
+      {isPending ? null : <GoogleIcon />}
+      Продължете с Google
     </Button>
   );
 }

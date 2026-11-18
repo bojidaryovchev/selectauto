@@ -6,16 +6,12 @@ import { useForm } from "react-hook-form";
 import { Button, LinkButton } from "@/components/common";
 import { resetPassword } from "@/mutations/auth";
 import { resetPasswordSchema, type ResetPasswordValues } from "@/schemas/auth.schema";
-import {
-  AUTH_ERROR_BOX_CLASS,
-  AUTH_PRIMARY_BTN_CLASS,
-  AUTH_SUCCESS_BOX_CLASS,
-} from "./auth-styles";
+import { AuthAlert, AuthField, fieldErrorProps } from "./auth-field";
 import { PasswordInput } from "./password-input";
 
 /**
- * Reset-password form. The `token` comes from the email link (the page reads it
- * from the URL and passes it in). On success it confirms and links to sign-in.
+ * Reset-password form (boards `ac-reset`, `ac-reset-st`). The `token` comes from the email link (the page reads it
+ * from the URL and passes it in). On success it confirms and offers „Към вход".
  */
 export function ResetPasswordForm({ token }: { token: string }) {
   const [done, setDone] = useState(false);
@@ -39,13 +35,9 @@ export function ResetPasswordForm({ token }: { token: string }) {
 
   if (done) {
     return (
-      <div className="grid gap-4">
-        <div className={AUTH_SUCCESS_BOX_CLASS}>Паролата е сменена успешно.</div>
-        <LinkButton
-          href="/sign-in"
-          rippleTheme="light"
-          className="inline-flex min-h-13.5 items-center justify-center rounded-[14px] bg-linear-to-r from-brand-dark to-brand px-6 text-base font-extrabold text-white shadow-[0_12px_28px_rgba(216,111,22,0.22)] transition-transform duration-200 hover:-translate-y-0.5"
-        >
+      <div className="ac-acts">
+        <AuthAlert tone="pos">Паролата е сменена успешно.</AuthAlert>
+        <LinkButton href="/sign-in" variant="pri" block>
           Към вход
         </LinkButton>
       </div>
@@ -53,44 +45,37 @@ export function ResetPasswordForm({ token }: { token: string }) {
   }
 
   return (
-    <form noValidate onSubmit={handleSubmit(onSubmit)} className="grid gap-3.5">
+    <form noValidate onSubmit={handleSubmit(onSubmit)} className="sa-form">
       {/* token is a hidden registered field so it's part of the validated payload */}
       <input type="hidden" {...register("token")} />
 
-      <div className="grid gap-1.5">
-        <label htmlFor="reset-password" className="text-sm font-bold text-ink">
-          Нова парола
-        </label>
+      <AuthField id="reset-password" label="Нова парола" error={errors.password?.message}>
         <PasswordInput
           id="reset-password"
           autoComplete="new-password"
           placeholder="Поне 8 символа"
+          className={errors.password ? "is-err" : ""}
+          {...fieldErrorProps("reset-password", errors.password?.message)}
           {...register("password")}
         />
-        {errors.password?.message ? (
-          <span className="text-xs font-semibold text-[#b53b2f]">{errors.password.message}</span>
-        ) : null}
-      </div>
+      </AuthField>
 
-      <div className="grid gap-1.5">
-        <label htmlFor="reset-confirm-password" className="text-sm font-bold text-ink">
-          Потвърдете паролата
-        </label>
+      <AuthField id="reset-confirm-password" label="Потвърдете паролата" error={errors.confirmPassword?.message}>
         <PasswordInput
           id="reset-confirm-password"
           autoComplete="new-password"
           placeholder="Повторете паролата"
+          className={errors.confirmPassword ? "is-err" : ""}
+          {...fieldErrorProps("reset-confirm-password", errors.confirmPassword?.message)}
           {...register("confirmPassword")}
         />
-        {errors.confirmPassword?.message ? (
-          <span className="text-xs font-semibold text-[#b53b2f]">{errors.confirmPassword.message}</span>
-        ) : null}
-      </div>
+      </AuthField>
 
-      {error ? <div className={AUTH_ERROR_BOX_CLASS}>{error}</div> : null}
+      {error ? <AuthAlert tone="neg">{error}</AuthAlert> : null}
 
-      <Button type="submit" disabled={isSubmitting} rippleTheme="light" className={AUTH_PRIMARY_BTN_CLASS}>
-        Смени паролата
+      {/* While sending, the button keeps its full strength (the kit dims a disabled one). */}
+      <Button type="submit" variant="pri" block busy={isSubmitting} disabled={isSubmitting} className="opacity-100">
+        Сменете паролата
       </Button>
     </form>
   );

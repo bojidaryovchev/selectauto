@@ -1,23 +1,16 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Button } from "@/components/common";
+import { Button, LinkButton } from "@/components/common";
 import { forgotPassword } from "@/mutations/auth";
 import { forgotPasswordSchema, type ForgotPasswordValues } from "@/schemas/auth.schema";
-import {
-  AUTH_ERROR_BOX_CLASS,
-  AUTH_INPUT_CLASS,
-  AUTH_PRIMARY_BTN_CLASS,
-  AUTH_SUCCESS_BOX_CLASS,
-} from "./auth-styles";
+import { AuthAlert, AuthField, fieldErrorProps } from "./auth-field";
 
 /**
- * "Forgot password" form. Always shows the same neutral confirmation on submit
- * (the action never reveals whether the email is registered), so the UI can't be
- * used to enumerate accounts.
+ * "Forgot password" form (boards `ac-forgot`, `ac-forgot-st`). Always shows the same neutral confirmation on submit
+ * (the action never reveals whether the email is registered), so the UI can't be used to enumerate accounts.
  */
 export function ForgotPasswordForm() {
   const [done, setDone] = useState(false);
@@ -41,42 +34,36 @@ export function ForgotPasswordForm() {
 
   if (done) {
     return (
-      <div className={AUTH_SUCCESS_BOX_CLASS}>
+      <AuthAlert tone="pos">
         Ако съществува профил с този имейл, изпратихме линк за смяна на паролата. Проверете пощата си.
-      </div>
+      </AuthAlert>
     );
   }
 
   return (
-    <form noValidate onSubmit={handleSubmit(onSubmit)} className="grid gap-3.5">
-      <div className="grid gap-1.5">
-        <label htmlFor="forgot-email" className="text-sm font-bold text-ink">
-          Имейл
-        </label>
+    <form noValidate onSubmit={handleSubmit(onSubmit)} className="sa-form">
+      <AuthField id="forgot-email" label="Имейл" error={errors.email?.message}>
         <input
           id="forgot-email"
           type="email"
           autoComplete="email"
           placeholder="example@email.com"
-          className={AUTH_INPUT_CLASS}
+          className={`sa-in ${errors.email ? "is-err" : ""}`}
+          {...fieldErrorProps("forgot-email", errors.email?.message)}
           {...register("email")}
         />
-        {errors.email?.message ? (
-          <span className="text-xs font-semibold text-[#b53b2f]">{errors.email.message}</span>
-        ) : null}
-      </div>
+      </AuthField>
 
-      {error ? <div className={AUTH_ERROR_BOX_CLASS}>{error}</div> : null}
+      {error ? <AuthAlert tone="neg">{error}</AuthAlert> : null}
 
-      <Button type="submit" disabled={isSubmitting} rippleTheme="light" className={AUTH_PRIMARY_BTN_CLASS}>
-        Изпрати линк
+      {/* While sending, the button keeps its full strength (the kit dims a disabled one). */}
+      <Button type="submit" variant="pri" block busy={isSubmitting} disabled={isSubmitting} className="opacity-100">
+        Изпратете линк
       </Button>
 
-      <p className="text-center text-sm text-muted">
-        <Link href="/sign-in" className="font-bold text-brand-dark hover:underline">
-          Назад към вход
-        </Link>
-      </p>
+      <LinkButton href="/sign-in" variant="txt" className="ac-back">
+        Назад към вход
+      </LinkButton>
     </form>
   );
 }

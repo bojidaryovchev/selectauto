@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Container } from "@/components/common";
-import { AuthCard, VerifyEmailClient } from "@/components/auth";
+import { AuthCard, AuthMain, VerifyEmailClient } from "@/components/auth";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 
 export const metadata: Metadata = {
@@ -11,20 +10,26 @@ export const metadata: Metadata = {
 
 type SearchParams = Promise<{ token?: string }>;
 
-/** /verify?token=… — confirms a new account's email from the link. */
+/** /verify?token=… — confirms a new account's email from the link (boards `ac-verify`, `ac-verify-st`; parity check
+ *  docs/design/parity/auth.md). */
 export default function VerifyEmailPage({ searchParams }: { searchParams: SearchParams }) {
   return (
     <>
       <SiteHeader />
-      <main className="flex flex-1 items-center justify-center bg-[#fafafa] pt-(--header-h)">
-        <Container className="flex justify-center py-12 max-md:py-8">
-          <AuthCard title="Потвърждение на имейл">
-            <Suspense fallback={<p className="text-sm text-muted">Зареждане…</p>}>
-              <VerifyBody searchParams={searchParams} />
-            </Suspense>
-          </AuthCard>
-        </Container>
-      </main>
+      <AuthMain>
+        <AuthCard title="Потвърждение на имейл">
+          <Suspense
+            fallback={
+              <div className="ac-wait" role="status">
+                <span className="sa-spin" aria-hidden="true" />
+                Зареждане…
+              </div>
+            }
+          >
+            <VerifyBody searchParams={searchParams} />
+          </Suspense>
+        </AuthCard>
+      </AuthMain>
       <SiteFooter />
     </>
   );
