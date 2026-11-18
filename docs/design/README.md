@@ -290,7 +290,8 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
   (Carfax, consultations, offers) with their drawer, the mail (Поща and the thread page), the contracts register,
   the deposits page, the contract form, the contract page, the hidden listings, mobile.bg, the tariffs, the recipients,
   the users and the journal, and the seven e-mails: every screen. Each has its parity file in
-  [parity/](parity/README.md). The PDFs keep today's look (decision 27); their wording changed with decisions 30–32, on template revision 2.
+  [parity/](parity/README.md). The PDFs keep today's look (decision 27); their wording changed with decisions 30 and
+  31, on template revision 2. Payment notices keep the client's ЕГН (decision 35 reversed decision 32).
 - **The ab- boards' styles** (deals, listings, settings) are `styles/admin-b.css`, ported with their named container
   queries (`ablist`, `abform` …), which are the code's own approach. The few rules the boards scope under their root
   `.ab` are written by hand in `styles/admin-b-root.css`. Fields stay the admin's 44 px, 16 px `ad-in`, not the boards'

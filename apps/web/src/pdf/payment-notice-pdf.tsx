@@ -17,9 +17,9 @@ import type { NoticeSnapshot } from "@/types/notice-snapshot.type";
  *
  * Fonts are registered in render.ts (PT Sans — full Cyrillic, OFL).
  *
- * Template revision 2 (`snapshot.template`, owner decisions 30 and 32): the footer citing the 2001 Accounting Act
- * (repealed from 1.1.2016, § 6 of the current act) is gone, and the Получил block prints a company's ЕИК but no ЕГН
- * for a person. A revision-1 snapshot renders exactly as it was issued.
+ * Template revision 2 (`snapshot.template`, owner decision 30): the footer citing the 2001 Accounting Act (repealed
+ * from 1.1.2016, § 6 of the current act) is gone. The Получил block is revision 1's, the ЕГН or ЕИК included
+ * (decision 35). A revision-1 snapshot renders exactly as it was issued.
  */
 
 const s = StyleSheet.create({
@@ -124,11 +124,9 @@ export function PaymentNoticePdf({ snapshot }: { snapshot: NoticeSnapshot }) {
           <View style={[s.party, s.partyDivider]}>
             <Text style={[s.bold, s.line]}>Получил:</Text>
             <Text style={s.line}>Име: {snapshot.client.name}</Text>
-            {v2 && !snapshot.client.isCompany ? null : (
-              <Text style={s.line}>
-                {snapshot.client.isCompany ? "ЕИК" : "ЕГН"}: {snapshot.client.egnOrEik}
-              </Text>
-            )}
+            <Text style={s.line}>
+              {snapshot.client.isCompany ? "ЕИК" : "ЕГН"}: {snapshot.client.egnOrEik}
+            </Text>
             <Text style={s.line}>Адрес: {snapshot.client.address}</Text>
           </View>
         </View>

@@ -13,7 +13,6 @@ import {
   ShipIcon,
 } from "@/components/icons";
 import {
-  bgDecimal,
   type CalcConfig,
   computeImportBreakdown,
   DEFAULT_CALC_CONFIG,
@@ -517,7 +516,8 @@ export function CostEstimator({
           <InfoIcon />
           <span>
             Цените на автомобилите са в щатски долари ($); таксите, договорени в евро, са показани в евро (€). Общата
-            сума е в долари по курс 1 € ≈ {bgDecimal(config.eurUsd)} $. Ставките са проверени към {RATES_VERIFIED_AT}.
+            сума е в долари по курс 1 € ≈ {config.eurUsd.toFixed(2).replace(".", ",")} $. Ставките са проверени към{" "}
+            {RATES_VERIFIED_AT}.
             Това е ориентировъчна оценка, не оферта.
           </span>
         </p>

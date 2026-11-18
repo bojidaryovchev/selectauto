@@ -86,7 +86,9 @@ export type CalcConfig = {
 
 /** The owner's dictated defaults — fallback + the form's starting values. */
 export const DEFAULT_CALC_CONFIG: CalcConfig = {
-  eurUsd: 1.08,
+  // A fixed rate (owner decision 36: a few tens of euros either way don't matter): the ECB's 1.0968 of 18.11.2026,
+  // rounded. It was 1.08. With no row saved in /admin/tarifi, this is the rate the site uses.
+  eurUsd: 1.1,
   dutyPct: 10,
   vatPct: 20,
   krEncarFeeEur: 450,

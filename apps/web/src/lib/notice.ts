@@ -180,8 +180,8 @@ export function buildNoticeSnapshot(args: {
   const isCompany = clientSnap.kind === "company";
 
   return {
-    // Revision 2: no repealed-law footer; a person's ЕГН is left out (owner decisions 30 and 32 — a payment request
-    // doesn't need it, GDPR art. 5(1)(c)); a company keeps its ЕИК.
+    // Revision 2: no footer citing the repealed 2001 Accounting Act (owner decision 30). The client keeps the ЕГН or
+    // ЕИК of revision 1: decision 32 had left a person's ЕГН out, and decision 35 brought it back (18.11.2026).
     template: 2,
     noticeDate,
     contractNumber: contract.number,
@@ -196,7 +196,7 @@ export function buildNoticeSnapshot(args: {
     },
     client: {
       name: clientSnap.name ?? "",
-      egnOrEik: isCompany ? (clientSnap.eik ?? "") : "",
+      egnOrEik: (isCompany ? clientSnap.eik : clientSnap.egn) ?? "",
       isCompany,
       address: clientSnap.address ?? "",
     },

@@ -44,4 +44,5 @@
 
 **18.11.2026.** The payment-notice note's hint reads „Само за вас — вижда се тук и в Дневник, не се печата в
 известието." (the contract's „История" doesn't show it). New contract and notice documents use template revision 2
-(decisions 30–32); documents generated earlier render as signed.
+(decisions 30 and 31); documents generated earlier render as signed. A notice keeps the client's ЕГН or ЕИК, as on
+`main` (decision 35 reversed decision 32, the same day).

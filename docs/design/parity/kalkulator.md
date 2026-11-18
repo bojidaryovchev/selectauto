@@ -38,3 +38,6 @@
 Canada figures as the sea leg they are (point 6, decision 34). On a phone the Canadian province choice stacks as
 decided, now with full-height buttons: the stack's `flex:none` lost to a later `.im-seg>button{flex:1 1 0}` and each
 button shrank to 14 px (axe target-size).
+
+**18.11.2026, decision 36.** The rate is fixed at 1,10, the ECB's 1,0968 of that day rounded (it was 1,08), and the note
+under the calculator prints it with two decimals: „по курс 1 € ≈ 1,10 $".
