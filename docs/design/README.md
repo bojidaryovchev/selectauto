@@ -288,11 +288,20 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
   (Carfax, consultations, offers) with their drawer, the mail (Поща and the thread page), the contracts register,
   the deposits page, the contract form, the contract page, the hidden listings, mobile.bg, the tariffs, the recipients,
   the users and the journal, and the seven e-mails: every screen. Each has its parity file in
-  [parity/](parity/README.md). The PDFs keep today's look until the owner decides on theirs.
+  [parity/](parity/README.md). The PDFs keep today's look (decision 27); their wording changed with decisions 30–32, on template revision 2.
 - **The ab- boards' styles** (deals, listings, settings) are `styles/admin-b.css`, ported with their named container
   queries (`ablist`, `abform` …), which are the code's own approach. The few rules the boards scope under their root
   `.ab` are written by hand in `styles/admin-b-root.css`. Fields stay the admin's 44 px, 16 px `ad-in`, not the boards'
   15 px `ab-f`. The ported `admin.css` and `admin-b.css` had their rules for classes no code uses removed by hand.
+- **A local production build needs `SA_LOCAL_SERVER=1`,** at `next build` and again at `next start`. `next.config.ts`
+  treats every visitor as an HTML-limited bot (metadata in the `<head>`), and a local `next start` then answers the
+  router's prefetches with full pages: open the catalog from a link and its filters only change the URL. Vercel serves
+  those prefetches from the CDN, so production is fine. Test URL-driven screens by arriving through a link, not only
+  by loading the URL.
+- **Documents are versioned** (`template: 2` in the contract and notice snapshots, 18 November): a change to a PDF's
+  wording goes behind the snapshot's revision, so a signed document re-renders exactly as it was signed (S3 keeps the
+  bytes, but a row without an archived copy re-renders). Check a template change on every stored snapshot: same text,
+  word positions and pages for the old revision (the 18 November check rendered all 236).
 - **Never open a real mail thread to check it** (`/admin/poshta/[id]`): its render fetches missing message bodies from
   Resend and saves them. Check the thread components on a temporary route with made-up threads, and delete it.
 - **Make plates in the admin** come from `getMakeLogoLookup` (`lib/admin-lead-view.ts`): leads store the make as text,
