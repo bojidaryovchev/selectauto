@@ -3,9 +3,8 @@
 import { useEffect, useState } from "react";
 
 /**
- * Live "Отворено сега / Затворено" indicator for the working-hours card — a
- * coloured dot plus a line telling the visitor when the showroom next
- * opens/closes.
+ * Live "Отворено сега / Затворено" line under the working hours (boards `in-kontakti`, `in-kontakti-spec`): a dot
+ * and the state, then when the showroom next closes or opens, on a green, red or neutral ground.
  *
  * Schedule (local time): Mon–Fri 09:00–18:00, Sat 09:00–17:00, Sun 11:00–17:00.
  * Kept in sync with the `HOURS` table in contact-cards.tsx and with
@@ -105,13 +104,7 @@ export function HoursStatus() {
     return () => clearInterval(id);
   }, []);
 
-  const dot =
-    status.state === "open"
-      ? "bg-[#22c55e] shadow-[0_0_0_6px_rgba(34,197,94,0.18)]"
-      : status.state === "closed"
-        ? "bg-[#ef4444] shadow-[0_0_0_6px_rgba(239,68,68,0.18)]"
-        : "bg-[#94a3b8] shadow-[0_0_0_6px_rgba(148,163,184,0.18)]";
-
+  const tone = status.state === "open" ? "pos" : status.state === "closed" ? "neg" : "wait";
   const label =
     status.state === "open"
       ? "Отворено сега"
@@ -120,17 +113,12 @@ export function HoursStatus() {
         : "Проверка…";
 
   return (
-    <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-line bg-[#fafafa] p-3">
-      <span
-        aria-hidden="true"
-        className={`mt-1.5 size-2.5 shrink-0 rounded-full ${dot}`}
-      />
-      <div className="text-sm">
-        <span className="font-extrabold text-[#17181b]">{label}</span>
-        {status.state !== "loading" && status.hint && (
-          <span className="text-[#5a5d64]"> · {status.hint}</span>
-        )}
-      </div>
-    </div>
+    <p className={`in-status in-status--${tone}`} role="status">
+      <span className={tone === "wait" ? "sa-dot" : `sa-dot sa-dot--${tone}`} aria-hidden="true" />
+      <span>
+        <b className="text-tx">{label}</b>
+        {status.state !== "loading" && status.hint ? ` · ${status.hint}` : null}
+      </span>
+    </p>
   );
 }

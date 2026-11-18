@@ -1,6 +1,16 @@
+import type { ComponentType } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Container, LinkButton } from "@/components/common";
+import { FaqAccordion } from "@/components/common";
+import {
+  CalculatorIcon,
+  FileSearchIcon,
+  FlagCaIcon,
+  FlagKrIcon,
+  FlagUsIcon,
+  ListChecksIcon,
+  MessageIcon,
+} from "@/components/icons";
 import { InquiryButton } from "@/components/inquiry";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
@@ -19,6 +29,10 @@ import { buildSocialMeta } from "@/lib/social-meta";
  * (2026): non-EU import = 10% duty + 20% VAT; екотакса is a one-time product tax at
  * first registration (raised Jan 2026); exact amounts vary, so we describe rather
  * than quote figures that could go stale.
+ *
+ * Look: board `in-faq` (and the frames `in-faq-flow`, `in-faq-all`), its classes in styles/info-faq.css under the
+ * page's root class `.in-faq-pg`; parity check docs/design/parity/chesto-zadavani-vaprosi.md. The timing answer
+ * carries owner decision 23 (the Korea sentence).
  */
 
 const PATH = "/chesto-zadavani-vaprosi";
@@ -46,7 +60,7 @@ const FAQ: FaqEntry[] = [
   {
     question: "Колко време отнема вносът на автомобил?",
     answer:
-      "Обичайно 6–10 седмици от спечелването на автомобила на търга до готовност за регистрация в КАТ. Срокът зависи основно от държавата на произход и транспорта (морски превоз + сухопътна логистика) и от оформянето на документите.",
+      "Обичайно 6–10 седмици от спечелването на автомобила на търга до готовност за регистрация в КАТ. Срокът зависи основно от държавата на произход и транспорта (морски превоз + сухопътна логистика) и от оформянето на документите. При внос от Корея срокът е по-дълъг: реалистично 2–3 месеца от покупката до готовност за регистрация в КАТ.",
   },
   {
     question: "Какво мито и ДДС се плащат при внос от страна извън ЕС?",
@@ -85,14 +99,14 @@ const FAQ: FaqEntry[] = [
   },
 ];
 
-/** Contextual links so the hub distributes equity to the money pages/tools. */
-const LINKS: { href: string; label: string }[] = [
-  { href: "/kalkulator", label: "Калкулатор за внос" },
-  { href: "/proverka-vin", label: "Проверка на VIN" },
-  { href: "/vnos-na-koli-ot-korea", label: "Внос от Корея" },
-  { href: "/vnos-na-koli-ot-sasht", label: "Внос от САЩ" },
-  { href: "/vnos-na-koli-ot-kanada", label: "Внос от Канада" },
-  { href: "/proces", label: "Процесът стъпка по стъпка" },
+/** Contextual links so the hub distributes equity to the money pages/tools, with the board's icons and flags. */
+const LINKS: { href: string; label: string; Icon: ComponentType<{ className?: string }>; flag?: boolean }[] = [
+  { href: "/kalkulator", label: "Калкулатор за внос", Icon: CalculatorIcon },
+  { href: "/proverka-vin", label: "Проверка на VIN", Icon: FileSearchIcon },
+  { href: "/vnos-na-koli-ot-korea", label: "Внос от Корея", Icon: FlagKrIcon, flag: true },
+  { href: "/vnos-na-koli-ot-sasht", label: "Внос от САЩ", Icon: FlagUsIcon, flag: true },
+  { href: "/vnos-na-koli-ot-kanada", label: "Внос от Канада", Icon: FlagCaIcon, flag: true },
+  { href: "/proces", label: "Процесът стъпка по стъпка", Icon: ListChecksIcon },
 ];
 
 export default function FaqPage() {
@@ -105,70 +119,58 @@ export default function FaqPage() {
   return (
     <>
       <SiteHeader />
-      <main className="flex-1 bg-[#fafafa] pt-(--header-h) text-ink">
+      <main className="in-faq-pg flex-1 pt-(--header-h)">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
 
-        <Container className="max-w-245 py-12 max-md:py-8">
-          <nav className="mb-5 text-sm text-muted">
-            <Link href="/" className="hover:text-brand-dark">
-              Начало
-            </Link>
-            <span className="px-2">/</span>
-            <span className="text-ink">Често задавани въпроси</span>
-          </nav>
-
-          <h1 className="mb-3 text-4xl font-black uppercase tracking-tight text-ink max-md:text-3xl">
-            Често задавани въпроси
-          </h1>
-          <p className="mb-8 max-w-2xl text-[15px] leading-[1.8] text-[#3d4046]">
-            Най-честите въпроси за внос на автомобил от САЩ, Корея и Канада — цена, мито и ДДС, срокове, документи,
-            екотакса и регистрация в КАТ. Ако не намираш отговор, свържи се с нас.
-          </p>
-
-          {/* FAQ (visible — matches the FAQPage JSON-LD) */}
-          <section className="mb-12">
-            <div className="flex flex-col gap-4">
-              {FAQ.map((f) => (
-                <div key={f.question} className="rounded-2xl border border-line bg-white p-5 shadow-card">
-                  <h2 className="mb-1.5 text-base font-extrabold text-ink">{f.question}</h2>
-                  <p className="text-sm/relaxed text-[#5a5d64]">{f.answer}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Contextual links */}
-          <section className="mb-12">
-            <h2 className="mb-4 text-2xl font-black text-ink">Полезни страници</h2>
-            <div className="flex flex-wrap gap-2.5">
-              {LINKS.map((l) => (
-                <LinkButton
-                  key={l.href}
-                  href={l.href}
-                  rippleTheme="dark"
-                  className="inline-flex items-center rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold text-ink transition-colors duration-200 hover:border-brand hover:text-brand-dark"
-                >
-                  {l.label}
-                </LinkButton>
-              ))}
-            </div>
-          </section>
-
-          {/* CTA */}
-          <section className="rounded-card bg-linear-to-r from-brand-dark to-brand p-8 text-center max-md:p-6">
-            <h2 className="mb-2 text-2xl font-black text-white max-md:text-xl">Имаш друг въпрос?</h2>
-            <p className="mx-auto mb-5 max-w-xl text-sm/relaxed text-white/85">
-              Кажи ни какво те интересува — ще отговорим и ще изготвим персонална оферта за внос на автомобил.
+        <section className="in-head">
+          <div className="sa-wrap in-head__in">
+            <nav className="sa-crumbs" aria-label="Пътечка">
+              <Link href="/">Начало</Link>
+              <i aria-hidden="true">/</i>
+              <span aria-current="page">Често задавани въпроси</span>
+            </nav>
+            <h1 className="type-h1">Често задавани въпроси</h1>
+            <p className="sa-lead max-w-[72ch]">
+              Най-честите въпроси за внос на автомобил от САЩ, Корея и Канада — цена, мито и ДДС, срокове, документи,
+              екотакса и регистрация в КАТ. Ако не намирате отговор, свържете се с нас.
             </p>
-            <InquiryButton
-              rippleTheme="dark"
-              className="inline-flex min-h-13.5 items-center justify-center rounded-full bg-white px-8 text-sm font-extrabold uppercase tracking-wide text-brand-dark transition-transform duration-200 hover:-translate-y-0.5"
-            >
-              Направи запитване
-            </InquiryButton>
-          </section>
-        </Container>
+          </div>
+        </section>
+
+        <section className="sa-band">
+          <div className="sa-wrap in-faq">
+            {/* FAQ (the kit accordion; every answer stays in the page — matches the FAQPage JSON-LD) */}
+            <FaqAccordion items={FAQ} headingLevel={2} look="kit" className="in-acc" />
+
+            {/* Contextual links and the CTA; the column stays in view while the answers scroll (desktop) */}
+            <aside className="in-aside top-[calc(var(--header-h)+35px)]">
+              <div className="sa-pnl">
+                <h2 className="in-aside__h">Полезни страници</h2>
+                <nav className="in-links" aria-label="Полезни страници">
+                  {LINKS.map(({ href, label, Icon, flag }) => (
+                    <Link key={href} href={href} className="sa-chip">
+                      <Icon className={flag ? "sa-flag h-3.5 w-5.25" : undefined} />
+                      {label}
+                    </Link>
+                  ))}
+                </nav>
+              </div>
+              <div className="sa-pnl in-cta">
+                <span className="sa-pnl__ic">
+                  <MessageIcon />
+                </span>
+                <h2 className="type-h3">Имате друг въпрос?</h2>
+                <p className="sa-p">
+                  Кажете ни какво ви интересува — ще отговорим и ще изготвим персонална оферта за внос на автомобил.
+                </p>
+                <InquiryButton variant="pri" size="xl">
+                  Направете запитване
+                </InquiryButton>
+              </div>
+            </aside>
+          </div>
+        </section>
       </main>
       <SiteFooter />
     </>

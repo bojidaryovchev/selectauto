@@ -1,4 +1,4 @@
-import { Container, Reveal, SectionHeader } from "@/components/common";
+import { Reveal, SectionHeading } from "@/components/common";
 import { BUSINESS } from "@/constants";
 import { MapEmbed } from "./map-embed";
 
@@ -11,31 +11,23 @@ const MAP_SRC =
   "&z=16&output=embed";
 
 /**
- * Embedded Google map locating the showroom. The actual iframe is loaded
+ * Embedded Google map locating the showroom (board `in-kontakti`). The actual iframe is loaded
  * click-to-consent via <MapEmbed> — Google Maps sets third-party cookies on load,
  * so under ePrivacy it must not mount until the user opts in.
  */
 export function ContactMap() {
   return (
-    <section className="pb-22 max-md:pb-14.5">
-      <Container>
-        <SectionHeader
-          eyebrow="Локация"
-          title="Вижте ни на картата"
-          subtitle="Лесно паркиране · Бърз достъп"
-          className="mb-8.5"
-        />
-
+    <section className="sa-band sa-band--line">
+      <div className="sa-wrap">
+        <SectionHeading eyebrow="Локация" title="Вижте ни на картата" lead="Лесно паркиране · Бърз достъп" />
         <Reveal delay={0.08}>
-          <div className="overflow-hidden rounded-[30px] border border-line shadow-card-strong">
-            <MapEmbed
-              src={MAP_SRC}
-              title="SelectAuto — гр. Пловдив, ул. Север 64"
-              addressLabel={`${BUSINESS.streetAddress}, ${BUSINESS.postalCode} ${BUSINESS.city}`}
-            />
-          </div>
+          <MapEmbed
+            src={MAP_SRC}
+            title="SelectAuto — гр. Пловдив, ул. Север 64"
+            addressLabel={`${BUSINESS.streetAddress}, ${BUSINESS.postalCode} ${BUSINESS.city}`}
+          />
         </Reveal>
-      </Container>
+      </div>
     </section>
   );
 }

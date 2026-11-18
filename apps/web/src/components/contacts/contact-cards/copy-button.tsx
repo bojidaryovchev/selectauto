@@ -5,22 +5,16 @@ import toast from "react-hot-toast";
 import { CheckIcon, CopyIcon } from "@/components/icons";
 
 /**
- * Copies `value` to the clipboard, fires a top-right success toast, and swaps its
- * icon to a check for ~1.4s. Semantic `<button type="button">` with an aria-label
- * built from `label` (the copy buttons sit next to phone/email/address on the
- * contacts page). A brand-tinted ripple expands from the button on click. Each
- * button owns its own state and reuses the app's single react-hot-toast <Toaster>.
+ * „Копирайте" beside a phone, the address or the e-mail on the contacts page (boards `in-kontakti`,
+ * `in-kontakti-spec`): copies `value`, shows a notification („Копирано: {value}", or „Копирането не бе успешно"),
+ * and turns to a tick and „Копирано" for ~1,4 s. On a phone it is a 44 px icon button; its name stays
+ * „Копирайте {label}".
  */
 export function CopyButton({ value, label }: { value: string; label: string }) {
   const [copied, setCopied] = useState(false);
-  const [ripple, setRipple] = useState(false);
   const resetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleClick = async () => {
-    // Retrigger the ripple even on rapid repeated clicks.
-    setRipple(false);
-    requestAnimationFrame(() => setRipple(true));
-
     try {
       await navigator.clipboard.writeText(value);
       setCopied(true);
@@ -37,23 +31,12 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
     <button
       type="button"
       onClick={handleClick}
-      aria-label={`Копирай ${label}`}
-      title={`Копирай ${label}`}
-      className="relative inline-flex shrink-0 items-center gap-1.5 overflow-hidden rounded-full border border-line bg-white px-3 py-2 text-xs font-extrabold text-[#5a5d64] transition-colors duration-150 hover:border-brand/40 hover:text-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand active:scale-[0.97]"
+      aria-label={`Копирайте ${label}`}
+      title={`Копирайте ${label}`}
+      className={`sa-btn sa-btn--sec sa-btn--md in-copy ${copied ? "is-done" : ""}`}
     >
-      {ripple && (
-        <span
-          aria-hidden="true"
-          onAnimationEnd={() => setRipple(false)}
-          className="pointer-events-none absolute inset-0 animate-[ping_0.6s_ease-out] rounded-full bg-brand/15"
-        />
-      )}
-      {copied ? (
-        <CheckIcon className="size-3.5 text-brand" />
-      ) : (
-        <CopyIcon className="size-3.5" />
-      )}
-      <span className="relative max-[479px]:hidden">{copied ? "Копирано" : "Копирай"}</span>
+      {copied ? <CheckIcon /> : <CopyIcon />}
+      <span className="in-copy__t">{copied ? "Копирано" : "Копирайте"}</span>
     </button>
   );
 }

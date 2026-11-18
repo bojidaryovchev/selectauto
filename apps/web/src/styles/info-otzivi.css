@@ -1,0 +1,27 @@
+/*
+  The reviews page, /otzivi (boards in-otzivi and in-otzivi-google, the main board first; in-otzivi-flow is a phone frame): the head band, the Google fallback beside the CTA, and the reviews with their aggregate.
+  Ported by script from the screen's board sources (apps/web/scripts/port-board-css.mjs), as kit.css is from the kit: token
+  names follow tokens.css, the boards' cqi became vw and their container queries media queries. Board-only parts
+  (device frames, preview overlays) were left out. Class prefix: in-. Scoped to .in-otzivi-pg, the page's root.
+*/
+@layer components {
+  .in-otzivi-pg .in-head{position:relative;isolation:isolate;overflow:hidden;border-bottom:1px solid var(--color-hair)}
+  .in-otzivi-pg .in-head::before{content:"";position:absolute;z-index:-1;right:-12%;top:-70%;width:min(1100px,90vw);aspect-ratio:1;border-radius:50%;background:radial-gradient(closest-side,rgba(255,122,26,.16),transparent);pointer-events:none}
+  .in-otzivi-pg .in-head__in{display:flex;flex-direction:column;gap:18px;padding-block:clamp(24px,2.6vw,40px) clamp(48px,5vw,88px)}
+  .in-otzivi-pg .in-rv{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:clamp(16px,2vw,32px);align-items:stretch}
+  @media (max-width:1023.98px){.in-otzivi-pg .in-rv{grid-template-columns:minmax(0,1fr)}}
+  .in-otzivi-pg .in-gfb{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:18px;padding:clamp(24px,3vw,48px)}
+  .in-otzivi-pg .in-gfb__ic{width:56px;height:56px;display:grid;place-items:center;border-radius:14px;background:var(--color-paper)}
+  .in-otzivi-pg .in-gfb__ic svg{width:28px;height:28px}
+  .in-otzivi-pg .in-gfb p{font-size:clamp(17px,.4vw + 15px,21px);line-height:1.6;color:var(--color-tx);max-width:46ch}
+  .in-otzivi-pg .in-cta{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:16px;padding:clamp(24px,3vw,48px)}
+  @media (max-width:639.98px){.in-otzivi-pg .in-cta .sa-btn{width:100%}}
+  .in-otzivi-pg .in-agg{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin-bottom:24px}
+  .in-otzivi-pg .in-stars{display:inline-flex;gap:2px;color:var(--color-tx3)}
+  .in-otzivi-pg .in-stars svg{width:18px;height:18px}
+  .in-otzivi-pg .in-revs{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:20px}
+  .in-otzivi-pg .in-rev{display:flex;flex-direction:column;gap:12px}
+  .in-otzivi-pg .in-rev__h{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .in-otzivi-pg .in-note{margin-top:24px;font-size:14px;color:var(--color-tx3)}
+  .in-otzivi-pg .in-cta__t{display:flex;flex-direction:column;gap:12px;max-width:68ch}
+}

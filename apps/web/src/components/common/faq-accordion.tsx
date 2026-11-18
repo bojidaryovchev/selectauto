@@ -6,12 +6,25 @@ import { ChevronDownIcon } from "@/components/icons";
 export type FaqAccordionItem = { question: string; answer: string };
 
 /**
- * A page's „Често задавани въпроси" as the kit accordion (boards `im-*`: the calculators and the import hubs), on
- * every device, the first answer open. Each question is a heading wrapping a button with `aria-expanded` and
- * `aria-controls`; a closed answer stays in the page (hidden), so the FAQPage JSON-LD the page emits still matches
- * its content. The look is `.im-faq` in styles/import-page.css.
+ * A page's „Често задавани въпроси" as an accordion, on every device, the first answer open; any number can be open.
+ * Each question is a heading wrapping a button with `aria-expanded` and `aria-controls`; a closed answer stays in the
+ * page (hidden), so the FAQPage JSON-LD the page emits still matches its content.
+ *
+ * - `look="im"` (default): the boards `im-*`, the calculators and the import hubs (`.im-faq`, styles/import-page.css).
+ * - `look="kit"`: the kit's accordion in a panel (`.sa-pnl.sa-acc`), the FAQ page (board `in-faq`); `className` adds
+ *   the page's own class.
  */
-export function FaqAccordion({ items, headingLevel = 3 }: { items: FaqAccordionItem[]; headingLevel?: 2 | 3 }) {
+export function FaqAccordion({
+  items,
+  headingLevel = 3,
+  look = "im",
+  className = "",
+}: {
+  items: FaqAccordionItem[];
+  headingLevel?: 2 | 3;
+  look?: "im" | "kit";
+  className?: string;
+}) {
   const uid = useId();
   const [open, setOpen] = useState<Set<number>>(() => new Set([0]));
   const Heading = `h${headingLevel}` as "h2" | "h3";
@@ -24,8 +37,32 @@ export function FaqAccordion({ items, headingLevel = 3 }: { items: FaqAccordionI
       return next;
     });
 
+  if (look === "kit") {
+    return (
+      <div className={`sa-pnl sa-acc ${className}`}>
+        {items.map((item, i) => {
+          const isOpen = open.has(i);
+          const answerId = `${uid}-a${i}`;
+          return (
+            <div key={item.question} className={isOpen ? "is-open" : undefined}>
+              <Heading>
+                <button type="button" aria-expanded={isOpen} aria-controls={answerId} onClick={() => toggle(i)}>
+                  {item.question}
+                  <ChevronDownIcon />
+                </button>
+              </Heading>
+              <p id={answerId} className="sa-acc__a" hidden={!isOpen}>
+                {item.answer}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
-    <div className="im-faq">
+    <div className={`im-faq ${className}`}>
       {items.map((item, i) => {
         const isOpen = open.has(i);
         const answerId = `${uid}-a${i}`;

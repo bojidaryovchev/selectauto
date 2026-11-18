@@ -1,0 +1,24 @@
+/*
+  The FAQ page, /chesto-zadavani-vaprosi (board in-faq; in-faq-flow and in-faq-all are board frames): the head band, the accordion panel and the aside.
+  Ported by script from the screen's board sources (apps/web/scripts/port-board-css.mjs), as kit.css is from the kit: token
+  names follow tokens.css, the boards' cqi became vw and their container queries media queries. Board-only parts
+  (device frames, preview overlays) were left out. Class prefix: in-. Scoped to .in-faq-pg, the page's root.
+*/
+@layer components {
+  .in-faq-pg .in-head{position:relative;isolation:isolate;overflow:hidden;border-bottom:1px solid var(--color-hair)}
+  .in-faq-pg .in-head::before{content:"";position:absolute;z-index:-1;right:-12%;top:-70%;width:min(1100px,90vw);aspect-ratio:1;border-radius:50%;background:radial-gradient(closest-side,rgba(255,122,26,.16),transparent);pointer-events:none}
+  .in-faq-pg .in-head__in{display:flex;flex-direction:column;gap:18px;padding-block:clamp(24px,2.6vw,40px) clamp(48px,5vw,88px)}
+  .in-faq-pg .in-faq{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,400px);gap:clamp(32px,4vw,80px);align-items:start}
+  @media (max-width:1023.98px){.in-faq-pg .in-faq{grid-template-columns:minmax(0,1fr)}}
+  .in-faq-pg .in-acc{padding:4px clamp(20px,2vw,32px)}
+  .in-faq-pg .in-acc.sa-acc{border-top:0}
+  .in-faq-pg .in-acc>div:last-child{border-bottom:0}
+  .in-faq-pg .in-acc button{font-size:clamp(17px,.3vw + 15px,19px)}
+  .in-faq-pg .in-acc .sa-acc__a{font-size:16px}
+  .in-faq-pg .in-aside{display:flex;flex-direction:column;gap:20px;position:sticky;top:112px}
+  @media (max-width:1023.98px){.in-faq-pg .in-aside{position:static}}
+  .in-faq-pg .in-aside__h{font:800 17px/1.3 var(--font-sans);margin-bottom:14px}
+  .in-faq-pg .in-links{display:flex;flex-wrap:wrap;gap:8px}
+  .in-faq-pg .in-cta{display:flex;flex-direction:column;gap:14px;align-items:flex-start}
+  .in-faq-pg .in-cta .sa-btn{width:100%}
+}

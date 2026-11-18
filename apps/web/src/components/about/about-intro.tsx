@@ -1,28 +1,25 @@
-import { Container, Reveal, SectionHeader } from "@/components/common";
+import { Reveal } from "@/components/common";
 
-/** "Кои сме ние" intro band. */
+/** „Кои сме ние" (board `in-za-nas`): the heading on the left, the paragraph on the right; stacked below 1024 px. */
 export function AboutIntro() {
   return (
-    <section className="bg-[linear-gradient(180deg,#f7f7f8_0%,#f1f2f5_100%)] py-22 max-md:py-14.5">
-      <Container>
-        <SectionHeader
-          eyebrow="Кои сме ние"
-          title="Разумна покупка. Прозрачен процес. Сигурен резултат."
-          subtitle="Създаваме усещане за спокойствие, яснота и контрол в една сложна покупка."
-          className="mb-11 max-w-230"
-        />
-
+    <section className="sa-band">
+      <div className="sa-wrap in-who">
+        <div className="in-who__h">
+          <span className="sa-eyebrow">Кои сме ние</span>
+          <h2 className="type-h2">Разумна покупка. Прозрачен процес. Сигурен резултат.</h2>
+          <p className="sa-lead">Създаваме усещане за спокойствие, яснота и контрол в една сложна покупка.</p>
+        </div>
         <Reveal delay={0.08}>
-          <p className="mx-auto max-w-245 text-center text-xl font-medium leading-[1.95] text-[#3d4046] max-md:text-base">
-            <strong className="text-[#17181b]">
-              В SelectAuto вярваме, че покупката на автомобил трябва да бъде
-              разумно, прозрачно и сигурно решение.
+          <p className="in-who__p">
+            <strong>
+              В SelectAuto вярваме, че покупката на автомобил трябва да бъде разумно, прозрачно и сигурно решение.
             </strong>{" "}
-            Ние намираме колата, която търсиш, управляваме целия процес и ти
-            спестяваме хаоса, риска и загубата на време.
+            Ние намираме колата, която търсите, управляваме целия процес и ви спестяваме хаоса, риска и загубата на
+            време.
           </p>
         </Reveal>
-      </Container>
+      </div>
     </section>
   );
 }

@@ -20,18 +20,22 @@ import { useCallback, useEffect, useRef, useState } from "react";
  *  - drawImage crops in SOURCE space (9-arg form) for object-cover with no extra
  *    overdraw.
  *  - An IntersectionObserver pauses decode + the paint loop while offscreen.
- *  - A poster image crossfades out once the first frame is ready.
+ *  - A poster image crossfades out once the first frame is painted.
+ *  - `paused` stops it (the about hero's control, and reduced motion): decode and painting stop, the last frame (or
+ *    the poster, before any) stays.
  */
 export function CanvasVideo({
   src,
   poster,
   className = "",
   fps = 24,
+  paused = false,
 }: {
   src: string;
   poster?: string;
   className?: string;
   fps?: number;
+  paused?: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -39,26 +43,29 @@ export function CanvasVideo({
   const rafRef = useRef<number>(0);
   const lastFrameRef = useRef<number>(0);
   const onscreenRef = useRef<boolean>(false);
+  const startedRef = useRef<boolean>(false);
 
   const [isReady, setIsReady] = useState(false);
+  // A frame has been painted: the canvas takes over from the poster.
+  const [started, setStarted] = useState(false);
 
   const frameInterval = 1000 / fps;
 
-  // Draw one frame with object-cover behaviour, cropping in source space.
-  const drawFrame = useCallback(() => {
+  // Draw one frame with object-cover behaviour, cropping in source space. Returns whether it painted.
+  const drawFrame = useCallback((): boolean => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const container = containerRef.current;
-    if (!video || !canvas || !container) return;
-    if (video.readyState < 2) return;
+    if (!video || !canvas || !container) return false;
+    if (video.readyState < 2) return false;
 
     const ctx = canvas.getContext("2d", { alpha: false });
-    if (!ctx) return;
+    if (!ctx) return false;
 
     const rect = container.getBoundingClientRect();
     const cw = Math.round(rect.width);
     const ch = Math.round(rect.height);
-    if (cw === 0 || ch === 0) return;
+    if (cw === 0 || ch === 0) return false;
 
     // Backing store in CSS pixels (DPR=1) — the displayed canvas is scaled by CSS.
     if (canvas.width !== cw || canvas.height !== ch) {
@@ -68,7 +75,7 @@ export function CanvasVideo({
 
     const vw = video.videoWidth;
     const vh = video.videoHeight;
-    if (vw === 0 || vh === 0) return;
+    if (vw === 0 || vh === 0) return false;
 
     const containerRatio = cw / ch;
     const videoRatio = vw / vh;
@@ -89,18 +96,27 @@ export function CanvasVideo({
     }
 
     ctx.drawImage(video, sx, sy, sw, sh, 0, 0, cw, ch);
+    return true;
   }, []);
 
-  // Throttled paint loop — runs only while onscreen.
+  // Throttled paint loop — runs only while onscreen and not paused.
   useEffect(() => {
     if (!isReady) return;
+    const video = videoRef.current;
+    if (paused) {
+      video?.pause();
+      return;
+    }
 
     const loop = (timestamp: number) => {
       if (!onscreenRef.current) return; // stopped; restarted by the IO callback
       const elapsed = timestamp - lastFrameRef.current;
       if (elapsed >= frameInterval) {
         lastFrameRef.current = timestamp - (elapsed % frameInterval);
-        drawFrame();
+        if (drawFrame() && !startedRef.current) {
+          startedRef.current = true;
+          setStarted(true);
+        }
       }
       rafRef.current = requestAnimationFrame(loop);
     };
@@ -109,7 +125,6 @@ export function CanvasVideo({
     const container = containerRef.current;
     const io = new IntersectionObserver(
       ([entry]) => {
-        const video = videoRef.current;
         if (entry.isIntersecting) {
           if (onscreenRef.current) return;
           onscreenRef.current = true;
@@ -130,8 +145,9 @@ export function CanvasVideo({
       cancelAnimationFrame(rafRef.current);
       io.disconnect();
       onscreenRef.current = false;
+      video?.pause();
     };
-  }, [isReady, drawFrame, frameInterval]);
+  }, [isReady, paused, drawFrame, frameInterval]);
 
   // Initialize the (detached) decode source.
   useEffect(() => {
@@ -175,7 +191,7 @@ export function CanvasVideo({
           alt=""
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 size-full object-cover transition-opacity duration-700 ease-out"
-          style={{ opacity: isReady ? 0 : 1 }}
+          style={{ opacity: started ? 0 : 1 }}
         />
       )}
 
@@ -183,7 +199,7 @@ export function CanvasVideo({
         ref={canvasRef}
         aria-hidden="true"
         className="absolute inset-0 size-full transition-opacity duration-700 ease-out"
-        style={{ opacity: isReady ? 1 : 0 }}
+        style={{ opacity: started ? 1 : 0 }}
       />
     </div>
   );

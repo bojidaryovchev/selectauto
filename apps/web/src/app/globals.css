@@ -7,6 +7,10 @@
 @import "../styles/car-page.css";
 @import "../styles/hub-page.css";
 @import "../styles/import-page.css";
+@import "../styles/info-faq.css";
+@import "../styles/info-kontakti.css";
+@import "../styles/info-za-nas.css";
+@import "../styles/info-otzivi.css";
 
 /*
   Legacy: the light theme's tokens, ported from the old site's theme.css. The

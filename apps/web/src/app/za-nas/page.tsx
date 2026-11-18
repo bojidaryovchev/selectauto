@@ -25,6 +25,11 @@ export const metadata: Metadata = {
   }),
 };
 
+/**
+ * /za-nas (board `in-za-nas`; parity check docs/design/parity/za-nas.md): the video hero, who we are, the figures,
+ * the five steps, the values and the closing panel. Its classes are in styles/info-za-nas.css under the page's root
+ * class `.in-za-nas-pg`.
+ */
 export default function AboutPage() {
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
     { name: "Начало", url: "/" },
@@ -38,10 +43,7 @@ export default function AboutPage() {
       />
       <SiteHeader />
 
-      <main className="flex-1 bg-[#f4f5f7] text-[#18191c]">
-        {/* Dark spacer so the fixed header sits above the hero, not on it —
-            matches the home / carfax / kontakti hero pattern. */}
-        <div className="h-(--header-h) bg-shell" />
+      <main className="in-za-nas-pg flex-1 pt-(--header-h)">
         <AboutHero />
         <AboutIntro />
         <AboutStats />

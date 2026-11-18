@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { Container, LinkButton } from "@/components/common";
-import { StarIcon } from "@/components/icons";
+import { GoogleIcon, StarIcon } from "@/components/icons";
 import { InquiryButton } from "@/components/inquiry";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
+import { bgDecimal } from "@/data/import-rates";
 import { getGoogleReviews, type GoogleReview } from "@/lib/google-reviews";
 import { buildBreadcrumbJsonLd } from "@/lib/site-jsonld";
 import { buildSocialMeta } from "@/lib/social-meta";
@@ -26,6 +26,10 @@ import { buildSocialMeta } from "@/lib/social-meta";
  * is cached but still request-time data under Cache Components). Until
  * GOOGLE_PLACES_API_KEY / GOOGLE_PLACES_ID are set, the fetch returns null and the
  * page shows a graceful fallback (trust content + a link to the Google profile).
+ *
+ * Look: boards `in-otzivi` (today's fallback), `in-otzivi-google` (with reviews) and `in-otzivi-flow` (loading, the
+ * profile link, no aggregate); classes in styles/info-otzivi.css under the page's root class `.in-otzivi-pg`; parity
+ * check docs/design/parity/otzivi.md.
  */
 
 const PATH = "/otzivi";
@@ -50,12 +54,13 @@ export const metadata: Metadata = {
   }),
 };
 
+/** The stars of a rating: filled up to the rounded rating, the rest dim. The rating reads with a decimal comma. */
 function Stars({ rating }: { rating: number }) {
   const full = Math.round(rating);
   return (
-    <span aria-label={`${rating} от 5`} className="inline-flex items-center gap-0.5">
+    <span aria-label={`${bgDecimal(rating)} от 5`} className="in-stars">
       {Array.from({ length: 5 }, (_, i) => (
-        <StarIcon key={i} className={`size-4 ${i < full ? "text-brand" : "text-line"}`} />
+        <StarIcon key={i} className={i < full ? "text-tx" : undefined} />
       ))}
     </span>
   );
@@ -63,14 +68,34 @@ function Stars({ rating }: { rating: number }) {
 
 function ReviewCard({ review }: { review: GoogleReview }) {
   return (
-    <figure className="flex flex-col rounded-2xl border border-line bg-white p-5 shadow-card">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <figcaption className="font-extrabold text-ink">{review.author}</figcaption>
+    <figure className="sa-pnl in-rev">
+      <div className="in-rev__h">
+        <figcaption className="font-extrabold">{review.author}</figcaption>
         {review.rating > 0 ? <Stars rating={review.rating} /> : null}
       </div>
-      <blockquote className="text-sm/relaxed text-[#5a5d64]">{review.text}</blockquote>
-      {review.relativeTime ? <p className="mt-3 text-xs text-muted">{review.relativeTime}</p> : null}
+      <blockquote className="type-body text-tx2">{review.text}</blockquote>
+      {review.relativeTime ? <p className="sa-small">{review.relativeTime}</p> : null}
     </figure>
+  );
+}
+
+/** The call to action: beside the Google panel while there are no reviews, a row under the reviews otherwise. */
+function ReviewsCta({ row = false }: { row?: boolean }) {
+  return (
+    <div
+      className={`sa-pnl in-cta ${row ? "mt-14 flex-row flex-wrap items-center justify-between gap-x-12 gap-y-6 p-10" : ""}`}
+    >
+      <div className={row ? "in-cta__t" : "contents"}>
+        <h2 className="type-h2">Готови ли сте за своя автомобил?</h2>
+        <p className="sa-p">
+          Присъединете се към доволните клиенти на SelectAuto. Кажете ни марка, модел и бюджет — ще подберем подходящ
+          автомобил и ще поемем целия внос.
+        </p>
+      </div>
+      <InquiryButton variant="pri" size="xl">
+        Направете запитване
+      </InquiryButton>
+    </div>
   );
 }
 
@@ -83,21 +108,19 @@ async function ReviewsSection() {
     // Fallback until the Places key is set (or if the API is unavailable).
     const profile = googleProfileUrl();
     return (
-      <div className="rounded-2xl border border-line bg-white p-6 text-center shadow-card">
-        <p className="mb-4 text-sm/relaxed text-[#5a5d64]">
-          Вижте отзивите на нашите клиенти директно в Google — реални мнения за процеса на внос със SelectAuto.
-        </p>
-        {profile ? (
-          <LinkButton
-            href={profile}
-            target="_blank"
-            rel="noopener noreferrer"
-            rippleTheme="dark"
-            className="inline-flex min-h-12 items-center justify-center rounded-full border border-line bg-white px-6 text-sm font-extrabold uppercase tracking-wide text-brand-dark transition-transform duration-200 hover:-translate-y-0.5"
-          >
-            Виж отзивите в Google
-          </LinkButton>
-        ) : null}
+      <div className="in-rv">
+        <div className="sa-pnl in-gfb">
+          <span className="in-gfb__ic">
+            <GoogleIcon />
+          </span>
+          <p>Вижте отзивите на нашите клиенти директно в Google — реални мнения за процеса на внос със SelectAuto.</p>
+          {profile ? (
+            <a href={profile} target="_blank" rel="noopener noreferrer" className="sa-btn sa-btn--sec">
+              Вижте отзивите в Google
+            </a>
+          ) : null}
+        </div>
+        <ReviewsCta />
       </div>
     );
   }
@@ -106,33 +129,32 @@ async function ReviewsSection() {
     <>
       {/* Aggregate (plain content — NOT AggregateRating schema, per policy) */}
       {data.rating != null && data.total != null ? (
-        <div className="mb-6 flex flex-wrap items-center gap-3">
-          <span className="text-3xl font-black text-ink">{data.rating.toFixed(1)}</span>
+        <div className="in-agg">
+          <b className="font-display text-[26px] leading-none font-bold">{data.rating.toFixed(1).replace(".", ",")}</b>
           <Stars rating={data.rating} />
-          <span className="text-sm text-muted">
-            {data.total.toLocaleString("bg-BG")} отзива в Google
-          </span>
+          <span className="sa-small">{data.total.toLocaleString("bg-BG")} отзива в Google</span>
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="in-revs max-sm:grid-cols-1">
         {data.reviews.map((r) => (
           <ReviewCard key={`${r.author}-${r.text.slice(0, 24)}`} review={r} />
         ))}
       </div>
 
-      <p className="mt-6 text-sm text-muted">
-        Отзивите се зареждат от Google профила на SelectAuto.
-      </p>
+      <p className="in-note">Отзивите се зареждат от Google профила на SelectAuto.</p>
+
+      <ReviewsCta row />
     </>
   );
 }
 
+/** While the reviews load: four placeholder blocks. */
 function ReviewsSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <div className="in-revs max-sm:grid-cols-1" aria-busy="true" aria-label="Зареждане">
       {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="h-36 w-full animate-pulse rounded-2xl bg-line" />
+        <div key={i} className="sa-sk h-36 rounded-lg" />
       ))}
     </div>
   );
@@ -147,45 +169,31 @@ export default function ReviewsPage() {
   return (
     <>
       <SiteHeader />
-      <main className="flex-1 bg-[#fafafa] pt-(--header-h) text-ink">
+      <main className="in-otzivi-pg flex-1 pt-(--header-h)">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
 
-        <Container className="max-w-245 py-12 max-md:py-8">
-          <nav className="mb-5 text-sm text-muted">
-            <Link href="/" className="hover:text-brand-dark">
-              Начало
-            </Link>
-            <span className="px-2">/</span>
-            <span className="text-ink">Отзиви</span>
-          </nav>
+        <section className="in-head">
+          <div className="sa-wrap in-head__in">
+            <nav className="sa-crumbs" aria-label="Пътечка">
+              <Link href="/">Начало</Link>
+              <i aria-hidden="true">/</i>
+              <span aria-current="page">Отзиви</span>
+            </nav>
+            <h1 className="type-h1">Отзиви</h1>
+            <p className="sa-lead max-w-[72ch]">
+              Какво казват клиентите на SelectAuto за внос на автомобили от Корея, САЩ и Канада. Реални мнения за
+              прозрачността, коректността и съдействието през целия процес — от избора до регистрацията в КАТ.
+            </p>
+          </div>
+        </section>
 
-          <h1 className="mb-3 text-4xl font-black uppercase tracking-tight text-ink max-md:text-3xl">Отзиви</h1>
-          <p className="mb-8 max-w-2xl text-[15px] leading-[1.8] text-[#3d4046]">
-            Какво казват клиентите на SelectAuto за внос на автомобили от Корея, САЩ и Канада. Реални мнения за
-            прозрачността, коректността и съдействието през целия процес — от избора до регистрацията в КАТ.
-          </p>
-
-          <section className="mb-12">
+        <section className="sa-band">
+          <div className="sa-wrap">
             <Suspense fallback={<ReviewsSkeleton />}>
               <ReviewsSection />
             </Suspense>
-          </section>
-
-          {/* CTA */}
-          <section className="rounded-card bg-linear-to-r from-brand-dark to-brand p-8 text-center max-md:p-6">
-            <h2 className="mb-2 text-2xl font-black text-white max-md:text-xl">Готов ли си за своя автомобил?</h2>
-            <p className="mx-auto mb-5 max-w-xl text-sm/relaxed text-white/85">
-              Присъедини се към доволните клиенти на SelectAuto. Кажи ни марка, модел и бюджет — ще подберем подходящ
-              автомобил и ще поемем целия внос.
-            </p>
-            <InquiryButton
-              rippleTheme="dark"
-              className="inline-flex min-h-13.5 items-center justify-center rounded-full bg-white px-8 text-sm font-extrabold uppercase tracking-wide text-brand-dark transition-transform duration-200 hover:-translate-y-0.5"
-            >
-              Направи запитване
-            </InquiryButton>
-          </section>
-        </Container>
+          </div>
+        </section>
       </main>
       <SiteFooter />
     </>

@@ -23,6 +23,11 @@ export const metadata: Metadata = {
   }),
 };
 
+/**
+ * /kontakti (boards `in-kontakti`, `in-kontakti-flow`, `in-kontakti-spec`; parity check docs/design/parity/kontakti.md):
+ * the head band, the four contact cards, the map behind its consent panel and the free-consultation panel. Its
+ * classes are in styles/info-kontakti.css under the page's root class `.in-kontakti-pg`.
+ */
 export default function ContactsPage() {
   // LocalBusiness/AutoDealer with full NAP + geo + hours — the contacts page is
   // the canonical home for the physical-location signal (same entity as the
@@ -37,7 +42,7 @@ export default function ContactsPage() {
     <>
       <SiteHeader />
 
-      <main className="flex-1 bg-[#f4f5f7] text-[#191b20]">
+      <main className="in-kontakti-pg flex-1 pt-(--header-h)">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }}
@@ -46,8 +51,6 @@ export default function ContactsPage() {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
         />
-        {/* Dark spacer so the fixed header sits above the hero image, not on it. */}
-        <div className="h-(--header-h) bg-shell" />
         <ContactHero />
         <ContactCards />
         <ContactMap />

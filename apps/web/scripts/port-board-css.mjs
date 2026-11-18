@@ -31,10 +31,36 @@
 //   node <repo>/apps/web/scripts/port-board-css.mjs im- <repo>/apps/web/src/styles/import-page.css \
 //     'im-(wiz|run|tiles?|rd\b|sheet|b\b|b__|sx|g[234]\b|hr\b|frame|flowpad|shift|tall|msgs|total--first|dlgheads|dlg--head|dlgcenter|dlgph\b|dlgph__scroll|dlgbg|top\b|dlgwrap|trig|pop\b|loc\b|ph\b)' \
 //     "The import hubs and the calculators (boards im-*): …" im-calc.html
+// The info pages (styles/info-*.css), one file per screen, each scoped to its page's root class because the in- boards
+// reuse class names with different rules per screen. The FAQ page:
+//
+//   PORT_SCOPE=.in-faq-pg node <repo>/apps/web/scripts/port-board-css.mjs in- <repo>/apps/web/src/styles/info-faq.css \
+//     '^$' "The FAQ page (board in-faq): …" in-faq.html
+//
+// The contacts page, its main board first so its rules win over the spec board's:
+//
+//   PORT_SCOPE=.in-kontakti-pg PORT_FIRST_WINS=1 node <repo>/apps/web/scripts/port-board-css.mjs in- \
+//     <repo>/apps/web/src/styles/info-kontakti.css 'in-(spec|fl\b|fl__|copy--ic|toast|live|pair)' \
+//     "The contacts page, /kontakti (…): …" in-kontakti.html in-kontakti-spec.html
+//
 import fs from "node:fs";
 
 const [prefix, out, dropPattern, title, ...sources] = process.argv.slice(2);
 const drop = new RegExp(dropPattern);
+// PORT_SCOPE (optional): a class put before every selector, for a screen whose boards reuse class names that other
+// screens of the same prefix define differently (the info pages' `.in-head`, `.in-cta`): `.in-faq-pg .in-head{…}`.
+const scope = process.env.PORT_SCOPE || "";
+const scoped = (sel) => (scope ? sel.split(",").map((s) => `${scope} ${s.trim()}`).join(",") : sel);
+// PORT_FIRST_WINS=1 (optional): a selector already taken from an earlier source is skipped in later ones, so a screen's
+// main board wins over its state or spec boards, which redefine some rules for their own layout.
+const firstWins = process.env.PORT_FIRST_WINS === "1";
+const taken = new Set();
+const fresh = (key) => {
+  if (!firstWins) return true;
+  if (taken.has(key)) return false;
+  taken.add(key);
+  return true;
+};
 
 const colors = [
   "bg", "s1", "s2", "s3", "hair2", "hair", "field", "outl", "tx2", "tx3", "tx", "or-hi", "or-lo", "or-w", "or-ring",
@@ -81,16 +107,16 @@ for (const src of sources) {
   for (const b of blocks(css)) {
     if (b.head.startsWith("@container")) {
       const inner = blocks(b.body)
-        .filter((r) => keep(r.head))
-        .map((r) => `${r.head}{${r.body.trim()}}`);
+        .filter((r) => keep(r.head) && fresh(`${b.head} ${r.head}`))
+        .map((r) => `${scoped(r.head)}{${r.body.trim()}}`);
       if (!inner.length) continue;
       const text = `${b.head}{${inner.join("")}}`;
       if (!seen.has(text)) {
         seen.add(text);
         lines.push(text);
       }
-    } else if (keep(b.head)) {
-      const text = `${b.head}{${b.body.trim()}}`;
+    } else if (keep(b.head) && fresh(b.head)) {
+      const text = `${scoped(b.head)}{${b.body.trim()}}`;
       if (!seen.has(text)) {
         seen.add(text);
         lines.push(text);
@@ -116,7 +142,7 @@ const header = `/*
   ${title}
   Ported by script from the screen's board sources (apps/web/scripts/port-board-css.mjs), as kit.css is from the kit: token
   names follow tokens.css, the boards' cqi became vw and their container queries media queries. Board-only parts
-  (device frames, preview overlays) were left out. Class prefix: ${prefix}.
+  (device frames, preview overlays) were left out. Class prefix: ${prefix}.${scope ? ` Scoped to ${scope}, the page's root.` : ""}
 */
 @layer components {
 `;

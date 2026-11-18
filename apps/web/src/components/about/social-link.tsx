@@ -1,31 +1,13 @@
 import type { ReactNode } from "react";
-import { LinkButton } from "@/components/common";
 
 /**
- * Round social-icon button used in the About "Следвайте ни" card. Pass an icon
- * from `@/components/icons` as `children`; the icon renders its own `<svg>`,
- * sized here via the `[&_svg]` rules.
+ * A social profile in the about page's „Следвайте ни" (board `in-za-nas`): a 48 px kit icon button that opens the
+ * profile in a new tab. Pass the brand icon as `children`; `label` is its name for screen readers.
  */
-export function SocialLink({
-  href,
-  label,
-  children,
-}: {
-  href: string;
-  label: string;
-  children: ReactNode;
-}) {
-  const external = !href.startsWith("#");
+export function SocialLink({ href, label, children }: { href: string; label: string; children: ReactNode }) {
   return (
-    <LinkButton
-      href={href}
-      aria-label={label}
-      rippleTheme="light"
-      target={external ? "_blank" : undefined}
-      rel={external ? "noopener noreferrer" : undefined}
-      className="inline-flex size-12 items-center justify-center rounded-2xl border border-white/[0.14] bg-white/6 text-white transition-all duration-200 hover:-translate-y-0.5 hover:border-brand/55 hover:bg-brand/15 [&_svg]:block [&_svg]:size-5"
-    >
+    <a href={href} aria-label={label} target="_blank" rel="noopener noreferrer" className="sa-ib sa-ib--lg">
       {children}
-    </LinkButton>
+    </a>
   );
 }
