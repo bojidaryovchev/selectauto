@@ -70,9 +70,33 @@ export function makeDisplayName(id: number, name: string | null, raw: Record<str
 }
 
 /**
- * A motorcycle model's display name when AuctionsAPI's came all lower case: words capitalised, and a word with a digit
- * or of one or two letters in capitals („africa twin" → „Africa Twin", „cbr600rr" → „CBR600RR", „450 mx" → „450 MX").
- * Anything else, and every car model, keeps its name.
+ * Model codes with a vowel in them, which the no-vowel test in `isModelCode` misses: every one AuctionsAPI's
+ * motorcycle models had on 19.11.2026 (Honda ADV, X-ADV, ATC, CUV; Harley-Davidson CVO; Polaris 700 EFI; Aprilia ETV,
+ * ETX; KTM EXC; Kawasaki KLE; KYMCO MXU, UXV; Husqvarna WRE; Yamaha YFA). Their words (Sei, Tre, Uno, Dax, Dio, Mio,
+ * Ape, Yup…) stay words.
+ */
+const VOWEL_CODES: ReadonlySet<string> = new Set(["adv", "atc", "atv", "cuv", "cvo", "efi", "etv", "etx", "exc", "kle", "mxu", "uxv", "wre", "yfa"]);
+
+/**
+ * Whether a lower-case word part is a code, written in capitals: it has a digit, one or two letters, no vowel (a y
+ * after the first letter counts as one: „sky", „fly" are words, „yzf" a code), it is one of VOWEL_CODES, a Roman
+ * numeral („iii") or one of Yamaha's „…max" scooters (NMAX, TMAX, VMAX).
+ */
+function isModelCode(part: string): boolean {
+  return (
+    /\d/.test(part) ||
+    part.length <= 2 ||
+    !/[aeiou]|.y/.test(part) ||
+    VOWEL_CODES.has(part) ||
+    /^(?:i{2,3}|vi{1,3}|xi{1,3})$/.test(part) ||
+    /^[a-z]max$/.test(part)
+  );
+}
+
+/**
+ * A motorcycle model's display name when AuctionsAPI's came all lower case: codes in capitals (`isModelCode`), other
+ * words capitalised („africa twin" → „Africa Twin", „cbr600rr" → „CBR600RR", „gsx-r" → „GSX-R", „tmax" → „TMAX",
+ * „rocket iii" → „Rocket III", „sei giorni" → „Sei Giorni"). Anything else, and every car model, keeps its name.
  */
 export function modelDisplayName(name: string | null, isMotorcycle: boolean): string | null {
   if (!name || !isMotorcycle || !isAllLower(name)) return name;
@@ -82,7 +106,7 @@ export function modelDisplayName(name: string | null, isMotorcycle: boolean): st
     .map((word) =>
       word
         .split("-")
-        .map((part) => (/\d/.test(part) || part.length <= 2 ? part.toUpperCase() : part.charAt(0).toUpperCase() + part.slice(1)))
+        .map((part) => (isModelCode(part) ? part.toUpperCase() : part.charAt(0).toUpperCase() + part.slice(1)))
         .join("-"),
     )
     .join(" ");
