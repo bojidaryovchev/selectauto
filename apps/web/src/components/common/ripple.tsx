@@ -97,7 +97,13 @@ const Ripple: React.FC<Props> = ({ theme = "dark", className = "" }) => {
   }, []);
 
   return (
-    <div className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`} ref={containerRef} aria-hidden="true">
+    // `data-ripple-react`: the page-wide RippleLayer leaves a control that renders this one alone (no double circle).
+    <div
+      className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`}
+      ref={containerRef}
+      aria-hidden="true"
+      data-ripple-react=""
+    >
       {ripples.map((ripple) => (
         <div
           key={ripple.id}

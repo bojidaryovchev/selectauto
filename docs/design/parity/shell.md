@@ -77,3 +77,9 @@
 **18.11.2026, production review.** Navigation dropdowns (row 7): the first Esc closes the menu and hands the focus to
 its parent link (that focus reopened it, so it took two presses), and Enter on a parent link follows it on a touch
 screen with a keyboard too (a pointer type left over from an earlier tap stopped it).
+
+**19.11.2026, owner's question.** Every clickable control ripples on press again (`ripple-layer.tsx`): `main` drew
+the ripple inside every `Button` and `LinkButton`, the brand tiles and the contact cards, and the rebuild's kit buttons
+left it out. One listener for the page covers the kit's plain buttons too (segments, tabs, chips, options, thumbnails,
+the bottom tabs); same circle, colour and 1 s animation as `main`, clipped to each control's shape, none under reduced
+motion.

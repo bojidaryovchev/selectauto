@@ -261,6 +261,11 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
   phones, behind „Филтри" (decision 5). They apply as they change; the tab Активни / Приключили is not a filter.
 - **Carousels** keep advancing on their own, pause on hover and focus, and have a pause button („Спрете превъртането").
   The import hubs' rails don't move on their own, so they have none.
+- **The click ripple** (`ripple-layer.tsx`, mounted once in the root layout): every clickable control, the site and
+  the admin, ripples where it is pressed, as every `Button` and `LinkButton` did on `main`: buttons, `.sa-btn` and
+  `.sa-ib` links, segments, tabs, chips, options, the navigation, summaries, and anything marked `data-ripple` (the
+  brand tiles). Light on dark surfaces, dark on light ones, clipped to the control's shape, none under reduced motion.
+  The rebuild's kit buttons had lost it (owner, 19.11.2026); a new control gets it by being one of these.
 - The rest of the interaction rules are on the boards of each screen; [boards.md](boards.md) finds them.
 
 ## Accessibility

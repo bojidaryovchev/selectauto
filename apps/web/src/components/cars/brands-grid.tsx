@@ -63,6 +63,8 @@ export async function BrandsGrid() {
             <Link
               href={hrefFor(brand.name)}
               aria-label={brand.name}
+              // The click ripple, as `main`'s tiles had (components/common/ripple-layer.tsx).
+              data-ripple=""
               className="flex flex-1 flex-col items-center justify-center gap-2.5 rounded-lg border border-hair bg-s2 px-1.5 pt-3.5 pb-3 text-center text-tx transition-colors duration-150 ease-out hover:border-or hover:bg-s3 motion-reduce:transition-none sm:min-h-43 sm:gap-3.5 sm:px-3 sm:pt-5.5 sm:pb-4.5"
             >
               <span className="sa-plate sa-plate--xl [--ps:48px] sm:[--ps:88px]">

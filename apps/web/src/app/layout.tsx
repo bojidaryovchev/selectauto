@@ -1,3 +1,4 @@
+import { RippleLayer } from "@/components/common";
 import { PublicWidgets, ScrollToTop } from "@/components/layout";
 import { Providers } from "@/components/providers";
 import { SITE_NAME, SITE_URL } from "@/constants";
@@ -93,6 +94,9 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <PublicWidgets />
         </Suspense>
+
+        {/* The click ripple on every clickable control, site and admin (one delegated listener; renders nothing). */}
+        <RippleLayer />
 
         {/* Vercel Web Analytics: page views + custom events, billed at $0.03/1K
             events. The ONLY Vercel telemetry we keep. Speed Insights was removed
