@@ -14,6 +14,7 @@ The values live in code, and the pictures are the boards on the design canvases.
 | What | Where |
 |---|---|
 | Tokens, fonts, type styles | `apps/web/src/styles/tokens.css`; fonts load in `apps/web/src/app/layout.tsx` |
+| Light mode: the saved theme, the switch | `apps/web/src/lib/theme.ts`, `apps/web/src/components/common/theme-switch.tsx`; see [Light mode](#light-mode) |
 | Component classes (`sa-btn`, `sa-car`, `sa-hdr` …) | `apps/web/src/styles/kit.css`, ported from the boards' kit; React components apply them |
 | A screen's own layout classes (`cd-*` on the car page, `hm-*` on the make and model hubs, `im-*` on the import hubs and the calculators, `in-*` on the information pages, `ac-*` on the account pages and the inquiry dialog, `ad-*` in the admin) | `apps/web/src/styles/<screen>.css` (`car-page.css`, `hub-page.css`, `import-page.css`, the `info-*.css` files, `account.css`, `inquiry.css`, and the admin's `admin.css` and `admin-b.css`, which `app/admin/layout.tsx` imports instead of `globals.css`), ported from that screen's board sources by `apps/web/scripts/port-board-css.mjs`: token names, `cqi` → `vw`, container queries → media queries |
 | Contrast test of every text and ground pair | `apps/web/tests/design-tokens.test.mts` (the site) and `email-colors.test.mts` (the e-mails), run by `pnpm test` |
@@ -120,6 +121,52 @@ The full list, with dates and wording, is `decisions.md`.
 - **Contrast:** text 4.5:1 or more; borders, focus rings and selection marks 3:1. The test measures every pair the kit
   draws, with tints blended over their surface. The closest calls today are white on `viber` (4.82:1) and `tx3` on `s3`
   (4.83:1) for text, and `outl` on `s2` (3.75:1) for borders.
+
+## Light mode
+
+The owner asked for it on 19 November 2026. Night stays the default and the brand; light is the visitor's choice,
+remembered in that browser, on the site and in the admin alike.
+
+- **How it works.** `tokens.css` gives every colour token a light value under `[data-theme="light"]` on `<html>`.
+  `THEME_BOOTSTRAP` (`src/lib/theme.ts`) runs in the `<head>` and puts the saved choice (`localStorage` `sa-theme`) on
+  the page before the body exists, so a light page never paints night first. `color-scheme` and the browser bar's
+  `theme-color` follow it. The pages stay static: nothing about the theme comes from the server.
+- **The switch** (`theme-switch.tsx`, `.sa-theme` in `kit.css`) sits:
+  - first among the header's actions;
+  - at the right of the phone's top bar;
+  - in the admin's sidebar, beside the brand;
+  - in the admin's phone top bar.
+
+  It is a `switch` named „Светла тема" (on = light). Night is a moon with craters on a navy sky with twinkling stars;
+  day is a sun with turning rays and a cloud on a blue sky. The knob slides across with a slight overshoot. The page
+  changes through a circle that grows out of the switch (the View Transitions API, 700 ms); browsers without it, and
+  reduced motion, change at once. Another open tab of the site follows.
+- **Night islands.** `data-theme="dark"` on an element brings night back inside a light page. It is on:
+  - the chrome, because the logo sits only on dark grounds (decision 2): the header, the phone's top bar and bottom
+    tabs, the drawer and its profile panel, the footer, and the admin's sidebar, top bar, drawer and their loading
+    skeleton;
+  - the bands that carry their own dark picture: the video hero on /za-nas, the 3D scene on /proces (and its no-WebGL
+    stand-in), the photo viewer.
+
+  The dark glass over photos (`.sa-ib--over`, `.sa-src`, `.sa-tag--sold`, `.sa-gal__n`, `.sa-gal__hint`) is night by
+  its class. An island sets its own text colour, in the base layer, because the colour it inherits was computed on the
+  light page. Over a light page the night bars are 96% opaque instead of their 88–94%. The home hero follows the theme:
+  its particle car reads on both grounds.
+- **The light values.** The orange is a shade deeper (`or` #df5f07, `ortx` #a04400), so it still reaches 3:1 as a mark
+  and 4.5:1 as text on the light surfaces. The status colours are darker, and the success button's text is white
+  (`onpos`). The token test checks every pair in both themes, and that the islands repeat night exactly.
+- **Writing a colour that works in both:**
+  - use a token;
+  - a token's tint is `color-mix(in srgb, var(--color-x) N%, transparent)`;
+  - a faint white tint over night is `tint` (`bg-tint/3`), which is near-black over light. Never `white/…` or
+    `rgba(255, 255, 255, …)` for a tint.
+
+  Where night's exact literal has to stay, a `:root[data-theme="light"] …` rule follows it: the skeleton's sheen, the
+  no-photo gradient, the selected chip's count. The IAA score's damage scale has its own `--dmg-0` … `--dmg-5` per
+  theme. Check a change in both themes, for example by setting `localStorage["sa-theme"] = "light"` before the page loads
+  (Playwright's `addInitScript`).
+- **Outside the layout.** The 410 page (`gone-page.ts`) applies the saved theme too, with its own variables. The crash
+  page `app/global-error.tsx` replaces the layout and stays night.
 
 ## Type
 

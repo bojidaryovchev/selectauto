@@ -964,8 +964,9 @@ export function ParticleProcess() {
   if (webglFailed) {
     // Board `in-proces-nogl`: the formed car as a picture, the title as real text, and the outro.
     return (
-      // The page has no top padding (the 3D intro starts under the fixed header), so the band makes room for it.
-      <section className="in-ng pt-(--header-h)" aria-label="Процесът">
+      // The page has no top padding (the 3D intro starts under the fixed header), so the band makes room for it. Night
+      // in both themes, as the 3D band it stands in for.
+      <section className="in-ng pt-(--header-h)" aria-label="Процесът" data-theme="dark">
         <div className="sa-wrap in-ng__in">
           <div className="in-ng__copy">
             <h2 className="in-ng__t">
@@ -998,6 +999,8 @@ export function ParticleProcess() {
     <section
       ref={rootRef}
       aria-label="Процесът в 3D"
+      // Night in both themes: a dark band whose particles glow additively on its dark ground (styles/tokens.css).
+      data-theme="dark"
       className="in-ps relative h-[580vh] overflow-visible text-tx max-[991px]:h-[500vh]"
     >
       {/* Intro — the title is rendered entirely as dissolving canvas particles.

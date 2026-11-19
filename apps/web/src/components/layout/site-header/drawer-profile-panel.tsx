@@ -34,6 +34,7 @@ export function DrawerProfilePanel({ open, onBack, onNavigate }: Props) {
   return (
     <aside
       aria-label="Моят профил"
+      data-theme="dark"
       aria-hidden={!open}
       inert={!open}
       className={`sa-drawer fixed right-0 top-0 z-10060 h-dvh w-[min(88vw,380px)] transition-transform duration-300 motion-reduce:transition-none lg:hidden ${

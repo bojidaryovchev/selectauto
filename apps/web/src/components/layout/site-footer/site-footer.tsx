@@ -21,7 +21,8 @@ const SOCIAL_ICONS: Record<string, ComponentType<{ className?: string }>> = {
  */
 export function SiteFooter() {
   return (
-    <footer className="sa-ftr">
+    // Night in both themes: the gold logo sits on dark grounds only (styles/tokens.css, light mode).
+    <footer className="sa-ftr" data-theme="dark">
       <div className="sa-wrap">
         <div className="sa-ftr__g">
           <div>

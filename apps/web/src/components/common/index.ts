@@ -14,3 +14,4 @@ export { Reveal } from "./reveal";
 export { Ripple } from "./ripple";
 export { RippleLayer } from "./ripple-layer";
 export { SectionHeading } from "./section-heading";
+export { ThemeSwitch } from "./theme-switch";

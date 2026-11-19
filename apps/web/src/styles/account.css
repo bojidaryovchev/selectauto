@@ -27,7 +27,7 @@
   .ac-lu{position:relative}
   .ac-lu__b{position:absolute;top:-11px;right:14px;z-index:2;display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:11px;background:var(--color-s1);box-shadow:inset 0 0 0 1px var(--color-or);color:var(--color-ortx);font:800 11.5px/1 var(--font-sans);white-space:nowrap;pointer-events:none}
   .ac-lu--g .sa-btn{box-shadow:inset 0 0 0 1.5px var(--color-or),0 0 0 4px var(--color-or-ring)}
-  .ac-ring{filter:drop-shadow(2px 0 0 var(--color-s1)) drop-shadow(-2px 0 0 var(--color-s1)) drop-shadow(0 2px 0 var(--color-s1)) drop-shadow(0 -2px 0 var(--color-s1)) drop-shadow(2px 0 0 rgba(255,122,26,.55)) drop-shadow(-2px 0 0 rgba(255,122,26,.55)) drop-shadow(0 2px 0 rgba(255,122,26,.55)) drop-shadow(0 -2px 0 rgba(255,122,26,.55))}
+  .ac-ring{filter:drop-shadow(2px 0 0 var(--color-s1)) drop-shadow(-2px 0 0 var(--color-s1)) drop-shadow(0 2px 0 var(--color-s1)) drop-shadow(0 -2px 0 var(--color-s1)) drop-shadow(2px 0 0 color-mix(in srgb,var(--color-or) 55%,transparent)) drop-shadow(-2px 0 0 color-mix(in srgb,var(--color-or) 55%,transparent)) drop-shadow(0 2px 0 color-mix(in srgb,var(--color-or) 55%,transparent)) drop-shadow(0 -2px 0 color-mix(in srgb,var(--color-or) 55%,transparent))}
   .ac-wait{display:flex;align-items:center;gap:12px;min-height:48px;font-size:15px;font-weight:600;color:var(--color-tx2)}
   .ac-wait .sa-spin{color:var(--color-or)}
   .ac-sk{display:flex;flex-direction:column;gap:12px}

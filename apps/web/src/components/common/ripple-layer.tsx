@@ -12,7 +12,8 @@ import { useEffect } from "react";
  *   one from its centre, the same circle, colour and 1 s animation as `main` (`animate-ripple-effect`, globals.css);
  * - it is clipped to the control's shape: its border radius (inherited), and a chamfered button's clip-path, which
  *   clips its children;
- * - light on the dark surfaces, dark on a light one (by the control's own background);
+ * - light on the dark surfaces, dark on a light one: by the control's own background, or, for a see-through control
+ *   (ghost buttons, tabs, segments), by the theme of the ground it sits on (the page's, or a night island's);
  * - nothing under reduced motion.
  *
  * The control is not restyled beyond `position: relative` when it was static, which moves nothing, so nothing it holds
@@ -48,13 +49,18 @@ function hostFor(target: EventTarget | null): HTMLElement | null {
   return host;
 }
 
-/** Whether a computed colour is a light, visible background (a transparent one sits on the dark page). */
-function isLight(color: string): boolean {
-  const m = color.match(/rgba?\(([^)]+)\)/);
-  if (!m) return false;
-  const [r, g, b, a = 1] = m[1].split(/[\s,/]+/).filter(Boolean).map(Number);
-  if (a < 0.5) return false;
-  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.6;
+/**
+ * Whether the control shows a light ground. Its own background when it has a visible one (a computed `rgb()`, as every
+ * solid token gives); a see-through control takes the theme of the nearest `data-theme` around it: the page's light or
+ * night (none = night), or a night island inside a light page (styles/tokens.css).
+ */
+function onLight(host: HTMLElement, background: string): boolean {
+  const m = background.match(/rgba?\(([^)]+)\)/);
+  if (m) {
+    const [r, g, b, a = 1] = m[1].split(/[\s,/]+/).filter(Boolean).map(Number);
+    if (a >= 0.5) return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.6;
+  }
+  return host.closest("[data-theme]")?.getAttribute("data-theme") === "light";
 }
 
 function spawn(host: HTMLElement, clientX: number | null, clientY: number | null) {
@@ -87,7 +93,7 @@ function spawn(host: HTMLElement, clientX: number | null, clientY: number | null
     height: `${size}px`,
     borderRadius: "50%",
     pointerEvents: "none",
-    backgroundColor: isLight(style.backgroundColor) ? "rgba(0, 0, 0, 0.3)" : "rgba(255, 255, 255, 0.3)",
+    backgroundColor: onLight(host, style.backgroundColor) ? "rgba(0, 0, 0, 0.3)" : "rgba(255, 255, 255, 0.3)",
   });
   clip.appendChild(dot);
   host.appendChild(clip);

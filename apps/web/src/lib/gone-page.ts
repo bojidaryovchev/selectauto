@@ -10,9 +10,12 @@
  *
  * So it can't use the site's components, stylesheet or fonts (their file names are hashed per build): the look is the
  * kit's, written out here, under a top bar with the logo as app/global-error.tsx draws it, in the system's fonts. Keep
- * the colours and sizes in step with src/styles/tokens.css and kit.css. It names no car: a paid delisting must not
- * reveal the vehicle.
+ * the colours and sizes in step with src/styles/tokens.css and kit.css, both themes: the visitor's saved light theme
+ * applies here too (THEME_BOOTSTRAP), and the top bar stays night as the site's does. It names no car: a paid
+ * delisting must not reveal the vehicle.
  */
+
+import { THEME_BOOTSTRAP } from "@/lib/theme";
 
 const SANS = `system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
 const GUTTER = "clamp(16px, 4.5vw, 96px)";
@@ -35,30 +38,36 @@ const LOGO = (w: number) => `/_next/image?url=%2Flogo.png&amp;w=${w}&amp;q=75`;
 const LEAD =
   "Автомобилът е продаден или обявата е премахната. Разгледайте наличните автомобили или започнете от някоя от основните страници.";
 
+// The tokens the page uses, night and light (src/styles/tokens.css); the top bar is night in both.
+const NIGHT = `--bg:#0c0d10;--s2:#1d2026;--s3:#262a31;--hair:rgba(255,255,255,.1);--field:#737a85;--tx:#f2f3f5;--tx2:#a9afb8;--or:#ff7a1a;--or-hi:#ff8e3c;--or-lo:#e8690f;--ortx:#ff9a52;--onfill:#0c0d10;--tint:#fff;color-scheme:dark`;
+const LIGHT = `--bg:#f3f4f6;--s2:#ebedf0;--s3:#dfe2e7;--hair:rgba(12,13,16,.1);--field:#7b828d;--tx:#15171b;--tx2:#474d57;--or:#df5f07;--or-hi:#eb6a10;--or-lo:#d25804;--ortx:#a04400;--onfill:#0c0d10;--tint:#0c0d10;color-scheme:light`;
+
 const CSS = `*,*::before,*::after{box-sizing:border-box}
+:root,.bar{${NIGHT}}
+:root[data-theme="light"]{${LIGHT}}
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
-body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:#0c0d10;color:#f2f3f5;font-family:${SANS};line-height:1.6;-webkit-font-smoothing:antialiased}
+body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:var(--bg);color:var(--tx);font-family:${SANS};line-height:1.6;-webkit-font-smoothing:antialiased}
 a{color:inherit}
-:focus-visible{outline:2px solid #ff9a52;outline-offset:2px}
+:focus-visible{outline:2px solid var(--ortx);outline-offset:2px}
 ::selection{background:rgba(255,122,26,.35)}
-.bar{flex:none;display:flex;align-items:center;height:56px;padding:0 ${GUTTER};border-bottom:1px solid rgba(255,255,255,.1)}
+.bar{flex:none;display:flex;align-items:center;height:56px;padding:0 ${GUTTER};background:var(--bg);border-bottom:1px solid var(--hair)}
 .bar a{display:flex}
 .bar img{display:block;height:36px;width:auto}
 main{flex:1;width:min(100% - 2*${GUTTER},1920px);margin-inline:auto}
 .gone{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:18px;min-height:520px;padding-block:clamp(64px,9vw,140px)}
-.num{font:700 clamp(96px,14vw,220px)/.9 ${SANS};letter-spacing:-.04em;color:transparent;-webkit-text-stroke:2px #262a31}
+.num{font:700 clamp(96px,14vw,220px)/.9 ${SANS};letter-spacing:-.04em;color:transparent;-webkit-text-stroke:2px var(--s3)}
 h1{margin:0;font-size:clamp(30px,2.4vw + 12px,52px);line-height:1.08;font-weight:700;letter-spacing:-.02em;text-wrap:balance}
-.lead{margin:0;max-width:62ch;font-size:clamp(17px,.35vw + 15px,20px);line-height:1.6;color:#a9afb8}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;max-width:100%;height:56px;margin-top:6px;padding:0 28px;background:#ff7a1a;color:#0c0d10;font:800 16px/1 ${SANS};letter-spacing:.01em;white-space:nowrap;text-decoration:none;clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)}
-.btn:hover{background:#ff8e3c}
-.btn:active{background:#e8690f}
-.btn:focus-visible{outline:0;box-shadow:inset 0 0 0 2px #0c0d10,inset 0 0 0 4px #f2f3f5}
+.lead{margin:0;max-width:62ch;font-size:clamp(17px,.35vw + 15px,20px);line-height:1.6;color:var(--tx2)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;max-width:100%;height:56px;margin-top:6px;padding:0 28px;background:var(--or);color:var(--onfill);font:800 16px/1 ${SANS};letter-spacing:.01em;white-space:nowrap;text-decoration:none;clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)}
+.btn:hover{background:var(--or-hi)}
+.btn:active{background:var(--or-lo)}
+.btn:focus-visible{outline:0;box-shadow:inset 0 0 0 2px var(--bg),inset 0 0 0 4px var(--tx)}
 .btn svg{flex:none;width:20px;height:20px}
 .links{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px}
-.chip{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border:1px solid #737a85;border-radius:20px;font:700 14px/1 ${SANS};white-space:nowrap;text-decoration:none}
-.chip:hover{background:#1d2026}
+.chip{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border:1px solid var(--field);border-radius:20px;font:700 14px/1 ${SANS};white-space:nowrap;text-decoration:none}
+.chip:hover{background:var(--s2)}
 .chip svg{flex:none;width:16px;height:16px}
-.chip .flag{width:21px;height:14px;border-radius:2px;box-shadow:0 0 0 1px rgba(255,255,255,.12)}
+.chip .flag{width:21px;height:14px;border-radius:2px;box-shadow:0 0 0 1px color-mix(in srgb,var(--tint) 12%,transparent)}
 @media (max-width:639.98px){.btn{width:100%}.links .chip{flex:1 1 calc(50% - 10px);justify-content:center}}`;
 
 export const GONE_PAGE_HTML = `<!doctype html>
@@ -69,6 +78,7 @@ export const GONE_PAGE_HTML = `<!doctype html>
 <meta name="robots" content="noindex">
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#0c0d10">
+<script>${THEME_BOOTSTRAP}</script>
 <title>Обявата вече не е налична — SelectAuto</title>
 <meta name="description" content="${LEAD}">
 <link rel="icon" href="/favicon.ico" sizes="any">

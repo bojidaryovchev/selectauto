@@ -58,6 +58,11 @@
   --color-info: #6ea8ff; /* Предстои, бележки, отчети по VIN. Orange's complement; keep it rare */
   --color-info-w: rgba(110, 168, 255, 0.12);
 
+  /* Text on a coloured fill: the primary button, the BUY NOW mark, count badges, a ticked checkbox (`onfill`), and the
+     success button (`onpos`). The same near-black in both themes, except on the light theme's dark green. */
+  --color-onfill: #0c0d10;
+  --color-onpos: #0c0d10;
+
   /* Brands and light plates */
   --color-viber: #6e5aee; /* Viber group buttons only, with white text */
   --color-vibertx: #a99cff; /* The Viber glyph on dark surfaces */
@@ -66,8 +71,12 @@
   --color-ink: #15171b; /* Text on plate and paper, such as a make's initials on its plate */
 
   /* The two extremes, kept from Tailwind's palette for these uses only */
-  --color-white: #ffffff; /* The glyph on the Viber circle; a faint tint at low opacity (bg-white/3) */
-  --color-black: #000000; /* Letterboxing behind a video, and the drawers' backdrop under its opacity */
+  --color-white: #ffffff; /* The glyph on the Viber circle */
+  --color-black: #000000; /* Letterboxing behind a video */
+
+  /* Faint tints, at low opacity only (bg-tint/3, a table row's hover, a flag's edge, a spinner's track): white over
+     night, near-black over light. Never solid, never text */
+  --color-tint: #ffffff;
 
   /* Font families. next/font (app/layout.tsx) defines --font-manrope and the
      others on <html>, the element :root matches, so these resolve there and
@@ -107,6 +116,120 @@
   --chamfer-md: 8px;
   --chamfer-sm: 6px; /* Also the BUY NOW mark */
   --bottom-nav: 62px; /* The phone and tablet bottom tab bar */
+  color-scheme: dark; /* Native controls, scrollbars and the canvas default follow the theme */
+}
+
+/*
+  Light mode (owner, 19.11.2026): the same tokens for daylight, set on <html> when the visitor picks it (the theme
+  switch; components/common/theme-switch.tsx). Night stays the default. Every value is checked by
+  tests/design-tokens.test.mts against the same pairs as the night theme. The orange is a shade deeper than night's, so
+  that as a mark (a ticked box, a focused field's edge) it still reaches 3:1 on the light surfaces, and the status
+  colours are darker for 4.5:1 text; the success button's dark green carries white text (`onpos`).
+
+  The chrome stays night in both themes (`data-theme="dark"` below): the header, the phone's top bar and bottom tabs,
+  the menu drawer, the footer and the admin's sidebar and top bar, because the gold logo sits on dark grounds only
+  (decision: logo kept exactly). So do the bands that carry their own dark picture: the video hero on /za-nas, the 3D
+  process scene on /proces and the photo viewer. The home hero follows the theme: its particle car reads on both.
+*/
+[data-theme="light"] {
+  color-scheme: light;
+  --color-bg: #f3f4f6;
+  --color-s1: #ffffff;
+  --color-s2: #ebedf0;
+  --color-s3: #dfe2e7;
+  --color-scrim: rgba(12, 13, 16, 0.5);
+  --color-hair: rgba(12, 13, 16, 0.1);
+  --color-hair2: rgba(12, 13, 16, 0.18);
+  --color-field: #7b828d;
+  --color-outl: rgba(12, 13, 16, 0.55);
+  --color-tx: #15171b;
+  --color-tx2: #474d57;
+  --color-tx3: #5a616b;
+  --color-or: #df5f07;
+  --color-or-hi: #eb6a10;
+  --color-or-lo: #d25804;
+  --color-ortx: #a04400;
+  --color-or-w: rgba(223, 95, 7, 0.1);
+  --color-or-ring: rgba(223, 95, 7, 0.3);
+  --color-gold: #e4c80c;
+  --color-pos: #0a6d3e;
+  --color-pos-w: rgba(10, 109, 62, 0.08);
+  --color-warn: #7a5000;
+  --color-warn-w: rgba(122, 80, 0, 0.08);
+  --color-neg: #b02a19;
+  --color-neg-w: rgba(176, 42, 25, 0.08);
+  --color-info: #1a58b3;
+  --color-info-w: rgba(26, 88, 179, 0.08);
+  --color-onfill: #0c0d10;
+  --color-onpos: #ffffff;
+  --color-viber: #6e5aee;
+  --color-vibertx: #5540d6;
+  --color-plate: #eef0f2;
+  --color-paper: #ffffff;
+  --color-ink: #15171b;
+  --color-white: #ffffff;
+  --color-black: #000000;
+  --color-tint: #0c0d10;
+  --shadow-pop: 0 18px 48px rgba(12, 13, 16, 0.16);
+}
+
+/* Night inside a light page: the chrome and the dark bands above, and the dark glass over photos (icon buttons over a
+   picture, the source and sold badges, the gallery's counter and hint), which stays dark on any picture. The same
+   values as the @theme block; the token test checks that they stay the same. */
+[data-theme="dark"],
+.sa-ib--over,
+.sa-tag--sold,
+.sa-src,
+.sa-gal__n,
+.sa-gal__hint {
+  color-scheme: dark;
+  --color-bg: #0c0d10;
+  --color-s1: #15171b;
+  --color-s2: #1d2026;
+  --color-s3: #262a31;
+  --color-scrim: rgba(5, 6, 8, 0.74);
+  --color-hair: rgba(255, 255, 255, 0.1);
+  --color-hair2: rgba(255, 255, 255, 0.16);
+  --color-field: #737a85;
+  --color-outl: rgba(255, 255, 255, 0.4);
+  --color-tx: #f2f3f5;
+  --color-tx2: #a9afb8;
+  --color-tx3: #8f96a0;
+  --color-or: #ff7a1a;
+  --color-or-hi: #ff8e3c;
+  --color-or-lo: #e8690f;
+  --color-ortx: #ff9a52;
+  --color-or-w: rgba(255, 122, 26, 0.12);
+  --color-or-ring: rgba(255, 122, 26, 0.3);
+  --color-gold: #e4c80c;
+  --color-pos: #3dd68c;
+  --color-pos-w: rgba(61, 214, 140, 0.12);
+  --color-warn: #f5b83d;
+  --color-warn-w: rgba(245, 184, 61, 0.12);
+  --color-neg: #ff6b5e;
+  --color-neg-w: rgba(255, 107, 94, 0.12);
+  --color-info: #6ea8ff;
+  --color-info-w: rgba(110, 168, 255, 0.12);
+  --color-onfill: #0c0d10;
+  --color-onpos: #0c0d10;
+  --color-viber: #6e5aee;
+  --color-vibertx: #a99cff;
+  --color-plate: #eef0f2;
+  --color-paper: #ffffff;
+  --color-ink: #15171b;
+  --color-white: #ffffff;
+  --color-black: #000000;
+  --color-tint: #ffffff;
+  --shadow-pop: 0 18px 48px rgba(0, 0, 0, 0.55);
+}
+
+/* An island's own text colour. Its children inherit the colour as a computed value, which outside the island is the
+   light page's dark text, so the island sets night's again. In the base layer, so the island's own classes and
+   utilities still set theirs. */
+@layer base {
+  [data-theme="dark"] {
+    color: var(--color-tx);
+  }
 }
 
 /*

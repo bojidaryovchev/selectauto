@@ -10,11 +10,12 @@ const HERO_POINTS = [
 
 /**
  * About hero (board `in-za-nas`): the video behind a dark veil and the hero glow, the H1 with its orange words, the
- * lead and two actions, and the glass card „Какво получавате с нас" with its three points.
+ * lead and two actions, and the glass card „Какво получавате с нас" with its three points. Night in both themes: its
+ * text and glass sit on the darkened video (styles/tokens.css, light mode).
  */
 export function AboutHero() {
   return (
-    <section className="in-vh">
+    <section className="in-vh" data-theme="dark">
       <HeroVideo />
       <div className="sa-wrap in-vh__in">
         <div className="in-vh__copy">

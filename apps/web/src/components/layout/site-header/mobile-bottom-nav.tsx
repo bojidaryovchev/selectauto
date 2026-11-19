@@ -38,6 +38,8 @@ export function MobileBottomNav({ drawerOpen, hidden, onToggleDrawer }: Props) {
   return (
     <nav
       aria-label="Основна навигация"
+      // Night in both themes, with the header (styles/tokens.css, light mode).
+      data-theme="dark"
       className={`sa-bnav z-10000 h-[calc(var(--bottom-nav)+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] transition-transform duration-300 ease-out will-change-transform motion-reduce:transition-none ${
         hidden ? "translate-y-full" : "translate-y-0"
       }`}

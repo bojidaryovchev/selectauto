@@ -19,18 +19,18 @@ type Band = {
   max: number;
   /** BG band label. */
   label: string;
-  /** The band's colour: its legend dot and its stop in the meter (the board's data colours for the dark ground). */
+  /** The band's colour: its legend dot and its stop in the meter (kit.css `--dmg-*`, deeper in the light theme). */
   dot: string;
 };
 
 // Worst → best (board `cd-iaai`).
 const BANDS: Band[] = [
-  { min: 0, max: 9, label: "Не подлежи на ремонт", dot: "#FF6B5E" },
-  { min: 10, max: 19, label: "Тежки щети", dot: "#FF8A4C" },
-  { min: 20, max: 29, label: "Големи щети", dot: "#F5B83D" },
-  { min: 30, max: 39, label: "Умерени щети", dot: "#E6D04A" },
-  { min: 40, max: 49, label: "Леки щети", dot: "#A6D85A" },
-  { min: 50, max: 50, label: "Минимални щети", dot: "#3DD68C" },
+  { min: 0, max: 9, label: "Не подлежи на ремонт", dot: "var(--dmg-0)" },
+  { min: 10, max: 19, label: "Тежки щети", dot: "var(--dmg-1)" },
+  { min: 20, max: 29, label: "Големи щети", dot: "var(--dmg-2)" },
+  { min: 30, max: 39, label: "Умерени щети", dot: "var(--dmg-3)" },
+  { min: 40, max: 49, label: "Леки щети", dot: "var(--dmg-4)" },
+  { min: 50, max: 50, label: "Минимални щети", dot: "var(--dmg-5)" },
 ];
 
 /** A band's colour dot (legend and headline). */

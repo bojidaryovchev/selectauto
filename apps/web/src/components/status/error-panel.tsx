@@ -42,7 +42,7 @@ export function ErrorPanel({
       {digest ? (
         <p className="flex flex-wrap items-center gap-2 text-sm/normal font-semibold wrap-anywhere text-tx3">
           Код:{" "}
-          <span className="inline-flex min-h-6.5 items-center rounded-sm bg-white/3 px-2.5 py-0.5 text-[13px] leading-[1.4] font-semibold text-tx2 shadow-[inset_0_0_0_1px_var(--color-hair2)]">
+          <span className="inline-flex min-h-6.5 items-center rounded-sm bg-tint/3 px-2.5 py-0.5 text-[13px] leading-[1.4] font-semibold text-tx2 shadow-[inset_0_0_0_1px_var(--color-hair2)]">
             {digest}
           </span>
         </p>

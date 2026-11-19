@@ -62,6 +62,9 @@ This step is the owner's rule (decision 26). Write `docs/design/parity/<screen>.
 
 - **Tokens and components only.** No hex colours, no arbitrary pixel sizes where a token exists, no fonts but the three
   families. Type comes from the `type-*` utilities.
+- **Both themes.** Every screen works in night and in light (`docs/design/README.md`, „Light mode"). A tint of a token
+  is `color-mix(in srgb, var(--color-x) N%, transparent)`, and a faint white tint over night is `bg-tint/3`, never
+  `white/…`. A band with its own dark picture, or chrome that carries the logo, gets `data-theme="dark"`.
 - **E-mails are the exception.** They compile with react-email's own Tailwind and the e-mail palette in
   `emails/theme.ts`, in px. Follow the four e-mail rules in `docs/design/README.md` (px only, no `var()`, phone padding
   on `Row`/`Column` cells, borders on the `Row`) and render every template to check a change.
@@ -94,7 +97,8 @@ This step is the owner's rule (decision 26). Write `docs/design/parity/<screen>.
 - **Read only.** Drive the app with Playwright and abort every request that isn't a GET. Never submit a real form; mock
   the request under test instead. Never open `/admin/poshta/[id]`, which writes when viewed.
 - **Compare with the board:** screenshot the screen at 390, 820, 1440 and 1920 px, and compare each with the board's
-  PNG. Fix what differs: spacing, alignment, sizes, wrapping, clipped text.
+  PNG. Fix what differs: spacing, alignment, sizes, wrapping, clipped text. Then screenshot it in light mode too
+  (`localStorage` `sa-theme` = `light` before the page loads), and run axe's colour-contrast rule in both themes.
 - **Check there is no sideways scroll** and no wrapped button at 320, 360, 375 and 390 px (the default): run
   `pnpm --filter @selectauto/web check:layout -- --base <the build> --only <the screen's paths>` (add `--admin` with
   `SA_SESSION` for admin screens). It emulates a phone; a desktop browser's own scrollbar would take 15 px off the width

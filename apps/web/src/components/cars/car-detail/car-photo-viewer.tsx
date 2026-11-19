@@ -181,6 +181,8 @@ export function CarPhotoViewer({
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
+      // A photo viewer is dark in both themes, like every gallery's full screen.
+      data-theme="dark"
       className="fixed inset-0 z-99999 flex flex-col bg-bg text-tx"
     >
       <div className="flex min-h-15 flex-none items-center gap-4 py-2 pr-2 pl-4.5 sm:min-h-17 sm:py-3 sm:pr-4 sm:pl-6">

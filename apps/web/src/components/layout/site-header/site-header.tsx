@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Button, IconButton, LinkButton, Logo } from "@/components/common";
+import { Button, IconButton, LinkButton, Logo, ThemeSwitch } from "@/components/common";
 import { UserMenu } from "@/components/auth";
 import { ChevronDownIcon, ChevronRightIcon, CloseIcon } from "@/components/icons";
 import { NAV } from "@/data/navigation";
@@ -164,6 +164,8 @@ export function SiteHeader() {
     <>
       <header
         ref={headerRef}
+        // Night in both themes: the gold logo sits on dark grounds only (styles/tokens.css, light mode).
+        data-theme="dark"
         className={`fixed inset-x-0 top-0 z-9999 transition-transform duration-300 ease-out will-change-transform motion-reduce:transition-none ${
           hidden ? "-translate-y-full" : "translate-y-0"
         }`}
@@ -200,6 +202,7 @@ export function SiteHeader() {
             </nav>
 
             <div className="sa-hdr__act">
+              <ThemeSwitch />
               {status === "loading" ? (
                 <span className="sa-sk block size-10 rounded-full" aria-hidden="true" />
               ) : isSignedIn ? (
@@ -221,6 +224,7 @@ export function SiteHeader() {
           <Link href="/" prefetch={painted ? undefined : false} className="flex">
             <Logo size="bar" />
           </Link>
+          <ThemeSwitch />
         </div>
       </header>
 
@@ -242,6 +246,8 @@ export function SiteHeader() {
 
       <aside
         aria-label="Меню"
+        // Night in both themes, like the header and the bottom tabs it belongs with.
+        data-theme="dark"
         inert={!drawerOpen}
         className={`sa-drawer fixed right-0 top-0 z-10050 h-dvh w-[min(88vw,380px)] transition-transform duration-300 motion-reduce:transition-none lg:hidden ${
           drawerOpen ? "translate-x-0" : "translate-x-full"

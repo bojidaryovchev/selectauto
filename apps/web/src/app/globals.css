@@ -219,6 +219,16 @@ body {
 }
 
 /*
+  The theme switch's page change (components/common/theme-switch.tsx): the new theme grows as a circle out of the
+  switch over the old one, so the browser's own cross-fade is off for the page's view transition.
+*/
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/*
   Material-style click ripple, driven by the <Ripple> component. The component
   positions an absolutely-placed circle at the pointer (or button center for
   keyboard activation) and removes it after the animation; this keyframe scales

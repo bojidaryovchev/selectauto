@@ -63,7 +63,7 @@
   .sa-btn--sm svg{width:16px;height:16px}
   .sa-btn--xl{--ch:12px;height:var(--spacing-control-xl);padding:0 28px;font-size:16px}
   .sa-btn--block{width:100%}
-  .sa-btn--pri{background:var(--color-or);color:var(--color-bg);border-radius:0;clip-path:polygon(var(--ch) 0,100% 0,100% calc(100% - var(--ch)),calc(100% - var(--ch)) 100%,0 100%,0 var(--ch))}
+  .sa-btn--pri{background:var(--color-or);color:var(--color-onfill);border-radius:0;clip-path:polygon(var(--ch) 0,100% 0,100% calc(100% - var(--ch)),calc(100% - var(--ch)) 100%,0 100%,0 var(--ch))}
   .sa-btn--pri:hover{background:var(--color-or-hi)}
   .sa-btn--pri:active{background:var(--color-or-lo)}
   .sa-btn--pri:focus-visible{outline:0;box-shadow:inset 0 0 0 2px var(--color-bg),inset 0 0 0 4px var(--color-tx)}
@@ -73,13 +73,13 @@
   .sa-btn--ton:hover{background:var(--color-s3)}
   .sa-btn--txt{padding:0 4px;color:var(--color-ortx);gap:8px}
   .sa-btn--txt:hover{color:var(--color-tx)}
-  .sa-btn--neg{color:var(--color-neg);background:var(--color-neg-w);box-shadow:inset 0 0 0 1px rgba(255,107,94,.42)}
-  .sa-btn--pos{color:var(--color-bg);background:var(--color-pos)}
+  .sa-btn--neg{color:var(--color-neg);background:var(--color-neg-w);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--color-neg) 42%,transparent)}
+  .sa-btn--pos{color:var(--color-onpos);background:var(--color-pos)}
   .sa-btn--vb{color:#fff;background:var(--color-viber)}
   .sa-btn--vb:hover{background:#5F4BE4}
   .sa-btn[disabled],.sa-btn.is-dis{opacity:.45;cursor:not-allowed;pointer-events:none}
   .sa-btn .sa-spin{width:18px;height:18px}
-  .sa-btn__n{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--color-or);color:var(--color-bg);font:800 12px/1 var(--font-sans)}
+  .sa-btn__n{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--color-or);color:var(--color-onfill);font:800 12px/1 var(--font-sans)}
 
   .sa-ib{width:var(--spacing-control-md);height:var(--spacing-control-md);display:inline-grid;place-items:center;flex:none;border:0;border-radius:var(--radius-md);background:var(--color-s2);box-shadow:inset 0 0 0 1px var(--color-field);color:var(--color-tx);cursor:pointer;text-decoration:none;transition:background-color .15s,color .15s}
   .sa-ib:hover{background:var(--color-s3)}
@@ -100,7 +100,7 @@
   .sa-in{display:block;width:100%;height:48px;padding:0 14px;border-radius:var(--radius-md);border:1px solid var(--color-field);background:var(--color-s2);color:var(--color-tx);font:500 16px/1.2 var(--font-sans);outline:0;min-width:0}
   .sa-in::placeholder{color:var(--color-tx3);opacity:1}
   .sa-in:focus,.sa-in.is-focus{border-color:var(--color-or);box-shadow:0 0 0 3px var(--color-or-ring)}
-  .sa-in.is-err{border-color:var(--color-neg);box-shadow:0 0 0 3px rgba(255,107,94,.22)}
+  .sa-in.is-err{border-color:var(--color-neg);box-shadow:0 0 0 3px color-mix(in srgb,var(--color-neg) 22%,transparent)}
   .sa-in:disabled,.sa-in.is-dis{opacity:.55;border-style:dashed;cursor:not-allowed}
   /* 16 px, not the kit's 15: iOS Safari zooms into a focused field under 16 px (the dropdown's search). */
   .sa-in--sm{height:40px;font-size:16px;padding:0 12px}
@@ -136,7 +136,7 @@
   .sa-pop__empty{padding:14px 10px;font-size:14px;color:var(--color-tx3)}
   .sa-chk{display:flex;gap:12px;align-items:flex-start;font-size:15px;line-height:1.5;color:var(--color-tx);cursor:pointer;position:relative}
   .sa-chk input{position:absolute;opacity:0;width:1px;height:1px}
-  .sa-box{flex:none;width:22px;height:22px;margin-top:1px;border-radius:var(--radius-sm);background:var(--color-s2);box-shadow:inset 0 0 0 1.5px var(--color-field);display:grid;place-items:center;color:var(--color-bg)}
+  .sa-box{flex:none;width:22px;height:22px;margin-top:1px;border-radius:var(--radius-sm);background:var(--color-s2);box-shadow:inset 0 0 0 1.5px var(--color-field);display:grid;place-items:center;color:var(--color-onfill)}
   .sa-box svg{width:16px;height:16px;opacity:0}
   .sa-chk.is-on .sa-box{background:var(--color-or);box-shadow:none}
   .sa-chk.is-on .sa-box svg{opacity:1}
@@ -162,6 +162,7 @@
   .sa-chip svg{width:16px;height:16px}
   .sa-chip small{font-size:12px;font-weight:700;color:var(--color-tx3)}
   .sa-chip.is-on small{color:#4A4F57}
+  :root[data-theme="light"] .sa-chip.is-on small{color:color-mix(in srgb,var(--color-bg) 72%,var(--color-tx))}
   @media (max-width:1023.98px){.sa-chip{height:44px;border-radius:22px}}
   .sa-range{display:flex;flex-direction:column;gap:10px}
   .sa-range__top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
@@ -184,18 +185,18 @@
   .sa-tag--info{background:var(--color-info-w);color:var(--color-info)}
   .sa-tag--or{background:var(--color-or-w);color:var(--color-ortx)}
   .sa-tag--line{background:transparent;box-shadow:inset 0 0 0 1px var(--color-field);color:var(--color-tx)}
-  .sa-tag--buy{background:var(--color-gold);color:var(--color-bg);border-radius:0;letter-spacing:.04em;font-weight:800;clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)}
+  .sa-tag--buy{background:var(--color-gold);color:var(--color-onfill);border-radius:0;letter-spacing:.04em;font-weight:800;clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)}
   .sa-tag--sold{background:rgba(12,13,16,.86);color:var(--color-tx);box-shadow:inset 0 0 0 1px var(--color-hair2)}
   .sa-src{display:inline-flex;align-items:center;height:26px;padding:0 9px;border-radius:var(--radius-sm);background:rgba(12,13,16,.84);backdrop-filter:blur(6px);color:var(--color-tx);font:800 11.5px/1 var(--font-sans);letter-spacing:.07em;white-space:nowrap}
   .sa-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--color-tx3);flex:none}
   .sa-dot--pos{background:var(--color-pos)}.sa-dot--warn{background:var(--color-warn)}.sa-dot--neg{background:var(--color-neg)}.sa-dot--info{background:var(--color-info)}.sa-dot--or{background:var(--color-or)}
-  .sa-count{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--color-or);color:var(--color-bg);font:800 11.5px/1 var(--font-sans)}
+  .sa-count{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--color-or);color:var(--color-onfill);font:800 11.5px/1 var(--font-sans)}
   .sa-plate{--ps:40px;width:var(--ps);height:var(--ps);flex:none;display:grid;place-items:center;border-radius:var(--radius-md);background:var(--color-plate);overflow:hidden}
   .sa-plate img{width:78%;height:78%;object-fit:contain}
   .sa-plate b{font:800 calc(var(--ps)*.36)/1 var(--font-sans);color:var(--color-ink);letter-spacing:-.02em}
   .sa-plate--xs{--ps:24px;border-radius:5px}.sa-plate--sm{--ps:32px;border-radius:6px}.sa-plate--lg{--ps:56px;border-radius:10px}.sa-plate--xl{--ps:88px;border-radius:14px}
   .sa-avatar{width:40px;height:40px;flex:none;display:grid;place-items:center;border-radius:50%;background:var(--color-s3);box-shadow:inset 0 0 0 1px var(--color-hair2);font:800 15px/1 var(--font-sans);color:var(--color-tx)}
-  .sa-flag{width:21px;height:14px;border-radius:2px;flex:none;box-shadow:0 0 0 1px rgba(255,255,255,.12)}
+  .sa-flag{width:21px;height:14px;border-radius:2px;flex:none;box-shadow:0 0 0 1px color-mix(in srgb,var(--color-tint) 12%,transparent)}
 
   /* ---------- Surfaces ---------- */
   .sa-pnl{background:var(--color-s1);border:1px solid var(--color-hair);border-radius:var(--radius-lg);padding:clamp(18px,1.6vw,28px)}
@@ -227,13 +228,16 @@
   .sa-empty p{color:var(--color-tx2);max-width:46ch}
   .sa-sk{background:var(--color-s2);border-radius:var(--radius-sm);position:relative;overflow:hidden}
   .sa-sk::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.05),transparent);transform:translateX(-30%)}
-  .sa-spin{width:20px;height:20px;border-radius:50%;border:2.5px solid rgba(255,255,255,.18);border-top-color:currentColor;display:inline-block;flex:none}
+  /* On the light theme's pale placeholders the sheen has to be brighter to show; a night island keeps night's. */
+  :root[data-theme="light"] .sa-sk::after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.7),transparent)}
+  :root[data-theme="light"] [data-theme="dark"] .sa-sk::after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.05),transparent)}
+  .sa-spin{width:20px;height:20px;border-radius:50%;border:2.5px solid color-mix(in srgb,var(--color-tint) 18%,transparent);border-top-color:currentColor;display:inline-block;flex:none}
   .sa-tbl-wrap{overflow-x:auto;border:1px solid var(--color-hair);border-radius:var(--radius-lg);background:var(--color-s1)}
   .sa-tbl{width:100%;border-collapse:collapse;font-size:14px}
   .sa-tbl th{position:sticky;top:0;background:var(--color-s2);text-align:left;font-size:12.5px;font-weight:700;color:var(--color-tx2);padding:12px 14px;white-space:nowrap;border-bottom:1px solid var(--color-hair)}
   .sa-tbl td{padding:12px 14px;border-bottom:1px solid var(--color-hair);vertical-align:middle;color:var(--color-tx)}
   .sa-tbl tr:last-child td{border-bottom:0}
-  .sa-tbl tbody tr:hover td{background:rgba(255,255,255,.025)}
+  .sa-tbl tbody tr:hover td{background:color-mix(in srgb,var(--color-tint) 2.5%,transparent)}
   .sa-tbl .num{text-align:right;white-space:nowrap}
   .sa-tbl .mute{color:var(--color-tx3)}
   .sa-tbl a{color:var(--color-tx);font-weight:700;text-decoration:none}
@@ -286,7 +290,7 @@
   .sa-menu .is-neg,.sa-menu .is-neg svg{color:var(--color-neg)}
 
   /* ---------- Site chrome ---------- */
-  .sa-hdr{position:sticky;top:0;z-index:50;background:rgba(12,13,16,.88);backdrop-filter:blur(16px);border-bottom:1px solid var(--color-hair)}
+  .sa-hdr{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--color-bg) 88%,transparent);backdrop-filter:blur(16px);border-bottom:1px solid var(--color-hair)}
   .sa-hdr__in{display:flex;align-items:center;gap:32px;height:76px}
   .sa-hdr__logo{display:block;flex:none}
   .sa-hdr__logo img{height:48px;width:auto}
@@ -297,16 +301,28 @@
   .sa-hdr__nav>[aria-current="page"]::after,.sa-hdr__nav>.is-on::after{content:"";position:absolute;left:12px;right:12px;bottom:2px;height:2px;background:var(--color-or)}
   .sa-hdr__nav svg{width:16px;height:16px;color:var(--color-tx2)}
   .sa-hdr__act{display:flex;align-items:center;gap:12px;flex:none}
+  /* The narrowest desktop header, 1024–1139 px: with the theme switch among the actions (light mode, 19.11.2026) the
+     navigation ran 90 px into it at 1024, so its items sit closer there and everything keeps one row. */
+  @media (min-width:1024px) and (max-width:1139.98px){
+    .sa-hdr__in{gap:20px}
+    .sa-hdr__nav{gap:2px}
+    .sa-hdr__nav>a,.sa-hdr__nav>button{padding:0 7px}
+    .sa-hdr__nav>[aria-current="page"]::after,.sa-hdr__nav>.is-on::after{left:7px;right:7px}
+    .sa-hdr__act{gap:8px}
+  }
   .sa-dd{position:absolute;top:calc(100% + 8px);left:0;min-width:240px;background:var(--color-s1);border:1px solid var(--color-hair2);border-radius:var(--radius-lg);box-shadow:var(--shadow-pop);padding:8px;display:flex;flex-direction:column;z-index:60}
   .sa-dd a{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border-radius:var(--radius-md);color:var(--color-tx);font:600 15px/1.2 var(--font-sans);text-decoration:none;white-space:nowrap}
   .sa-dd a:hover,.sa-dd a.is-hl{background:var(--color-s2)}
   .sa-dd a[aria-current="page"]{color:var(--color-ortx)}
   .sa-dd .sa-flag{width:21px}
-  .sa-tbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:12px;height:56px;padding:0 var(--spacing-gutter);background:rgba(12,13,16,.9);backdrop-filter:blur(14px);border-bottom:1px solid var(--color-hair)}
+  .sa-tbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:12px;height:56px;padding:0 var(--spacing-gutter);background:color-mix(in srgb,var(--color-bg) 90%,transparent);backdrop-filter:blur(14px);border-bottom:1px solid var(--color-hair)}
   .sa-tbar img{height:36px;width:auto}
   @media (min-width:1024px){.sa-tbar,.sa-bnav{display:none!important}}
+  /* Over a light page the night bars are all but opaque: at their night translucency the light page showed through as
+     grey, not the night of the footer and the logo's ground. */
+  :root[data-theme="light"] .sa-hdr,:root[data-theme="light"] .sa-tbar,:root[data-theme="light"] .sa-bnav{background:color-mix(in srgb,var(--color-bg) 96%,transparent)}
   @media (max-width:1023.98px){.sa-hdr{display:none!important}}
-  .sa-bnav{position:fixed;left:0;right:0;bottom:0;z-index:50;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));height:var(--bottom-nav);background:rgba(12,13,16,.94);backdrop-filter:blur(16px);border-top:1px solid var(--color-hair2)}
+  .sa-bnav{position:fixed;left:0;right:0;bottom:0;z-index:50;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));height:var(--bottom-nav);background:color-mix(in srgb,var(--color-bg) 94%,transparent);backdrop-filter:blur(16px);border-top:1px solid var(--color-hair2)}
   .sa-bnav>a,.sa-bnav>button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:0;background:transparent;color:var(--color-tx3);font:700 11.5px/1 var(--font-sans);text-decoration:none;cursor:pointer;position:relative}
   .sa-bnav svg{width:24px;height:24px}
   .sa-bnav>[aria-current="page"],.sa-bnav>.is-on{color:var(--color-ortx)}
@@ -337,7 +353,7 @@
   .sa-drawer__nav svg{width:18px;height:18px;color:var(--color-tx2)}
   .sa-drawer__nav .is-on{color:var(--color-ortx);background:var(--color-or-w)}
   .sa-drawer__nav .is-on::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--color-or)}
-  .sa-drawer__sub{background:rgba(255,255,255,.02)}
+  .sa-drawer__sub{background:color-mix(in srgb,var(--color-tint) 2%,transparent)}
   .sa-drawer__sub a{padding-left:36px;font-weight:600;font-size:15px;color:var(--color-tx2)}
   .sa-drawer__f{display:flex;flex-direction:column;gap:12px;padding:20px}
   .sa-viberpop{display:flex;align-items:center;gap:14px;width:min(620px,100%);padding:10px 10px 10px 10px;border-radius:999px;background:var(--color-s2);border:1px solid var(--color-hair2);box-shadow:var(--shadow-pop)}
@@ -362,6 +378,7 @@
   .sa-car__ph>a{display:block;height:100%;color:inherit;text-decoration:none}
   .sa-car__img{width:100%;height:100%;object-fit:cover}
   .sa-car__noimg{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,#1F2228,#15171B);color:var(--color-tx3);font-size:13px;font-weight:700}
+  :root[data-theme="light"] .sa-car__noimg{background:linear-gradient(135deg,var(--color-s2),var(--color-s3))}
   .sa-car__noimg svg{width:28px;height:28px}
   .sa-car__src{position:absolute;left:10px;top:10px}
   .sa-car__fav{position:absolute;right:8px;top:8px}
@@ -392,7 +409,7 @@
   .sa-car__pr>b.is-none{color:var(--color-tx3);font-weight:600}
   .sa-car__act{display:flex;gap:8px}
   .sa-car__act>.sa-btn{flex:1;min-width:0}
-  .sa-car.is-pending::after{content:"";position:absolute;inset:0;background:rgba(12,13,16,.38);backdrop-filter:blur(1.5px) saturate(.7);border-radius:inherit}
+  .sa-car.is-pending::after{content:"";position:absolute;inset:0;background:color-mix(in srgb,var(--color-bg) 38%,transparent);backdrop-filter:blur(1.5px) saturate(.7);border-radius:inherit}
   .sa-car.is-past .sa-car__img{filter:saturate(.55)}
 
   /* ---------- Car detail ---------- */
@@ -417,7 +434,11 @@
   .sa-hl>span{display:inline-flex;align-items:baseline;gap:8px;height:36px;padding:0 14px;align-items:center;border-radius:var(--radius-md);background:var(--color-s1);box-shadow:inset 0 0 0 1px var(--color-hair2);font-size:14.5px;font-weight:700;white-space:nowrap}
   .sa-hl>span small{font-size:12.5px;font-weight:600;color:var(--color-tx3)}
   .sa-utag{display:inline-flex;align-items:center;height:26px;padding:0 9px;border-radius:var(--radius-sm);background:var(--color-info-w);color:var(--color-info);font:700 12px/1 var(--font-mono);letter-spacing:.02em}
-  .sa-meter{position:relative;height:10px;border-radius:5px;background:linear-gradient(90deg,#FF6B5E 0%,#FF8A4C 20%,#F5B83D 40%,#E6D04A 60%,#A6D85A 80%,#3DD68C 100%)}
+  /* The damage scale, worst to best (the IAA score, car-iaa-score.tsx): the meter and the legend's dots. The light
+     theme's are deeper, so each reaches 3:1 on its surfaces. */
+  :root{--dmg-0:#FF6B5E;--dmg-1:#FF8A4C;--dmg-2:#F5B83D;--dmg-3:#E6D04A;--dmg-4:#A6D85A;--dmg-5:#3DD68C}
+  :root[data-theme="light"]{--dmg-0:#d2321f;--dmg-1:#df5f07;--dmg-2:#b97800;--dmg-3:#958500;--dmg-4:#5f9418;--dmg-5:#12854a}
+  .sa-meter{position:relative;height:10px;border-radius:5px;background:linear-gradient(90deg,var(--dmg-0) 0%,var(--dmg-1) 20%,var(--dmg-2) 40%,var(--dmg-3) 60%,var(--dmg-4) 80%,var(--dmg-5) 100%)}
   .sa-meter>b{position:absolute;top:50%;width:18px;height:18px;margin-left:-9px;transform:translateY(-50%);border-radius:50%;background:var(--color-tx);box-shadow:0 0 0 3px var(--color-bg)}
   .sa-legend{display:flex;flex-direction:column;gap:2px}
   .sa-legend>li{display:flex;align-items:center;gap:12px;min-height:34px;padding:0 10px;border-radius:var(--radius-md);font-size:14px;color:var(--color-tx2)}
@@ -438,10 +459,11 @@
   .sa-tl b{display:block;font-size:15px;font-weight:800;margin-top:2px}
   .sa-tl p{font-size:14px;color:var(--color-tx2);margin-top:6px;white-space:pre-line}
   .sa-tl .sa-tag{margin-top:8px}
-  .sa-map{position:relative;height:220px;border-radius:var(--radius-md);overflow:hidden;background:repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 1px,transparent 1px 28px),repeating-linear-gradient(90deg,rgba(255,255,255,.035) 0 1px,transparent 1px 28px),#1A1D22;display:grid;place-items:center}
+  .sa-map{position:relative;height:220px;border-radius:var(--radius-md);overflow:hidden;background:repeating-linear-gradient(0deg,color-mix(in srgb,var(--color-tint) 3.5%,transparent) 0 1px,transparent 1px 28px),repeating-linear-gradient(90deg,color-mix(in srgb,var(--color-tint) 3.5%,transparent) 0 1px,transparent 1px 28px),#1A1D22;display:grid;place-items:center}
+  :root[data-theme="light"] .sa-map{background-color:var(--color-s2)}
   .sa-map svg{width:36px;height:36px;color:var(--color-or)}
   .sa-map span{position:absolute;left:10px;bottom:10px;font-size:12.5px;font-weight:600;color:var(--color-tx3)}
-  .sa-bar{position:sticky;bottom:0;z-index:40;display:flex;gap:8px;align-items:center;padding:10px var(--spacing-gutter);background:rgba(12,13,16,.94);backdrop-filter:blur(14px);border-top:1px solid var(--color-hair2)}
+  .sa-bar{position:sticky;bottom:0;z-index:40;display:flex;gap:8px;align-items:center;padding:10px var(--spacing-gutter);background:color-mix(in srgb,var(--color-bg) 94%,transparent);backdrop-filter:blur(14px);border-top:1px solid var(--color-hair2)}
   .sa-bar>div{flex:1;min-width:0;display:flex;flex-direction:column}
   .sa-bar small{font-size:12px;font-weight:600;color:var(--color-tx3);white-space:nowrap}
   .sa-bar b{font:700 18px/1.15 var(--font-display);white-space:nowrap}
@@ -493,3 +515,51 @@
 }
 @keyframes sa-spin{to{transform:rotate(360deg)}}
 @keyframes sa-shimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+
+/*
+  The theme switch (components/common/theme-switch.tsx): a small sky. Night is a moon with craters on a deep-navy track
+  with twinkling stars; light is a sun with rotating rays on a blue sky with a drifting cloud. The knob travels left
+  (night) to right (light, the switch's "on") with a slight overshoot. Every state keys off the page's data-theme on
+  <html>, so it is right before hydration, and inside the night chrome too.
+*/
+@layer components {
+  .sa-theme{position:relative;display:inline-grid;place-items:center;flex:none;width:64px;height:44px;padding:0;border:0;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .sa-theme:focus-visible{outline:none}
+  .sa-theme:focus-visible .sa-theme__track{outline:2px solid var(--color-ortx);outline-offset:2px}
+  .sa-theme__track{position:relative;display:block;width:60px;height:32px;border-radius:999px;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),inset 0 2px 6px rgba(0,0,0,.5);transition:box-shadow .5s ease}
+  .sa-theme__sky{position:absolute;inset:0;transition:opacity .5s ease}
+  .sa-theme__sky--night{background:radial-gradient(circle at 78% 28%,#2c3870 0,#151c3c 48%,#0a0f22 100%)}
+  .sa-theme__sky--day{background:linear-gradient(165deg,#4aa8ff 0%,#8fd0ff 58%,#ffd9a8 100%);opacity:0}
+  .sa-theme__stars{position:absolute;inset:0;transition:transform .55s cubic-bezier(.65,0,.35,1),opacity .4s ease}
+  .sa-theme__stars i{position:absolute;width:2px;height:2px;border-radius:50%;background:#fff;box-shadow:0 0 3px #fff;animation:sa-theme-twinkle 2.6s ease-in-out infinite}
+  .sa-theme__stars i:nth-child(1){left:37px;top:8px}
+  .sa-theme__stars i:nth-child(2){left:47px;top:16px;width:1.5px;height:1.5px;animation-delay:.7s}
+  .sa-theme__stars i:nth-child(3){left:52px;top:7px;animation-delay:1.3s}
+  .sa-theme__stars i:nth-child(4){left:42px;top:23px;width:1.5px;height:1.5px;animation-delay:1.9s}
+  .sa-theme__stars i:nth-child(5){left:33px;top:18px;width:1.5px;height:1.5px;animation-delay:1s}
+  .sa-theme__cloud{position:absolute;left:9px;top:17px;width:16px;height:6px;border-radius:999px;background:#fff;box-shadow:4px -4px 0 1px #fff,10px -1px 0 0 #fff;opacity:0;transform:translateX(-16px);transition:transform .65s cubic-bezier(.65,0,.35,1),opacity .4s ease}
+  .sa-theme__knob{position:absolute;left:3px;top:3px;width:26px;height:26px;border-radius:50%;transition:transform .6s cubic-bezier(.68,-.4,.27,1.4),scale .2s ease}
+  .sa-theme:hover .sa-theme__knob{scale:1.07}
+  .sa-theme__moon{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 34% 30%,#fff 0,#e6eaf4 46%,#c6cede 100%);box-shadow:0 0 10px rgba(196,212,255,.5);transition:opacity .35s ease,transform .6s cubic-bezier(.68,-.4,.27,1.4)}
+  .sa-theme__moon i{position:absolute;border-radius:50%;background:rgba(150,160,186,.55);box-shadow:inset 1px 1px 1px rgba(88,98,128,.35)}
+  .sa-theme__moon i:nth-child(1){left:6px;top:7px;width:7px;height:7px}
+  .sa-theme__moon i:nth-child(2){left:15px;top:13px;width:5px;height:5px}
+  .sa-theme__moon i:nth-child(3){left:9px;top:17px;width:3px;height:3px}
+  .sa-theme__sun{position:absolute;inset:4px;border-radius:50%;background:radial-gradient(circle at 36% 34%,#ffe98a 0,#ffbf3a 46%,#ff8a1a 100%);box-shadow:0 0 12px rgba(255,170,40,.9);opacity:0;transform:scale(.4);transition:opacity .35s ease,transform .6s cubic-bezier(.68,-.4,.27,1.4)}
+  .sa-theme__rays{position:absolute;inset:-2px;border-radius:50%;background:repeating-conic-gradient(#ffd25e 0 7deg,transparent 7deg 45deg);-webkit-mask:radial-gradient(circle,transparent 58%,#000 59% 72%,transparent 73%);mask:radial-gradient(circle,transparent 58%,#000 59% 72%,transparent 73%);opacity:0;transform:scale(.3);transition:opacity .35s ease,transform .65s cubic-bezier(.68,-.4,.27,1.4)}
+
+  :root[data-theme="light"] .sa-theme__track{box-shadow:inset 0 0 0 1px rgba(12,13,16,.12),inset 0 2px 6px rgba(0,58,120,.28)}
+  :root[data-theme="light"] .sa-theme__sky--day{opacity:1}
+  :root[data-theme="light"] .sa-theme__stars{opacity:0;transform:translateY(12px)}
+  :root[data-theme="light"] .sa-theme__cloud{opacity:1;transform:none}
+  :root[data-theme="light"] .sa-theme__knob{transform:translateX(28px)}
+  :root[data-theme="light"] .sa-theme__moon{opacity:0;transform:scale(.4) rotate(50deg)}
+  :root[data-theme="light"] .sa-theme__sun{opacity:1;transform:none}
+  :root[data-theme="light"] .sa-theme__rays{opacity:1;transform:none;animation:sa-theme-rays 14s linear infinite}
+
+  @media (prefers-reduced-motion:reduce){
+    .sa-theme *{transition:none!important;animation:none!important}
+  }
+}
+@keyframes sa-theme-twinkle{0%,100%{opacity:.25;scale:.7}50%{opacity:1;scale:1}}
+@keyframes sa-theme-rays{to{rotate:360deg}}

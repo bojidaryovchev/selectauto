@@ -3,6 +3,7 @@ import { PublicWidgets, ScrollToTop } from "@/components/layout";
 import { Providers } from "@/components/providers";
 import { SITE_NAME, SITE_URL } from "@/constants";
 import { buildOrganizationJsonLd, buildWebsiteJsonLd } from "@/lib/site-jsonld";
+import { THEME_BOOTSTRAP } from "@/lib/theme";
 import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
 import { SessionProvider } from "next-auth/react";
@@ -31,8 +32,9 @@ export const metadata: Metadata = {
   },
 };
 
-// Mobile browser-chrome colour = the night ground (`bg`, #0C0D10). The site is
-// dark-only, so `colorScheme` is dark: native controls and scrollbars match it.
+// Mobile browser-chrome colour = the night ground (`bg`, #0C0D10), and `colorScheme` dark: night is the default theme.
+// A visitor who picks light gets both switched before the first paint (THEME_BOOTSTRAP below; the light tokens set
+// `color-scheme: light`).
 export const viewport: Viewport = {
   themeColor: "#0c0d10",
   colorScheme: "dark",
@@ -55,7 +57,13 @@ export default function RootLayout({
     <html
       lang="bg"
       className={`${FONT_VARIABLES} h-full`}
+      // THEME_BOOTSTRAP sets data-theme on <html> before React hydrates; the attribute is expected to differ.
+      suppressHydrationWarning
     >
+      <head>
+        {/* The saved theme (light or night) before the first paint, so a light page never flashes night (lib/theme.ts). */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+      </head>
       {/* Bottom padding on mobile reserves space for the fixed <MobileBottomNav>
           (≈62px tab bar + the iOS home-indicator safe area) so page content and
           the footer are never hidden behind it. Removed at lg where the bar is
