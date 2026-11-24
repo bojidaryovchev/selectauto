@@ -38,6 +38,11 @@ export function formatCents(cents: number): string {
   return new Intl.NumberFormat("bg-BG", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(cents / 100);
 }
 
+/** A dollar amount the admin's way, from a plain number (AuctionsAPI's balance): 37 → "37,00 USD". */
+export function formatUsd(amount: number): string {
+  return `${formatCents(Math.round(amount * 100))} USD`;
+}
+
 /** Display formatting straight from a NUMERIC(12,2) DB string. */
 export function formatDbAmount(value: string | null | undefined): string {
   return formatCents(dbToCents(value));

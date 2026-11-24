@@ -14,9 +14,9 @@ import { vinCheckSchema } from "@/schemas/vin-check.schema";
  * and serverless instances, where `"use cache"` would NOT dedupe — don't re-spend the
  * shared AuctionsAPI ~3 req/s budget.
  *
- * Only the FREE check is exposed here. The paid report is a manual, lead-gated step
- * (the tool's CTA routes to the Carfax form), so this route can never spend a
- * report credit.
+ * Only the FREE check is exposed here. The paid report is a lead-gated step (the
+ * tool's CTA routes to the Carfax form) that staff buy in the admin
+ * (/admin/carfax-otcheti, `reports.order`), so this route can never spend money.
  *
  * Light in-memory rate limit per IP so the key can't be used as a free public
  * VIN-lookup proxy. In-memory is per-instance (fine for this low-value guard); a

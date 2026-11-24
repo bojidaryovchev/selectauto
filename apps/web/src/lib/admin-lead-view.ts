@@ -5,6 +5,8 @@ import type { InquiryRow } from "@/queries/admin/list-inquiries.query";
 import type { CalculatorOfferRow } from "@/queries/admin/list-calculator-offers.query";
 import type { MakeLogoLookup } from "@/lib/make-logo-lookup";
 import { formatSofiaDateTime } from "@/lib/sofia-time";
+import { vinReportsHref } from "@/constants/vin-reports";
+import type { VinReportView } from "@/types/vin-report.type";
 
 /**
  * Server-side mappers that turn a typed lead row into the shared `AdminLeadView`
@@ -85,7 +87,16 @@ function metaDetails(row: {
   return fields;
 }
 
-export function toCarfaxView(row: CarfaxRequestRow, logoFor: MakeLogoLookup): AdminLeadView {
+/**
+ * `reports`: the Carfax / AutoCheck reports already bought for the lead's VIN (any lead's, or none), each a link to
+ * its PDF. `canOrderReports`: the viewer holds `reports.order`, so the drawer links to /admin/carfax-otcheti with the
+ * VIN checked and the purchase tied to this lead.
+ */
+export function toCarfaxView(
+  row: CarfaxRequestRow,
+  logoFor: MakeLogoLookup,
+  { reports = [], canOrderReports = false }: { reports?: VinReportView[]; canOrderReports?: boolean } = {},
+): AdminLeadView {
   const car = [row.carMake, row.carModel].filter(Boolean).join(" ") || dash;
   const make = makeOf(row.carMake, logoFor);
   const details: AdminDetailField[] = [
@@ -94,6 +105,21 @@ export function toCarfaxView(row: CarfaxRequestRow, logoFor: MakeLogoLookup): Ad
   ];
   if (row.email) details.push({ label: "Имейл", value: row.email, href: `mailto:${row.email}` });
   details.push({ label: "VIN", value: row.vin, mono: true });
+  for (const report of reports.slice(0, 3)) {
+    const file = report.pdfUrl ?? report.htmlUrl;
+    details.push({
+      label: `Отчет ${report.providerLabel}`,
+      value: `${report.createdAtText} · ${report.status === "pending" ? "генерира се" : report.pdfUrl ? "PDF" : "HTML"}`,
+      href: file ?? undefined,
+    });
+  }
+  if (canOrderReports) {
+    details.push({
+      label: "Carfax / AutoCheck",
+      value: "Проверете VIN и купете отчет",
+      href: vinReportsHref(row.vin.trim().toUpperCase(), row.id),
+    });
+  }
   if (row.carMake) details.push({ label: "Марка", value: row.carMake, make });
   if (row.carModel) details.push({ label: "Модел", value: row.carModel });
   if (row.message) details.push({ label: "Съобщение", value: row.message });

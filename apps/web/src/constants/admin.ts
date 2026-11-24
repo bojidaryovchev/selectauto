@@ -34,6 +34,9 @@ export const CAPABILITIES = [
   "deposits.manage",
   /** Publish, correct and remove mobile.bg adverts (owner, 18.09.2026). */
   "mobilebg.publish",
+  /** Check VINs and BUY Carfax / AutoCheck reports through AuctionsAPI, paid from its balance, and see every report
+   *  the key bought (/admin/carfax-otcheti). Admins only (owner, 24.11.2026). */
+  "reports.order",
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];

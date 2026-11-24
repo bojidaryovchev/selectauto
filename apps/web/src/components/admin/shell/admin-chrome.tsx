@@ -17,7 +17,11 @@ export async function AdminChrome() {
   if (!can(session, "backoffice.enter")) return null;
 
   const admin = isAdmin(session);
-  const groups = adminNavGroups({ isAdmin: admin, canPublishMobilebg: can(session, "mobilebg.publish") });
+  const groups = adminNavGroups({
+    isAdmin: admin,
+    canPublishMobilebg: can(session, "mobilebg.publish"),
+    canOrderReports: can(session, "reports.order"),
+  });
   const homeHref = adminHomeHref(admin);
   const user = session?.user;
   const roles = user?.roles ?? [];

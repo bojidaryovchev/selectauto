@@ -1,4 +1,5 @@
 import { LEAD_TYPE_META } from "@/constants/admin";
+import { VIN_REPORTS_PATH } from "@/constants/vin-reports";
 
 /**
  * The back-office navigation: one config, two renderers — the desktop sidebar
@@ -15,6 +16,7 @@ export type AdminNavIconName =
   | "offer"
   | "contracts"
   | "deposits"
+  | "reports"
   | "mobilebg"
   | "hidden"
   | "tariffs"
@@ -30,21 +32,25 @@ export type AdminNavGroup = { label: string | null; items: AdminNavItem[] };
 const CONTRACTS: AdminNavItem = { href: "/admin/dogovori", label: "Договори", icon: "contracts" };
 const DEPOSITS: AdminNavItem = { href: "/admin/depoziti", label: "Депозити", icon: "deposits" };
 const MOBILEBG: AdminNavItem = { href: "/admin/mobile-bg", label: "mobile.bg", icon: "mobilebg" };
+// Beside the deals: 64 of the 68 reports bought before this page were for cars in the catalog, 2 for Carfax leads.
+const REPORTS: AdminNavItem = { href: VIN_REPORTS_PATH, label: "Carfax отчети", icon: "reports" };
 
 /**
  * The sections a user is shown. An admin sees everything; anyone else with
  * back-office access sees contracts and deposits, plus mobile.bg with
- * `mobilebg.publish`. Hiding a link is not the access control — every page
- * checks its own gate.
+ * `mobilebg.publish` and the Carfax reports with `reports.order`. Hiding a link
+ * is not the access control — every page checks its own gate.
  */
 export function adminNavGroups({
   isAdmin,
   canPublishMobilebg,
+  canOrderReports,
 }: {
   isAdmin: boolean;
   canPublishMobilebg: boolean;
+  canOrderReports: boolean;
 }): AdminNavGroup[] {
-  const deals: AdminNavGroup = { label: "Сделки", items: [CONTRACTS, DEPOSITS] };
+  const deals: AdminNavGroup = { label: "Сделки", items: [CONTRACTS, DEPOSITS, ...(canOrderReports ? [REPORTS] : [])] };
   if (!isAdmin) {
     return canPublishMobilebg ? [deals, { label: "Обяви", items: [MOBILEBG] }] : [deals];
   }

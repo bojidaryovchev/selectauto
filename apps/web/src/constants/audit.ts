@@ -29,6 +29,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   deindex_extended: "Скрити нови обяви на същия VIN",
   deleted: "Изтриване",
   published: "Публикуване",
+  purchased: "Купен отчет",
+  purchase_unanswered: "Покупка без отговор",
 };
 
 export const AUDIT_ENTITY_LABELS: Record<string, string> = {
@@ -41,6 +43,7 @@ export const AUDIT_ENTITY_LABELS: Record<string, string> = {
   car_deindex: "Скриване на обява",
   numbering: "Номерация",
   mobilebg_advert: "Обява в mobile.bg",
+  vin_report: "Отчет Carfax / AutoCheck",
 };
 
 export function auditActionLabel(action: string): string {

@@ -8,12 +8,16 @@
  *
  * This module intentionally exposes ONLY the FREE `check-records` endpoint (record
  * counts + normalized vehicle name). The PAID `/reports/{type}/{vin}` endpoint
- * spends a finite report credit per call, so it is deliberately NOT wired to any
- * public surface — the /proverka-vin tool shows availability and routes the user
- * to the Carfax lead form, where a report is run manually for a real lead.
+ * spends money from the AuctionsAPI balance on every call, so it is deliberately NOT
+ * wired to any public surface — the /proverka-vin tool shows availability and routes
+ * the user to the Carfax lead form. Staff buy the report in the admin
+ * (/admin/carfax-otcheti): the paid client is `lib/vin-report-api.ts`, server-only and
+ * reached only through the `reports.order` capability.
  */
 
-const API_BASE = (process.env.AUCTIONS_API_BASE_URL ?? "https://auctionsapi.com/api").replace(/\/+$/, "");
+/** AuctionsAPI's base URL, shared with the paid client (`lib/vin-report-api.ts`). */
+export const REPORTS_API_BASE = (process.env.AUCTIONS_API_BASE_URL ?? "https://auctionsapi.com/api").replace(/\/+$/, "");
+const API_BASE = REPORTS_API_BASE;
 
 /** VIN format: 17 chars, A–Z/0–9, excluding I, O, Q (ISO 3779). Upper-cased. */
 const VIN_RE = /^[A-HJ-NPR-Z0-9]{17}$/;

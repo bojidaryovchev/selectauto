@@ -32,15 +32,23 @@ const checks = schema.vinReportChecks;
  * Resilience: if the upstream call fails but a stale row exists, the stale row is
  * returned (a slightly old count beats an error). The upstream error only propagates
  * when there's nothing cached to fall back to — the route maps that to its 502.
+ *
+ * `maxAgeMs` overrides the TTL: the admin's „Carfax отчети" passes 0, so the counts
+ * staff decide a purchase on are fetched fresh (and refresh the row for everyone),
+ * with the same stale-row fallback.
  */
-export async function getCachedVinRecords(vin: string): Promise<VinRecordCheck> {
+export async function getCachedVinRecords(
+  vin: string,
+  options: { maxAgeMs?: number } = {},
+): Promise<VinRecordCheck> {
   const db = getDb();
+  const maxAgeMs = options.maxAgeMs ?? TTL_MS;
 
   const existing = (
     await db.select().from(checks).where(eq(checks.vin, vin)).limit(1)
   )[0];
 
-  if (existing && Date.now() - existing.checkedAt.getTime() < TTL_MS) {
+  if (existing && Date.now() - existing.checkedAt.getTime() < maxAgeMs) {
     return {
       vin: existing.vin,
       vehicle: existing.vehicle,

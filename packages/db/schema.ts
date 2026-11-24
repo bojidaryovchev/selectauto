@@ -437,6 +437,50 @@ export const vinReportChecks = pgTable("vin_report_checks", {
 });
 
 /**
+ * vin_reports — Carfax and AutoCheck reports bought through AuctionsAPI with our
+ * key (migration 0053), listed at /admin/carfax-otcheti.
+ *
+ * `origin` 'admin' rows were bought from the admin (`orderedBy`, and the Carfax
+ * lead in `carfaxRequestId` when it was for one); 'auctionsapi' rows were bought
+ * elsewhere with the same key and imported from GET /reports/my-history.
+ * `externalId` is AuctionsAPI's report id, UNIQUE. A 'pending' row is the claim
+ * written before the paid call — one per VIN and provider (partial UNIQUE index
+ * `vin_reports_pending_ux`), so a report can't be bought twice at once.
+ * `verifiedReal` is AuctionsAPI's undocumented `is_verified_real`, kept as given.
+ */
+export const vinReports = pgTable(
+  "vin_reports",
+  {
+    id: serial("id").primaryKey(),
+    /** 'carfax' | 'autocheck'. */
+    provider: text("provider").notNull(),
+    /** upper(btrim(vin)), 17 characters — CHECK-enforced in the DB. */
+    vin: text("vin").notNull(),
+    /** 'pending' (the claim before the paid call) | 'ready'. */
+    status: text("status").notNull().default("ready"),
+    externalId: integer("external_id").unique(),
+    htmlUrl: text("html_url"),
+    pdfUrl: text("pdf_url"),
+    verifiedReal: boolean("verified_real"),
+    /** 'admin' | 'auctionsapi'. */
+    origin: text("origin").notNull(),
+    orderedBy: text("ordered_by").references(() => users.id, { onDelete: "set null" }),
+    carfaxRequestId: integer("carfax_request_id").references(() => carfaxRequests.id, { onDelete: "set null" }),
+    balanceAfterUsd: numeric("balance_after_usd", { precision: 12, scale: 2 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    // Partial UNIQUE (WHERE status = 'pending') — see migration 0053.
+    uniqueIndex("vin_reports_pending_ux")
+      .on(t.vin, t.provider)
+      .where(sql`status = 'pending'`),
+    index("vin_reports_vin_idx").on(t.vin),
+    index("vin_reports_created_at_idx").on(t.createdAt.desc(), t.id.desc()),
+  ],
+);
+
+/**
  * Auth.js (NextAuth v5) tables — self-hosted auth (Google + email/password, JWT
  * sessions). Shapes for users/accounts/verificationTokens match what
  * @auth/drizzle-adapter expects (verified against its lib/pg.d.ts). JWT sessions
@@ -1301,6 +1345,8 @@ export type CalculatorOffer = typeof calculatorOffers.$inferSelect;
 export type NewCalculatorOffer = typeof calculatorOffers.$inferInsert;
 export type VinReportCheck = typeof vinReportChecks.$inferSelect;
 export type NewVinReportCheck = typeof vinReportChecks.$inferInsert;
+export type VinReport = typeof vinReports.$inferSelect;
+export type NewVinReport = typeof vinReports.$inferInsert;
 export type Favorite = typeof favorites.$inferSelect;
 export type NewFavorite = typeof favorites.$inferInsert;
 export type User = typeof users.$inferSelect;

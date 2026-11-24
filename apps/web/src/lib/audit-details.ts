@@ -15,7 +15,9 @@ import {
   RECIPIENT_KIND_META,
   type RecipientKind,
 } from "@/constants/contracts";
+import { VIN_REPORT_PROVIDER_LABEL, VIN_REPORTS_PATH } from "@/constants/vin-reports";
 import { formatSofiaDate } from "@/lib/sofia-time";
+import { isReportProvider } from "@/lib/vin-report-parse";
 
 /**
  * Readable details for one `contract_events` row (/admin/dnevnik): the `data`
@@ -109,6 +111,11 @@ const KEY_LABELS: Record<string, string> = {
   routingCode: "Routing code",
   chargesInstruction: "Разноски на превода",
   paymentMethod: "Вид плащане",
+  // A Carfax / AutoCheck report (vin_report).
+  provider: "Вид отчет",
+  reportId: "Отчет в AuctionsAPI №",
+  balanceAfterUsd: "Остатък в AuctionsAPI (USD)",
+  carfaxRequestId: "Carfax запитване №",
 };
 
 /** Internal ids and hashes — noise in a log read by people. */
@@ -146,6 +153,7 @@ const MONEY_KEYS = new Set([
   "amountTransportEuBg",
   "amountCommission",
   "depositDeduction",
+  "balanceAfterUsd",
 ]);
 const DATE_KEYS = new Set(["paidAt", "dueDate", "clearedPaidAt", "contractDate"]);
 const RATE_KEYS = new Set(["usdEurRate", "foreignRate"]);
@@ -181,6 +189,7 @@ function format(entity: string, key: string, value: unknown): string {
     return s === "mediation" ? "посредничество" : s === "delivery" ? "доставка" : s;
   if (key === "role") return APP_ROLE_META[s as AppRole]?.label ?? s;
   if (key === "series") return s === "deposit" ? "депозити" : s === "contract" ? "договори" : s;
+  if (key === "provider" && isReportProvider(s)) return VIN_REPORT_PROVIDER_LABEL[s];
   return s;
 }
 
@@ -280,6 +289,11 @@ export function auditEntityHref(row: {
       return { href: isRecord(row.data) && row.data.series === "deposit" ? "/admin/depoziti" : "/admin/dogovori" };
     case "mobilebg_advert":
       return row.entityId > 0 ? { href: `/avtomobil/${row.entityId}`, external: true } : null;
+    case "vin_report":
+      // The report list filtered to its VIN: the row id alone says nothing to staff.
+      return isRecord(row.data) && typeof row.data.vin === "string"
+        ? { href: `${VIN_REPORTS_PATH}?q=${encodeURIComponent(row.data.vin)}` }
+        : { href: VIN_REPORTS_PATH };
     default:
       return null;
   }

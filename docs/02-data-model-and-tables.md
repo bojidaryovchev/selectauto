@@ -84,6 +84,7 @@ Added since 0026:
 | `email_threads` · `email_messages` · `email_attachments` | 0045 | Mail | the Resend webhook + the mail-reconcile cron; replies from /admin/poshta | `id` each |
 | `mobilebg_brand_map` · `mobilebg_model_map` | 0047 | mobile.bg | brand/model matches confirmed in the publisher | `manufacturer_external_id` / `model_external_id` |
 | `mobilebg_adverts` | 0047 | mobile.bg | publish / correct / delete at /admin/mobile-bg | `car_id` |
+| `vin_reports` | 0053 | Carfax reports | bought at /admin/carfax-otcheti (AuctionsAPI, paid); reports bought elsewhere with the key imported from its history | `id` |
 
 ---
 
@@ -456,6 +457,10 @@ Ported from WordPress `wp_sa_carfax_requests`. `id`, `full_name*`, `phone*`,
 `created_at`. Indexes on `created_at` and `vin`. (`*` = NOT NULL.) Written by the
 carfax route mutation.
 
+A report bought for a lead at /admin/carfax-otcheti points back at it
+(`vin_reports.carfax_request_id`, `ON DELETE SET NULL`), so the retention purge
+deletes the lead and keeps the record that the report was bought.
+
 ## `inquiries` — "Безплатна консултация" lead modal
 The multi-step quiz from the old theme footer; written by the `createInquiry`
 server action ([`mutations/inquiries`](../apps/web/src/mutations/inquiries/create-inquiry.mutation.ts)).
@@ -612,6 +617,7 @@ safe. **Append-only and hand-run** (`pnpm migrate`) — not applied on deploy.
 | `0048_notice_sent_to_client.sql` | `generated_documents.client_sent_at` / `client_sent_by` — a payment notice marked as sent to the client („За изпращане към клиента"). |
 | `0049_notice_note.sql` | `generated_documents.note` — the operator's internal note on a payment-notice version (never printed on the PDF). |
 | `0052_concluded_lots_leave_active.sql` | Both recompute functions go by the status: a concluded lot (`sold`/`not_sold`/`failed`) is never active, archived or not, and shows in the past view. `repair-concluded-active.mjs` moved the 125 277 cars it affected on 18.11.2026 (05 §3). |
+| `0053_vin_reports.sql` | `vin_reports` — Carfax/AutoCheck reports bought through AuctionsAPI (/admin/carfax-otcheti), with the 'pending' claim taken before the paid call (one per VIN and provider) and the reports bought elsewhere, imported from its history. |
 
 > Operational procedures (backfill, reseed, drift sweep, resume) →
 > [07-operations-runbook.md](07-operations-runbook.md).
