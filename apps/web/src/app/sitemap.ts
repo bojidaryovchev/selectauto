@@ -49,8 +49,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     entry("/obshti-usloviya", "yearly", 0.2), // Terms & Conditions (ЗЕТ/ЗЗП)
     entry("/politika-za-poveritelnost", "yearly", 0.2),
     entry("/politika-za-biskvitki", "yearly", 0.2), // Cookie Policy (ePrivacy)
+    entry("/snimki-i-litsenzi", "yearly", 0.2), // the blog photos' credits (decision 44)
     // Blog: the index + every markdown post (content/blog — build-time fs read;
-    // lastModified = the post's own `updated` frontmatter, not build time).
+    // lastModified = the post's own `updated` frontmatter, not build time). A post's cover goes in as its
+    // <image:loc>, at the same URL the page's <img src> and og:image use.
     entry("/blog", "weekly", 0.7),
     ...getAllPosts().map(
       (p): MetadataRoute.Sitemap[number] => ({
@@ -58,6 +60,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
         lastModified: new Date(p.updated),
         changeFrequency: "monthly",
         priority: 0.7,
+        ...(p.cover ? { images: [`${SITE_URL}${p.cover.src}`] } : {}),
       }),
     ),
   ];

@@ -4,6 +4,13 @@ description: "Честното сравнение между внос от Ко�
 date: "2026-07-16"
 updated: "2026-11-18"
 author: "SelectAuto"
+cover:
+  src: "/images/blog/koreya-ili-amerika-otkade-da-vnesa-kola.jpg"
+  alt: "Корабът за автомобили Glovis Caravel на Hyundai Glovis напуска пристанището на Фримантъл, Австралия"
+  author: "Bahnfrend"
+  license: "CC BY-SA 4.0"
+  licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/deed.bg"
+  source: "https://commons.wikimedia.org/wiki/File:Glovis_Caravel,_Fremantle,_2021_(09).jpg"
 ---
 
 Внасяме автомобили и от двата пазара, затова нямаме интерес да разкрасяваме единия за сметка на другия. Истината е проста: **Корея и Америка са добри за различни хора и различни коли.** Ето сравнението по това, което реално има значение — пари, време, риск и избор.

@@ -4,6 +4,13 @@ description: "Какво чака колата след пристигането
 date: "2026-07-16"
 updated: "2026-11-18"
 author: "SelectAuto"
+cover:
+  src: "/images/blog/registratsiya-na-vnesena-kola-stapka-po-stapka.jpg"
+  alt: "Магистрала „Струма“ край Делян по здрач, със светлинните следи на минаващите коли"
+  author: "Viktor Kiryanov (Unsplash)"
+  license: "CC0"
+  licenseUrl: "https://creativecommons.org/publicdomain/zero/1.0/deed.bg"
+  source: "https://commons.wikimedia.org/wiki/File:Car_trails_on_the_Highway,_Delyan,_Bulgaria_(Unsplash).jpg"
 ---
 
 Корабът пристигна, колата е в България — какво следва? За автомобил от страна извън ЕС пътят до номерата минава през пет задължителни стъпки. Ето ги подред, с ориентировъчните суми към юли 2026 г. и с местата, където хората най-често се спъват.

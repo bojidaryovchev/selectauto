@@ -4,6 +4,14 @@ description: "Какво е LPI на Hyundai и Kia, с какво фабрич�
 date: "2026-07-16"
 updated: "2026-11-18"
 author: "SelectAuto"
+cover:
+  src: "/images/blog/fabrichen-gaz-lpi-ot-koreya.jpg"
+  alt: "Оранжево сеулско такси Hyundai Sonata LPi — седан с фабрична газова уредба"
+  focus: "50% 60%"
+  author: "U2em"
+  license: "CC BY-SA 3.0"
+  licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0/deed.bg"
+  source: "https://commons.wikimedia.org/wiki/File:2014_Hyundai_Sonata_(YF)_LPi_Taxi_by_seoul.JPG"
 ---
 
 България е газова страна — уредбата е нормалната икономика на километър. Но между „кола с монтирана газова уредба" и **фабрична LPI кола от Корея** има разлика от порядък, и тя е причината корейският внос да е толкова интересен точно за нашия пазар.

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Markdown from "react-markdown";
@@ -8,7 +9,15 @@ import { CalculatorIcon, CalendarIcon } from "@/components/icons";
 import { InquiryButton } from "@/components/inquiry";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { SITE_URL } from "@/constants";
-import { formatBgDate, getAllPosts, getPostBySlug } from "@/lib/blog";
+import {
+  COVER_HEIGHT,
+  COVER_WIDTH,
+  coverNeedsAttribution,
+  coverSourceName,
+  formatBgDate,
+  getAllPosts,
+  getPostBySlug,
+} from "@/lib/blog";
 import { rehypeTableCards } from "@/lib/rehype-table-cards";
 import { buildArticleJsonLd, buildBreadcrumbJsonLd } from "@/lib/site-jsonld";
 import { buildSocialMeta } from "@/lib/social-meta";
@@ -26,6 +35,11 @@ import { buildSocialMeta } from "@/lib/social-meta";
  * Look: boards `in-blog-post` and `in-blog-elements`: the article in the kit's prose beside a sticky aside with the
  * calculator and the inquiry; tables turn into labelled cards on a phone (lib/rehype-table-cards). Classes in
  * styles/info-blog-post.css under the page's root class `.in-post-pg`; parity check docs/design/parity/blog.md.
+ *
+ * The cover (decision 43) sits under the title, wide on a desktop. Its credit is on /snimki-i-litsenzi, which every
+ * page's footer links (decision 44), not under the photo; the Article's `ImageObject` and the file itself (XMP,
+ * scripts/blog-cover.mjs) carry it too. One URL serves the photo everywhere: the <img src> (`overrideSrc`; browsers
+ * still take the optimized srcset), og:image, the Article's image and the sitemap.
  */
 
 type Params = Promise<{ slug: string }>;
@@ -42,10 +56,15 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     title: `${post.title} | SelectAuto`,
     description: post.description,
     alternates: { canonical },
+    // Let Search and Discover show the cover large (Google recommends it for articles with a big 16:9 image).
+    ...(post.cover ? { robots: { "max-image-preview": "large" as const } } : {}),
     ...buildSocialMeta({
       title: post.title,
       description: post.description,
       path: `/blog/${post.slug}`,
+      ...(post.cover
+        ? { image: post.cover.src, imageWidth: COVER_WIDTH, imageHeight: COVER_HEIGHT, imageAlt: post.cover.alt }
+        : {}),
       type: "article",
       article: {
         publishedTime: post.date,
@@ -61,6 +80,7 @@ export default async function BlogPostPage({ params }: { params: Params }) {
   if (!post) notFound();
 
   const path = `/blog/${post.slug}`;
+  const cover = post.cover;
   const articleJsonLd = buildArticleJsonLd({
     title: post.title,
     description: post.description,
@@ -68,6 +88,17 @@ export default async function BlogPostPage({ params }: { params: Params }) {
     datePublished: post.date,
     dateModified: post.updated,
     authorName: post.author,
+    image: cover
+      ? {
+          path: cover.src,
+          width: COVER_WIDTH,
+          height: COVER_HEIGHT,
+          creditText: `${cover.author} / ${coverSourceName(cover)}`,
+          license: cover.licenseUrl,
+          acquireLicensePage: cover.source,
+          ...(coverNeedsAttribution(cover) ? { copyrightNotice: `© ${cover.author}` } : {}),
+        }
+      : null,
   });
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
     { name: "Начало", url: "/" },
@@ -101,6 +132,21 @@ export default async function BlogPostPage({ params }: { params: Params }) {
                 </span>
               </p>
               <h1 className="type-h1">{post.title}</h1>
+              {cover ? (
+                <div className="in-cover">
+                  <Image
+                    src={cover.src}
+                    overrideSrc={cover.src}
+                    alt={cover.alt}
+                    width={COVER_WIDTH}
+                    height={COVER_HEIGHT}
+                    sizes="(min-width: 1392px) 1200px, 100vw"
+                    loading="eager"
+                    fetchPriority="high"
+                    style={{ objectPosition: cover.focus }}
+                  />
+                </div>
+              ) : null}
             </div>
           </div>
         </section>

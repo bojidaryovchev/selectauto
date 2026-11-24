@@ -4,6 +4,13 @@ description: "Flood колите са най-опасният внос от СА
 date: "2026-07-16"
 updated: "2026-11-18"
 author: "SelectAuto"
+cover:
+  src: "/images/blog/navodnena-kola-ot-amerika-kak-da-ya-razpoznaesh.jpg"
+  alt: "Наводнена улица в Хюстън след урагана „Харви“ през август 2017 г.: колите стоят до прозорците във водата"
+  author: "Dominick Del Vecchio (FEMA)"
+  license: "обществено достояние"
+  licenseUrl: "https://creativecommons.org/publicdomain/mark/1.0/deed.bg"
+  source: "https://commons.wikimedia.org/wiki/File:FEMA_-_IMG_0401MEB_-_Cars_Floating_in_Houston_Street.jpg"
 ---
 
 От всички рискове при внос от Америка един е в категория сам за себе си: **наводнената кола**. Ударената се вижда. Изгорялата се вижда. Наводнената изглежда наред, кара се наред — и шест месеца по-късно започва да гасне модул след модул. Затова правилото ни е едно изречение: **не купуваме и не предлагаме flood коли.** Ето как ги разпознаваме — и как да ги разпознаете и вие.

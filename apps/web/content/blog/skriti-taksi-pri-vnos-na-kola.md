@@ -4,6 +4,13 @@ description: "Защо две оферти за една и съща кола с
 date: "2026-07-16"
 updated: "2026-11-18"
 author: "SelectAuto"
+cover:
+  src: "/images/blog/skriti-taksi-pri-vnos-na-kola.jpg"
+  alt: "Бюро с калкулатор, тефтер с химикалка и лаптоп"
+  author: "неизвестен автор (Unsplash)"
+  license: "CC0"
+  licenseUrl: "https://creativecommons.org/publicdomain/zero/1.0/deed.bg"
+  source: "https://commons.wikimedia.org/wiki/File:Desktop_with_laptop_and_calculator_(Unsplash).jpg"
 ---
 
 Най-честият горчив урок при вноса не е лоша кола — а **сметка, която порасна по пътя**. Офертата казваше едно, крайната сума стана друго, и всяка добавка имаше „обяснение". Ето деветте пера, които най-често липсват в първоначалната оферта — и точните въпроси, с които да ги извадите на светло **преди** да подпишете. При когото и да внасяте, включително при нас.

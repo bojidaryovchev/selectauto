@@ -96,9 +96,12 @@ export const FOOTER_INFO: LinkItem[] = [
  * bar next to the copyright (the conventional, trust-signalling placement), NOT in
  * the content columns. Privacy is live; Общи условия + бисквитки are required for a
  * BG service business (ЗЕТ + ЗЗП + ePrivacy) — see the pages for the legal basis.
+ * „Снимки и лицензи" carries the credits of the blog's photos (decision 44): this link on every page is what lets
+ * the photos go without a caption, so it must stay (tests/blog-covers.test.mts checks it).
  */
 export const FOOTER_LEGAL: LinkItem[] = [
   { label: "Общи условия", href: "/obshti-usloviya" },
   { label: "Политика за поверителност", href: "/politika-za-poveritelnost" },
   { label: "Политика за бисквитки", href: "/politika-za-biskvitki" },
+  { label: "Снимки и лицензи", href: "/snimki-i-litsenzi" },
 ];

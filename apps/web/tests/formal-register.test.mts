@@ -46,6 +46,10 @@ const FLAGS: { name: string; source: string; cased?: boolean }[] = [
     name: "informal adjective to the reader",
     source: "(?<![А-Яа-я])(Заинтересован|Сигурен ли си|Готов ли си)(?![А-Яа-я])",
   },
+  // Not in the design run's pack: „ти си гледал" in any verb. The pack named three participles only, and „Ако си
+  // гледал …, си попадал" in the Encar post got through decision 20 (fixed 24.11.2026). The plural „-ли" goes with the
+  // formal „сте", and nouns in „-ли" („любимите си автомобили") would match it, so only -л, -ла, -ло count.
+  { name: "informal perfect (си + participle)", source: "(?<![А-Яа-я])(си [а-я]+л[ао]?)(?![А-Яа-я])" },
 ];
 
 /** Whole words blanked before matching: abbreviations, legal capitals and words that merely end in -ш. */

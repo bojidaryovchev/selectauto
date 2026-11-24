@@ -4,6 +4,13 @@ description: "Хибридите са най-бързо растящият се�
 date: "2026-07-16"
 updated: "2026-11-18"
 author: "SelectAuto"
+cover:
+  src: "/images/blog/hibrid-ili-elektromobil-ot-koreya.jpg"
+  alt: "Hyundai Ioniq 5 се зарежда на паркинг, със зарядния кабел в гнездото"
+  author: "Benespit"
+  license: "CC BY-SA 4.0"
+  licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/deed.bg"
+  source: "https://commons.wikimedia.org/wiki/File:00_IONIQ_5_2.jpg"
 ---
 
 Две криви се пресичат точно сега: България е сред най-бързо растящите пазари на хибриди в ЕС, а Корея изнася рекордни количества употребявани хибриди и електромобили. Съвпадението не е случайно — и си струва да се сметне трезво, без „зелен" ентусиазъм и без „зелен" скептицизъм.

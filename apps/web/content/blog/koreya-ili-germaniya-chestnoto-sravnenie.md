@@ -4,6 +4,13 @@ description: "Германия е автопилотът на български
 date: "2026-07-16"
 updated: "2026-11-18"
 author: "SelectAuto"
+cover:
+  src: "/images/blog/koreya-ili-germaniya-chestnoto-sravnenie.jpg"
+  alt: "Магистрала A5 край Франкфурт нощем: светлинните следи на колите, а на хоризонта — летището"
+  author: "Norbert Nagel"
+  license: "CC BY-SA 3.0"
+  licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0/deed.bg"
+  source: "https://commons.wikimedia.org/wiki/File:A5_with_Frankfurt_airport_on_the_horizon_-_Autobahn_A5_mit_Flughafen_Frankfurt_am_Horizont_-_02.jpg"
 ---
 
 Да го кажем директно: **Германия е най-лесният внос.** Без мито, без океански транспорт, кола след дни, а не месеци, и можете лично да я огледате. Ако това беше цялата история, никой нямаше да внася от другаде. Но всяка година стотици български купувачи смятат сметката докрай — и част от тях избират Корея. Ето защо, без агитация.

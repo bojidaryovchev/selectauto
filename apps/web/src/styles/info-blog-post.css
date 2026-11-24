@@ -3,6 +3,7 @@
   Ported by script from the screen's board sources (apps/web/scripts/port-board-css.mjs), as kit.css is from the kit: token
   names follow tokens.css, the boards' cqi became vw and their container queries media queries. Board-only parts
   (device frames, preview overlays) were left out. Class prefix: in-. Scoped to .in-post-pg, the page's root.
+  The cover (`.in-cover`) is written by hand since decision 43; the board is redrawn before any new port (REDESIGN.md).
 */
 @layer components {
   .in-post-pg .in-head{position:relative;isolation:isolate;overflow:hidden;border-bottom:1px solid var(--color-hair)}
@@ -13,6 +14,12 @@
   .in-post-pg .in-meta svg{flex:none;width:16px;height:16px;margin-top:4px}
   .in-post-pg .in-meta>span{min-width:0}
   .in-post-pg .in-head h1{max-width:24ch}
+  /* The cover (decision 43, by hand): 16:9 on phones and tablets, 21:9 from 1024 px and never taller than 58% of the
+     screen, so the start of the article stays close. `focus` in the post's frontmatter places the wider crop. Its
+     credit is on /snimki-i-litsenzi (decision 44), not under it. */
+  .in-post-pg .in-cover{position:relative;aspect-ratio:16/9;margin-top:clamp(2px,.6vw,10px);border-radius:var(--radius-lg);overflow:hidden;background:var(--color-s2)}
+  @media (min-width:1024px){.in-post-pg .in-cover{aspect-ratio:21/9;max-height:58vh}}
+  .in-post-pg .in-cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
   .in-post-pg .in-art{display:grid;grid-template-columns:minmax(0,68ch) minmax(300px,360px);justify-content:space-between;gap:clamp(32px,4vw,80px);align-items:start}
   @media (max-width:1023.98px){.in-post-pg .in-art{grid-template-columns:minmax(0,1fr)}}
   .in-post-pg .in-art .sa-prose{max-width:none}

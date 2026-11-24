@@ -4,6 +4,14 @@ description: "Японските автомобили са отлични — н
 date: "2026-07-16"
 updated: "2026-11-18"
 author: "SelectAuto"
+cover:
+  src: "/images/blog/zashto-ne-vnasyame-koli-ot-yaponiya.jpg"
+  alt: "Зелено-жълто такси Toyota Crown Comfort нощем на булевард Ясукуни-дори в Шинджуку, Токио, сред неоновите надписи"
+  focus: "50% 85%"
+  author: "Basile Morin"
+  license: "CC BY-SA 4.0"
+  licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/deed.bg"
+  source: "https://commons.wikimedia.org/wiki/File:Green_and_yellow_taxi_at_night_in_Yasukuni-dori_Avenue,_Shinjuku,_Tokyo.jpg"
 ---
 
 Питат ни редовно: „А от Япония внасяте ли?" Краткият отговор: **не** — и това е съзнателно решение, не пропуск. Японският пазар е забележителен: ниски километри, безупречна сервизна култура, аукциони с подробни протоколи за състоянието (auction sheets), почти никаква корозия. Проблемът не е в колите. Проблемът е волан отдясно.

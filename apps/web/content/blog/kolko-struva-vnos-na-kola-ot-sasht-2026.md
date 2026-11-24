@@ -4,6 +4,13 @@ description: "Реалната сметка за внос на кола от А�
 date: "2026-07-16"
 updated: "2026-11-18"
 author: "SelectAuto"
+cover:
+  src: "/images/blog/kolko-struva-vnos-na-kola-ot-sasht-2026.jpg"
+  alt: "Контейнерен терминал отвисоко: хиляди цветни контейнери между порталните кранове"
+  author: "chuttersnap (Unsplash)"
+  license: "CC0"
+  licenseUrl: "https://creativecommons.org/publicdomain/zero/1.0/deed.bg"
+  source: "https://commons.wikimedia.org/wiki/File:Large_cargo_port_(Unsplash).jpg"
 ---
 
 Краткият отговор, който повечето сайтове избягват да дадат: за автомобил, спечелен на американски аукцион за **15 000 €**, реалистичната крайна цена в България през 2026 г. е около **24 700 €** — тоест **около 65% върху цената на самата кола**. Числото не е плашещо, когато знаете какво точно има в него. Проблемът е, че много сметки „забравят" по няколко пера и изненадата идва на митницата или в КАТ.

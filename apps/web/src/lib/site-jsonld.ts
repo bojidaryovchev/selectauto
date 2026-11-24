@@ -153,6 +153,26 @@ export function buildFaqJsonLd(entries: FaqEntry[]): Record<string, unknown> {
   };
 }
 
+/**
+ * A blog post's cover as the Article's `image`, with the photo's rights: Google Images' image license metadata wants
+ * a `contentUrl` plus at least one of creator, creditText, copyrightNotice or license
+ * (developers.google.com/search/docs/appearance/structured-data/image-license-metadata).
+ */
+export type ArticleImage = {
+  /** Site-root path; the page's <img src> (next/image `overrideSrc`), og:image and the sitemap use the same URL. */
+  path: string;
+  width: number;
+  height: number;
+  /** „Author / Wikimedia Commons", as the post's caption credits it. */
+  creditText: string;
+  /** The license deed. */
+  license: string;
+  /** Where the license is documented: the photo's page on Wikimedia Commons. */
+  acquireLicensePage: string;
+  /** Set for a copyrighted photo (CC BY, CC BY-SA): „© Author". */
+  copyrightNotice?: string;
+};
+
 /** Inputs for a blog post's Article node. Dates are ISO YYYY-MM-DD. */
 export type ArticleInput = {
   title: string;
@@ -161,6 +181,8 @@ export type ArticleInput = {
   datePublished: string;
   dateModified: string;
   authorName: string;
+  /** The post's cover; without one the branded share card stands in. */
+  image?: ArticleImage | null;
 };
 
 /**
@@ -177,9 +199,21 @@ export function buildArticleJsonLd(a: ArticleInput): Record<string, unknown> {
     description: a.description,
     url: abs(a.url),
     mainEntityOfPage: abs(a.url),
-    // Posts carry no hero image, so use the branded share card as the article's
-    // representative image (Google recommends an `image` on Article nodes).
-    image: abs("/og-cover.png"),
+    // The post's cover (decision 43), a 16:9 photo over 1200 px wide as Google recommends for articles. A post without
+    // one falls back to the branded share card, so the node still has a representative image.
+    image: a.image
+      ? {
+          "@type": "ImageObject",
+          contentUrl: abs(a.image.path),
+          url: abs(a.image.path),
+          width: a.image.width,
+          height: a.image.height,
+          creditText: a.image.creditText,
+          ...(a.image.copyrightNotice ? { copyrightNotice: a.image.copyrightNotice } : {}),
+          license: a.image.license,
+          acquireLicensePage: a.image.acquireLicensePage,
+        }
+      : abs("/og-cover.png"),
     datePublished: a.datePublished,
     dateModified: a.dateModified,
     author: { "@type": a.authorName === "SelectAuto" ? "Organization" : "Person", name: a.authorName },

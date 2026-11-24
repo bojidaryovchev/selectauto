@@ -207,6 +207,11 @@ Sizes with an arrow grow with the window, as the boards' do (the kit's `cqi` bec
   to edge; sections are padded `py-band` (56 to 112 px).
 - **Card grids** fill columns of at least 280 px: one at 390 px, two at 820, three at 1024, four at 1440, five at 1920,
   six at 2560. A big monitor shows more cars, never wider margins.
+- **The blog's post cards are the exception** (decision 43): they're read, not compared, so a long title has to read
+  across. One column below 1024 px: a card at least 690 px wide (a tablet from about 760 px) puts the photo beside
+  the text, a narrower one stacks them like a phone. The grid is a size container, so this needs no new breakpoint.
+  From 1024 px, columns of at least 400 px, never more than three: two up to about 1370 px, then three (624 px each at
+  2560). A big monitor gets wider cards, still never wider margins (`styles/info-blog.css`).
 - **Spacing** uses 4 px steps, which are Tailwind's own scale: the design's 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80 and
   112 are `1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 28`. Space inside a group is smaller than space between groups.
 - **Small phones:** the boards are drawn at 390 px; the code also works down to 320. Under 420 px buttons and segments
@@ -237,6 +242,12 @@ Sizes with an arrow grow with the window, as the boards' do (the kit's `cqi` bec
 
 - **Car photos are data:** 3:2 on cards, 4:3 in the gallery. A missing photo is a calm grey field reading „Снимка при
   поискване". No stock images.
+- **Blog posts have a cover photo** (decision 43), the one place outside the car data with a photo from elsewhere. It
+  shows 16:9 on the post's card, 21:9 under the post's title (16:9 below 1024 px), and is the share image and the
+  Article's `image`. Only openly licensed photos (CC0, public domain, CC BY, CC BY-SA). No caption under a photo: the
+  credits are on one page, „Снимки и лицензи" (`/snimki-i-litsenzi`, decision 44), linked from every page's footer
+  next to the legal documents. `scripts/blog-cover.mjs` cuts a cover to 1920×1080 and writes the credit into the file;
+  `tests/blog-covers.test.mts` checks every cover and the footer link; `src/lib/blog.ts` lists the frontmatter fields.
 - **Make logos** sit on `bg-plate` in their own colours. A make without a logo shows its first two letters.
 - **The 3D particle car** is the home hero and the only glow.
 - **Motion** lasts 150–300 ms, ease-out. The countdown ticks every second and turns `ortx` under 24 hours. Spinners

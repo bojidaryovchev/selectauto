@@ -42,6 +42,10 @@ export type SocialMetaInput = {
   path?: string;
   /** Per-page share image (root-relative or absolute). Falls back to the site image. */
   image?: string;
+  /** The per-page image's pixels and description, when known (a blog post's cover). */
+  imageWidth?: number;
+  imageHeight?: number;
+  imageAlt?: string;
   /** OG type — "website" (default) or "article" (blog posts). */
   type?: "website" | "article";
   /** Article-only fields; ignored unless `type: "article"`. */
@@ -58,16 +62,18 @@ export type SocialMetaInput = {
  * locale always present. Returns a partial `Metadata` to spread into a page.
  */
 export function buildSocialMeta(input: SocialMetaInput): Pick<Metadata, "openGraph" | "twitter"> {
-  const { title, description, path = "", image, type = "website", article } = input;
+  const { title, description, path = "", image, imageWidth, imageHeight, imageAlt, type = "website", article } = input;
   const url = `${SITE_URL}${path}`;
   const imageUrl = image ?? DEFAULT_OG_IMAGE;
 
-  // Only declare width/height/alt for the known default image; a custom per-page
-  // image (car photo, post hero) has unknown pixels, so pass just its URL + alt.
+  // Declare width/height for the known default image, and for a per-page image whose caller knows its pixels (a
+  // blog cover is always 1920×1080); otherwise (a car photo) pass just its URL and alt.
   const images =
     imageUrl === DEFAULT_OG_IMAGE
       ? [{ url: imageUrl, width: OG_IMAGE_WIDTH, height: OG_IMAGE_HEIGHT, alt: title }]
-      : [{ url: imageUrl, alt: title }];
+      : imageWidth && imageHeight
+        ? [{ url: imageUrl, width: imageWidth, height: imageHeight, alt: imageAlt ?? title }]
+        : [{ url: imageUrl, alt: imageAlt ?? title }];
 
   const openGraph: NonNullable<Metadata["openGraph"]> =
     type === "article"

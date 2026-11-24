@@ -1,0 +1,26 @@
+/*
+  The photo credits, /snimki-i-litsenzi (decision 44), written by hand: it has no board yet (REDESIGN.md). The head band
+  of the legal pages, then one card per photo: the thumbnail beside its post's title, the photo's own title linked to
+  its source, the author, the license linked to its deed and the change made. Links in orange and underlined, as in
+  running text. Class prefix: in-. Scoped to .in-credits-pg, the page's root.
+*/
+@layer components {
+  .in-credits-pg .in-head{position:relative;isolation:isolate;overflow:hidden;border-bottom:1px solid var(--color-hair)}
+  .in-credits-pg .in-head::before{content:"";position:absolute;z-index:-1;right:-12%;top:-70%;width:min(1100px,90vw);aspect-ratio:1;border-radius:50%;background:radial-gradient(closest-side,rgba(255,122,26,.14),transparent);pointer-events:none}
+  .in-credits-pg .in-box{width:100%;max-width:1160px;margin-inline:auto}
+  .in-credits-pg .in-head__in{display:flex;flex-direction:column;gap:16px;padding-block:clamp(40px,4.4vw,80px) clamp(36px,4vw,64px)}
+  .in-credits-pg .in-cred-h{margin-bottom:clamp(16px,1.6vw,24px)}
+  .in-credits-pg .in-cred{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(min(100%,520px),1fr))}
+  .in-credits-pg .in-cred__i{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;padding:14px;background:var(--color-s1);border:1px solid var(--color-hair);border-radius:var(--radius-lg)}
+  @media (min-width:640px){.in-credits-pg .in-cred__i{grid-template-columns:192px minmax(0,1fr);align-items:start}}
+  .in-credits-pg .in-cred__ph{position:relative;aspect-ratio:16/9;border-radius:var(--radius-md);overflow:hidden;background:var(--color-s2)}
+  .in-credits-pg .in-cred__ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .in-credits-pg .in-cred__b{display:flex;flex-direction:column;gap:6px;min-width:0}
+  .in-credits-pg .in-cred__b h3{font:800 16px/1.35 var(--font-sans);text-wrap:pretty}
+  .in-credits-pg .in-cred__b h3 a{color:var(--color-tx);text-decoration:none}
+  @media (hover:hover){.in-credits-pg .in-cred__b h3 a:hover{color:var(--color-ortx)}}
+  .in-credits-pg .in-cred__t{font-size:14px;line-height:1.5;color:var(--color-tx2);overflow-wrap:anywhere}
+  .in-credits-pg .in-cred__m{display:flex;flex-wrap:wrap;gap:2px 16px;font-size:13.5px;line-height:1.5;color:var(--color-tx3)}
+  .in-credits-pg .in-cred__note{margin-top:clamp(20px,2vw,32px);max-width:68ch;font-size:14px;line-height:1.6;color:var(--color-tx2)}
+  .in-credits-pg .in-cred__t a,.in-credits-pg .in-cred__m a,.in-credits-pg .in-cred__note a{color:var(--color-ortx);font-weight:700;text-decoration-line:underline;text-underline-offset:3px}
+}

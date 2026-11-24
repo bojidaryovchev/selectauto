@@ -4,6 +4,13 @@ description: "Какво значат термините в Copart и IAAI об�
 date: "2026-07-16"
 updated: "2026-11-18"
 author: "SelectAuto"
+cover:
+  src: "/images/blog/rechnik-na-amerikanskite-aukcioni.jpg"
+  alt: "Ръждясал Chevrolet Corvair, изоставен сред тревата в автоморга"
+  author: "Sean Stratton (Unsplash)"
+  license: "CC0"
+  licenseUrl: "https://creativecommons.org/publicdomain/zero/1.0/deed.bg"
+  source: "https://commons.wikimedia.org/wiki/File:Rusty_fender_car_junkyard_(Unsplash).jpg"
 ---
 
 Обявите в Copart и IAAI са пълни с термини, които изглеждат дребен шрифт, а всъщност са цялата сделка. Този речник покрива тези, които определят цената и риска — на прост български, с бележка кое как да се чете.

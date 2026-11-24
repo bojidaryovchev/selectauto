@@ -4,6 +4,13 @@ description: "Най-задаваният въпрос за корейския �
 date: "2026-07-16"
 updated: "2026-11-18"
 author: "SelectAuto"
+cover:
+  src: "/images/blog/realni-li-sa-kilometrite-na-kolite-ot-koreya.jpg"
+  alt: "Таблото на Hyundai Kona с пробег 10 000 km на дисплея"
+  author: "Sikander Iqbal"
+  license: "CC BY-SA 4.0"
+  licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/deed.bg"
+  source: "https://commons.wikimedia.org/wiki/File:KONA_odometer_at_10000km.jpg"
 ---
 
 Това е въпрос №1 за корейския внос — с основание: българският пазар е учен с години, че километражът е пожелание. Затова отговорът заслужава повече от „да, спокойно". Ето **механизма**, по който пробегът на корейска кола се проверява — и защо върнати километри там се откриват, а не се подозират.
