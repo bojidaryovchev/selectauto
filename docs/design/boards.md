@@ -150,6 +150,7 @@ When a board is added or moved, regenerate this file from the index rather than 
 | Viber, нагоре и известия · layout | `ac-float` (flow) · `ac-float-desk` (fixed) |
 | Запитване: въпросник · inquiry-modal | `ac-inq-desk` (fixed) · `ac-inq-quiz` (flow) |
 | Запитване: изпращане и от автомобил · inquiry-modal | `ac-inq-desk2` (fixed) · `ac-inq-send` (flow) · `ac-inq-tab` (flow) |
+| Запитване: страница · /zapitvane | `ac-zap` (d, t, p) · `ac-zap-st` (fixed) · `ac-zap-flow` (flow) · `ac-zap-tab` (flow) |
 
 ### Имейли и документи (`msg`, 46 boards)
 

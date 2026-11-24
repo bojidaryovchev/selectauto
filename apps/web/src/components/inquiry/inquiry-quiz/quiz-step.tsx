@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 const LIST = { rows: "ac-qopts", makes: "ac-qbrands", models: "ac-qmodels" } as const;
 
 /**
- * One quiz step (boards `ac-inq-desk`, `ac-inq-quiz`): the question in the display face above its answers — rows, the
- * makes' grid or the models' grid. The question takes the focus when the step appears (see inquiry-modal.tsx), so a
- * keyboard or screen-reader user lands on it once the answer they pressed is gone.
+ * One quiz step (boards `ac-inq-desk`, `ac-inq-quiz`, `ac-zap-st`): the question in the display face above its answers —
+ * rows, the makes' grid or the models' grid. The question takes the focus when the step appears (see inquiry-quiz.tsx),
+ * so a keyboard or screen-reader user lands on it once the answer they pressed is gone.
  */
 export function QuizStep({
   title,

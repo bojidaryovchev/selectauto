@@ -10,6 +10,7 @@ import type {
 import type { CarfaxRequestRow } from "@/queries/admin/list-carfax-requests.query";
 import type { InquiryRow } from "@/queries/admin/list-inquiries.query";
 import type { CalculatorOfferRow } from "@/queries/admin/list-calculator-offers.query";
+import { leadSource } from "@/lib/lead-source";
 import type { MakeLogoLookup } from "@/lib/make-logo-lookup";
 import { formatSofiaDateTime } from "@/lib/sofia-time";
 import { vinReportsHref } from "@/constants/vin-reports";
@@ -80,7 +81,8 @@ export const CALCULATOR_COLUMNS: AdminLeadColumn[] = [
   { label: "Оферта", num: true },
 ];
 
-/** The drawer's last list: page, IP, timestamps. */
+/** The drawer's last list: the ad source and campaign (read from the page address, owner decision 40), page, IP,
+ *  timestamps. */
 function metaDetails(row: {
   pageUrl: string | null;
   userIp: string | null;
@@ -88,6 +90,9 @@ function metaDetails(row: {
   updatedAt: Date;
 }): AdminDetailField[] {
   const fields: AdminDetailField[] = [];
+  const { source, campaign } = leadSource(row.pageUrl);
+  if (source) fields.push({ label: "Източник", value: source });
+  if (campaign) fields.push({ label: "Кампания", value: campaign });
   if (row.pageUrl) fields.push({ label: "Страница", value: row.pageUrl, href: row.pageUrl });
   if (row.userIp) fields.push({ label: "IP адрес", value: row.userIp, mono: true });
   fields.push({ label: "Получено", value: fmtDate(row.createdAt) });

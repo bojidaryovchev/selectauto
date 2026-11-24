@@ -265,8 +265,9 @@ from the boards, so code and boards render alike: `Button` and `LinkButton` take
   While the header and tabs are hidden, `<html>` carries `data-bars-hidden`, so a page's own bottom bar can follow the
   tabs to the screen's edge. While such a bar shows, it sets `--page-bar` to its height (globals.css), and the
   back-to-top button and the notifications sit above it.
-- **Phone bars of the calculators and the import hubs** (`calc-bar.tsx`): fixed above the tabs, hidden while what they
-  repeat is on screen (the summary; a hub's hero actions, calculator and closing call to action). A bar starts hidden
+- **Phone bars of the calculators, the import hubs and /zapitvane** (`calc-bar.tsx`): fixed above the tabs, hidden while
+  what they repeat is on screen (the summary; a hub's hero actions, calculator and closing call to action; the
+  /zapitvane quiz card, which its „Направете запитване" brings back). A bar starts hidden
   and appears once it knows, so it never slides away at load. Heights, which `--page-bar` and the spacer after the
   footer repeat: 69 px with a 48 px button, 61 px for the budget's text-only bar (the car page's bar, with 44 px
   buttons, is 65 px).

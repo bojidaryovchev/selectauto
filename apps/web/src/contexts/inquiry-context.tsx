@@ -1,8 +1,9 @@
 "use client";
 
 import { preload } from "react-dom";
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import { loadContactStep } from "@/components/inquiry/inquiry-quiz/load-contact-step";
 import { INQUIRY_LOGO } from "@/constants";
 import { afterFirstPaint } from "@/lib/after-first-paint";
 import type { InquiryPrefill } from "@/types";
@@ -35,11 +36,19 @@ function loadInquiryModal(): Promise<InquiryModalComponent> {
  *
  * `open()` optionally takes an `InquiryPrefill` — when a car page opens the modal
  * with a brand+model, the quiz pre-answers those steps and starts at the budget
- * step (see `InquiryModal`). Called without an argument (header/footer/home CTAs)
+ * step (see `InquiryQuiz`). Called without an argument (header/footer/home CTAs)
  * it runs the generic quiz from the start.
+ *
+ * The /zapitvane page has the quiz on the page itself (InquiryPageQuiz). While it
+ * is mounted it registers itself with `registerInline`, and a plain `open()` (the
+ * header's „Запитване", the phone bar) scrolls to it instead of opening a second
+ * quiz over the first (board `ac-zap-st`, figure 14). A car's `open(prefill)`
+ * still opens the dialog.
  */
 const InquiryContext = createContext<{
   open: (prefill?: InquiryPrefill) => void;
+  /** Hands `open()` to the page's own quiz; returns the function that takes it back. */
+  registerInline: (show: () => void) => () => void;
 } | null>(null);
 
 export function useInquiry() {
@@ -63,7 +72,20 @@ export function InquiryProvider({
 
   const close = useCallback(() => setIsOpen(false), []);
 
+  // The page's own quiz, while /zapitvane is showing it.
+  const inline = useRef<(() => void) | null>(null);
+  const registerInline = useCallback((show: () => void) => {
+    inline.current = show;
+    return () => {
+      if (inline.current === show) inline.current = null;
+    };
+  }, []);
+
   const open = useCallback((next?: InquiryPrefill) => {
+    if (!next && inline.current) {
+      inline.current();
+      return;
+    }
     setPrefill(next);
     setIsOpen(true);
     // Already fetched (the usual case — see the warm-up below): mount it in the
@@ -91,14 +113,18 @@ export function InquiryProvider({
     () =>
       afterFirstPaint(() => {
         preload(INQUIRY_LOGO.src, { as: "image", fetchPriority: "low" });
-        // A failed warm-up is not an error: `open()` retries and reports it.
+        // A failed warm-up is not an error: `open()` retries and reports it, and the
+        // quiz retries its last step when it gets there.
         loadInquiryModal().catch(() => {});
+        loadContactStep().catch(() => {});
       }),
     [],
   );
 
+  const value = useMemo(() => ({ open, registerInline }), [open, registerInline]);
+
   return (
-    <InquiryContext.Provider value={{ open }}>
+    <InquiryContext.Provider value={value}>
       {children}
       {Modal ? (
         <Modal isOpen={isOpen} prefill={prefill} onClose={close} />

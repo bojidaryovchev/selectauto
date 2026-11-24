@@ -1,0 +1,21 @@
+/*
+  The /zapitvane page (boards ac-zap, ac-zap-st, ac-zap-flow, ac-zap-tab; owner decision 40): the hero with the quiz as a card beside the text (below it under 1024 px, edge to edge on a phone) and the phone and e-mail links. The pillars, the process steps and the reviews are the home page's and the hubs' own components with their CSS; the phone bar is CalcBar
+  Ported by script from the screen's board sources (apps/web/scripts/port-board-css.mjs), as kit.css is from the kit: token
+  names follow tokens.css, the boards' cqi became vw and their queries on the board's frame media queries (queries on a
+  container these rules declare stay container queries). Board-only parts (device frames, preview overlays) were left
+  out. Class prefix: ac-zp-.
+*/
+@layer components {
+  .ac-zp-hero{position:relative;isolation:isolate;overflow:hidden;border-bottom:1px solid var(--color-hair)}
+  .ac-zp-hero::before{content:"";position:absolute;z-index:-1;right:-12%;top:-55%;width:min(1200px,90vw);aspect-ratio:1;border-radius:50%;background:radial-gradient(closest-side,rgba(255,122,26,.15),rgba(255,122,26,0) 72%);pointer-events:none}
+  .ac-zp-hero__in{display:grid;grid-template-columns:minmax(0,1fr) clamp(560px,33vw,680px);grid-template-rows:auto 1fr;grid-template-areas:"t c" "l c";column-gap:clamp(40px,5vw,120px);row-gap:28px;align-items:start;padding-block:clamp(40px,4.4vw,88px) clamp(48px,5vw,104px)}
+  .ac-zp-hero__t{grid-area:t;display:flex;flex-direction:column;align-items:flex-start;gap:18px;min-width:0}
+  .ac-zp-hero__t>.sa-p{max-width:68ch}
+  .ac-zp-hero__in>.ac-zp-card{grid-area:c}
+  .ac-zp-links{grid-area:l;display:flex;flex-wrap:wrap;gap:10px}
+  .ac-zp-card{min-width:0;display:flex;flex-direction:column;background:var(--color-s1);border:1px solid var(--color-hair2);border-radius:var(--radius-xl);overflow:hidden;position:relative;scroll-margin-top:96px}
+  .ac-zp-card .ac-iqok .sa-btn{margin-top:6px}
+  @media (min-width:1024px) and (max-width:1279px){.ac-zp-hero__in{grid-template-columns:minmax(0,1fr) clamp(536px,50%,560px)}.ac-zp-links .sa-btn{flex:1 1 auto}}
+  @media (max-width:1023.98px){.ac-zp-hero__in{grid-template-columns:minmax(0,1fr);grid-template-rows:auto;grid-template-areas:"t" "c" "l";row-gap:24px;padding-block:clamp(20px,4vw,40px) clamp(40px,6vw,64px)}.ac-zp-card{scroll-margin-top:68px}}
+  @media (max-width:639.98px){.ac-zp-hero__t{gap:12px}.ac-zp-links{flex-direction:column}.ac-zp-links .sa-btn{width:100%}.ac-zp-hero__in>.ac-zp-card{margin-inline:calc(-1*var(--spacing-gutter));border-radius:0;border-inline:0}.ac-zp-card .ac-iq__h{padding:14px 16px 0}.ac-zp-card .ac-iq__b{padding:20px 16px 24px}}
+}

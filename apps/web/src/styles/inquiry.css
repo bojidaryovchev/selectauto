@@ -26,6 +26,9 @@
   .ac-qbrands .ac-qopt{gap:10px;padding:0 10px;font-size:15px;min-height:56px}
   .ac-qbrands .sa-plate{--ps:34px;border-radius:7px}
   @media (max-width:639.98px){.ac-qbrands{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  /* Hand edit (24 November 2026, notes/ac-zap.md §5.3): under 360 px a make's cell is 139 px and „Volkswagen" needs
+     150, so it overflowed; a smaller plate and gap need 137. */
+  @media (max-width:359.98px){.ac-qbrands .ac-qopt{gap:8px;padding:0 8px}.ac-qbrands .sa-plate{--ps:28px}}
   .ac-qmodels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
   .ac-qmodels .ac-qopt{justify-content:center;text-align:center;padding:0 10px}
   .ac-qmodels .ac-qopt>span:not(.sa-plate){flex:none}
@@ -48,11 +51,13 @@
   .ac-iqok p{font-size:16px;line-height:1.6;color:var(--color-tx2);max-width:34ch}
   .ac-iqform{display:flex;flex-direction:column;gap:18px}
   /* Hand edit: the boards draw the phone dialog inside a full-screen frame (.ac-iqfs, ac-inq-quiz). Here the dialog
-     itself fills the screen below 640px, with the notch and home-indicator insets the old dialog honoured. */
+     itself fills the screen below 640px, with the notch and home-indicator insets the old dialog honoured. Second hand
+     edit (24 November 2026): these rules are the dialog's only, because the /zapitvane page shows the same quiz in a
+     card (styles/inquiry-page.css), which has neither the screen's insets nor its height to centre the thank-you in. */
   @media (max-width:639.98px){
     .ac-iqd{width:100%;max-height:none;height:100dvh;border:0;border-radius:0;box-shadow:none;background:var(--color-bg)}
-    .ac-iq__h{padding:max(14px,env(safe-area-inset-top)) 16px 0}
-    .ac-iq__b{padding:20px 16px max(24px,env(safe-area-inset-bottom))}
-    .ac-iqok{flex:1;justify-content:center;padding-bottom:80px}
+    .ac-iqd .ac-iq__h{padding:max(14px,env(safe-area-inset-top)) 16px 0}
+    .ac-iqd .ac-iq__b{padding:20px 16px max(24px,env(safe-area-inset-bottom))}
+    .ac-iqd .ac-iqok{flex:1;justify-content:center;padding-bottom:80px}
   }
 }

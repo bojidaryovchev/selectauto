@@ -37,6 +37,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     entry("/za-nas", "monthly", 0.6),
     entry("/otzivi", "monthly", 0.6), // customer reviews
     entry("/kontakti", "yearly", 0.6),
+    entry("/zapitvane", "monthly", 0.7), // the free consultation: the quiz as a page, for ads (owner decision 40)
     entry("/kalkulator", "monthly", 0.8), // import-cost calculator
     entry("/lizingov-kalkulator", "monthly", 0.8), // leasing / monthly-payment calculator
     entry("/byudzheten-kalkulator", "monthly", 0.8), // budget / affordability calculator

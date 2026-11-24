@@ -33,3 +33,18 @@
 | 11 | Send errors under the button in red text: the server's („Възникна грешка при изпращането. Моля опитайте отново.", „Достъпът е отказан.", „Невалидна заявка.", the schema's) and, without a connection, „Грешка при изпращане. Моля опитай отново." (inquiry-modal.tsx:217-221, 482-486; route.ts; create-inquiry.mutation.ts) | a red alert under the button (`ac-inq-desk2` 7–8) | As drawn; formal „Моля опитайте отново." in the client's own message |
 | 12 | Sent: a check, „Благодарим!", „Вашата заявка е приета. Ще се свържем с вас скоро."; it closes after 2,2 s (inquiry-modal.tsx:214-216, 491-503) | `ac-iqok`: the green circle, the title in the display face; no back or progress | As drawn |
 | 13 | Each open starts afresh: the start screen, or the budget from a car; the fields cleared (inquiry-modal.tsx:93-113, 133-138) | — | Kept |
+
+## 24 November 2026: one quiz for the dialog and the /zapitvane page (owner decision 40)
+
+The steps moved out of the dialog into `components/inquiry/inquiry-quiz/` (`inquiry-quiz.tsx`, `quiz-step.tsx`,
+`quiz-option.tsx`, `contact-step.tsx`), which the new page shows too (parity check `zapitvane.md`).
+`inquiry-modal.tsx` is now the frame: the scrim, Escape, the scroll lock and the focus going in and back. Re-walked
+on the built dialog the same day. Rows 1–13 hold as before: the same steps, strings, request and focus.
+
+| # | What changed (file:line before) | On the board | Outcome |
+|---|---|---|---|
+| 14 | The quiz's state, steps and submit lived in the dialog (inquiry-modal.tsx:69-244) | `ac-inq-*` | Kept, moved: `InquiryQuiz` in its `dialog` variant draws the same start, steps, banner and thank-you. Each open mounts it afresh, which is the reset of row 13 |
+| 15 | The thank-you closed the dialog with a bare `setTimeout(close, 2200)` (inquiry-modal.tsx:237), so a dialog reopened within those 2,2 s closed by itself | `ac-inq-send` 4 | Fixed: the timer is cleared when the dialog closes |
+| 16 | The name and phone kept their typed values across „Назад" and forward (react-hook-form keeps an unmounted field's value) | — | Kept: the contact step hands its values back when it closes and gets them again when it opens |
+| 17 | react-hook-form and zod came with the dialog's chunk | — | The contact step is a chunk of its own, warmed after the first paint with the dialog's. Reached before it arrives: a spinner; if it can't load: „Формата не успя да се зареди. Моля, опитайте отново." with „Опитайте отново" (both existing strings; boards `ac-zap-st` 15–16) |
+| 18 | Every „Запитване" opened the dialog | `ac-zap-st` 14 | Owner decision 40: on /zapitvane a plain „Запитване" (no car) brings the page's own quiz into view instead |

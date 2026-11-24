@@ -22,6 +22,7 @@
 @import "../styles/info-legal.css";
 @import "../styles/account.css";
 @import "../styles/inquiry.css";
+@import "../styles/inquiry-page.css";
 /* The admin's own styles (admin.css, admin-b.css, admin-b-root.css) are imported by app/admin/layout.tsx, so the
    public pages don't download them. */
 
