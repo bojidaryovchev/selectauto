@@ -28,8 +28,8 @@ type SearchParams = { vin?: string; zayavka?: string; q?: string; page?: string 
  * /admin/carfax-otcheti — Carfax and AutoCheck reports through AuctionsAPI (owner, 24.11.2026).
  *
  * The desk checks a VIN for free and buys a report from AuctionsAPI's balance; the list shows every report the key
- * ever bought — here, and on AuctionsAPI's own site, where all 68 reports before this page were bought (64 of them
- * for cars in the catalog, 2 for Carfax leads), imported from its history as the page renders.
+ * ever bought — here, and outside the admin with the same key, which is how all 68 reports before this page were
+ * bought (64 of them for cars in the catalog, 2 for Carfax leads), imported from its history as the page renders.
  *
  * Gated on `reports.order` (admins only). `?vin=` opens the desk on a VIN, already checked; `?zayavka=` links the
  * purchase to a Carfax lead (the lead drawer's „Проверете и купете"); `?q=` filters the list by VIN.

@@ -23,8 +23,8 @@ export const metadata: Metadata = { title: LEAD_TYPE_META.carfax.label };
  * require back-office access, which observers have too.
  *
  * Each lead's drawer lists the Carfax / AutoCheck reports already bought for its
- * VIN and links to /admin/carfax-otcheti to check and buy one. Reports bought on
- * AuctionsAPI's own site reach it through the history import, run here after the
+ * VIN and links to /admin/carfax-otcheti to check and buy one. Reports bought
+ * outside the admin reach it through the history import, run here after the
  * response (`after`, at most every 10 minutes) so it never slows the inbox.
  */
 export default async function AdminCarfaxPage({

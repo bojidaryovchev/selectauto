@@ -6,7 +6,8 @@ import "server-only";
 
 /**
  * Bring `vin_reports` in step with AuctionsAPI's report history (GET /reports/my-history, free): every report the key
- * bought, wherever — the admin, or AuctionsAPI's own site, where all 68 reports before this page were bought.
+ * bought, wherever — the admin, or outside it with the same key, which is how all 68 reports before this page were
+ * bought (where exactly — AuctionsAPI's site, a bot — the history doesn't say).
  *
  * A report the history has and we don't is either
  * - the one a still-'pending' claim was waiting for (the purchase call timed out but AuctionsAPI finished it): the

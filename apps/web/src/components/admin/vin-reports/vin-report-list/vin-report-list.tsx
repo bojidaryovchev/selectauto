@@ -5,13 +5,13 @@ import { VinReportFiles } from "../vin-report-files";
 import { VinReportTags } from "../vin-report-tags";
 import { ReportContext } from "./report-context";
 
-/** Who bought a report: the staff member, „Извън админа" for one bought on AuctionsAPI's side. */
+/** Who bought a report: the staff member, „Извън админа" for one bought outside the admin with the same key. */
 function buyer(r: VinReportView): string {
   return r.orderedBy ?? (r.origin === "auctionsapi" ? "Извън админа" : "—");
 }
 
 /**
- * Every report the key bought, newest first: from the admin and from AuctionsAPI's own site (imported from its
+ * Every report the key bought, newest first: from the admin and from outside it (imported from AuctionsAPI's
  * history). Cards while the list is narrower than 896 px (two columns from 576), the kit's table above (`ab-list`, a
  * container query on the list itself) — the contracts' and mobile.bg's pattern. A server component: links only.
  */

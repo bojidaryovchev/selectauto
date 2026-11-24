@@ -9,8 +9,8 @@
 -- One report AuctionsAPI generated for our key, whoever asked for it:
 --   origin 'admin'       — bought from the admin; ordered_by says who, and
 --                          carfax_request_id the website lead it was for, if any;
---   origin 'auctionsapi' — bought somewhere else with the same key (AuctionsAPI's
---                          own site), imported from GET /reports/my-history. 68
+--   origin 'auctionsapi' — bought outside the admin with the same key (the history
+--                          doesn't say where), imported from GET /reports/my-history. 68
 --                          reports were bought that way between 29.06 and
 --                          23.11.2026, before this table existed.
 -- external_id is AuctionsAPI's report id (`id` in the report and history
