@@ -93,12 +93,20 @@ export async function lookupCarForMobilebg(rawQuery: string): Promise<CarLookupH
   if (vin && /^[A-Z0-9]{11,17}$/.test(vin)) {
     // Same expression as `cars_vin_normalized_idx` (migration 0044) — keep it
     // identical or the index stops being used.
+    //
+    // Ordered by `cars.id + 0`, not `cars.id`, ON PURPOSE: with `ORDER BY id
+    // DESC LIMIT 5` Postgres walked the primary key backwards and filtered every
+    // row by VIN, betting on 5 early matches (it guesses ~20 000 cars per VIN),
+    // so a VIN with fewer than 5 cars — nearly all of them — read the whole
+    // ~4M-row table (a VIN with no car: 59 s, EXPLAIN ANALYZE on production,
+    // 24.11.2026). `+ 0` leaves the key no use for the ordering, so the VIN
+    // index finds the car's few rows: 14 ms without a car, 7 ms with one.
     return db
       .select(select)
       .from(schema.cars)
       .leftJoin(schema.auctionLots, eq(schema.auctionLots.carId, schema.cars.id))
       .where(sql`upper(btrim(${schema.cars.vin})) = ${vin}`)
-      .orderBy(desc(schema.cars.id))
+      .orderBy(sql`${schema.cars.id} + 0 DESC`)
       .limit(5);
   }
 
