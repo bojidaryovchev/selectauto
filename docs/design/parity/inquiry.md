@@ -48,3 +48,17 @@ on the built dialog the same day. Rows 1–13 hold as before: the same steps, st
 | 16 | The name and phone kept their typed values across „Назад" and forward (react-hook-form keeps an unmounted field's value) | — | Kept: the contact step hands its values back when it closes and gets them again when it opens |
 | 17 | react-hook-form and zod came with the dialog's chunk | — | The contact step is a chunk of its own, warmed after the first paint with the dialog's. Reached before it arrives: a spinner; if it can't load: „Формата не успя да се зареди. Моля, опитайте отново." with „Опитайте отново" (both existing strings; boards `ac-zap-st` 15–16) |
 | 18 | Every „Запитване" opened the dialog | `ac-zap-st` 14 | Owner decision 40: on /zapitvane a plain „Запитване" (no car) brings the page's own quiz into view instead |
+
+## 24 November 2026, later: the dialog is removed (owner decision 41)
+
+Every „Запитване" is a link to /zapitvane now (`InquiryButton`, the header, the phone menu, the home hero), and the
+dialog, its provider, its start screen and its picture are gone. What the dialog did lives on on the page (parity
+check `zapitvane.md`, rows 17–22): a car's „Направете заявка" carries the car, and the page opens at the budget with
+the banner, „Назад" stopping there, the question focused, and the car's page recorded as the inquiry's page. Re-walked
+the same day on a local build.
+
+| # | What the dialog did | Where it is now | Outcome |
+|---|---|---|---|
+| 19 | The start screen (the picture, „Безплатна консултация", the line, „Започнете консултация") | The page's hero says the same | Owner decision 41 |
+| 20 | Escape, the scrim, the scroll lock, the focus going back to the opener, closing itself 2,2 s after the thank-you | Gone with the dialog; the browser's Back returns to the page the visitor came from | Owner decision 41 |
+| 21 | A tap before the dialog's code had loaded showed a dimmed page with a spinner; a load failure, the toast „Формата не успя да се зареди. Моля, опитайте отново." | A link always works; the form step's own load failure is on the page (`ac-zap-st` 16) | Boards `ac-float` 5–6 and `ac-float-desk` 5 retired |

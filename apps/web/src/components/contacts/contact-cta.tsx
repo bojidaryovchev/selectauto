@@ -3,7 +3,7 @@ import { MailIcon, PhoneIcon } from "@/components/icons";
 import { InquiryButton } from "@/components/inquiry";
 import { CONTACT } from "@/constants";
 
-/** Free-consultation panel (board `in-kontakti`): it opens the site-wide inquiry modal, with the phone and e-mail. */
+/** Free-consultation panel (board `in-kontakti`): its button opens the /zapitvane page, beside the phone and e-mail. */
 export function ContactCta() {
   return (
     <section className="sa-band pt-0">

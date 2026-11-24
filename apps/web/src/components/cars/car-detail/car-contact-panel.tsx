@@ -13,35 +13,45 @@ export const CONTACT_PANEL_ID = "car-contact";
 
 /**
  * The inquiry pre-answered for this car (brand/model steps skipped, a banner naming the car), when the car has a
- * resolved brand and model; otherwise the generic quiz. Shared by the contact panel and the phone action bar.
+ * resolved brand and model; otherwise the generic quiz. Shared by the contact panel and the phone action bar, whose
+ * „Направете заявка" links carry it to /zapitvane (owner decision 41); the inquiry records the car's page (`id`).
  */
 export function carInquiryPrefill(car: {
+  id?: number;
   brand?: string;
   model?: string;
   year?: number;
   lotNumber?: string;
   brandLogo?: string | null;
 }): InquiryPrefill | undefined {
-  const { brand, model, year, lotNumber, brandLogo } = car;
+  const { id, brand, model, year, lotNumber, brandLogo } = car;
   return brand && model
-    ? { brand, model, carLabel: `${brand} ${model}${year ? ` (${year})` : ""}`, lotNumber, makeLogo: brandLogo ?? null }
+    ? {
+        brand,
+        model,
+        carLabel: `${brand} ${model}${year ? ` (${year})` : ""}`,
+        lotNumber,
+        makeLogo: brandLogo ?? null,
+        carPath: id != null ? `/avtomobil/${id}` : undefined,
+      }
     : undefined;
 }
 
 /**
  * The lead-capture panel on the car page (boards `cd-*`, `.cd-contact`): the phone as the main action (owner decision
  * 13), „Направете заявка", „Заявете Carfax проверка" for US and Canadian cars, and „Viber група". The phone and Viber
- * are direct links; „Направете заявка" opens the site-wide inquiry modal. Hidden for concluded/sold cars (a sold lot
- * is not a lead) — the page shows „Вижте активни обяви" instead.
+ * are direct links; „Направете заявка" links to the /zapitvane page (owner decision 41). Hidden for concluded/sold cars
+ * (a sold lot is not a lead) — the page shows „Вижте активни обяви" instead.
  *
- * When the car has a resolved brand + model, the inquiry opens PRE-ANSWERED for this car (skipping the brand/model quiz
- * steps, starting at budget, with a banner naming the car). Missing brand/model → the generic quiz.
+ * When the car has a resolved brand + model, the page's quiz opens PRE-ANSWERED for this car (skipping the brand/model
+ * steps, starting at budget, with a banner naming the car). Missing brand/model → the quiz from the start.
  *
  * „Заявете Carfax проверка" opens the in-page CarfaxDialog pre-filled (and locked) with this car's VIN/make/model, so
  * the buyer only adds their contact details. Only for US/Canada cars (`market !== "kr"`): Carfax is a North-American
  * vehicle-history product, and Encar (KR) lots already render their own insurance/inspection history further down.
  */
 export function CarContactPanel({
+  id,
   title,
   brand,
   model,
@@ -51,6 +61,8 @@ export function CarContactPanel({
   vin,
   market,
 }: {
+  /** The car's id: its inquiry records the car's page. */
+  id?: number;
   title: string;
   brand?: string;
   model?: string;
@@ -61,7 +73,7 @@ export function CarContactPanel({
   vin?: string;
   market?: CarMarket;
 }) {
-  const prefill = carInquiryPrefill({ brand, model, year, lotNumber, brandLogo });
+  const prefill = carInquiryPrefill({ id, brand, model, year, lotNumber, brandLogo });
 
   const showCarfax = market !== "kr";
 

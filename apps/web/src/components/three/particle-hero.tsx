@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Button, LinkButton } from "@/components/common";
+import { LinkButton } from "@/components/common";
+import { InquiryButton } from "@/components/inquiry/inquiry-button";
 import { HERO_MODELS } from "@/data/home";
-import { useInquiry } from "@/contexts/inquiry-context";
 import { afterFirstPaint } from "@/lib/after-first-paint";
 import { loadHeroPoints, type HeroTier } from "@/lib/baked-hero";
 import { isSoftwareRenderer } from "@/lib/webgl";
@@ -23,7 +23,6 @@ import { isSoftwareRenderer } from "@/lib/webgl";
  * bundle and the canvas only initialises in the browser.
  */
 export function ParticleHero() {
-  const { open: openInquiry } = useInquiry();
   const heroRef = useRef<HTMLElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [modelName, setModelName] = useState(HERO_MODELS[0].name);
@@ -502,14 +501,9 @@ export function ParticleHero() {
             >
               Разгледайте автомобилите
             </LinkButton>
-            <Button
-              variant="sec"
-              size="xl"
-              onClick={() => openInquiry()}
-              className="max-sm:h-control-lg max-sm:text-[15px]"
-            >
+            <InquiryButton variant="sec" size="xl" className="max-sm:h-control-lg max-sm:text-[15px]">
               Направете запитване
-            </Button>
+            </InquiryButton>
           </div>
         </div>
       </div>

@@ -1,7 +1,7 @@
 /**
- * Bulgarian phone helpers, shared by the Carfax form, the inquiry modal and the
+ * Bulgarian phone helpers, shared by the Carfax form, the inquiry quiz and the
  * server-side validators. Previously duplicated (verbatim) in three places:
- * CarfaxForm, InquiryModal and the carfax schema. Behaviour is unchanged — this
+ * CarfaxForm, the inquiry quiz and the carfax schema. Behaviour is unchanged — this
  * is the union of those copies.
  */
 

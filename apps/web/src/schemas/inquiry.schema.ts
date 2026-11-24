@@ -3,7 +3,7 @@ import { isValidPhone, normalizePhone } from "@/lib/phone";
 
 /**
  * Shared validation schema for the "Безплатна консултация" inquiry, used by both
- * the client modal (via `inquiryContactSchema` below, for the name/phone step)
+ * the client quiz (via `inquiryContactSchema` below, for the name/phone step)
  * and the `createInquiry` server action. Mirrors the original theme.js quiz: name
  * and phone are required; the quiz answers (specific model, brand, model, budget,
  * time, finance) are all optional. The phone is validated in its normalised
@@ -31,7 +31,7 @@ export const inquirySchema = z.object({
 export type InquiryFormValues = z.infer<typeof inquirySchema>;
 
 /**
- * Client-side contact step of the inquiry modal (name + phone only). The quiz
+ * Client-side contact step of the inquiry quiz (name + phone only). The quiz
  * answers are collected via button taps — not validated text fields — so only
  * these two inputs go through react-hook-form + `zodResolver`. The phone is
  * normalised (`08…` → `+359…`) as part of validation, so `onSubmit` receives the

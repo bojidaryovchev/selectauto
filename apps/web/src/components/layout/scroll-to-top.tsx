@@ -21,7 +21,8 @@ import { useEffect, useRef } from "react";
  *    which the catalog filter bar does via `router.replace(?…, { scroll:false })`,
  *    same pathname — are ignored and never jump.
  *  - Skips the navigation right after a `popstate` so the browser's back/forward
- *    scroll restoration is preserved.
+ *    scroll restoration is preserved, and a navigation to an address with a
+ *    fragment, which positions itself.
  *  - Aborts the moment the user actually scrolls (wheel/touch/key), so we never
  *    fight a deliberate scroll during the enforcement window.
  *
@@ -52,6 +53,9 @@ export function ScrollToTop() {
       fromPopState.current = false;
       return;
     }
+    // A link to a fragment chooses its own position: an element's anchor, or — a car's „Направете заявка", which
+    // carries the car in the fragment (lib/inquiry-link.ts) — the /zapitvane card, which brings itself into view.
+    if (window.location.hash) return;
 
     let rafId = 0;
     let aborted = false;

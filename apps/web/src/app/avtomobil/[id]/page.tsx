@@ -385,6 +385,7 @@ async function CarDetailBody({ params }: { params: Params }) {
               </LinkButton>
             ) : (
               <CarContactPanel
+                id={detail.id}
                 title={detail.title}
                 brand={detail.brand}
                 model={detail.model}

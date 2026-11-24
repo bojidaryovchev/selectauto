@@ -67,7 +67,7 @@ When a board is added or moved, regenerate this file from the index rather than 
 | Автомобил: проверка на история по VIN | `cd-f-vin` (flow) |
 | Автомобил: калкулатор за внос, попълнен за автомобила | `cd-f-calc` (flow) · `cd-f-calc-d` (fixed) · `cd-f-calc2` (flow) |
 | Автомобил: Carfax заявка, попълнена и заключена | `cd-f-carfax` (flow) · `cd-f-carfax-d` (fixed) |
-| Автомобил: запитване, отворено за автомобила | `cd-f-inquiry` (flow) · `cd-f-inquiry-d` (fixed) |
+| Автомобил: запитване за автомобила (→ /zapitvane, decision 41) | `cd-f-inquiry` (flow) · `cd-f-inquiry-d` (fixed) |
 | Автомобил: любими без вход, копиране на VIN и лот № | `cd-f-fav` (flow) |
 | Автомобил: лента с цена и действия на телефон | `cd-f-bar` (flow) |
 | Автомобил: закрепена колона с цена при превъртане | `cd-f-sticky` (fixed) |
@@ -147,10 +147,10 @@ When a board is added or moved, regenerate this file from the index rather than 
 | Любими без вход · /lyubimi | `ac-fav-out` (d, t, p) · `ac-fav-guest` (flow) |
 | Шапка и меню на профила · site-header | `ac-hdr` (fixed) |
 | Меню на телефон и таблет · site-header | `ac-drawer` (flow) · `ac-drawer-tab` (flow) |
-| Viber, нагоре и известия · layout | `ac-float` (flow) · `ac-float-desk` (fixed) |
-| Запитване: въпросник · inquiry-modal | `ac-inq-desk` (fixed) · `ac-inq-quiz` (flow) |
-| Запитване: изпращане и от автомобил · inquiry-modal | `ac-inq-desk2` (fixed) · `ac-inq-send` (flow) · `ac-inq-tab` (flow) |
-| Запитване: страница · /zapitvane | `ac-zap` (d, t, p) · `ac-zap-st` (fixed) · `ac-zap-flow` (flow) · `ac-zap-tab` (flow) |
+| Viber, нагоре и известия · layout | `ac-float` (flow; frames 5–6, the dialog's pre-load spinner and toast, retired by decision 41) · `ac-float-desk` (fixed; figure 5 retired) |
+| Запитване: въпросник · inquiry-modal (retired: decision 41 removed the dialog; the quiz is on /zapitvane) | `ac-inq-desk` (fixed) · `ac-inq-quiz` (flow) |
+| Запитване: изпращане и от автомобил · inquiry-modal (retired, decision 41) | `ac-inq-desk2` (fixed) · `ac-inq-send` (flow) · `ac-inq-tab` (flow) |
+| Запитване: страница · /zapitvane | `ac-zap` (d, t, p) · `ac-zap-st` (fixed) · `ac-zap-flow` (flow) · `ac-zap-flow2` (flow: from a car) · `ac-zap-tab` (flow) |
 
 ### Имейли и документи (`msg`, 46 boards)
 

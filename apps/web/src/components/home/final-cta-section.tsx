@@ -1,7 +1,7 @@
 import { Reveal } from "@/components/common";
 import { InquiryButton } from "@/components/inquiry";
 
-/** The closing panel that opens the inquiry (board `hm-home`). */
+/** The closing panel whose „Запитване“ opens the /zapitvane page (board `hm-home`). */
 export function FinalCtaSection() {
   return (
     <section className="sa-band" aria-labelledby="hm-fin-t">

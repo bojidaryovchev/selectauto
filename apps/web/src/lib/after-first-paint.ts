@@ -5,7 +5,7 @@ import { useSyncExternalStore } from "react";
  * thread is next idle. Returns a cancel function.
  *
  * For work that is NOT needed to show the page — the hero's WebGL scene, warming
- * the inquiry modal's chunk — so that it never competes with that paint or with
+ * the inquiry quiz's form step — so that it never competes with that paint or with
  * hydration. Idle time alone is not enough of a gate: the main thread is routinely
  * idle for a moment BEFORE the first paint (waiting on the compositor), and an idle
  * callback that fires there starts a download ahead of the paint it was meant to

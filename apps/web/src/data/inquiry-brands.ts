@@ -1,7 +1,7 @@
 /**
- * Quiz data for the site-wide inquiry modal, copied verbatim from the original
+ * Quiz data for the inquiry quiz (/zapitvane), copied verbatim from the original
  * theme.js (`brands`) plus the budget/time/finance option lists. Kept as data
- * (not inside the component) so the modal stays presentational.
+ * (not inside the component) so the quiz stays presentational.
  */
 
 /** Per-brand model lists. */

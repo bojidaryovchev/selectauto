@@ -1,10 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import { type RefObject, useEffect, useRef, useState } from "react";
 import { Button, IconButton, LinkButton, MakePlate } from "@/components/common";
-import { INQUIRY_LOGO } from "@/constants";
-import { AlertIcon, CheckIcon, ChevronLeftIcon, CloseIcon } from "@/components/icons";
+import { AlertIcon, CheckIcon, ChevronLeftIcon } from "@/components/icons";
 import {
   INQUIRY_BRAND_LOGOS,
   INQUIRY_BRANDS,
@@ -21,24 +19,21 @@ import { QuizStep } from "./quiz-step";
 import { revealQuiz } from "./reveal-quiz";
 
 /**
- * The „Безплатна консултация" quiz, one for the site: the dialog opened by every „Запитване" (InquiryModal; boards
- * `ac-inq-desk`, `ac-inq-desk2`, `ac-inq-quiz`, `ac-inq-send`, `ac-inq-tab`) and the /zapitvane page (InquiryPageQuiz;
- * boards `ac-zap`, `ac-zap-st`, `ac-zap-flow`, `ac-zap-tab`). Parity checks: docs/design/parity/inquiry.md and
- * zapitvane.md. It renders the header (step bar, car banner) and the body; the frame around them is the caller's.
+ * The „Безплатна консултация" quiz, on the /zapitvane page (InquiryPageQuiz; boards `ac-zap`, `ac-zap-st`,
+ * `ac-zap-flow`, `ac-zap-tab`; parity checks docs/design/parity/zapitvane.md and inquiry.md). Every „Запитване" on
+ * the site links there (owner decision 41). It renders the header (step bar, car banner) and the body; the card around
+ * them is the page's.
  *
- * Flow: seven steps (specific model? → make → model → budget → time → finance → name/phone), then the thank-you.
- * „Не" to the first question skips make and model. A `prefill` from a car page pre-answers the first three and starts
- * at the budget, with a banner naming the car; „Назад" never goes before it.
+ * Flow: seven steps (specific model? → make → model → budget → time → finance → name/phone), then the thank-you, which
+ * stays, with „Разгледайте автомобили". „Не" to the first question skips make and model. A `prefill` from a car page
+ * (its link carries the car; lib/inquiry-link.ts) pre-answers the first three and starts at the budget, with a banner
+ * naming the car; „Назад" never goes before it, and the inquiry records the car's page as its page.
  *
- * The variants:
- * - `dialog`: a start screen first (unless a car pre-fills it), „Затворете" in the header, and the thank-you closes
- *   it after 2,2 s. The question takes the focus at every step.
- * - `page`: the first question at once (the page's hero is the start), no close, and the thank-you stays, with
- *   „Разгледайте автомобили". Nothing is focused until the visitor answers; then each new question takes the focus,
- *   and the card comes up under the header when the step would not fit below it (on a phone, the first answer).
+ * Nothing is focused at load unless a car's link brought the visitor (they asked to inquire); then each new question
+ * takes the focus, and the card comes up under the header when the step would not fit below it (on a phone, the first
+ * answer).
  */
 
-type Screen = "start" | "quiz";
 type QuizData = {
   specific_model?: string;
   brand?: string;
@@ -57,30 +52,22 @@ const CONTACT_STEP = 6;
 const SENT_STEP = 7;
 
 export function InquiryQuiz({
-  variant,
   containerRef,
   prefill,
-  onClose,
 }: {
-  variant: "dialog" | "page";
-  /** The frame the quiz is drawn in (the dialog, or the page's card): the focus falls back to it, and on the page it
-   *  is what scrolls back into view. */
+  /** The card the quiz is drawn in: the focus falls back to it, and it is what comes back into view. */
   containerRef: RefObject<HTMLElement | null>;
-  /** Car context from a car page (dialog only). */
+  /** The car from a car page's link. */
   prefill?: InquiryPrefill;
-  /** The dialog's close; shows „Затворете". */
-  onClose?: () => void;
 }) {
-  // A car page opens the quiz knowing the make and model → pre-answer those steps.
+  // A car page's link knows the make and model → pre-answer those steps.
   const isCarPrefill = Boolean(prefill?.brand && prefill?.model);
   // The earliest reachable step: a prefill can't go back past budget (make/model are fixed).
   const floorStep = isCarPrefill ? BUDGET_STEP : 0;
   const bannerLabel = prefill?.carLabel ?? [prefill?.brand, prefill?.model].filter(Boolean).join(" ");
 
-  // Each open of the dialog mounts the quiz afresh (InquiryModal renders nothing while closed), so the first state is
-  // the whole reset: the start screen, the page's first question, or the budget from a car.
-  const [screen, setScreen] = useState<Screen>(variant === "dialog" && !isCarPrefill ? "start" : "quiz");
-  const [step, setStep] = useState(isCarPrefill ? BUDGET_STEP : 0); // 0..7 within the quiz
+  // The page mounts the quiz afresh for each car it is given (InquiryPageQuiz keys it), so the first state is the reset.
+  const [step, setStep] = useState(isCarPrefill ? BUDGET_STEP : 0); // 0..7
   const [data, setData] = useState<QuizData>(() =>
     isCarPrefill ? { specific_model: "Да", brand: prefill!.brand, model: prefill!.model } : {},
   );
@@ -89,22 +76,15 @@ export function InquiryQuiz({
   // The server's (or the connection's) error after „Изпратете"; field messages are the contact step's own.
   const [error, setError] = useState("");
 
-  // The contact step's code (react-hook-form, zod): fetched when the quiz opens in the dialog, after the first paint on
-  // the page, and in any case when its step is reached.
+  // The contact step's code (react-hook-form, zod): fetched after the first paint, and in any case when its step is
+  // reached.
   const [Contact, setContact] = useState<ContactStepComponent | null>(() => loadedContactStep());
   const [contactFailed, setContactFailed] = useState(false);
   const [contactAttempt, setContactAttempt] = useState(0);
-  const needContact = screen === "quiz" && step === CONTACT_STEP;
+  const needContact = step === CONTACT_STEP;
 
-  useEffect(() => {
-    // A failed warm-up is not an error: reaching the step retries it, and that one reports.
-    const warm = () => void loadContactStep().catch(() => {});
-    if (variant === "dialog") {
-      warm();
-      return;
-    }
-    return afterFirstPaint(warm);
-  }, [variant]);
+  // A failed warm-up is not an error: reaching the step retries it, and that one reports.
+  useEffect(() => afterFirstPaint(() => void loadContactStep().catch(() => {})), []);
 
   useEffect(() => {
     if (!needContact || Contact) return;
@@ -121,28 +101,18 @@ export function InquiryQuiz({
     };
   }, [needContact, Contact, contactAttempt]);
 
-  // Whether the visitor has acted yet. The dialog was opened by one; on the page nothing takes the focus (or scrolls)
-  // before the first answer, so a screen reader starts at the page's title.
-  const interacted = useRef(variant === "dialog");
+  // Whether the visitor has acted yet. Nothing takes the focus (or scrolls) before the first answer, so a screen reader
+  // starts at the page's title — unless a car's link brought them here to inquire.
+  const interacted = useRef(isCarPrefill);
 
-  // Each new step: its question takes the focus (the answer that was pressed is gone); a step without one, the frame.
+  // Each new step: its question takes the focus (the answer that was pressed is gone); a step without one, the card.
+  // The card comes up under the header first when the new step would end below the fold or its top has scrolled away.
   useEffect(() => {
     if (!interacted.current) return;
     const root = containerRef.current;
     if (!root) return;
-    const target = root.querySelector<HTMLElement>("[data-iq-focus]") ?? root;
-    // On the page, the card comes up under the header first when the new step would end below the fold or its top
-    // has scrolled away (reveal-quiz.ts).
-    if (variant === "page") revealQuiz(root, target);
-    else target.focus();
-  }, [screen, step, variant, containerRef]);
-
-  // The dialog closes itself 2,2 s after the thank-you (cleared if it closes sooner, so a reopened dialog stays open).
-  useEffect(() => {
-    if (variant !== "dialog" || step !== SENT_STEP || !onClose) return;
-    const timer = window.setTimeout(onClose, 2200);
-    return () => window.clearTimeout(timer);
-  }, [variant, step, onClose]);
+    revealQuiz(root, root.querySelector<HTMLElement>("[data-iq-focus]") ?? root);
+  }, [step, containerRef]);
 
   function pick(key: keyof QuizData, value: string, skip = false) {
     interacted.current = true;
@@ -182,10 +152,6 @@ export function InquiryQuiz({
       setStep((s) => Math.max(floorStep, s - 1));
       return;
     }
-    if (step === 0) {
-      setScreen("start");
-      return;
-    }
     // Step 3 (budget) may have been reached via the skip path; go back to step 0.
     if (step === 3 && (data.specific_model === "Не" || !data.brand)) {
       setStep(0);
@@ -195,7 +161,8 @@ export function InquiryQuiz({
   }
 
   // `values` is validated and normalised by the contact step (`name` trimmed, `phone` in `+359…` form); its button
-  // stays busy until this resolves.
+  // stays busy until this resolves. A car's inquiry records the car's page, as the dialog that opened over it did;
+  // otherwise this page's address, with any ad tags it came with (lib/lead-source.ts).
   async function submit(values: InquiryContactValues) {
     setError("");
     try {
@@ -211,7 +178,7 @@ export function InquiryQuiz({
           budget: data.budget,
           time: data.time,
           finance: data.finance,
-          page_url: window.location.href,
+          page_url: prefill?.carPath ? new URL(prefill.carPath, window.location.origin).href : window.location.href,
         }),
       });
       const result = (await res.json()) as ActionResult;
@@ -226,9 +193,8 @@ export function InquiryQuiz({
     }
   }
 
-  // The back arrow shows on quiz steps beyond the floor (not on the first reachable step or the thank-you). On the
-  // page the first question is the floor: there is no start screen to go back to.
-  const showBack = screen === "quiz" && step > floorStep && step < SENT_STEP;
+  // The back arrow shows on steps beyond the floor (not on the first reachable step or the thank-you).
+  const showBack = step > floorStep && step < SENT_STEP;
 
   // The ordered steps for the current path — drives „Стъпка N от M": the full quiz, the „Не" skip, or a car prefill.
   const stepFlow = isCarPrefill
@@ -237,15 +203,14 @@ export function InquiryQuiz({
       ? [0, 3, 4, 5, 6]
       : [0, 1, 2, 3, 4, 5, 6];
   const stepIndex = stepFlow.indexOf(step);
-  // Progress is shown on the quiz screen for the answered steps (not on the start or the thank-you).
-  const showProgress = screen === "quiz" && step < SENT_STEP && stepIndex >= 0;
+  // Progress is shown for the answered steps (not on the thank-you).
+  const showProgress = step < SENT_STEP && stepIndex >= 0;
   const showBanner = isCarPrefill && Boolean(bannerLabel);
-  // The dialog always has its bar („Затворете"); the page's thank-you has none.
-  const showHeader = Boolean(onClose) || showBack || showProgress || showBanner;
+  // The thank-you has no header at all.
+  const showHeader = showBack || showProgress || showBanner;
 
   return (
     <>
-      {/* The header stays put while the body scrolls (the make and model lists are long on a phone). */}
       {showHeader ? (
         <div className="ac-iq__h">
           <div className="ac-iq__bar">
@@ -268,11 +233,6 @@ export function InquiryQuiz({
             ) : (
               <span className="ac-iq__sp" />
             )}
-            {onClose ? (
-              <IconButton label="Затворете" onClick={onClose}>
-                <CloseIcon />
-              </IconButton>
-            ) : null}
           </div>
 
           {/* The car the inquiry is about (prefill only). */}
@@ -294,54 +254,14 @@ export function InquiryQuiz({
       ) : null}
 
       <div className="ac-iq__b">
-        {/* Start screen (the dialog only) */}
-        {screen === "start" && (
-          <div className="ac-iqs">
-            {/* Dimensions come from INQUIRY_LOGO so they track the file's real 758×497
-                ratio — see the constant for why a wrong ratio resizes this box on load.
-                The element only exists once the modal opens, so it is fetched eagerly at
-                high priority rather than lazily; InquiryProvider has usually already
-                warmed it during idle, making this a cache hit. Next 16's `preload` prop
-                is deliberately NOT used: it inserts a <head> link, useless for an element
-                that does not exist until open, and the docs say not to pair it with
-                `fetchPriority`. */}
-            <Image
-              src={INQUIRY_LOGO.src}
-              alt="SelectAuto"
-              width={INQUIRY_LOGO.width}
-              height={INQUIRY_LOGO.height}
-              unoptimized
-              loading="eager"
-              fetchPriority="high"
-            />
-            <h2 className="ac-iqs__t">Безплатна консултация</h2>
-            <p>
-              SelectAuto е вашият надежден партньор при избора, закупуването и доставката на мечтания автомобил от
-              Корея, САЩ и Канада.
-            </p>
-            <Button
-              variant="pri"
-              size="xl"
-              block
-              onClick={() => {
-                interacted.current = true;
-                setScreen("quiz");
-              }}
-            >
-              Започнете консултация
-            </Button>
-          </div>
-        )}
-
-        {/* Quiz */}
-        {screen === "quiz" && step === 0 && (
+        {step === 0 && (
           <QuizStep title="Търсите ли конкретен модел?">
             <QuizOption onClick={() => pick("specific_model", "Да")}>Да</QuizOption>
             <QuizOption onClick={() => pick("specific_model", "Не", true)}>Не</QuizOption>
           </QuizStep>
         )}
 
-        {screen === "quiz" && step === 1 && (
+        {step === 1 && (
           <QuizStep title="Изберете марка" list="makes">
             {Object.keys(INQUIRY_BRANDS).map((brand) => (
               <QuizOption
@@ -356,7 +276,7 @@ export function InquiryQuiz({
           </QuizStep>
         )}
 
-        {screen === "quiz" && step === 2 && (
+        {step === 2 && (
           <QuizStep title="Изберете модел" list="models">
             {(data.brand ? INQUIRY_BRANDS[data.brand] : []).map((model) => (
               <QuizOption key={model} kind="model" onClick={() => pick("model", model)}>
@@ -366,7 +286,7 @@ export function InquiryQuiz({
           </QuizStep>
         )}
 
-        {screen === "quiz" && step === 3 && (
+        {step === 3 && (
           <QuizStep title="Бюджет?">
             {INQUIRY_BUDGETS.map((b) => (
               <QuizOption key={b} onClick={() => pick("budget", b)}>
@@ -376,7 +296,7 @@ export function InquiryQuiz({
           </QuizStep>
         )}
 
-        {screen === "quiz" && step === 4 && (
+        {step === 4 && (
           <QuizStep title="До колко време искате да закупите автомобил?">
             {INQUIRY_TIMES.map((t) => (
               <QuizOption key={t} onClick={() => pick("time", t)}>
@@ -386,7 +306,7 @@ export function InquiryQuiz({
           </QuizStep>
         )}
 
-        {screen === "quiz" && step === 5 && (
+        {step === 5 && (
           <QuizStep title="Как ще финансирате автомобила?">
             {INQUIRY_FINANCE.map((f) => (
               <QuizOption key={f} onClick={() => pick("finance", f)}>
@@ -433,18 +353,16 @@ export function InquiryQuiz({
           ))}
 
         {/* Step 7 — the thank-you */}
-        {screen === "quiz" && step === SENT_STEP && (
+        {step === SENT_STEP && (
           <div className="ac-iqok animate-[saFadeIn_0.28s_ease] motion-reduce:animate-none" role="status">
             <span className="ac-iqok__ic" aria-hidden="true">
               <CheckIcon />
             </span>
             <h2>Благодарим!</h2>
             <p>Вашата заявка е приета. Ще се свържем с вас скоро.</p>
-            {variant === "page" ? (
-              <LinkButton href="/vsichki-avtomobili" variant="sec" size="lg">
-                Разгледайте автомобили
-              </LinkButton>
-            ) : null}
+            <LinkButton href="/vsichki-avtomobili" variant="sec" size="lg">
+              Разгледайте автомобили
+            </LinkButton>
           </div>
         )}
       </div>

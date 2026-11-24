@@ -4,11 +4,11 @@ import type { ReactNode } from "react";
 import { RememberAuthMethod } from "@/components/auth";
 import { SiteToaster } from "@/components/layout/site-toaster";
 import { FavoritesProvider } from "@/contexts/favorites-context";
-import { InquiryProvider } from "@/contexts/inquiry-context";
 
 /**
  * Composes all client-side context providers mounted once at the root layout:
- * the inquiry modal + the favourites state. New providers nest here so
+ * the favourites state (the inquiry modal's provider went with the modal: every
+ * „Запитване" is a link to /zapitvane now, owner decision 41). New providers nest here so
  * `layout.tsx` stays a single `<Providers>` wrap — the same pattern as the
  * ecommerce-store reference app.
  *
@@ -31,7 +31,7 @@ import { InquiryProvider } from "@/contexts/inquiry-context";
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <FavoritesProvider>
-      <InquiryProvider>{children}</InquiryProvider>
+      {children}
 
       <RememberAuthMethod />
 

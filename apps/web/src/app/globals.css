@@ -33,8 +33,8 @@ body {
 }
 
 /*
-  Reserve the scrollbar gutter permanently. When the mobile drawer or the
-  inquiry modal locks the page (body { overflow: hidden }), the scrollbar would
+  Reserve the scrollbar gutter permanently. When the mobile drawer or a
+  dialog locks the page (body { overflow: hidden }), the scrollbar would
   otherwise vanish, widen the viewport by its width, and re-center the fixed
   header — a visible sideways "jump". Reserving the gutter keeps the layout
   stable across the lock. Classic-scrollbar browsers only; no-op for overlay

@@ -31,3 +31,17 @@
 | 14 | No Viber invite on this page: it appeared over the card's step bar and first answers as the card came up after the first answer. „Обратно нагоре" stays; the invite stays on every other page | none drawn | Settled while building (decision 40's notes) |
 | 15 | Metadata: „Безплатна консултация \| SelectAuto", a description, the canonical without the ad tags, the share card; in the sitemap; static (prerendered) | — | New text for the owner |
 | 16 | The admin's lead details (all three inboxes) show „Източник" (`utm_source · utm_medium`, else „Google Ads" for gclid/gbraid/wbraid, „Facebook" for fbclid) and „Кампания" (`utm_campaign`), above „Страница" | `ad-inquiries-drawer` | Decision 40 |
+
+## Decision 41: the page replaces the dialog (24 November 2026)
+
+Walked on a local build with POST /api/inquiry mocked: the header's „Запитване", /kontakti's „Започнете консултация",
+the home hero's and the phone menu's „Направете запитване", the Korea hub's button, and a car's „Направете заявка".
+
+| # | What the page does | On the board | Outcome |
+|---|---|---|---|
+| 17 | Every „Запитване", „Направете запитване" and „Направете заявка" is a link to /zapitvane; the browser's Back returns | `ac-zap-st` 14 | Owner decision 41 |
+| 18 | A car's link carries the car in the address's fragment (`#make=…&model=…&car=…&lot=…&logo=…&from=…`), never in the query, so the page stays static and no crawler meets a variant | — | Owner decision 41 (lib/inquiry-link.ts, with tests) |
+| 19 | From a car: „Стъпка 1 от 4", the banner with the make's plate, the car and „· Лот №", the budget first, „Назад" never before it, „Бюджет?" focused, and on a phone the card under the top bar | `ac-zap-st` 17–18, `ac-zap-flow2` 10–11, `cd-f-inquiry`, `cd-f-inquiry-d` | — |
+| 20 | The inquiry from a car records the car's page (`/avtomobil/<id>`) as its page, as the dialog's did | — | Kept |
+| 21 | A forged fragment can't put anything on the page: only the site's own logo files and car pages pass, malformed labels go missing (a make or model missing means no car) | — | — |
+| 22 | A page opened straight from a car link shows the first question until its script runs, then the budget with the banner | — | Accepted (a shared link only; a link from the site switches before the first paint) |

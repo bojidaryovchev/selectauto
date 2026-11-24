@@ -8,8 +8,8 @@ import { initBotId } from "botid/client/core";
  *
  * `protect` lists the high-value, unauthenticated lead endpoints — all POST, all
  * `fetch`-based (BotID does NOT work with native `<form action>` submits). Each is
- * a fixed API route rather than a server action *on purpose*: the inquiry modal and
- * the calculator offer form are mounted on many/all pages, so as server actions
+ * a fixed API route rather than a server action *on purpose*: the inquiry quiz (a
+ * site-wide modal until decision 41) and the calculator offer form are mounted on many pages, so as server actions
  * they POSTed to the current page URL and had no single path to protect. Routing
  * them through /api/inquiry and /api/calculator-offer (mirroring the existing
  * /api/carfax-request pattern) gives BotID a stable target.

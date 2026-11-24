@@ -4,11 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Button, IconButton, LinkButton, Logo, ThemeSwitch } from "@/components/common";
+import { IconButton, LinkButton, Logo, ThemeSwitch } from "@/components/common";
 import { UserMenu } from "@/components/auth";
 import { ChevronDownIcon, ChevronRightIcon, CloseIcon } from "@/components/icons";
 import { NAV } from "@/data/navigation";
-import { useInquiry } from "@/contexts/inquiry-context";
+import { InquiryButton } from "@/components/inquiry/inquiry-button";
 import { useHasPainted } from "@/lib/after-first-paint";
 import { DrawerProfilePanel } from "./drawer-profile-panel";
 import { HeaderDropdown } from "./header-dropdown";
@@ -29,7 +29,6 @@ import { MobileBottomNav } from "./mobile-bottom-nav";
  * While they're hidden, `<html>` carries `data-bars-hidden`.
  */
 export function SiteHeader() {
-  const { open: openInquiry } = useInquiry();
   // Auth.js session state. `status` is "loading" until the SessionProvider resolves; meanwhile the account control is
   // a placeholder of its size, so a signed-in visitor never sees „Вход" flash.
   const { data: session, status } = useSession();
@@ -212,9 +211,9 @@ export function SiteHeader() {
                   Вход
                 </LinkButton>
               )}
-              <Button variant="pri" size="md" onClick={() => openInquiry()}>
+              <InquiryButton variant="pri" size="md">
                 Запитване
-              </Button>
+              </InquiryButton>
             </div>
           </div>
         </div>
@@ -323,16 +322,9 @@ export function SiteHeader() {
         </nav>
 
         <div className="sa-drawer__f pb-[calc(20px+env(safe-area-inset-bottom))]">
-          <Button
-            variant="pri"
-            block
-            onClick={() => {
-              closeDrawer();
-              openInquiry();
-            }}
-          >
+          <InquiryButton variant="pri" block onClick={closeDrawer}>
             Направете запитване
-          </Button>
+          </InquiryButton>
           {status === "loading" ? (
             <span className="sa-sk block h-12 rounded-md" aria-hidden="true" />
           ) : isSignedIn ? (

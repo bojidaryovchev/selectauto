@@ -1,48 +1,55 @@
 "use client";
 
-import { Button } from "@/components/common";
+import type { MouseEvent, ReactNode } from "react";
+import { LinkButton } from "@/components/common";
 import type { ButtonStyleProps } from "@/components/common";
-import { useInquiry } from "@/contexts/inquiry-context";
+import { INQUIRY_PATH, INQUIRY_REVEAL_EVENT, inquiryHref } from "@/lib/inquiry-link";
 import type { InquiryPrefill } from "@/types";
 
 /**
- * Thin client wrapper around a button that opens the site-wide inquiry modal.
- * Lets server components (homepage, footer, contacts page) drop in a "Запитване"
- * trigger without becoming client components themselves.
+ * Every „Запитване" on the site: a link to the /zapitvane page, where the quiz lives (owner decision 41). Server
+ * components (homepage, footer, hubs, contacts) drop it in as they did the dialog's button.
  *
- * Pass a `variant` (and `size`, `block`) for a „Нощно шосе" button; without one it
- * keeps the legacy look, styled by `className`, until its page is rebuilt.
- *
- * Pass `prefill` (from a car page) to open the quiz pre-answered for that car —
- * the brand/model steps are skipped and the modal starts at the budget step.
+ * Pass `prefill` (from a car page) and the link carries the car (lib/inquiry-link.ts): the page opens at the budget
+ * step with the car's banner. On /zapitvane itself a plain one doesn't navigate: the page's card comes into view and its
+ * question takes the focus (InquiryPageQuiz). `onClick` runs first (the phone menu closes itself with it).
  */
 export function InquiryButton({
   className,
   children,
   rippleTheme,
   prefill,
+  onClick,
   variant,
   size,
   block,
 }: {
   className?: string;
-  children: React.ReactNode;
-  /** Forwarded to the underlying Button's legacy look — set "light" on dark/brand surfaces. */
+  children: ReactNode;
+  /** Forwarded to the underlying link's legacy look — set "light" on dark/brand surfaces. */
   rippleTheme?: "dark" | "light";
-  /** Car context to pre-answer the quiz with (brand/model). Omit for the generic flow. */
+  /** Car context to pre-answer the quiz with (brand/model). Omit for the quiz from the start. */
   prefill?: InquiryPrefill;
+  onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
 } & ButtonStyleProps) {
-  const { open } = useInquiry();
+  const href = inquiryHref(prefill);
   return (
-    <Button
-      onClick={() => open(prefill)}
+    <LinkButton
+      href={href}
       className={className}
       rippleTheme={rippleTheme}
       variant={variant}
       size={size}
       block={block}
+      onClick={(event) => {
+        onClick?.(event);
+        if (href === INQUIRY_PATH && window.location.pathname === INQUIRY_PATH) {
+          event.preventDefault();
+          window.dispatchEvent(new Event(INQUIRY_REVEAL_EVENT));
+        }
+      }}
     >
       {children}
-    </Button>
+    </LinkButton>
   );
 }
