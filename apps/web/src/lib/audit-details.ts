@@ -116,6 +116,7 @@ const KEY_LABELS: Record<string, string> = {
   reportId: "Отчет в AuctionsAPI №",
   balanceAfterUsd: "Остатък в AuctionsAPI (USD)",
   carfaxRequestId: "Carfax запитване №",
+  threadId: "Разговор в Поща №",
 };
 
 /** Internal ids and hashes — noise in a log read by people. */

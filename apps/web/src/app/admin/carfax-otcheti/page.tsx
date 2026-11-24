@@ -76,7 +76,7 @@ export default async function AdminVinReportsPage({ searchParams }: { searchPara
           key={`${prefill}:${lead?.id ?? ""}`}
           initialVin={prefill}
           initialCheck={initialCheck}
-          lead={lead ? { id: lead.id, name: lead.name } : null}
+          lead={lead ? { id: lead.id, name: lead.name, email: lead.email, vin: lead.vin } : null}
           balance={balance ? { availableUsd: balance.availableUsd, reports: balance.reports } : null}
         />
       </div>

@@ -31,6 +31,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   published: "Публикуване",
   purchased: "Купен отчет",
   purchase_unanswered: "Покупка без отговор",
+  sent_to_client: "Отчет изпратен на клиента",
 };
 
 export const AUDIT_ENTITY_LABELS: Record<string, string> = {

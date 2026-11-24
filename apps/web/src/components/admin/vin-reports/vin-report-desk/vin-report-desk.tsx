@@ -2,7 +2,7 @@
 
 import { ADMIN_INPUT, AdminBanner } from "@/components/admin/ui";
 import { Button, ConfirmDialog } from "@/components/common";
-import { AlertIcon, SearchIcon } from "@/components/icons";
+import { AlertIcon, SearchIcon, SendIcon } from "@/components/icons";
 import { VIN_REPORT_PROVIDER_LABEL } from "@/constants/vin-reports";
 import { formatUsd } from "@/lib/money";
 import { FREE_TEST_VIN, normalizeVin, REPORT_PROVIDERS, type ReportProvider } from "@/lib/vin-report-parse";
@@ -10,6 +10,7 @@ import { checkVinForReports, orderVinReport, type VinDeskCheck } from "@/mutatio
 import type { ActionResult } from "@/types/action-result.type";
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
+import { SendReportDialog } from "../send-report-dialog";
 import { VinReportFiles } from "../vin-report-files";
 import { ProviderBox } from "./provider-box";
 
@@ -36,8 +37,11 @@ export function VinReportDesk({
 }: {
   initialVin: string;
   initialCheck: ActionResult<VinDeskCheck> | null;
-  /** The Carfax lead the purchase is for (`?zayavka=`), which the report is linked to. */
-  lead: { id: number; name: string } | null;
+  /**
+   * The Carfax lead the purchase is for (`?zayavka=`), which the report is linked to. With an address that can take
+   * mail (`email`), a report bought for the lead's VIN can be e-mailed to the client right away.
+   */
+  lead: { id: number; name: string; email: string | null; vin: string } | null;
   balance: { availableUsd: number; reports: number } | null;
 }) {
   const router = useRouter();
@@ -52,7 +56,11 @@ export function VinReportDesk({
     htmlUrl: string;
     pdfUrl: string | null;
     balanceText: string | null;
+    /** The report's row, for „Изпратете на клиента"; null when it couldn't be read back. */
+    reportId: number | null;
   } | null>(null);
+  const [sendOpen, setSendOpen] = useState(false);
+  const [sentText, setSentText] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<ReportProvider | null>(null);
   const [buying, setBuying] = useState<ReportProvider | null>(null);
   const [checking, startCheck] = useTransition();
@@ -92,6 +100,7 @@ export function VinReportDesk({
     const label = VIN_REPORT_PROVIDER_LABEL[provider];
     setError(null);
     setBought(null);
+    setSentText(null);
     setBuying(provider);
     startOrder(async () => {
       try {
@@ -115,6 +124,7 @@ export function VinReportDesk({
                     ? ""
                     : `, стига за ${d.balanceAfterReports} ${reportsWord(d.balanceAfterReports)}`
                 }`,
+          reportId: d.report?.id ?? null,
         });
         const report = d.report;
         if (report) {
@@ -140,6 +150,15 @@ export function VinReportDesk({
     confirming && check ? check.reports.filter((r) => r.provider === confirming && r.status === "ready") : [];
   const hintId = `${uid}-hint`;
   const errId = `${uid}-err`;
+  // „Изпратете на клиента" only for a report of the lead's own VIN, with its PDF, to an address that takes mail.
+  const leadEmail = lead?.email ?? null;
+  const canSend =
+    lead !== null &&
+    leadEmail !== null &&
+    bought !== null &&
+    bought.reportId !== null &&
+    bought.pdfUrl !== null &&
+    normalizeVin(lead.vin) === bought.vin;
 
   const feedback =
     error || bought ? (
@@ -156,6 +175,16 @@ export function VinReportDesk({
               report={{ pdfUrl: bought.pdfUrl, htmlUrl: bought.htmlUrl, providerLabel: bought.label, vin: bought.vin }}
             />
             {bought.balanceText ? <p>Остатък в AuctionsAPI: {bought.balanceText}.</p> : null}
+            {sentText ? (
+              <p>
+                Изпратен на клиента ({leadEmail}) на {sentText}. Писмото е в Поща.
+              </p>
+            ) : canSend ? (
+              <Button variant="sec" size="md" className="mt-2" onClick={() => setSendOpen(true)}>
+                <SendIcon />
+                Изпратете на клиента
+              </Button>
+            ) : null}
           </AdminBanner>
         ) : null}
       </div>
@@ -315,6 +344,22 @@ export function VinReportDesk({
           ) : null
         }
       />
+
+      {sendOpen && canSend && bought && lead && leadEmail && bought.reportId !== null ? (
+        <SendReportDialog
+          open
+          onOpenChange={setSendOpen}
+          report={{ id: bought.reportId, providerLabel: bought.label, vin: bought.vin }}
+          lead={{ id: lead.id, name: lead.name, email: leadEmail }}
+          vehicle={check?.vehicle ?? null}
+          sentBefore={null}
+          onSent={(result) => {
+            setSendOpen(false);
+            setSentText(result.sentAtText);
+            router.refresh();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

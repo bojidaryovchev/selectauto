@@ -1,11 +1,19 @@
 import type { LeadStatus } from "@/constants/admin";
-import type { AdminDetailField, AdminLeadColumn, AdminLeadView, LeadMake, LeadMarket } from "@/types/admin.type";
+import type {
+  AdminDetailField,
+  AdminLeadColumn,
+  AdminLeadView,
+  LeadMake,
+  LeadMarket,
+  LeadVinReports,
+} from "@/types/admin.type";
 import type { CarfaxRequestRow } from "@/queries/admin/list-carfax-requests.query";
 import type { InquiryRow } from "@/queries/admin/list-inquiries.query";
 import type { CalculatorOfferRow } from "@/queries/admin/list-calculator-offers.query";
 import type { MakeLogoLookup } from "@/lib/make-logo-lookup";
 import { formatSofiaDateTime } from "@/lib/sofia-time";
 import { vinReportsHref } from "@/constants/vin-reports";
+import { leadEmailAddress } from "@/lib/vin-report-email";
 import type { VinReportView } from "@/types/vin-report.type";
 
 /**
@@ -88,14 +96,20 @@ function metaDetails(row: {
 }
 
 /**
- * `reports`: the Carfax / AutoCheck reports already bought for the lead's VIN (any lead's, or none), each a link to
- * its PDF. `canOrderReports`: the viewer holds `reports.order`, so the drawer links to /admin/carfax-otcheti with the
- * VIN checked and the purchase tied to this lead.
+ * The Carfax / AutoCheck box of the lead's drawer, when the viewer may buy reports (`reports.order`): `reports` are
+ * the ones bought for the lead's VIN (by anyone, for any lead), `sends` when each was e-mailed to THIS lead (keyed
+ * `${reportId}:${leadId}`), `vehicle` AuctionsAPI's name for the car (the e-mail's default text).
  */
+export type CarfaxReportsContext = {
+  reports: VinReportView[];
+  sends: Map<string, { sentAtText: string; threadId: number | null }>;
+  vehicle: string | null;
+};
+
 export function toCarfaxView(
   row: CarfaxRequestRow,
   logoFor: MakeLogoLookup,
-  { reports = [], canOrderReports = false }: { reports?: VinReportView[]; canOrderReports?: boolean } = {},
+  reportsContext: CarfaxReportsContext | null = null,
 ): AdminLeadView {
   const car = [row.carMake, row.carModel].filter(Boolean).join(" ") || dash;
   const make = makeOf(row.carMake, logoFor);
@@ -105,21 +119,6 @@ export function toCarfaxView(
   ];
   if (row.email) details.push({ label: "Имейл", value: row.email, href: `mailto:${row.email}` });
   details.push({ label: "VIN", value: row.vin, mono: true });
-  for (const report of reports.slice(0, 3)) {
-    const file = report.pdfUrl ?? report.htmlUrl;
-    details.push({
-      label: `Отчет ${report.providerLabel}`,
-      value: `${report.createdAtText} · ${report.status === "pending" ? "генерира се" : report.pdfUrl ? "PDF" : "HTML"}`,
-      href: file ?? undefined,
-    });
-  }
-  if (canOrderReports) {
-    details.push({
-      label: "Carfax / AutoCheck",
-      value: "Проверете VIN и купете отчет",
-      href: vinReportsHref(row.vin.trim().toUpperCase(), row.id),
-    });
-  }
   if (row.carMake) details.push({ label: "Марка", value: row.carMake, make });
   if (row.carModel) details.push({ label: "Модел", value: row.carModel });
   if (row.message) details.push({ label: "Съобщение", value: row.message });
@@ -135,6 +134,23 @@ export function toCarfaxView(
     details,
     amounts: [],
     meta: metaDetails(row),
+    vinReports: reportsContext ? carfaxReportsBox(row, reportsContext) : undefined,
+  };
+}
+
+function carfaxReportsBox(row: CarfaxRequestRow, ctx: CarfaxReportsContext): LeadVinReports {
+  const vin = row.vin.trim().toUpperCase();
+  return {
+    leadId: row.id,
+    name: row.fullName,
+    email: leadEmailAddress(row.email),
+    vin,
+    vehicle: ctx.vehicle ?? ([row.carMake, row.carModel].filter(Boolean).join(" ") || null),
+    checkHref: vinReportsHref(vin, row.id),
+    items: ctx.reports.map((report) => {
+      const sent = ctx.sends.get(`${report.id}:${row.id}`);
+      return { ...report, sentAtText: sent?.sentAtText ?? null, sentThreadId: sent?.threadId ?? null };
+    }),
   };
 }
 

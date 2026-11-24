@@ -9,7 +9,7 @@ import { getMakeLogoLookup } from "@/lib/make-logo-lookup";
 import { parseLeadFilters, type LeadSearchParams } from "@/lib/admin-lead-filters";
 import { syncVinReportHistory } from "@/lib/vin-report-history";
 import { listCarfaxRequests } from "@/queries/admin";
-import { listVinReportsForVins } from "@/queries/vin-reports";
+import { listCheckedVehicles, listVinReportSends, listVinReportsForVins } from "@/queries/vin-reports";
 
 export const metadata: Metadata = { title: LEAD_TYPE_META.carfax.label };
 
@@ -23,7 +23,8 @@ export const metadata: Metadata = { title: LEAD_TYPE_META.carfax.label };
  * require back-office access, which observers have too.
  *
  * Each lead's drawer lists the Carfax / AutoCheck reports already bought for its
- * VIN and links to /admin/carfax-otcheti to check and buy one. Reports bought
+ * VIN — each can be e-mailed to the client with its PDF, as a conversation in
+ * Поща — and links to /admin/carfax-otcheti to check and buy one. Reports bought
  * outside the admin reach it through the history import, run here after the
  * response (`after`, at most every 10 minutes) so it never slows the inbox.
  */
@@ -40,7 +41,14 @@ export default async function AdminCarfaxPage({
     getMakeLogoLookup(),
   ]);
   const canOrderReports = can(session, "reports.order");
-  const reports = canOrderReports ? await listVinReportsForVins(rows.map((r) => r.vin)) : new Map();
+  const vins = rows.map((r) => r.vin);
+  const [reports, sends, vehicles] = canOrderReports
+    ? await Promise.all([
+        listVinReportsForVins(vins),
+        listVinReportSends(rows.map((r) => r.id)),
+        listCheckedVehicles(vins),
+      ])
+    : [null, null, null];
   if (canOrderReports) {
     after(async () => {
       try {
@@ -57,9 +65,16 @@ export default async function AdminCarfaxPage({
       <LeadInbox
         basePath={LEAD_TYPE_META.carfax.href}
         columns={CARFAX_COLUMNS}
-        leads={rows.map((row) =>
-          toCarfaxView(row, logoFor, { reports: reports.get(row.vin.trim().toUpperCase()), canOrderReports }),
-        )}
+        leads={rows.map((row) => {
+          const vin = row.vin.trim().toUpperCase();
+          return toCarfaxView(
+            row,
+            logoFor,
+            reports && sends && vehicles
+              ? { reports: reports.get(vin) ?? [], sends, vehicle: vehicles.get(vin) ?? null }
+              : null,
+          );
+        })}
         page={page}
         pageCount={pageCount}
         total={total}

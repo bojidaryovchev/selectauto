@@ -9,6 +9,7 @@ import type { AdminDetailField, AdminLeadView } from "@/types/admin.type";
 import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Drawer } from "@base-ui/react/drawer";
 import { useState } from "react";
+import { LeadReportsBox } from "./lead-reports-box";
 import { LeadValue } from "./lead-value";
 import { NotesEditor } from "./notes-editor";
 import { StatusSelect } from "./status-select";
@@ -83,6 +84,8 @@ export function LeadDetailDrawer({
 
                 <div className="bo-dw__b overscroll-contain">
                   <FieldList fields={lead.details} />
+                  {/* A Carfax lead's reports: their files, „Изпратете на клиента", and the way to buy one. */}
+                  {lead.vinReports ? <LeadReportsBox data={lead.vinReports} /> : null}
                   {lead.amounts.length > 0 ? <FieldList fields={lead.amounts} amounts /> : null}
                   <FieldList fields={lead.meta} />
 

@@ -70,6 +70,24 @@ export async function fetchReportHistoryPage(page: number): Promise<HistoryPage>
   return parsed;
 }
 
+/** A report PDF is ~0.5 MB; Resend takes 40 MB per e-mail after Base64. Anything near this isn't a report. */
+const MAX_PDF_BYTES = 20 * 1024 * 1024;
+
+/**
+ * A report's PDF from AuctionsAPI's CDN, to attach to the e-mail to the client. Checked to be a PDF (its `%PDF-`
+ * signature) and of a sane size, so a dead link or an error page fails the send before anything goes out. Throws.
+ */
+export async function fetchReportPdf(pdfUrl: string): Promise<Buffer> {
+  const url = new URL(pdfUrl);
+  if (url.protocol !== "https:") throw new Error(`not https: ${url.protocol}`);
+  const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(30_000) });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const bytes = Buffer.from(await res.arrayBuffer());
+  if (bytes.length === 0 || bytes.length > MAX_PDF_BYTES) throw new Error(`size ${bytes.length}`);
+  if (bytes.subarray(0, 5).toString("latin1") !== "%PDF-") throw new Error("not a PDF");
+  return bytes;
+}
+
 /**
  * Buy one report — PAID. Never throws: a timeout or a network error is an `unknown` outcome, because AuctionsAPI may
  * still be generating (and charging for) the report it never answered about. `vin` must be validated already.
