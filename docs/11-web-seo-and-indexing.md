@@ -186,12 +186,18 @@ organic traffic (per `12-web-seo-strategy.md` §4.2/§4.3).
   only indexable hubs (same ≥3 threshold), ~96 brand + ~1047 model URLs.
 - **Static sitemap** — `/sitemap.xml` for the fixed pages.
 - **[`robots.ts`](../apps/web/src/app/robots.ts):** explicitly **allows** the major
-  AI crawlers (GPTBot, OAI-SearchBot, ChatGPT-User, ClaudeBot, Claude-Web,
-  PerplexityBot, Google-Extended, Applebot-Extended, CCBot); **disallows** `/api/`,
-  `/lyubimi` (favourites), the auth pages, and `?status=past`; and points at the two
-  remaining sitemaps (static + hubs). Since the listing chunks were retired it reads
-  nothing from the database, so robots.txt can no longer be degraded by a DB hiccup.
-  Keep the disallow set in sync with the page-level `robots` directives.
+  AI crawlers (GPTBot, OAI-SearchBot, ClaudeBot, Claude-SearchBot, PerplexityBot,
+  Google-Extended, Applebot-Extended, CCBot, Amazonbot, meta-externalagent, …) —
+  **except the car pages**: since 26.11.2026 those bulk crawlers are disallowed from
+  `/avtomobil/` and the filtered catalog (`/vsichki-avtomobili?`). The hubs, country
+  pages, blog and calculators — what gets the site cited — stay open; ~2.6 M car
+  pages answering 200 (most sold and noindexed) were most of what the site costs to
+  run. The user-triggered fetchers (ChatGPT-User, Claude-User, Perplexity-User) and
+  the search engines (`*`) are unrestricted. It **disallows** `/api/`, `/lyubimi`
+  (favourites) and the auth pages for everyone, and points at the two remaining
+  sitemaps (static + hubs). Since the listing chunks were retired it reads nothing
+  from the database, so robots.txt can no longer be degraded by a DB hiccup. Keep the
+  disallow set in sync with the page-level `robots` directives.
 
 ## 6. Structured data (JSON-LD)
 

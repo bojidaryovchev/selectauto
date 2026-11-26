@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/constants";
+import { robotsRules } from "@/lib/robots-rules";
 
 /**
  * robots.txt (generated). Strategy (see docs/12-web-seo-strategy.md §6 — GEO is an
@@ -10,6 +11,16 @@ import { SITE_URL } from "@/constants";
  *   Google-Extended, …). A bare `User-agent: *: Allow: /` already permits them,
  *   but naming them documents intent and survives any future tightening of the
  *   wildcard rule. We WANT to be cited in AI Overviews / ChatGPT / Perplexity.
+ * - **…but keep the bulk AI crawlers off the car pages** (`/avtomobil/`, plus the
+ *   filtered catalog URLs) since 2026-11-26. What gets the site cited is the
+ *   durable content — the make/model hubs, the country pages, the blog, the
+ *   calculators — and that stays open to them. A single listing is gone within
+ *   days, and there are ~2.6 M of them answering 200 (970 k active + 1.66 M sold
+ *   within 90 days, noindexed): crawling them is ~all of what the site costs to run
+ *   (crawlers ≈ 99 % of requests; each car page is rendered on demand with several
+ *   database reads). The USER-triggered fetchers (ChatGPT-User, Perplexity-User,
+ *   Claude-User) stay unrestricted: they fetch one page because a person asked.
+ *   Search engines are unaffected — the `*` group is unchanged.
  * - **Disallow private / non-indexable surfaces**: the favourites list and the
  *   auth/account pages (sign-in, registration, password reset, email verify —
  *   all also `noindex` at the page level; robots + meta is belt & suspenders).
@@ -50,33 +61,7 @@ import { SITE_URL } from "@/constants";
  * `robots` directives in the route files.
  */
 
-const AI_CRAWLERS = [
-  "GPTBot", // OpenAI training
-  "OAI-SearchBot", // OpenAI search
-  "ChatGPT-User", // ChatGPT browsing on a user's behalf
-  "ClaudeBot", // Anthropic training/crawl
-  "Claude-Web", // Anthropic user-facing fetch
-  "anthropic-ai", // legacy Anthropic UA
-  "PerplexityBot", // Perplexity index
-  "Perplexity-User", // Perplexity user fetch
-  "Google-Extended", // Gemini / Vertex training (separate from Googlebot)
-  "Applebot-Extended", // Apple Intelligence training
-  "CCBot", // Common Crawl (feeds many LLMs)
-];
-
-// Auth/account + private surfaces (also noindex per-page). Auth routes per the
-// Auth.js v5 migration: /sign-in, /registratsiya, /verify, /zabravena-parola,
-// /nova-parola. /api/auth is the NextAuth handler.
-const DISALLOW = [
-  "/api/",
-  "/admin", // owner back office (also noindex via admin/layout; proxy-gated)
-  "/lyubimi",
-  "/sign-in",
-  "/registratsiya",
-  "/verify",
-  "/zabravena-parola",
-  "/nova-parola",
-];
+// The groups and their user-agent lists live in lib/robots-rules.ts (tested by tests/robots.test.mts).
 
 export default function robots(): MetadataRoute.Robots {
   const sitemaps = [
@@ -87,10 +72,7 @@ export default function robots(): MetadataRoute.Robots {
   ];
 
   return {
-    rules: [
-      { userAgent: "*", allow: "/", disallow: DISALLOW },
-      ...AI_CRAWLERS.map((userAgent) => ({ userAgent, allow: "/", disallow: DISALLOW })),
-    ],
+    rules: robotsRules(),
     sitemap: sitemaps,
     host: SITE_URL,
   };
