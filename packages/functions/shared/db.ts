@@ -203,13 +203,41 @@ export async function fetchCarIdsAfter(afterId: number, limit: number): Promise<
  *    pattern — see db/backfill-*.mjs and migration 0013).
  * ======================================================================== */
 
-/** Rows per INSERT statement — keeps one statement's payload modest while still
- *  collapsing a 1000-car page from ~2000 round trips to ~a dozen. */
+/** Rows per INSERT statement, at most — keeps one statement's payload modest while
+ *  still collapsing a 1000-car page from ~2000 round trips to ~a dozen. */
 const UPSERT_CHUNK = 250;
 
-function chunk<T>(items: T[], size: number): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+/**
+ * …and at most this many bytes of JSON per statement. `jsonb_array_elements($1)`
+ * buffers its whole result, and past `work_mem` (Neon's default 4 MB) the buffer
+ * goes to a temp file. Lots are the heavy side: a 250-lot Encar chunk is ~6.7 MB of
+ * JSON and spilled 901 temp blocks in EXPLAIN ANALYZE (26.11.2026) — the select-list
+ * form of the call spills the same — so each hourly sync wrote and re-read ~1 GB of
+ * temp files (434 GB since the 4 Nov restart). 3 MB of UTF-8 stays under the limit.
+ */
+const UPSERT_CHUNK_BYTES = 3_000_000;
+
+/**
+ * Serialize rows into JSON-array parameters of at most `maxCount` rows and
+ * `maxBytes` UTF-8 bytes each (a single row larger than the cap goes alone). Each
+ * row is serialized once; the result is ready to pass as the `$1::jsonb` parameter.
+ */
+function jsonChunks(rows: unknown[], maxCount = UPSERT_CHUNK, maxBytes = UPSERT_CHUNK_BYTES): string[] {
+  const out: string[] = [];
+  let part: string[] = [];
+  let bytes = 2; // the enclosing [ ]
+  for (const row of rows) {
+    const json = JSON.stringify(row);
+    const size = Buffer.byteLength(json, "utf8") + 1; // + the separating comma
+    if (part.length > 0 && (part.length >= maxCount || bytes + size > maxBytes)) {
+      out.push(`[${part.join(",")}]`);
+      part = [];
+      bytes = 2;
+    }
+    part.push(json);
+    bytes += size;
+  }
+  if (part.length > 0) out.push(`[${part.join(",")}]`);
   return out;
 }
 
@@ -292,6 +320,58 @@ const lotFingerprint = (col: string): string => `(
 const LOT_PAYLOAD_CHANGED = `${lotFingerprint("auction_lots.raw_json")}
           IS DISTINCT FROM ${lotFingerprint("EXCLUDED.raw_json")}`;
 
+/*
+ * ENCAR LOTS: THE DOLLAR PRICE MOVES WITH THE EXCHANGE RATE (added 2026-11-26).
+ *
+ * Encar sells in won. The lot's `details.original_price` is the KRW listing price,
+ * and `buy_now` is AuctionsAPI's USD conversion of it at the moment it re-crawls the
+ * lot (original_price / buy_now ≈ 1,343 on 26.11.2026, the KRW/USD rate). So every
+ * re-crawl after the rate moved changes `buy_now` by a fraction of a percent with
+ * nothing about the car changed — and that one number defeated the fingerprint
+ * above. Measured on production: 86.5 % of active Encar lots were rewritten within
+ * 24 h; across one hourly sync, 14 of the 18 rewritten lots in a 300-lot sample had
+ * the SAME won price and a dollar price that moved ~0.1 % (the other 4 were real
+ * price changes, where both moved together). Each such rewrite re-TOASTs ~10–27 KB
+ * of payload and recomputes both projections for the car.
+ *
+ * For Encar the test therefore leaves `buy_now` out of the payload comparison (a
+ * real price change still shows, as `details.original_price`) and rewrites the lot
+ * when anything else changed or when the dollar price drifted more than
+ * ENCAR_PRICE_TOLERANCE from the stored one. The stored dollar price is thus at
+ * most 1 % off AuctionsAPI's latest conversion, and catches up in one write when
+ * the rate has moved further.
+ *
+ * Deliberately NOT stripped: the re-check stamps on `details.encar_diagnosis`
+ * (observed_at, 1 of the 18 rewrites above). A nested `#-` path raises "path element
+ * … is not an integer" as soon as one level is an array instead of an object, and one
+ * such payload would fail the whole page — not worth ~5 % of the Encar writes.
+ *
+ * Active path only: /archived-lots sends prices in another shape, and archived
+ * Encar lots barely change (~1 % a day).
+ */
+const ENCAR_PRICE_TOLERANCE = 0.01;
+
+/** lotFingerprint for an Encar lot on the /cars path: also without `buy_now` (a top-level key, so `-` is safe). */
+const encarFingerprint = (col: string): string => `(
+        CASE WHEN ${col} IS NULL OR jsonb_typeof(${col}) <> 'object' THEN ${col} ELSE
+          (${col} - 'updated_at' - 'created_at' - 'bid_updated_at'
+                  - 'buy_now_updated_at' - 'final_bid_updated_at' - 'sale_date_updated_at'
+                  - 'buy_now')
+        END)`;
+
+/** The dollar price moved past the tolerance, or appeared / disappeared. */
+const ENCAR_PRICE_MOVED = `(
+          (auction_lots.buy_now_price IS NULL) <> (EXCLUDED.buy_now_price IS NULL)
+          OR abs(EXCLUDED.buy_now_price - auction_lots.buy_now_price)
+             > ${ENCAR_PRICE_TOLERANCE} * abs(auction_lots.buy_now_price))`;
+
+/** The /cars-path payload test: Encar's exchange-rate drift ignored up to the tolerance, every other source as before. */
+const ACTIVE_LOT_PAYLOAD_CHANGED = `(CASE WHEN EXCLUDED.domain_name = 'encar_com'
+          THEN ${encarFingerprint("auction_lots.raw_json")} IS DISTINCT FROM ${encarFingerprint("EXCLUDED.raw_json")}
+               OR ${ENCAR_PRICE_MOVED}
+          ELSE ${LOT_PAYLOAD_CHANGED}
+        END)`;
+
 /** Rows-written vs rows-skipped accounting for one page. */
 export interface UpsertPageResult {
   /** auction_lots rows actually inserted or updated. */
@@ -343,7 +423,7 @@ export async function upsertCarsAndLots(rawCars: ApiCar[]): Promise<UpsertPageRe
     const cars = [...carsByExternalId.values()];
 
     let carsWritten = 0;
-    for (const part of chunk(cars, UPSERT_CHUNK)) {
+    for (const part of jsonChunks(cars)) {
       const res = await client.query<{ id: number }>(
         `INSERT INTO cars
            (external_car_id, vin, title, year, manufacturer_id, model_id, generation_id,
@@ -376,7 +456,7 @@ export async function upsertCarsAndLots(rawCars: ApiCar[]): Promise<UpsertPageRe
          -- this single comparison is exactly "did anything about this car change".
          WHERE cars.raw_json IS DISTINCT FROM EXCLUDED.raw_json
          RETURNING id`,
-        [JSON.stringify(part)],
+        [part],
       );
       carsWritten += res.rowCount ?? 0;
       // RETURNING only yields rows that were actually inserted/updated — precisely
@@ -417,7 +497,7 @@ export async function upsertCarsAndLots(rawCars: ApiCar[]): Promise<UpsertPageRe
     const lots = [...lotsByKey.values()];
 
     let lotsWritten = 0;
-    for (const part of chunk(lots, UPSERT_CHUNK)) {
+    for (const part of jsonChunks(lots)) {
       const res = await client.query<{ car_id: number | null }>(
         `INSERT INTO auction_lots
            (external_lot_id, car_id, lot_number, domain_id, domain_name, status, sale_date,
@@ -468,14 +548,16 @@ export async function upsertCarsAndLots(rawCars: ApiCar[]): Promise<UpsertPageRe
          -- Fire only on a real change. The payload fingerprint covers every column
          -- derived from raw_json while ignoring upstream's re-crawl timestamps
          -- (see lotFingerprint — comparing the raw blob made this guard fire on
-         -- ~89% of rows that had not actually changed). The other two terms cover
-         -- what is NOT derived from the payload: the local car_id linkage, and an
-         -- archived flag that archiveLots may have flipped independently.
-         WHERE ${LOT_PAYLOAD_CHANGED}
+         -- ~89% of rows that had not actually changed) and, for Encar, the dollar
+         -- price's exchange-rate drift up to 1 % (see ENCAR_PRICE_TOLERANCE). The
+         -- other two terms cover what is NOT derived from the payload: the local
+         -- car_id linkage, and an archived flag that archiveLots may have flipped
+         -- independently.
+         WHERE ${ACTIVE_LOT_PAYLOAD_CHANGED}
             OR auction_lots.car_id IS DISTINCT FROM COALESCE(EXCLUDED.car_id, auction_lots.car_id)
             OR auction_lots.archived IS DISTINCT FROM EXCLUDED.archived
          RETURNING car_id`,
-        [JSON.stringify(part)],
+        [part],
       );
       lotsWritten += res.rowCount ?? 0;
       for (const r of res.rows) if (typeof r.car_id === "number") touchedCarIds.add(r.car_id);
@@ -535,7 +617,7 @@ export async function archiveLots(rawLots: ApiArchivedLot[]): Promise<number> {
     }
     const lots = [...byKey.values()];
 
-    for (const part of chunk(lots, UPSERT_CHUNK)) {
+    for (const part of jsonChunks(lots)) {
       // The archived-lots payload carries the AuctionsAPI external car id
       // (externalCarId). Our auction_lots.car_id is a LOCAL FK to cars.id, so we
       // resolve it with a LEFT JOIN on cars.external_car_id (unique, so the join
@@ -577,7 +659,7 @@ export async function archiveLots(rawLots: ApiArchivedLot[]): Promise<number> {
             OR ${LOT_PAYLOAD_CHANGED}
             OR auction_lots.car_id IS DISTINCT FROM COALESCE(EXCLUDED.car_id, auction_lots.car_id)
          RETURNING car_id`,
-        [JSON.stringify(part)],
+        [part],
       );
       archived += res.rowCount ?? 0;
       // The archived lot's car (if linked) may need its card promoted or removed.
@@ -617,7 +699,10 @@ export async function upsertManufacturer(row: {
        image_url = EXCLUDED.image_url,
        cars_qty = EXCLUDED.cars_qty,
        raw_json = EXCLUDED.raw_json,
-       updated_at = now()`,
+       updated_at = now()
+     -- Only on a real change: the daily reference sync re-sends every row.
+     WHERE (manufacturers.name, manufacturers.image_url, manufacturers.cars_qty, manufacturers.raw_json)
+           IS DISTINCT FROM (EXCLUDED.name, EXCLUDED.image_url, EXCLUDED.cars_qty, EXCLUDED.raw_json)`,
     [row.externalId, row.name, row.imageUrl, row.carsQty, row.rawJson],
   );
 }
@@ -641,7 +726,12 @@ export async function upsertModel(row: {
        image_url = EXCLUDED.image_url,
        cars_qty = EXCLUDED.cars_qty,
        raw_json = EXCLUDED.raw_json,
-       updated_at = now()`,
+       updated_at = now()
+     -- Only on a real change: the daily reference sync re-sends every row.
+     WHERE (vehicle_models.manufacturer_external_id, vehicle_models.name, vehicle_models.image_url,
+            vehicle_models.cars_qty, vehicle_models.raw_json)
+           IS DISTINCT FROM (EXCLUDED.manufacturer_external_id, EXCLUDED.name, EXCLUDED.image_url,
+            EXCLUDED.cars_qty, EXCLUDED.raw_json)`,
     [row.externalId, row.manufacturerExternalId, row.name, row.imageUrl, row.carsQty, row.rawJson],
   );
 }
@@ -665,7 +755,12 @@ export async function upsertGeneration(row: {
        from_year = EXCLUDED.from_year,
        to_year = EXCLUDED.to_year,
        raw_json = EXCLUDED.raw_json,
-       updated_at = now()`,
+       updated_at = now()
+     -- Only on a real change: the daily reference sync re-sends every row.
+     WHERE (vehicle_generations.model_external_id, vehicle_generations.name, vehicle_generations.from_year,
+            vehicle_generations.to_year, vehicle_generations.raw_json)
+           IS DISTINCT FROM (EXCLUDED.model_external_id, EXCLUDED.name, EXCLUDED.from_year,
+            EXCLUDED.to_year, EXCLUDED.raw_json)`,
     [row.externalId, row.modelExternalId, row.name, row.fromYear, row.toYear, row.rawJson],
   );
 }
