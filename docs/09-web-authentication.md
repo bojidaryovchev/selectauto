@@ -59,7 +59,7 @@ flowchart TD
   sp -->|useSession| hdr["SiteHeader / UserMenu"]
   sp -.->|feeds| fav["FavoritesProvider (see doc 10)"]
   route["app/api/auth/[...nextauth]/route.ts"] -->|GET,POST| handlers["auth.ts → handlers"]
-  proxy["src/proxy.ts"] -->|authConfig only| session["session refresh (+ 410 for dead lots)"]
+  proxy["src/proxy.ts"] -->|authConfig only| session["410 for dead lots + /admin gate; session refresh when signed in"]
   forms["auth forms (client)"] -->|Server Actions| mut["mutations/auth/*"]
   mut -->|signIn / DB / bcrypt| authts["auth.ts + Neon"]
 ```
@@ -73,9 +73,13 @@ flowchart TD
   `/api/auth/*`. Node runtime by default (needed for bcrypt + the DB adapter); we do
   **not** set `export const runtime` because `cacheComponents` rejects route-segment
   runtime config.
-- **Proxy** ([`src/proxy.ts`](../apps/web/src/proxy.ts)) wraps `NextAuth(authConfig)` and just refreshes/propagates
-  the session (its other job is the SEO `410` for long-dead sold lots). No routes are
-  force-protected — `authorized()` returns `true` unconditionally.
+- **Proxy** ([`src/proxy.ts`](../apps/web/src/proxy.ts)) wraps `NextAuth(authConfig)`. It returns the SEO `410` for
+  long-dead sold lots and paid de-indexes on `/avtomobil/*`, gates `/admin/*`, and re-signs a signed-in visitor's
+  session cookie. `authorized()` returns `true` unconditionally, so no public route is force-protected. Since
+  2026-11-26 its matcher runs it on `/avtomobil/*` and `/admin/*` for everyone, and elsewhere only for requests that
+  carry an Auth.js session cookie: an anonymous request on any other path (most of the crawler traffic) never reaches
+  it, because the proxy did nothing there. The client's `SessionProvider` re-signs the cookie too, through
+  `/api/auth/session` on the full config. Pinned by `tests/proxy-matcher.test.mts`.
 
 ### 1c. Session callbacks & the `user.id`
 

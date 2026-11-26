@@ -25,7 +25,8 @@ import { isCarGone, parseAvtomobilId } from "@/lib/sold-lot-gone";
  * 3. **Auth.js session.** Everything else delegates to NextAuth (Google + JWT),
  *    using ONLY the `authConfig` instance (no Drizzle adapter / bcrypt). No public
  *    routes are force-protected — favourites are gated per-action — so this just
- *    refreshes/propagates the session.
+ *    re-signs a signed-in visitor's session cookie. Anonymous requests outside 1–2
+ *    don't reach the proxy at all (see `config` below).
  *
  * Runtime note: Next 16 runs proxy on the **Node.js runtime** (edge is not
  * supported and can't be configured — version-16 upgrade guide), so the 410 check's
@@ -81,11 +82,48 @@ export const proxy = auth(async (request) => {
   return NextResponse.next();
 });
 
+/**
+ * Where the proxy runs. Since 2026-11-26 an anonymous request (~99 % of traffic is crawlers) reaches it only where it
+ * does something; until then it ran on every page, API and metadata request, each a billed invocation:
+ *
+ *  - `/avtomobil/:path*` — the 410 check (1), for every visitor.
+ *  - `/admin/:path*` — the back-office gate (2).
+ *  - Every other path, minus `_next` and static files, ONLY with an Auth.js session cookie, so a signed-in visitor's
+ *    cookie is still re-signed on every request, as before (3). Without that cookie the proxy did nothing there:
+ *    `authorized()` returns true (auth.config.ts), and Auth.js's session action returns no cookie when there is no
+ *    token (@auth/core lib/actions/session.js).
+ *
+ * The cookie is `__Secure-authjs.session-token` over HTTPS and `authjs.session-token` over plain HTTP (a local
+ * `next start`). A token over ~4 KB is split into `<name>.0`, `<name>.1`, … (@auth/core lib/utils/cookie.js), so the
+ * first chunk is matched too. API routes authenticate themselves (docs/09-web-authentication.md), and a Server Action
+ * is a POST to its page's path, so it follows the same rules.
+ *
+ * Next reads this object at build time and accepts only literals (no shared constants), hence the repetition.
+ * tests/proxy-matcher.test.mts pins which requests match.
+ */
 export const config = {
   matcher: [
-    // Skip Next.js internals and all static files, unless found in search params.
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    // Always run for API routes.
-    "/(api|trpc)(.*)",
+    "/avtomobil/:path*",
+    "/admin/:path*",
+    {
+      source:
+        "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+      has: [{ type: "cookie", key: "__Secure-authjs.session-token" }],
+    },
+    {
+      source:
+        "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+      has: [{ type: "cookie", key: "__Secure-authjs.session-token.0" }],
+    },
+    {
+      source:
+        "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+      has: [{ type: "cookie", key: "authjs.session-token" }],
+    },
+    {
+      source:
+        "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+      has: [{ type: "cookie", key: "authjs.session-token.0" }],
+    },
   ],
 };
