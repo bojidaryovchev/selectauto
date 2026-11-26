@@ -1,28 +1,34 @@
 import { cacheLife, cacheTag } from "next/cache";
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, gte } from "drizzle-orm";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { getDb, schema } from "@/lib/db";
 
-const cla = schema.carListingsArchived;
+const sps = schema.soldPriceStats;
 
 /**
- * Real, per-year AVERAGE SOLD prices for a make/model, computed from our own
- * `car_listings_archived` (the concluded/sold read model). This is the honest,
- * dependency-free equivalent of AuctionsAPI's `/statistics` endpoint: we already
- * store the realized sale price (`effective_price` = "Продаден за") on every archived
- * lot, so the market benchmark comes from our DB with no runtime API call.
+ * Real, per-year AVERAGE SOLD prices for a make/model, from our own archive of
+ * concluded lots. This is the honest, dependency-free equivalent of AuctionsAPI's
+ * `/statistics` endpoint: we already store the realized sale price
+ * (`effective_price` = "Продаден за") on every archived lot, so the market
+ * benchmark comes from our DB with no runtime API call.
  *
  * `effective_price` carries junk low values (placeholder "$25" rows), so the AVERAGE
  * and COUNT are what we surface — a mean over hundreds of sales is robust to a few
- * outliers, whereas a raw min/max would show noise. Cheap: the (manufacturer_id,
- * model_id) predicate hits `cla_brand_model_sort`; a whole model's slice is a small
- * indexed scan (~250ms for the largest models). Fails closed so callers still render.
+ * outliers, whereas a raw min/max would show noise.
  *
- * Both functions are `"use cache"` + `cacheLife("days")` (tag `cars`): the args are
- * a small, stable make/model[/year] key, the output is shared across all visitors,
- * and realized-sale averages move only with the daily archive sync — the same
- * footing as the hub's other cached reads. A day-stale average over hundreds of
- * concluded sales is well within tolerance.
+ * Both read the precomputed `sold_price_stats` table (migration 0054), rebuilt
+ * daily from `car_listings_archived` by /api/cron/refresh-sold-price-stats. They
+ * used to aggregate the archive per request (9,445 buffers / 66 ms per car page and
+ * 24,959 buffers / 203 ms per hub for a Hyundai Tucson), and because the
+ * `"use cache"` below is per-instance memory on serverless they ran on almost
+ * every page view — most of the database's reads. Now each is one primary-key
+ * read. The numbers are the same ones the old queries computed (same filters:
+ * `effective_price > 0`, model years 1990–2027, `round(avg(...))`), at most a day
+ * old, which is the freshness the `cacheLife("days")` here always allowed.
+ *
+ * Both stay `"use cache"` + `cacheLife("days")` (tag `cars`): the args are a small,
+ * stable make/model[/year] key and the output is shared across all visitors.
+ * Fails closed so callers still render.
  */
 
 export type ModelYearPrice = {
@@ -49,28 +55,14 @@ export async function getModelSoldPricesByYear(brandId: number, modelId: number)
   cacheLife("days");
 
   try {
-    const db = getDb();
-    const rows = await db
-      .select({
-        year: sql<number>`${cla.carYear}::int`,
-        avg: sql<number>`round(avg(${cla.effectivePrice}))::int`,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(cla)
-      .where(
-        and(
-          eq(cla.manufacturerId, brandId),
-          eq(cla.modelId, modelId),
-          sql`${cla.effectivePrice} > 0`,
-          sql`${cla.carYear} between 1990 and 2027`,
-        ),
-      )
-      .groupBy(cla.carYear)
-      .having(sql`count(*) >= ${MIN_SALES_PER_YEAR}`)
-      .orderBy(sql`${cla.carYear} desc`)
+    const rows = await getDb()
+      .select({ year: sps.carYear, avg: sps.avgPrice, count: sps.n })
+      .from(sps)
+      .where(and(eq(sps.manufacturerId, brandId), eq(sps.modelId, modelId), gte(sps.n, MIN_SALES_PER_YEAR)))
+      .orderBy(desc(sps.carYear))
       .limit(MAX_YEARS);
 
-    return rows.filter((r) => r.year != null && r.avg != null);
+    return rows;
   } catch (error) {
     console.error("[get-model-sold-prices] byYear failed, returning []", error);
     return [];
@@ -93,23 +85,13 @@ export async function getModelYearSoldStat(
 
   if (!Number.isInteger(year) || year < 1990 || year > 2027) return null;
   try {
-    const db = getDb();
-    const rows = await db
-      .select({
-        avg: sql<number>`round(avg(${cla.effectivePrice}))::int`,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(cla)
-      .where(
-        and(
-          eq(cla.manufacturerId, brandId),
-          eq(cla.modelId, modelId),
-          eq(cla.carYear, year),
-          sql`${cla.effectivePrice} > 0`,
-        ),
-      );
+    const rows = await getDb()
+      .select({ avg: sps.avgPrice, count: sps.n })
+      .from(sps)
+      .where(and(eq(sps.manufacturerId, brandId), eq(sps.modelId, modelId), eq(sps.carYear, year)))
+      .limit(1);
     const r = rows[0];
-    if (!r || r.count < MIN_SALES_PER_YEAR || r.avg == null) return null;
+    if (!r || r.count < MIN_SALES_PER_YEAR) return null;
     return { avg: r.avg, count: r.count };
   } catch (error) {
     console.error("[get-model-sold-prices] yearStat failed, returning null", error);

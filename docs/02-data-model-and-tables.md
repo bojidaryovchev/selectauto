@@ -85,6 +85,7 @@ Added since 0026:
 | `mobilebg_brand_map` · `mobilebg_model_map` | 0047 | mobile.bg | brand/model matches confirmed in the publisher | `manufacturer_external_id` / `model_external_id` |
 | `mobilebg_adverts` | 0047 | mobile.bg | publish / correct / delete at /admin/mobile-bg | `car_id` |
 | `vin_reports` | 0053 | Carfax reports | bought at /admin/carfax-otcheti (AuctionsAPI, paid); reports bought elsewhere with the key imported from its history | `id` |
+| `sold_price_stats` | 0054 | Summary | `refresh_sold_price_stats()`, daily from /api/cron/refresh-sold-price-stats | `(manufacturer_id,model_id,car_year)` |
 
 ---
 
@@ -330,7 +331,8 @@ auction-result/price browsing.
 # D. Summary tables
 
 Two tiny **derived-from-the-projection** tables that make the catalog header and
-filter dropdowns O(1)/index-scan instead of full scans. Both use a deliberate
+filter dropdowns O(1)/index-scan instead of full scans (a third, `sold_price_stats`,
+is rebuilt daily instead — see its section below). Both use a deliberate
 **generic EAV shape** (`table_kind, dim, val[, val2], n`) so one table serves every
 broad count / every dropdown. Both are maintained **incrementally** by the same
 `recompute_*_counted` wrappers that maintain the projections — a **before/after
@@ -373,6 +375,20 @@ lot, so a denormalized name would go stale; the app resolves `val` (external id)
 name at read time via an `INNER JOIN` to `manufacturers`/`vehicle_models` (which
 also drops any nameless id). `getBrandModelHubs` and the sitemap hub queries read
 `dim='model'`/`'brand'` too.
+
+### `sold_price_stats` — average sale price per make × model × year (0054) · ~15 k rows
+PK `(manufacturer_id, model_id, car_year)` + `n int`, `avg_price int`, `updated_at`.
+
+Unlike the two above it is **rebuilt, not maintained incrementally**: once a day
+`refresh_sold_price_stats()` aggregates `car_listings_archived` (`effective_price > 0`,
+`car_year` 1990–2027; one sequential pass, ~1 s) and writes only the rows whose
+numbers changed. `getModelYearSoldStat` (the car page's „Средна продажна цена") and
+`getModelSoldPricesByYear` (the model hub's table) read it by primary key; both
+apply the „at least 3 sales" rule themselves (rows with `n < 3` are kept). Before
+0054 both aggregated the archive per page view — 9 445 buffers / 66 ms per car page
+and 24 959 / 203 ms per hub for a Hyundai Tucson, ~85 % of the database's block
+reads in November 2026. A day of staleness is what their `cacheLife("days")`
+always allowed.
 
 ---
 
@@ -618,6 +634,6 @@ safe. **Append-only and hand-run** (`pnpm migrate`) — not applied on deploy.
 | `0049_notice_note.sql` | `generated_documents.note` — the operator's internal note on a payment-notice version (never printed on the PDF). |
 | `0052_concluded_lots_leave_active.sql` | Both recompute functions go by the status: a concluded lot (`sold`/`not_sold`/`failed`) is never active, archived or not, and shows in the past view. `repair-concluded-active.mjs` moved the 125 277 cars it affected on 18.11.2026 (05 §3). |
 | `0053_vin_reports.sql` | `vin_reports` — Carfax/AutoCheck reports bought through AuctionsAPI (/admin/carfax-otcheti), with the 'pending' claim taken before the paid call (one per VIN and provider) and the reports bought elsewhere, imported from its history. |
-
+| `0054_sold_price_stats.sql` | `sold_price_stats` + `refresh_sold_price_stats()` — the average realized sale price per make × model × year, precomputed (the car-page benchmark and the hub table read it instead of aggregating the archive per request); filled once by the migration, then daily by the cron. |
 > Operational procedures (backfill, reseed, drift sweep, resume) →
 > [07-operations-runbook.md](07-operations-runbook.md).

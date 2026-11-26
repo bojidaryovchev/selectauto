@@ -21,6 +21,10 @@
     {
       "path": "/api/cron/purge-old-leads",
       "schedule": "0 4 1 * *"
+    },
+    {
+      "path": "/api/cron/refresh-sold-price-stats",
+      "schedule": "10 4 * * *"
     }
   ]
 }

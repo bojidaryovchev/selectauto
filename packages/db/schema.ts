@@ -777,6 +777,31 @@ export const carListingFacets = pgTable(
 );
 
 /**
+ * sold_price_stats — average realized sale price per make × model × year, over
+ * car_listings_archived rows with effective_price > 0 and car_year 1990–2027.
+ * The car page's market benchmark and the model hub's „продадени по години"
+ * table read it with one primary-key lookup instead of aggregating the archive
+ * on every page view (which was most of the database's reads). Rebuilt daily by
+ * refresh_sold_price_stats() from /api/cron/refresh-sold-price-stats. Rows with
+ * n < 3 are kept; the readers apply the „at least 3 sales" rule. Keep in sync
+ * with migrations/0054_sold_price_stats.sql.
+ */
+export const soldPriceStats = pgTable(
+  "sold_price_stats",
+  {
+    manufacturerId: bigint("manufacturer_id", { mode: "number" }).notNull(),
+    modelId: bigint("model_id", { mode: "number" }).notNull(),
+    carYear: integer("car_year").notNull(),
+    /** Number of concluded sales behind the average. */
+    n: integer("n").notNull(),
+    /** round(avg(effective_price)) in USD. */
+    avgPrice: integer("avg_price").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.manufacturerId, t.modelId, t.carYear] })],
+);
+
+/**
  * Contracts & payments module (техническо задание "договори и плащания" — see
  * docs/contracts-payments-plan.md and migrations/0038_contracts_payments.sql,
  * keep in sync). The contract is the single source of truth: client, car and
