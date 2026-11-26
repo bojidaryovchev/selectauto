@@ -12,8 +12,8 @@ import { getDb, schema } from "@/lib/db";
  * Mirrors `buildGallery` in lib/car-detail-mapper.ts: `images.downloaded` first
  * (stable CDN copies), then `images.normal` for the long tail, then the stored
  * `image_url` as a last resort. Deliberately NOT reusing `getCarDetail` — that
- * one is `"use cache: remote"` keyed per car across ~945k entries, and a photo
- * proxy hit has no business writing into it.
+ * builds the whole page payload (specs, prices, the related-cars pools), and a
+ * photo proxy hit needs only the image list.
  */
 
 export type CarGallery = {

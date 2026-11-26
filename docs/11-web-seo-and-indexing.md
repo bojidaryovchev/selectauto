@@ -100,11 +100,13 @@ timer, so it fires **within ~30s and regardless of archive age or active status*
 - **Second line of defence:** `getCarDetail` returns `null` for a de-indexed car, so
   even if the proxy is bypassed the route calls `notFound()`, which injects
   `noindex`. The proxy remains primary because only it can emit a real 410.
-- **Cache:** `getCarDetail` now also carries a per-car tag (`carCacheTag(id)`, see
-  [`lib/cache-tags.ts`](../apps/web/src/lib/cache-tags.ts)) so a single de-index can
-  be expired with `updateTag()` without discarding all ~945k detail entries and the
-  day-long sitemap cache. Note `revalidateTag(tag, "max")` is stale-while-revalidate
-  and would still serve the de-indexed car — use `updateTag`.
+- **Cache:** since 2026-11-26 `getCarDetail` reads the database on every request (no
+  cross-request cache), so a de-index shows on the next request. The desk and the
+  sweep still expire the per-car tag (`carCacheTag(id)`, see
+  [`lib/cache-tags.ts`](../apps/web/src/lib/cache-tags.ts)) along with `cars` and the
+  homepage tags, so a per-car cache added later stays covered. Note
+  `revalidateTag(tag, "max")` is stale-while-revalidate and would still serve the
+  de-indexed car — use `updateTag`.
 - **Verified 2026-08-14** against a live ACTIVE car: 200 → set flag → **410 +
   `x-robots-tag: noindex`** → clear flag → 200, with no cache lag (the proxy check was
   uncached then; it now reads a 30-second snapshot of de-indexed ids first, so a

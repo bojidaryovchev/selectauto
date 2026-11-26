@@ -14,20 +14,19 @@
  * The catalog FEED queries (page/count) are deliberately NOT `"use cache"`: their
  * keys are per-request-unique (filters × cursor) so an app cache would hit
  * near-zero, and they're already DB-cheap (keyset reads + the counts/facets summary
- * tables, migrations 0016/0017, ~40ms). Three runtime reads use `"use cache: remote"`
+ * tables, migrations 0016/0017, ~40ms). Two runtime reads use `"use cache: remote"`
  * instead — the Vercel Runtime Cache, shared across instances in the region; the
  * handler is provided automatically under `cacheComponents`, billed in 8 KB units
- * at ~$0.52/M read units + $5.20/M WRITE units in fra1, within the Pro credit:
- *   - `getCarDetail` (per-carId key, `cacheLife("hours")`, tag `cars` + `car-{id}`):
- *     the ~945k crawler-hammered detail pages each cost a multi-round-trip Neon
- *     read; a SHARED per-id store fits where the per-instance LRU couldn't. Hourly
- *     staleness is free — listings only change via the hourly ingestion sync.
+ * at ~$0.52/M read units + $5.20/M WRITE units in fra1:
  *   - `getRelatedPool` (per-model / per-brand key, `cacheLife("hours")`, tag
- *     `cars`): the detail page's "Подобни автомобили" carousel. Split OUT of the
- *     per-car entry above precisely because it does NOT vary per car — see below.
+ *     `cars`): the detail page's "Подобни автомобили" carousel. Its own entry
+ *     precisely because it does NOT vary per car — see get-car-detail.query.ts.
  *   - `computeCarFacets` (no key — one entry, `cacheLife("hours")`, tag `cars`):
  *     the global filter-dropdown base, 9 summary reads otherwise re-run per
  *     catalog request.
+ * The per-car `getCarDetail` is NOT cached across requests. It was remote-cached
+ * per car id until 2026-11-26, when 95 % of car-page requests were measured to miss
+ * it while every miss paid a write — see queries/cars/get-car-detail.query.ts.
  *
  * ⚠️ The Runtime Cache is NOT durable: Vercel's docs call it ephemeral, with a
  * fixed per-project storage limit and LRU eviction. WRITES cost 10× reads, so an
@@ -36,9 +35,8 @@
  * is therefore the design constraint: prefer the SMALLEST key that still gives a
  * correct answer, and keep per-key payloads lean, because every KB in a 945k-key
  * entry is multiplied by 945k. Read/write unit counts and the hit rate are visible
- * under Observability → Runtime Cache; if the per-car `getCarDetail` entry ever
- * shows writes outpacing reads, it belongs on plain `"use cache"` (or nothing) and
- * the work belongs back in the DB layer.
+ * under Observability → Runtime Cache. The per-car `getCarDetail` entry turned out
+ * to be exactly that treadmill, so it now reads the database directly.
  * Where an uncached read is used in BOTH `generateMetadata` and the page body —
  * `getCarDetail`, and `getCarsCount` via the hub pages' request-scoped loaders —
  * React `cache()` collapses it to a single read per request. See the Next caching
@@ -65,15 +63,14 @@
  */
 /**
  * Per-CAR tag, so a single car can be expired without blowing away every cached
- * car read. `CACHE_TAGS.cars` is carried by ~14 cached queries — including the
- * ~945k-key `getCarDetail` remote cache and the `cacheLife("days")` sitemap
- * chunks — so using it to hide ONE car (a paid de-index) would discard all of
- * them and re-earn the cost from the database.
- *
- * `getCarDetail` carries BOTH tags: the broad one keeps the existing site-wide
- * kill-switch working, the narrow one is what a single-car mutation should
- * expire. Expire it with `updateTag()`, NOT `revalidateTag(tag, "max")` — "max"
- * is stale-while-revalidate, so the next visitor would still be served the
+ * car read. No cached read carries it today: the per-car `getCarDetail` reads the
+ * database on every request (since 2026-11-26), so a paid de-index shows on the
+ * next request. The de-index desk and its sweep cron still expire it, along with
+ * `cars` and both homepage tags, so a per-car cache added later can't serve a
+ * hidden car. Such a cache should carry BOTH tags: `cars` keeps the site-wide
+ * kill-switch working, this one is what a single-car mutation expires. Expire it
+ * with `updateTag()`, NOT `revalidateTag(tag, "max")` — "max" is
+ * stale-while-revalidate, so the next visitor would still be served the
  * de-indexed car (see the Next 16 revalidateTag/updateTag docs in
  * node_modules/next/dist/docs). `updateTag` is Server-Action-only.
  */

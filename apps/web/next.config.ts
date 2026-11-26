@@ -29,12 +29,13 @@ const nextConfig: NextConfig = {
   //     DB-cheap (keyset reads + the counts/facets summary tables, migrations
   //     0016/0017) and their keys are per-request-unique (filters × cursor), and
   //     the catalog route is dynamic anyway (reads searchParams).
-  //   - The car detail, the related-cars pool and the facet base DO cache across
-  //     requests, with `"use cache: remote"` — on Vercel its handler, the Runtime
-  //     Cache, is provided automatically. Everything else uses plain `"use cache"`
-  //     (in-memory, best-effort per instance on serverless). A paid de-index
-  //     expires these by tag. See lib/cache-tags.ts and node_modules/next/dist/docs
-  //     (use-cache, use-cache-remote, cacheHandlers).
+  //   - The related-cars pools and the facet base DO cache across requests, with
+  //     `"use cache: remote"` — on Vercel its handler, the Runtime Cache, is
+  //     provided automatically. The car detail does NOT (95 % of its lookups missed,
+  //     measured 2026-11-26), and reads the database per request. Everything else
+  //     uses plain `"use cache"` (in-memory, best-effort per instance on
+  //     serverless). A paid de-index expires these by tag. See lib/cache-tags.ts
+  //     and node_modules/next/dist/docs (use-cache, use-cache-remote, cacheHandlers).
   cacheComponents: true,
   // Resolve `three` from its per-file source instead of its published build. The
   // build is two pre-bundled files (three.core.js + three.module.js), and a

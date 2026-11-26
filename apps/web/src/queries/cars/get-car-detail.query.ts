@@ -3,7 +3,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { and, eq, sql } from "drizzle-orm";
 import { carDetailFromRows } from "@/lib/car-detail-mapper";
 import { carListingToView } from "@/lib/car-mapper";
-import { CACHE_TAGS, carCacheTag } from "@/lib/cache-tags";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { getDb, schema } from "@/lib/db";
 import { makeLogo } from "@/lib/make-logo";
 import { getMakeIndex } from "./get-make-index.query";
@@ -30,7 +30,7 @@ const RELATED_POOL_SIZE = RELATED_LIMIT + 1;
  * The rich `CarDetail` for the single-car detail page (`/avtomobil/[id]`): the card
  * fields plus everything from the chosen lot's raw_json. The carousel of related
  * cars is assembled SEPARATELY by `getCarDetail` — see `getRelatedPool` for why it
- * must not be baked into this per-car entry.
+ * must not be baked into this per-car read.
  *
  * Resolution order: the ACTIVE read model (`car_listings`) first, then the
  * ARCHIVED one (`car_listings_archived`) — so a concluded/sold car still resolves
@@ -41,38 +41,29 @@ const RELATED_POOL_SIZE = RELATED_LIMIT + 1;
  * so the join to `cars` + the chosen `auction_lots` row (for the raw_json gallery
  * + appraisal prices) is cheap.
  *
- * Two cache layers, doing different jobs:
- *  - React `cache()` (request-scoped): the `avtomobil/[id]` route reads this in
- *    BOTH `generateMetadata` and the page body — dedup to ONE read per request
- *    (Next auto-memoizes `fetch`, but not ORM/DB calls).
- *  - `"use cache: remote"` (cross-request, per carId): the payload is stored in
- *    the Vercel Runtime Cache — durable and shared across instances in the
- *    region, handler provided automatically under `cacheComponents` (see
- *    cache-tags.ts). The ~945k-page long tail is crawler-hammered; without this
- *    every bot hit was a fresh multi-round-trip Neon read. Plain `"use cache"`
- *    was unsuitable here (per-instance LRU, ~zero hit rate over 945k keys), but
- *    a shared remote store keyed per id is exactly the rate-limited-backend case
- *    the use-cache-remote docs describe. `cacheLife("hours")` costs no real
- *    freshness: listing data changes ONLY via the hourly ingestion sync (the
- *    detail-refresh queue has no producer), so detail pages were already at most
- *    hourly-fresh. Tagged `cars` as the kill-switch if an ingestion webhook ever
- *    lands. Id validation stays OUTSIDE the cached scope so garbage ids don't
- *    burn cache writes.
+ * Read from the database on every request, with no cross-request cache — on
+ * purpose. React `cache()` in `getCarDetail` still makes it ONE read per request
+ * (the route calls it from both `generateMetadata` and the page body; Next
+ * memoizes `fetch`, but not ORM/DB calls).
  *
- * KEEP THIS ENTRY SMALL. Runtime Cache writes are billed per 8 KB unit (fra1:
- * $5.20/M) and this key space is the ~945k-page long tail, so every KB here is
- * multiplied by 945k. That is why the related-cars carousel was moved out — see
- * `getRelatedPool`.
+ * Until 2026-11-26 this was `"use cache: remote"` (the Vercel Runtime Cache),
+ * keyed per car. Measured that day, half an hour after a deploy: 524 car-page
+ * requests (the proxy's 410 checks) and 500 runs of this function in the same
+ * 8 minutes, so 95 % of requests missed. Crawlers spread over the ~945k-page
+ * long tail rarely ask for the same car twice in an hour, and every deploy starts
+ * that cache empty (its key includes the build). Each miss still paid a Runtime
+ * Cache write, $5.20 per million 8 KB units in fra1, and Runtime Cache writes
+ * were the largest usage line on the Vercel bill. A miss costs the database a
+ * handful of point lookups (~5 ms in pg_stat_statements), so the cache charged for
+ * work it almost never saved.
+ * Plain `"use cache"` would only keep a per-instance in-memory copy that the long
+ * tail rarely hits. Freshness is unchanged or better: listing data changes only
+ * via the hourly ingestion sync, and a paid de-index now shows on the next request.
+ *
+ * The related-cars carousel is NOT part of this read: it comes from per-model
+ * pools that ARE cached across requests — see `getRelatedPool`.
  */
-async function getCarDetailCached(carId: number): Promise<CarDetail | null> {
-  "use cache: remote";
-  // TWO tags on purpose: `cars` stays the site-wide kill-switch, while the
-  // per-car tag lets a single-car mutation (a paid de-index) expire just this
-  // entry instead of discarding all ~945k of them. See lib/cache-tags.ts.
-  cacheTag(CACHE_TAGS.cars);
-  cacheTag(carCacheTag(carId));
-  cacheLife("hours");
-
+async function loadCarDetail(carId: number): Promise<CarDetail | null> {
   const db = getDb();
 
   // Find the listing row in active first, else archived. We only need the lot_id,
@@ -226,21 +217,22 @@ async function getCarDetailCached(carId: number): Promise<CarDetail | null> {
 }
 
 /**
- * Request-scoped dedup over the remote-cached reads; id validation OUT here so
- * garbage ids (bot noise) return null without touching the cache.
+ * Request-scoped dedup (React `cache()`): the route's `generateMetadata` and page
+ * body share ONE read. Id validation first, so garbage ids (bot noise) return null
+ * without a database round trip.
  *
- * The two halves of the payload are cached on DIFFERENT keys on purpose: the
- * `detail` is genuinely per-car (~945k keys), the carousel is per-MODEL (~1.3k
- * keys). Assembling them here is what lets each be stored at its own cardinality.
+ * The two halves of the payload are handled differently on purpose: the `detail`
+ * is genuinely per-car (~945k keys, too many to cache usefully, see
+ * `loadCarDetail`), while the carousel is per-MODEL (~1.3k keys) and cached across
+ * requests. Assembling them here keeps each at its own cardinality.
  */
 export const getCarDetail = cache(async (carId: number): Promise<CarDetailPayload | null> => {
   if (!Number.isInteger(carId) || carId <= 0) return null;
 
-  const cached = await getCarDetailCached(carId);
-  if (!cached) return null;
-  // The make's logo is the site's own file (`makeLogo`), resolved here: the cached entry keeps AuctionsAPI's link,
-  // so a changed file shows with the next deploy rather than when ~945k entries expire.
-  const detail = { ...cached, brandLogo: makeLogo(cached.brandExternalId, cached.brandLogo) ?? undefined };
+  const loaded = await loadCarDetail(carId);
+  if (!loaded) return null;
+  // The make's logo is the site's own file (`makeLogo`); the row's AuctionsAPI link is only the fallback.
+  const detail = { ...loaded, brandLogo: makeLogo(loaded.brandExternalId, loaded.brandLogo) ?? undefined };
 
   // The mapper copies the listing's reference ids onto the detail, so the
   // carousel needs no extra read to find its pool keys.
@@ -262,14 +254,16 @@ type RelatedPoolKind = "model" | "brand";
  * — we want live, buyable suggestions even on an archived detail page.
  *
  * **Why this is its own cache entry, keyed WITHOUT the car id.** These same ~8
- * cards used to be computed inside `getCarDetailCached` and serialized into every
- * one of the ~945k per-car Runtime Cache entries — the identical rows written out
- * hundreds of times over, at $5.20 per million 8 KB write units, into a cache the
- * Vercel docs describe as ephemeral and LRU-evicted. Keyed on the model instead,
- * the whole site needs ~1,286 entries (one per model, plus ~117 brand fallbacks),
- * which is small enough to actually stay resident and be READ back rather than
- * rewritten per crawl. `cacheLife("hours")` tracks the hourly ingestion sync, the
- * same freshness the detail entry has.
+ * cards used to be computed inside the per-car detail read and serialized into
+ * every one of its ~945k Runtime Cache entries (while that read was remote-cached,
+ * until 2026-11-26) — the identical rows written out hundreds of times over, at
+ * $5.20 per million 8 KB write units, into a cache the Vercel docs describe as
+ * ephemeral and LRU-evicted. Keyed on the model instead, the whole site needs
+ * ~1,286 entries (one per model, plus ~117 brand fallbacks), which is small enough
+ * to actually stay resident and be READ back rather than rewritten per crawl. It
+ * stays cached because a miss is expensive: ~42 ms and ~1,350 buffers per pool
+ * (pg_stat_statements, 2026-11-26), against ~5 ms for the whole per-car read.
+ * `cacheLife("hours")` tracks the hourly ingestion sync.
  *
  * `kind` is a plain string, not the Drizzle column, because the arguments form the
  * cache key and must be serializable.

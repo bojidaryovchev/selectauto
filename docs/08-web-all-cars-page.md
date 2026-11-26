@@ -295,8 +295,12 @@ everything that isn't promoted to a projection column.
   `href` in `car-mapper.ts` matches). PPR: a static shell (header/footer) renders,
   the body streams inside `<Suspense>` (awaiting `params` at the root would block
   the route — the build rejects it).
-- **Query**: `getCarDetail(carId)` (`get-car-detail.query.ts`, **uncached** — a
-  cheap single-row lookup, and one entry per ~935k car ids isn't worth caching).
+- **Query**: `getCarDetail(carId)` (`get-car-detail.query.ts`, **uncached** across
+  requests — a cheap single-row lookup, and one entry per ~945k car ids isn't worth
+  caching: while it was `"use cache: remote"` (until 2026-11-26), 95 % of requests
+  missed and every miss paid a Runtime Cache write). React `cache()` still makes it
+  one read per request, and the related cars come from per-model pools that ARE
+  remote-cached (`getRelatedPool`).
   Resolves the listing row in **`car_listings` first, then
   `car_listings_archived`** — so a concluded car still resolves (renders as a past
   result + `noindex`). Then joins `cars` + the chosen `auction_lots` row for the
