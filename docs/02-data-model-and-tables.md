@@ -635,5 +635,6 @@ safe. **Append-only and hand-run** (`pnpm migrate`) — not applied on deploy.
 | `0052_concluded_lots_leave_active.sql` | Both recompute functions go by the status: a concluded lot (`sold`/`not_sold`/`failed`) is never active, archived or not, and shows in the past view. `repair-concluded-active.mjs` moved the 125 277 cars it affected on 18.11.2026 (05 §3). |
 | `0053_vin_reports.sql` | `vin_reports` — Carfax/AutoCheck reports bought through AuctionsAPI (/admin/carfax-otcheti), with the 'pending' claim taken before the paid call (one per VIN and provider) and the reports bought elsewhere, imported from its history. |
 | `0054_sold_price_stats.sql` | `sold_price_stats` + `refresh_sold_price_stats()` — the average realized sale price per make × model × year, precomputed (the car-page benchmark and the hub table read it instead of aggregating the archive per request); filled once by the migration, then daily by the cron. |
+| `0055_recompute_skip_unchanged.sql` | Both recompute functions write a projection row only when a projected column differs (a `WHERE … IS DISTINCT FROM` on the `DO UPDATE`); otherwise verbatim 0052. `updated_at` now means the last real change. |
 > Operational procedures (backfill, reseed, drift sweep, resume) →
 > [07-operations-runbook.md](07-operations-runbook.md).

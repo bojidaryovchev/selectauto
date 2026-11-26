@@ -220,6 +220,12 @@ whatever the intervening migrations added. That is exactly what happened once:
   plain `<img>` — bypassing Vercel Image Optimization (~80% of the web bill). It is
   effectively never NULL; the web mapper resolves the card image as
   `thumbnailUrl ?? imageUrl`.
+- **0055** (26.11.2026) adds one clause to the `ON CONFLICT … DO UPDATE` of **both**
+  functions (bodies otherwise 0052's): a `WHERE (<projected columns>) IS DISTINCT FROM
+  (<EXCLUDED …>)`, so a car whose projected values are unchanged is no longer
+  rewritten. Before it every touched car was — 29.5 M updates on `car_listings` and
+  17.5 M on `car_listings_archived` in the 22 days to 26.11, and the weekly drift
+  sweep rewrote all ~4 M rows. `updated_at` therefore means the last real change.
 
 ---
 
